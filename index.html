@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <script src="assets/jquery-3.6.0.min.js"></script>
+    <script src="config.js"></script>
+    <script src="indexedDB.js?v=5"></script>
+    <script src="assets/common/popup.js"></script>
+    <link href="assets/index/style.css" rel="stylesheet">
+    <link href="assets/common/ui-theme.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Page Loader -->
+    <div id="loader" class="page-loader" style="display:none;">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Server Settings Modal -->
+    <div id="serverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:16px;width:340px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:18px 22px;color:#fff;">
+                <div style="font-weight:700;font-size:16px;">⚙️ Server</div>
+                <div style="font-size:12px;opacity:.85;margin-top:3px;">Shop Wi-Fi first, online server when it is not there</div>
+            </div>
+            <div style="padding:20px 22px;">
+                <div id="serverModeInfo" style="font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;">Automatic</div>
+                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Shop code or server address</label>
+                <input id="serverUrlInput" type="text" placeholder="azure  or  192.168.1.5:5555" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="handleServerUrlInput()"
+                    style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+                <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Your shop code becomes https://&lt;code&gt;.posnic.io/api</div>
+                <button id="serverAutoDetectBtn" onclick="toggleAutoDetectServer()" style="width:100%;padding:9px;margin-bottom:10px;border:1.5px solid #8b5cf6;border-radius:8px;background:#f5f3ff;color:#6d28d9;font-weight:700;cursor:pointer;">Find server on this Wi-Fi</button>
+                <div id="serverSaveMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <button onclick="testServerUrl()" style="flex:1;padding:10px;border:1.5px solid #3b82f6;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-weight:700;cursor:pointer;">🔌 Test</button>
+                    <button id="serverSaveBtn" onclick="applyServerUrl()" disabled style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;cursor:not-allowed;opacity:.45;">💾 Save &amp; Use</button>
+                    <button onclick="resetServerUrl()" title="Let the app choose between Wi-Fi and online" style="padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-weight:600;cursor:pointer;">🔄 Automatic</button>
+                </div>
+                <button onclick="refreshKioskData()" style="width:100%;padding:10px;border:1.5px solid #10b981;border-radius:8px;background:#ecfdf5;color:#047857;font-weight:700;cursor:pointer;">Refresh Data &amp; Images</button>
+            </div>
+            <div style="padding:0 22px 18px;text-align:right;">
+                <button onclick="closeServerModal()" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server mode indicator -->
+    <div id="serverBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9997;text-align:center;padding:4px;font-size:11px;font-weight:600;"></div>
+
+    <!-- Gear icon -->
+    <button onclick="openServerModal()" title="Server Settings"
+        style="position:fixed;top:14px;right:14px;z-index:999;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;color:#fff;backdrop-filter:blur(4px);">
+        ⚙️
+    </button>
+
+    <div class="auth-page">
+        <div class="auth-header">
+            <div class="brand-circle">
+                <span class="brand-initials">TO</span>
+            </div>
+            <div class="brand-text">
+                <h1 class="brand-title">Captain</h1>
+                <p class="brand-subtitle">Quick dine‑in & takeaway ordering</p>
+            </div>
+        </div>
+
+        <!-- Device limit banner (shown via JS) -->
+        <div id="limit-banner" style="display:none;margin-bottom:18px;background:#1c1206;border:1.5px solid #f59e0b;border-radius:14px;padding:18px 22px;text-align:center;position:relative;">
+            <button onclick="document.getElementById('limit-banner').style.display='none'" title="Dismiss"
+                style="position:absolute;top:10px;right:12px;background:none;border:none;color:#fbbf24;font-size:18px;cursor:pointer;line-height:1;padding:0;">✕</button>
+            <div style="font-size:28px;margin-bottom:6px;">⚠️</div>
+            <div style="font-weight:700;font-size:16px;color:#fbbf24;margin-bottom:6px;">Device Limit Reached</div>
+            <div style="font-size:13px;color:#fde68a;line-height:1.6;">Maximum 6 devices are allowed to connect.<br>Please <strong style="color:#fff;">contact your administrator</strong> to free up a slot.</div>
+        </div>
+
+        <!-- Blocked by admin banner (shown via JS) -->
+        <div id="blocked-banner" style="display:none;margin-bottom:18px;background:#1a0505;border:1.5px solid #dc2626;border-radius:14px;padding:18px 22px;text-align:center;position:relative;">
+            <button onclick="document.getElementById('blocked-banner').style.display='none'" title="Dismiss"
+                style="position:absolute;top:10px;right:12px;background:none;border:none;color:#f87171;font-size:18px;cursor:pointer;line-height:1;padding:0;">✕</button>
+            <div style="font-size:28px;margin-bottom:6px;">🚫</div>
+            <div style="font-weight:700;font-size:16px;color:#f87171;margin-bottom:6px;">Device Blocked by Administrator</div>
+            <div style="font-size:13px;color:#fca5a5;line-height:1.6;">This device has been restricted from accessing the app.<br>Please <strong style="color:#fff;">contact your administrator</strong> to restore access.</div>
+        </div>
+
+        <div class="auth-card container">
+            <!-- Login Section -->
+            <div id="login-section">
+                <h3 class="section-title text-center mb-4">Login</h3>
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username / Email</label>
+                    <input type="text" id="username" class="form-control auth-input" autocomplete="username"
+                        placeholder="Enter your username">
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" class="form-control auth-input" autocomplete="current-password"
+                        placeholder="Enter your password">
+                </div>
+
+                <button id="login-btn" class="btn btn-login w-100" onclick="doLogin()">
+                    Continue
+                </button>
+
+                <div id="login-message" class="mt-3 text-danger text-center" style="display:none;"></div>
+            </div>
+
+            <!-- Branch Selection Section -->
+            <div id="branch-section" class="mt-3" style="display:none;">
+                <h3 class="section-title text-center mb-3">Select Branch</h3>
+                <p class="section-help text-center mb-3">
+                    Choose a branch to start taking orders.
+                </p>
+                <div id="branch-list-container" class="row g-3 justify-content-center">
+                    <!-- Branch cards injected by JS -->
+                </div>
+                <div id="branch-message" class="mt-3 text-danger text-center" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- Bottom bar for branch screen -->
+        <div id="branch-footer" class="branch-footer" style="display:none;">
+            <button type="button" class="btn btn-outline-light w-100" onclick="logoutKiosk()">
+                Logout
+            </button>
+        </div>
+    </div>
+    <div id="error-popup-overlay" style="display:none;">
+        <div id="error-popup">
+            <div id="error-popup-title">Error</div>
+            <div id="error-popup-message">Something went wrong.</div>
+            <button type="button" id="error-popup-close" onclick="closeErrorPopup()">OK</button>
+        </div>
+    </div>
+    <script src="assets/index/script.js"></script>
+    <script>
+        /*
+         * The server line, and the settings sheet behind it.
+         *
+         * The app decides for itself which server to use (config.js explains
+         * the order). Everything here is the human override: seeing what was
+         * chosen, naming a shop, finding the till on this Wi-Fi, and pinning
+         * an address when the shop wants one particular answer.
+         */
+        function describeServer() {
+            const banner = document.getElementById('serverBanner');
+            if (!banner) return;
+            const url = POSNIC.server.baseUrl || '';
+            const pinned = POSNIC.server.pinned;
+
+            banner.style.display = 'block';
+            banner.style.color = '#fff';
+            if (!url) {
+                banner.style.background = '#b45309';
+                banner.textContent = 'No server yet - tap the gear to choose one';
+                return;
+            }
+            if (POSNIC.server.isLocal) {
+                banner.style.background = '#16a34a';
+                banner.textContent = (pinned ? '📌 ' : '🟢 ') + 'This Wi-Fi: ' + url;
+            } else {
+                banner.style.background = '#1d4ed8';
+                banner.textContent = (pinned ? '📌 ' : '☁️ ') + 'Online: ' + url;
+            }
+        }
+        describeServer();
+        window.addEventListener('posnic:server-changed', describeServer);
+    </script>
+    <script>
+        var serverAutoDetectRunning = false;
+        var serverAutoDetectCancelled = false;
+        var testedServerUrl = null;
+
+        function serverMsg(text, colour) {
+            const msg = document.getElementById('serverSaveMsg');
+            if (!msg) return;
+            msg.style.color = colour || '#6b7280';
+            msg.textContent = text;
+        }
+
+        function openServerModal() {
+            const modal = document.getElementById('serverModal');
+            sessionStorage.setItem('posnic_editing_server', '1');
+            modal.style.display = 'flex';
+
+            /* The outage screen sits above everything, including this. If it
+               is up, the reason the user is here is to fix it. */
+            const overlay = document.getElementById('posnic-offline-overlay');
+            if (overlay) overlay.style.display = 'none';
+            document.documentElement.classList.remove('posnic-offline-active');
+
+            const pinned = POSNIC.server.pinned;
+            const shopCode = POSNIC.server.shopCode;
+            document.getElementById('serverUrlInput').value = pinned || shopCode || '';
+            invalidateServerTest();
+            serverMsg('');
+            renderServerMode();
+
+            /* Nothing configured at all: start looking straight away rather
+               than waiting for a tap nobody knows to make. */
+            if (!pinned && !shopCode && !POSNIC.server.isConfigured) {
+                setTimeout(function() {
+                    if (!document.getElementById('serverUrlInput').value.trim()) autoDetectServer();
+                }, 150);
+            }
+        }
+
+        function renderServerMode() {
+            const info = document.getElementById('serverModeInfo');
+            if (!info) return;
+            const pinned = POSNIC.server.pinned;
+            const lan = POSNIC.server.lan;
+            const cloud = POSNIC.server.cloud;
+
+            if (pinned) {
+                info.textContent = '📌 Pinned to ' + pinned;
+                info.style.background = '#fff7ed'; info.style.color = '#9a3412'; info.style.borderColor = '#fed7aa';
+            } else {
+                const parts = [];
+                if (lan) parts.push('Wi-Fi: ' + lan);
+                if (cloud) parts.push('Online: ' + cloud);
+                info.textContent = parts.length
+                    ? 'Automatic - ' + parts.join('  ·  ')
+                    : 'Automatic - no server known yet';
+                info.style.background = '#f0fdf4'; info.style.color = '#166534'; info.style.borderColor = '#bbf7d0';
+            }
+        }
+
+        function closeServerModal() {
+            stopAutoDetectServer(false);
+            sessionStorage.removeItem('posnic_editing_server');
+            document.getElementById('serverModal').style.display = 'none';
+            POSNIC.net.check(true);
+        }
+
+        function handleServerUrlInput() {
+            if (serverAutoDetectRunning) stopAutoDetectServer(true);
+            invalidateServerTest();
+        }
+
+        function toggleAutoDetectServer() {
+            if (serverAutoDetectRunning) {
+                stopAutoDetectServer(true);
+                return;
+            }
+            autoDetectServer();
+        }
+
+        function stopAutoDetectServer(showMessage) {
+            if (!serverAutoDetectRunning) return;
+            serverAutoDetectCancelled = true;
+            const button = document.getElementById('serverAutoDetectBtn');
+            if (button) button.textContent = 'Stopping...';
+            if (showMessage) {
+                serverMsg('Search stopped. Enter the shop code or server address instead.');
+                const input = document.getElementById('serverUrlInput');
+                if (input) input.focus();
+            }
+        }
+
+        function invalidateServerTest() {
+            testedServerUrl = null;
+            const button = document.getElementById('serverSaveBtn');
+            if (!button) return;
+            button.disabled = true;
+            button.style.opacity = '.45';
+            button.style.cursor = 'not-allowed';
+        }
+
+        function markServerTestPassed(url) {
+            testedServerUrl = String(url || '').trim().replace(/\/+$/, '');
+            const button = document.getElementById('serverSaveBtn');
+            if (!button) return;
+            button.disabled = false;
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+        }
+
+        /**
+         * Look for the shop's own server on this Wi-Fi.
+         *
+         * The saved address is tried first and answers in under a second on
+         * every shift after the first; the sweep only runs when it does not.
+         */
+        async function autoDetectServer() {
+            if (serverAutoDetectRunning) return;
+            serverAutoDetectRunning = true;
+            serverAutoDetectCancelled = false;
+
+            const input = document.getElementById('serverUrlInput');
+            const button = document.getElementById('serverAutoDetectBtn');
+            const originalButtonText = button.textContent;
+            button.disabled = false;
+            button.textContent = 'Stop searching';
+            button.style.borderColor = '#dc3f4f';
+            button.style.background = '#fff2f3';
+            button.style.color = '#dc3f4f';
+            serverMsg('Looking for this shop’s server on the Wi-Fi...');
+
+            try {
+                /* Whatever is already in the box is the strongest hint there
+                   is - check it before sweeping hundreds of addresses. */
+                const typed = POSNIC.server.normalize(input.value);
+                if (typed) {
+                    serverMsg('Checking ' + typed + '...');
+                    const hit = await POSNIC.discovery.probe(typed, 3000);
+                    if (serverAutoDetectCancelled) return;
+                    if (hit) {
+                        input.value = hit.base;
+                        invalidateServerTest();
+                        serverMsg('✅ Server detected: ' + hit.base + '. Tap Test to verify, then Save & Use.', '#16a34a');
+                        return;
+                    }
+                }
+
+                const found = await POSNIC.discovery.findOnWifi({
+                    shouldStop: function() { return serverAutoDetectCancelled; },
+                    onProgress: function(done, total, where) {
+                        if (!total) serverMsg('Checking ' + where + '...');
+                        else serverMsg('Searching ' + where + ' (' + done + '/' + total + ')...');
+                    }
+                });
+                if (serverAutoDetectCancelled) return;
+
+                if (found) {
+                    input.value = found.base;
+                    invalidateServerTest();
+                    serverMsg('✅ Server detected: ' + found.base + '. Tap Test to verify, then Save & Use.', '#16a34a');
+                    return;
+                }
+
+                serverMsg('❌ No server on this Wi-Fi. Enter your shop code (for example: azure) to use the online server.', '#dc2626');
+            } finally {
+                serverAutoDetectRunning = false;
+                serverAutoDetectCancelled = false;
+                button.disabled = false;
+                button.textContent = originalButtonText;
+                button.style.borderColor = '#8b5cf6';
+                button.style.background = '#f5f3ff';
+                button.style.color = '#6d28d9';
+            }
+        }
+
+        async function testServerUrl() {
+            const raw = document.getElementById('serverUrlInput').value.trim();
+            if (!raw) { serverMsg('⚠️ Enter a shop code or server address first', '#dc2626'); return; }
+
+            const base = POSNIC.server.normalize(raw);
+            if (!base) { serverMsg('⚠️ That is not a shop code or an address', '#dc2626'); return; }
+
+            invalidateServerTest();
+            serverMsg('⏳ Testing ' + base + '...');
+            const hit = await POSNIC.discovery.probe(base, 8000);
+            if (hit) {
+                markServerTestPassed(hit.base);
+                document.getElementById('serverUrlInput').value = hit.base;
+                const where = hit.info && hit.info.mode === 'cloud' ? 'online server' : 'shop server';
+                serverMsg('✅ Connected to the ' + where + '. Now tap Save & Use.', '#16a34a');
+                return;
+            }
+            serverMsg('❌ No Posnic server answered at ' + base + '. Check the address, and that the till is switched on.', '#dc2626');
+        }
+
+        function clearKioskDatabaseForServerSwitch() {
+            return new Promise(function(resolve) {
+                try {
+                    if (typeof db !== 'undefined' && db) db.close();
+                } catch (e) { /* ignore */ }
+
+                try {
+                    const req = indexedDB.deleteDatabase('KioskDB');
+                    req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+                } catch (e) {
+                    resolve();
+                }
+            });
+        }
+
+        async function applyServerUrl() {
+            const raw = document.getElementById('serverUrlInput').value.trim();
+            if (!raw) {
+                serverMsg('⚠️ Enter a shop code or server address', '#dc2626');
+                return;
+            }
+            const base = POSNIC.server.normalize(raw);
+            if (!base || !testedServerUrl || testedServerUrl !== base) {
+                invalidateServerTest();
+                serverMsg('⚠️ Test this server successfully before Save & Use.', '#dc2626');
+                return;
+            }
+            try {
+                /* A pin is a decision: this address, until it is cleared. The
+                   shop code is remembered alongside it so "Automatic" still
+                   has an online address to fall back to later. */
+                POSNIC.server.pin(base);
+                if (!POSNIC.server.isLanUrl(base) && !/[.:/]/.test(raw)) POSNIC.server.useShopCode(raw);
+                localStorage.setItem('POSNIC_IMAGE_CACHE_BUST', String(Date.now()));
+                sessionStorage.removeItem('posnic_editing_server');
+                serverMsg('✅ Saved. Reloading...', '#16a34a');
+                await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
+            } catch (e) {
+                serverMsg('❌ ' + e.message, '#dc2626');
+            }
+        }
+
+        /** Drop the pin: let the app choose between Wi-Fi and online again. */
+        async function resetServerUrl() {
+            sessionStorage.removeItem('posnic_editing_server');
+            POSNIC.server.unpin();
+            document.getElementById('serverUrlInput').value = '';
+            invalidateServerTest();
+            renderServerMode();
+            serverMsg('Automatic again - the app will use the shop Wi-Fi when it is there, and the online server otherwise. Reloading...', '#1d4ed8');
+            await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
+        }
+    </script>
+</body>
+
+</html>

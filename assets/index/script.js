@@ -1,0 +1,438 @@
+// Show admin-blocked banner and start polling for unblock
+(function() {
+    let _unblockTimer = null;
+
+    function startUnblockPoller() {
+        if (_unblockTimer) return;
+        _unblockTimer = setInterval(async () => {
+            try {
+                /* Only a till blocks a device; the cloud has no such notion. */
+                if (!POSNIC.server.isLocal) return;
+                const hit = await POSNIC.discovery.probe(POSNIC.server.baseUrl, 3000);
+                if (hit) {
+                    // Unblocked!
+                    clearInterval(_unblockTimer);
+                    _unblockTimer = null;
+                    const banner = document.getElementById('blocked-banner');
+                    if (banner) {
+                        banner.style.borderColor = '#16a34a';
+                        banner.style.background = '#052e16';
+                        banner.style.display = 'block';
+                        banner.innerHTML = `
+                            <div style="font-size:28px;margin-bottom:6px;">✅</div>
+                            <div style="font-weight:700;font-size:16px;color:#86efac;margin-bottom:6px;">Access Restored</div>
+                            <div style="font-size:13px;color:#bbf7d0;">Your device has been unblocked by the administrator.<br>You can now sign in.</div>`;
+                        setTimeout(() => { banner.style.display = 'none'; }, 2500);
+                    }
+                }
+            } catch (e) { /* server offline, keep polling */ }
+        }, 4000);
+    }
+
+    if (sessionStorage.getItem('device_blocked') === '1') {
+        sessionStorage.removeItem('device_blocked');
+        document.addEventListener('DOMContentLoaded', function() {
+            const banner = document.getElementById('blocked-banner');
+            if (banner) {
+                banner.style.display = 'block';
+                startUnblockPoller();
+            }
+        });
+    }
+
+    if (sessionStorage.getItem('device_limit') === '1') {
+        sessionStorage.removeItem('device_limit');
+        document.addEventListener('DOMContentLoaded', function() {
+            const banner = document.getElementById('limit-banner');
+            if (banner) banner.style.display = 'block';
+        });
+    }
+
+    // Also start poller if banner is already visible when doLogin gets DEVICE_BLOCKED
+    window._startUnblockPoller = startUnblockPoller;
+})();
+
+function showLoader() {
+    const loader = document.getElementById("loader");
+    if (loader) loader.style.display = "flex";
+}
+
+function hideLoader() {
+    const loader = document.getElementById("loader");
+    if (loader) loader.style.display = "none";
+}
+
+function showLoginMessage(msg) {
+    const el = document.getElementById("login-message");
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = msg ? "block" : "none";
+}
+
+function showBranchMessage(msg) {
+    const el = document.getElementById("branch-message");
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = msg ? "block" : "none";
+}
+
+function showBranchFooter(show) {
+    const footer = document.getElementById("branch-footer");
+    if (!footer) return;
+    footer.style.display = show ? "flex" : "none";
+}
+
+function getServerConnectionMessage(error) {
+    const where = POSNIC.server.baseUrl || 'no server chosen';
+    const reason = error && error.message ? error.message : String(error || 'Connection failed');
+    return `Cannot reach the shop server (${where}). Check the Wi-Fi, or set the shop code. ${reason}`;
+}
+
+function showServerSettingsForConnectionFailure(error) {
+    showLoginMessage(getServerConnectionMessage(error));
+    showBranchMessage(getServerConnectionMessage(error));
+
+    const modal = document.getElementById('serverModal');
+    if (modal && typeof openServerModal === 'function') {
+        setTimeout(() => openServerModal(), 200);
+    }
+}
+
+async function doLogin() {
+    const usernameEl = document.getElementById("username");
+    const passwordEl = document.getElementById("password");
+
+    if (!usernameEl || !passwordEl) {
+        showLoginMessage("Page error — please reload the app.");
+        return;
+    }
+
+    const username = (usernameEl.value || "").trim();
+    const password = (passwordEl.value || "").trim();
+
+    showLoginMessage("");
+
+    if (!username) {
+        showLoginMessage("Please enter your username");
+        return;
+    }
+    if (!password) {
+        showLoginMessage("Please enter your password");
+        return;
+    }
+
+    /*
+     * No address at all is a setup problem, not a sign-in failure.
+     *
+     * There used to be a hard-coded fallback here - api.posnic.io - which is
+     * not any shop's address. A user with nothing configured got "invalid
+     * account" from a host that has never heard of them, which sends them
+     * looking for the wrong problem entirely.
+     */
+    if (!POSNIC.server.baseUrl) {
+        showLoginMessage("Choose your shop server first.");
+        if (typeof openServerModal === 'function') openServerModal();
+        return;
+    }
+
+    showLoader();
+
+    try {
+        /*
+         * The response is a bearer-token grant, and the failures are ordinary
+         * HTTP. There used to be one status for everything - 404 - so the only
+         * way to tell a wrong password from a locked-out device from a wrong
+         * address was to read the English in the message.
+         */
+        const result = await POSNIC.api.post('/users/kioskMobileLogin', { username, password });
+
+        POSNIC.session.start(result);
+
+        const branches = result.branches || [];
+        if (!branches.length) {
+            showLoginMessage("No branches are set up for this account. Ask your manager.");
+            return;
+        }
+
+        localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
+        if (result.user && result.user.id) localStorage.setItem("user_id", result.user.id);
+
+        if (branches.length === 1) {
+            const only = branches[0];
+            const storeId = only.store_id || only.branch_id;
+            localStorage.setItem("kiosk_selected_branch", storeId);
+            localStorage.setItem("branch_id", only.branch_id);
+            await selectBranch(storeId);
+            return;
+        }
+
+        renderBranchList(branches);
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("branch-section").style.display = "block";
+        showBranchFooter(true);
+    } catch (error) {
+        if (error.status === 429) {
+            showLoginMessage(error.message);
+        } else if (error.status === 401) {
+            showLoginMessage(error.message || "That username or password was not accepted.");
+        } else if (error.status === 400) {
+            showLoginMessage(error.message);
+        } else if (error.code === 'DEVICE_BLOCKED') {
+            const banner = document.getElementById('blocked-banner');
+            if (banner) banner.style.display = 'block';
+            showLoginMessage('');
+            if (typeof window._startUnblockPoller === 'function') window._startUnblockPoller();
+        } else if (error.code === 'DEVICE_LIMIT_REACHED') {
+            const banner = document.getElementById('limit-banner');
+            if (banner) banner.style.display = 'block';
+            showLoginMessage('');
+        } else if (error.offline) {
+            showServerSettingsForConnectionFailure(error);
+        } else {
+            console.error("Login error:", error);
+            showLoginMessage(error.message || "Could not sign in.");
+        }
+    } finally {
+        hideLoader();
+    }
+}
+
+function renderBranchList(branches) {
+    const container = document.getElementById("branch-list-container");
+    container.innerHTML = "";
+    showBranchMessage("");
+
+    if (!branches || branches.length === 0) {
+        showBranchMessage("No branches configured for this user.");
+        return;
+    }
+
+    branches.forEach(b => {
+        const col = document.createElement("div");
+        col.className = "col-md-3 mb-3";
+
+        const card = document.createElement("div");
+        card.className = "card text-center branch-card";
+        card.style.cursor = "pointer";
+
+        // data-branch-id = store_id (fallback to branch_id for local branches without kiosk)
+        card.dataset.branchId = b.store_id || b.branch_id;
+        // always keep the MongoDB ObjectId and user_id for localStorage
+        card.dataset.actualBranchId = b.branch_id || '';
+        card.dataset.userId = b.user_id || '';
+
+        const img = document.createElement("img");
+        img.className = "card-img-top";
+        img.alt = b.branch_name || "Branch";
+        img.style.objectFit = "cover";
+
+        // normalize image path
+        let imagePath = b.branch_image || "";
+        if (!imagePath || imagePath === "store.png") {
+            // default image
+            imagePath = "images/default-store.webp";
+        } else if (!imagePath.startsWith("http")) {
+            // relative path from API → point to images folder
+            imagePath = "images/" + imagePath;
+        }
+
+        img.src = imagePath;
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        const title = document.createElement("h5");
+        title.className = "card-title";
+        title.textContent = b.branch_name || "Branch";
+
+        body.appendChild(title);
+        card.appendChild(img);
+        card.appendChild(body);
+        col.appendChild(card);
+        container.appendChild(col);
+    });
+
+    /*
+     * One handler, on the container, guarded by a flag.
+     *
+     * This was registered with { once: true }, which removes the listener
+     * after the FIRST event it receives - including one that hit the gap
+     * between two cards and returned immediately. From then on the branch list
+     * was dead: every subsequent tap did nothing at all, with no error, and
+     * the only way out was to restart the app. The flag does the job { once }
+     * was meant to do - stop a second branch being selected while the first is
+     * still loading - without disarming the list.
+     */
+    let selecting = false;
+    container.addEventListener("click", async function (e) {
+        if (selecting) return;
+        const card = e.target.closest(".branch-card");
+        if (!card) return;
+        const branchId = card.dataset.branchId;
+        if (!branchId) return;
+        selecting = true;
+        // set branch_id (MongoDB ObjectId) and user_id before navigating
+        const actualBranchId = card.dataset.actualBranchId || branchId;
+        localStorage.setItem("branch_id", actualBranchId);
+        if (card.dataset.userId) localStorage.setItem("user_id", card.dataset.userId);
+        try {
+            await selectBranch(branchId);
+        } finally {
+            /* Only matters when selectBranch failed and we are still here. */
+            selecting = false;
+        }
+    });
+}
+
+async function selectBranch(branchId) {
+    showBranchMessage("");
+    showLoader();
+    try {
+        // save selected branch so we can skip login next time
+        localStorage.setItem("kiosk_selected_branch", branchId);
+
+        // cached branch list இருந்து matching branch கண்டு பிடிக்க
+        const branchListRaw = localStorage.getItem("kiosk_branch_list");
+        if (branchListRaw) {
+            try {
+                const branchList = JSON.parse(branchListRaw);
+                const current = branchList.find(b => b.store_id === branchId);
+                if (current && current.branch_id) {
+                    // Order History க்கு use பண்ணுற id
+                    localStorage.setItem("branch_id", current.branch_id);
+                }
+            } catch (e) {
+                console.error("Failed to parse kiosk_branch_list", e);
+            }
+        }
+
+        await fetchAndStoreBranch(branchId, true);
+    } catch (err) {
+        console.error("Error loading branch products:", err);
+        showServerSettingsForConnectionFailure(err);
+    } finally {
+        hideLoader();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    showBranchFooter(false);
+
+    /*
+     * The login screen is the one place a full search is affordable.
+     *
+     * Nowhere else can spend seconds sweeping a subnet - mid-service that
+     * would freeze the screen a waiter is holding. Here there is nothing else
+     * happening, and getting the address right now is what stops every screen
+     * after this one from failing.
+     */
+    POSNIC.net.check(true).then(function(ok) {
+        if (!ok && typeof openServerModal === 'function' && !POSNIC.server.isConfigured) {
+            openServerModal();
+        }
+    });
+
+    const serverFailure = sessionStorage.getItem('server_connection_failed');
+    if (serverFailure) {
+        sessionStorage.removeItem('server_connection_failed');
+        showServerSettingsForConnectionFailure(new Error(serverFailure));
+    }
+
+    const openServerSettings = sessionStorage.getItem('open_server_settings') === '1';
+    if (openServerSettings) {
+        sessionStorage.removeItem('open_server_settings');
+        setTimeout(() => {
+            if (typeof openServerModal === 'function') openServerModal();
+        }, 200);
+    }
+
+    const forceSelect = localStorage.getItem("kiosk_force_branch_select") === "1";
+    const savedBranch = localStorage.getItem("kiosk_selected_branch");
+    const cachedBranchesRaw = localStorage.getItem("kiosk_branch_list");
+
+    // "Change Branch" flow — show cached branch list directly
+    if (forceSelect && cachedBranchesRaw) {
+        try {
+            const branches = JSON.parse(cachedBranchesRaw) || [];
+            if (Array.isArray(branches) && branches.length > 0) {
+                localStorage.removeItem("kiosk_force_branch_select");
+                localStorage.removeItem("kiosk_selected_branch");
+                renderBranchList(branches);
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("branch-section").style.display = "block";
+                showBranchFooter(true);
+                return;
+            }
+        } catch (e) { /* fall through to login */ }
+        localStorage.removeItem("kiosk_force_branch_select");
+    }
+
+    // Auto-load saved branch — login form stays visible during this
+    // If redirect succeeds the page navigates away; if it fails login form is already shown
+    if (savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
+        showLoader();
+        try {
+            await fetchAndStoreBranch(savedBranch, true);
+        } catch (e) {
+            console.error("Auto-load branch failed:", e);
+            showServerSettingsForConnectionFailure(e);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // Always attach login button handler (onclick in HTML is also set as failsafe)
+    const btn = document.getElementById("login-btn");
+    if (btn) {
+        btn.onclick = function(e) {
+            e.preventDefault();
+            doLogin();
+        };
+    }
+    const passwordInput = document.getElementById("password");
+    if (passwordInput) {
+        passwordInput.addEventListener("keyup", function(e) {
+            if (e.key === "Enter") doLogin();
+        });
+    }
+});
+
+async function logoutKiosk() {
+    try {
+        showLoader();
+
+        // Clear all kiosk-related localStorage
+        POSNIC.session.end();
+        localStorage.removeItem("kiosk_selected_branch");
+        localStorage.removeItem("kiosk_branch_list");
+        localStorage.removeItem("kiosk_force_branch_select");
+        localStorage.removeItem("branch_id");
+        localStorage.removeItem("orderType");
+        localStorage.removeItem("lastActiveCategory");
+        localStorage.removeItem("kiosk_table_no");
+        localStorage.removeItem("kiosk_table_id");
+        localStorage.removeItem("kiosk_discount_percentage");
+        localStorage.removeItem("kiosk_discount_amount");
+        localStorage.removeItem("kiosk_discount_description");
+
+        // Clear IndexedDB stores (branch, products, cart)
+        try {
+            const db = await getDB(); // defined in indexedDB.js
+            const tx = db.transaction(
+                [BRANCH_STORE, STORE_NAME, CART_STORE],
+                "readwrite"
+            );
+            tx.objectStore(BRANCH_STORE).clear();
+            tx.objectStore(STORE_NAME).clear();
+            tx.objectStore(CART_STORE).clear();
+        } catch (e) {
+            console.warn("Failed to clear IndexedDB on logout:", e);
+        }
+
+        // 🔁 Full reset: reload page to clean state
+        window.location.href = 'index.html';
+        return;
+    } finally {
+        hideLoader();
+    }
+}

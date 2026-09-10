@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Thank You - Receipt</title>
+    <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/thankyou/style.css" rel="stylesheet">
+    <link href="assets/common/ui-theme.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="assets/jquery-3.6.0.min.js"></script>
+    <script src="assets/vendor/html2pdf/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+    <script src="config.js"></script>
+    <script src="assets/common/popup.js"></script>
+</head>
+
+<body>
+    <!-- Full height flex container -->
+    <div class="d-flex justify-content-center align-items-center mb-4 bg-light center-wrapper">
+        <div class="thank-you-box text-center bg-white p-5 rounded shadow-lg">
+            <div class="success-animation mb-4">
+                <div class="success-circle-large">
+                    <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                        <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" />
+                        <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+                    </svg>
+                </div>
+            </div>
+
+            <h1 class="text-success fw-bold mb-3" style="font-size: 2.5rem;">Order Placed!</h1>
+            <p class="lead text-muted mb-4">Your order has been confirmed. We're preparing your delicious food! 🍽️</p>
+
+            <div class="order-info-card p-4 mb-4">
+                <div class="order-id-section mb-3">
+                    <p class="mb-1" style="font-size: 0.9rem;">Order ID</p>
+                    <h2 class="order-id-display mb-0" id="orderId">--</h2>
+                </div>
+                <div class="order-time-section">
+                    <p class="mb-1" style="font-size: 0.85rem;">
+                        <i class="fas fa-clock"></i> Order Time
+                    </p>
+                    <p class="order-time-display mb-0" id="orderTime">--</p>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-center gap-3 flex-wrap button-group">
+                <button class="btn btn-lg px-5" style="background:#ff7a3c;color:#fff;border:1px solid #ff7a3c;"
+                    onclick="clearReceiptAndGo('discount.html')">
+                    <i class="fas fa-cart-plus"></i> New Order
+                </button>
+
+                <!-- <button class="btn btn-lg px-5" style="background:#333;color:#fff;border:1px solid #333;"
+                    onclick="clearReceiptAndGo('order-history.html')">
+                    <i class="fas fa-history"></i> Order History
+                </button> -->
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/thankyou/script.js"></script>
+</body>
+
+</html>

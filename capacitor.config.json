@@ -1,0 +1,26 @@
+{
+  "appId": "com.posnic.captain",
+  "appName": "Captain",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "http://*/*",
+      "https://*/*"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "ios": {
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

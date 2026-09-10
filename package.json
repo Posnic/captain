@@ -1,0 +1,42 @@
+{
+  "name": "captain",
+  "version": "1.0.0",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:smoke": "playwright test",
+    "test:smoke:headed": "playwright test --headed",
+    "optimize:images": "node scripts/optimize-images.js",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "build:apk": "node build-apk.js",
+    "setup:release-signing": "node scripts/setup-release-signing.js",
+    "build:apk:release": "node build-apk.js --release",
+    "build:ipa": "node build-ipa.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@fortawesome/fontawesome-free": "^6.4.0",
+    "html2pdf.js": "^0.10.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
+    "@playwright/test": "^1.61.1",
+    "bootstrap": "^5.3.0",
+    "sharp": "^0.35.2",
+    "vite": "^5.4.0"
+  },
+  "description": "Order-taking app for restaurant floor staff. Talks to a Posnic POS server on the shop Wi-Fi or in the cloud.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Posnic/captain.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Posnic/captain/issues"
+  },
+  "homepage": "https://github.com/Posnic/captain"
+}

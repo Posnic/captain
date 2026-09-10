@@ -1,0 +1,215 @@
+# Publish installable builds where people can actually get them.
+#
+# Run artifacts expire in 30 days and need a GitHub login to download, which is
+# no use for handing a waiter an app or for anyone who found this project and
+# wants to try it. A release is permanent, public and linkable.
+#
+# Tag a version and this builds Android and iOS and attaches both:
+#
+#     git tag v1.0.0 && git push origin v1.0.0
+#
+# Both platforms build whatever credentials exist. Signing is decided by what
+# is present, never by a flag, so a fork gets a working pipeline that produces
+# unsigned builds rather than a red X it cannot fix.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and release (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    outputs:
+      signed: ${{ steps.build.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Android Gradle Plugin wants 17. The runner default has moved past it
+      # before now, and the failure names a Gradle internal rather than the JDK.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+
+      # A keystore in a secret, never in the repo. Without it the release
+      # carries a debug build, clearly named so nobody mistakes one for the
+      # other: a debug APK cannot be updated in place by a signed one later,
+      # because Android treats a different signature as a different app.
+      - name: Restore signing key
+        id: signing
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret; building a debug APK."
+            exit 0
+          fi
+          mkdir -p "$HOME/.posnic/captain-signing"
+          echo "$KEYSTORE" | base64 -d > "$HOME/.posnic/captain-signing/captain-release.jks"
+          cat > "$HOME/.posnic/captain-signing/release-signing.properties" <<EOF
+          storeFile=$HOME/.posnic/captain-signing/captain-release.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "have=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        id: build
+        run: |
+          if [ "${{ steps.signing.outputs.have }}" = "true" ]; then
+            node build-apk.js --release
+            cp android/app/build/outputs/apk/release/app-release.apk captain.apk
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            node build-apk.js
+            cp android/app/build/outputs/apk/debug/app-debug.apk captain-debug.apk
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: captain*.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS
+    # Xcode exists on nothing else. This is the only reason the job is here
+    # rather than alongside Android.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Signing material, when it exists. An iOS DISTRIBUTION certificate, not
+      # the Developer ID one the desktop app uses for macOS - they are
+      # different certificates from the same account, and the Mac one cannot
+      # sign an iPhone build.
+      - name: Install signing certificate
+        id: signing
+        env:
+          CERT_P12: ${{ secrets.IOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        run: |
+          if [ -z "$CERT_P12" ]; then
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No IOS_CERT_P12 secret; building unsigned (will not install on a device)."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/captain.keychain-db"
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 900 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$CERT_P12" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROFILE" | base64 -d > "$HOME/Library/MobileDevice/Provisioning Profiles/captain.mobileprovision"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          echo "have=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+          IOS_PROVISIONING_PROFILE_UUID: ${{ secrets.IOS_PROVISIONING_PROFILE_UUID }}
+          IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
+        run: node build-ipa.js
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: build-output/*.ipa
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloads
+
+      - name: Collect
+        run: |
+          mkdir -p release
+          find downloads -type f \( -name '*.apk' -o -name '*.ipa' \) -exec cp {} release/ \;
+          ls -la release
+          sha256sum release/* > release/SHA256SUMS.txt
+
+      # Says plainly what each file is, because "which of these do I install"
+      # is the first question a download page has to answer.
+      - name: Compose the notes
+        run: |
+          {
+            echo "## Install"
+            echo
+            if [ -f release/captain.apk ]; then
+              echo "**Android** - \`captain.apk\`, signed. Download it on the phone and open it."
+            else
+              echo "**Android** - \`captain-debug.apk\`, a debug build. Android will warn about an unknown source."
+              echo "> A debug build cannot be replaced in place by a signed one later: Android treats a different"
+              echo "> signature as a different app, so it has to be uninstalled first."
+            fi
+            echo
+            if [ -f release/Captain.ipa ]; then
+              echo "**iOS** - \`Captain.ipa\`, signed."
+            else
+              echo "**iOS** - \`Captain-unsigned.ipa\`. Proves the app builds for iOS; it will **not** install on a device."
+            fi
+            echo
+            echo "Checksums in \`SHA256SUMS.txt\`."
+            echo
+            echo "## Choosing a server"
+            echo
+            echo "On the shop Wi-Fi, open Server settings and tap **Find server on this Wi-Fi**."
+            echo "Otherwise enter the shop code (for example \`azure\`), tap Test, then Save & Use."
+          } > notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Captain ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: notes.md
+          files: release/*
+          draft: false
+          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-') }}

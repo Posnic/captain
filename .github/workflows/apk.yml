@@ -1,0 +1,64 @@
+# Build the Android app, so an APK does not depend on one particular laptop.
+#
+# Producing an installable build used to mean having the JDK, the Android SDK
+# and the right build-tools on the machine you happened to be sitting at, and
+# build-apk.js only ran on Windows. A runner already has all of it.
+#
+# Every push builds a debug APK and attaches it to the run, so there is always
+# a current build to put on a phone without anybody setting up a toolchain.
+name: APK
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch makes the first build irrelevant.
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    name: Debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Android Gradle Plugin wants 17. The runner's default has moved past it
+      # before now, and the failure that produces names a Gradle internal
+      # rather than the JDK, so it is pinned here.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: node build-apk.js
+
+      # Named for the commit, because "app-debug.apk" in a downloads folder
+      # tells you nothing about which build it is.
+      - name: Name the build
+        id: name
+        run: echo "name=captain-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA:0:8}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.name.outputs.name }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
