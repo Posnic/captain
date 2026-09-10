@@ -163,11 +163,21 @@ jobs:
   publish:
     name: Publish release
     needs: [android, ios]
+    # Android alone is enough to release.
+    #
+    # This required both, so the first tag produced a working, signed Android
+    # build and shipped nothing at all, because iOS could not compile. One
+    # platform being unbuildable - no certificate, an Xcode version gone,
+    # Apple changing something - should not withhold the other from the people
+    # waiting for it. The notes say which platforms are actually attached.
+    if: always() && needs.android.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: downloads
+        # A missing iOS artifact is a normal outcome here, not an error.
+        continue-on-error: true
 
       - name: Collect
         run: |
@@ -193,8 +203,10 @@ jobs:
             echo
             if [ -f release/Captain.ipa ]; then
               echo "**iOS** - \`Captain.ipa\`, signed."
-            else
+            elif [ -f release/Captain-unsigned.ipa ]; then
               echo "**iOS** - \`Captain-unsigned.ipa\`. Proves the app builds for iOS; it will **not** install on a device."
+            else
+              echo "**iOS** - not in this release; the iOS build did not succeed."
             fi
             echo
             echo "Checksums in \`SHA256SUMS.txt\`."
