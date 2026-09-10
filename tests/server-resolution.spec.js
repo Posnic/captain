@@ -287,9 +287,70 @@ test('auto detect checks the known local server before sweeping', async ({ page 
   await page.locator('#serverAutoDetectBtn').click();
 
   await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
-  await expect(page.locator('#serverSaveMsg')).toContainText(`Server detected: ${LAN}`);
-  await expect(page.locator('#serverSaveMsg')).toContainText('Tap Test to verify');
-  await expect(page.locator('#serverSaveBtn')).toBeDisabled();
+  await expect(page.locator('#serverSaveMsg')).toContainText(`Found the till at ${LAN}`);
+  /* One button, always usable. Test and Save were two, in a required order,
+     so the obvious one did nothing until the other had been pressed. */
+  await expect(page.locator('#serverSaveBtn')).toBeEnabled();
+  await expect(page.locator('#serverSaveBtn')).toHaveText('Connect');
+});
+
+test('signing in against an older server still finds the shop', async ({ page }) => {
+  /*
+   * Every deployed shop runs 1.6.1, which answers a sign-in with the older
+   * envelope - { type, message, data } - and no credential. Reading only the
+   * new shape made a successful sign-in show an empty shop: the branches were
+   * in `data` and nothing looked at them.
+   */
+  await seed(page, { pinned: CLOUD, active: CLOUD });
+  await page.route(`${CLOUD_ORIGIN}/**`, async route => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
+    const bodies = {
+      '/runtime-info': RUNTIME_INFO,
+      '/users/kioskMobileLogin': {
+        type: 'success',
+        message: 'Successfully login',
+        data: [
+          { branch_name: 'Old Server Branch', store_id: 'store-9', branch_id: 'branch-9', user_id: 'user-9' },
+          { branch_name: 'Second', store_id: 'store-8', branch_id: 'branch-8', user_id: 'user-9' }
+        ],
+      },
+    };
+    await route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify(bodies[path] || { type: 'success', data: {} })
+    });
+  });
+
+  await page.goto('/index.html');
+  await page.locator('#username').fill('someone');
+  await page.locator('#password').fill('a-password');
+  await page.locator('#login-btn').click();
+
+  await expect(page.getByText('Select Branch')).toBeVisible();
+  await expect(page.getByText('Old Server Branch')).toBeVisible();
+});
+
+test('an older server refusing a password says so, rather than looking broken', async ({ page }) => {
+  /* 1.6.1 answers 404 for a refused sign-in, which otherwise reads to the
+     user as "the app is broken" rather than "that password is wrong". */
+  await seed(page, { pinned: CLOUD, active: CLOUD });
+  await page.route(`${CLOUD_ORIGIN}/**`, async route => {
+    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
+    if (path === '/runtime-info') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(RUNTIME_INFO) });
+    }
+    await route.fulfill({
+      status: 404, contentType: 'application/json',
+      body: JSON.stringify({ type: 'error', message: 'Invalid account. Please contact your branch manager.', data: null })
+    });
+  });
+
+  await page.goto('/index.html');
+  await page.locator('#username').fill('someone');
+  await page.locator('#password').fill('wrong');
+  await page.locator('#login-btn').click();
+
+  await expect(page.locator('#login-message')).toContainText('Invalid account');
 });
 
 test('signing in with no server chosen says so, instead of failing the password', async ({ page }) => {
