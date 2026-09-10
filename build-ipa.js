@@ -69,12 +69,13 @@ function mergeInfoPlist() {
   console.log('Info.plist: added ATS and local-network declarations.');
 }
 
-const signingIdentity = process.env.IOS_SIGNING_IDENTITY || '';
-const provisioningProfile = process.env.IOS_PROVISIONING_PROFILE_UUID || '';
 const teamId = process.env.IOS_TEAM_ID || '';
-const canSign = !!(signingIdentity && provisioningProfile && teamId);
+const profileName = process.env.IOS_PROVISIONING_PROFILE_NAME || '';
+const bundleId = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8')).appId;
+const canSign = !!(teamId && profileName);
 
-console.log(`\nBuilding Captain for iOS (${canSign ? 'signed' : 'unsigned'})...`);
+console.log(`
+Building Captain for iOS (${canSign ? 'signed' : 'unsigned'})...`);
 
 run('npm run build');
 if (!fs.existsSync(iosDir)) run('npx cap add ios');
@@ -84,7 +85,21 @@ mergeInfoPlist();
 fs.mkdirSync(outDir, { recursive: true });
 const archivePath = path.join(outDir, 'Captain.xcarchive');
 
-const common = [
+/*
+ * Archive unsigned, always, and sign at export.
+ *
+ * The obvious thing - passing CODE_SIGN_IDENTITY and PROVISIONING_PROFILE to
+ * xcodebuild - applies them to EVERY target in the workspace, and a
+ * CocoaPods project is mostly framework targets. Those cannot take a
+ * provisioning profile, so the build stops with "Pods-App does not support
+ * provisioning profiles", naming a target nobody here wrote and did not mean
+ * to sign.
+ *
+ * Signing at export sidesteps it entirely: one app bundle, one profile, and
+ * the frameworks inside it are re-signed with the same identity as a
+ * consequence rather than by instruction.
+ */
+run([
   'xcodebuild',
   '-workspace App.xcworkspace',
   '-scheme App',
@@ -92,40 +107,37 @@ const common = [
   '-sdk iphoneos',
   `-archivePath "${archivePath}"`,
   'archive',
-];
-
-if (canSign) {
-  common.push(
-    `DEVELOPMENT_TEAM="${teamId}"`,
-    `CODE_SIGN_IDENTITY="${signingIdentity}"`,
-    `PROVISIONING_PROFILE="${provisioningProfile}"`,
-    'CODE_SIGN_STYLE=Manual'
-  );
-} else {
-  /* Without these xcodebuild stops on "no signing certificate found" before it
-     has compiled a line, so an unsigned build could not even tell us whether
-     the app still builds. */
-  common.push('CODE_SIGNING_ALLOWED=NO', 'CODE_SIGNING_REQUIRED=NO', 'CODE_SIGN_IDENTITY=""');
-}
-
-run(common.join(' '), appDir);
+  'CODE_SIGNING_ALLOWED=NO',
+  'CODE_SIGNING_REQUIRED=NO',
+  'CODE_SIGN_IDENTITY=""',
+].join(' '), appDir);
 
 const ipaPath = path.join(outDir, canSign ? 'Captain.ipa' : 'Captain-unsigned.ipa');
 
 if (canSign) {
+  const method = process.env.IOS_EXPORT_METHOD || 'ad-hoc';
   const optionsPath = path.join(outDir, 'ExportOptions.plist');
   fs.writeFileSync(optionsPath, `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>${process.env.IOS_EXPORT_METHOD || 'ad-hoc'}</string>
+    <string>${method}</string>
     <key>teamID</key>
     <string>${teamId}</string>
     <key>signingStyle</key>
     <string>manual</string>
     <key>compileBitcode</key>
     <false/>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <!-- Only the app is named. The frameworks are re-signed as a consequence
+         of signing what contains them. -->
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>${bundleId}</key>
+        <string>${profileName}</string>
+    </dict>
 </dict>
 </plist>
 `, 'utf8');
@@ -137,6 +149,10 @@ if (canSign) {
     `-exportPath "${outDir}"`,
     `-exportOptionsPlist "${optionsPath}"`,
   ].join(' '), appDir);
+
+  /* xcodebuild names the export after the scheme. */
+  const exported = path.join(outDir, 'App.ipa');
+  if (fs.existsSync(exported)) fs.renameSync(exported, ipaPath);
 } else {
   /*
    * An .ipa is a zip with the .app inside Payload/. Assembled by hand because

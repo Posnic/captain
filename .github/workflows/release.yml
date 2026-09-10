@@ -149,8 +149,10 @@ jobs:
       - name: Build
         env:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-          IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
-          IOS_PROVISIONING_PROFILE_UUID: ${{ secrets.IOS_PROVISIONING_PROFILE_UUID }}
+          # The profile is named, not identified by UUID: xcodebuild's export
+          # options take the name, and a name survives the profile being
+          # regenerated (adding a device does that) where a UUID does not.
+          IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
           IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
         run: node build-ipa.js
 
