@@ -219,6 +219,36 @@ jobs:
             echo "Otherwise enter the shop code (for example \`azure\`), tap Test, then Save & Use."
           } > notes.md
 
+      # The over-the-air install page points at a specific version, so it has
+      # to move with the release or it keeps offering the previous build.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: repo
+
+      - name: Point the install page at this version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          cd repo
+          [ -f docs/manifest.plist ] || exit 0
+          node -e '
+            const fs = require("fs");
+            const tag = process.argv[1];
+            const file = "docs/manifest.plist";
+            const before = fs.readFileSync(file, "utf8");
+            const after = before
+              .replace(/\/releases\/download\/[^\/]+\/Captain\.ipa/, `/releases/download/${tag}/Captain.ipa`)
+              .replace(/(<key>bundle-version<\/key>\s*<string>)[^<]*/, (m, open) => open + tag.replace(/^v/, ""));
+            if (after !== before) { fs.writeFileSync(file, after); console.log("updated to " + tag); }
+            else console.log("already points at " + tag);
+          ' "$TAG"
+          git diff --quiet docs/manifest.plist && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/manifest.plist
+          git commit -m "Point the install page at ${TAG}"
+          git push origin main
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
