@@ -146,16 +146,32 @@ async function doLogin() {
          */
         const result = await POSNIC.api.post('/users/kioskMobileLogin', { username, password });
 
+        /*
+         * Two response shapes, because a shop's server is not ours to upgrade.
+         *
+         * A current server answers with a bearer grant: { token, shopKey,
+         * user, branches }. Every shop running 1.6.1 or earlier - which today
+         * is all of them - answers with the older envelope, { type, message,
+         * data }, where `data` is the branch list and there is no credential
+         * at all.
+         *
+         * Reading only the new shape is what made a successful sign-in show an
+         * empty shop: the branches were right there in `data` and nothing
+         * looked at them. This is not compatibility cruft to be removed later;
+         * a client never controls which version the server is on, and shops
+         * update when they update.
+         */
+        const branches = result.branches || result.data || [];
         POSNIC.session.start(result);
 
-        const branches = result.branches || [];
-        if (!branches.length) {
+        if (!Array.isArray(branches) || branches.length === 0) {
             showLoginMessage("No branches are set up for this account. Ask your manager.");
             return;
         }
 
         localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
-        if (result.user && result.user.id) localStorage.setItem("user_id", result.user.id);
+        const userId = (result.user && result.user.id) || branches[0].user_id;
+        if (userId) localStorage.setItem("user_id", userId);
 
         if (branches.length === 1) {
             const only = branches[0];
@@ -177,6 +193,11 @@ async function doLogin() {
             showLoginMessage(error.message || "That username or password was not accepted.");
         } else if (error.status === 400) {
             showLoginMessage(error.message);
+        /* A server older than the status-code work answers 404 for a refused
+           sign-in, which otherwise reads to the user as "the app is broken"
+           rather than "that password is wrong". */
+        } else if (error.status === 404 && error.body && error.body.type === 'error') {
+            showLoginMessage(error.body.message || "That username or password was not accepted.");
         } else if (error.code === 'DEVICE_BLOCKED') {
             const banner = document.getElementById('blocked-banner');
             if (banner) banner.style.display = 'block';

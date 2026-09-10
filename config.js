@@ -384,7 +384,15 @@
         return !!state.token;
       },
 
-      /** Keep what a sign-in proved. */
+      /**
+       * Keep what a sign-in proved.
+       *
+       * A server older than the bearer-token work returns no token at all. That
+       * is not a failure: the menu and placing an order are anonymous
+       * endpoints and work regardless. Only the order, KOT and table screens
+       * need the credential, and they say so when it is missing rather than
+       * failing as if the network were down.
+       */
       start({ token, shopKey, expiresIn, user } = {}) {
         state = {
           token: token || null,
@@ -744,8 +752,19 @@
       const error = toApiError(response, payload);
       /* A credential the server will not accept is worse than none: every
          later request carries it and fails the same way. Drop it and let the
-         sign-in screen take over. */
-      if (error.status === 401 && !path.includes('kioskMobileLogin')) session.end();
+         sign-in screen take over.
+         Only when there WAS one. A 401 with no token in hand means the server
+         is older than the bearer-token work and refuses this route to
+         everyone; clearing an empty session would just bounce the user back to
+         a sign-in that cannot help. */
+      if (error.status === 401 && session.token && !path.includes('kioskMobileLogin')) {
+        session.end();
+      }
+      if (error.status === 401 && !session.token) {
+        error.code = 'SERVER_TOO_OLD';
+        error.message =
+          'This shop’s server is too old for this screen. Update POSNIC on the till.';
+      }
       throw error;
     }
     return payload;

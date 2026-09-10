@@ -23,28 +23,41 @@
     </div>
 
     <!-- Server Settings Modal -->
+    <!--
+      One field, one button.
+
+      This had a mode banner, a hint, a Wi-Fi search, a Test, a Save & Use, an
+      Automatic and a Refresh, and a staff member setting up a handset had to
+      work out which of the seven to press and in what order. Test and Save are
+      one action now - there is no reason to save an address that does not
+      answer - and the search runs by itself when the box is empty.
+    -->
     <div id="serverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:16px;width:340px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
             <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:18px 22px;color:#fff;">
-                <div style="font-weight:700;font-size:16px;">⚙️ Server</div>
-                <div style="font-size:12px;opacity:.85;margin-top:3px;">Shop Wi-Fi first, online server when it is not there</div>
+                <div style="font-weight:700;font-size:16px;">Connect to your shop</div>
+                <div id="serverModeInfo" style="font-size:12px;opacity:.85;margin-top:3px;">Searching this Wi-Fi...</div>
             </div>
             <div style="padding:20px 22px;">
-                <div id="serverModeInfo" style="font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;">Automatic</div>
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Shop code or server address</label>
-                <input id="serverUrlInput" type="text" placeholder="azure  or  192.168.1.5:5555" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" oninput="handleServerUrlInput()"
-                    style="width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
-                <div style="font-size:11px;color:#6b7280;margin-bottom:10px;">Your shop code becomes https://&lt;code&gt;.posnic.io/api</div>
-                <button id="serverAutoDetectBtn" onclick="toggleAutoDetectServer()" style="width:100%;padding:9px;margin-bottom:10px;border:1.5px solid #8b5cf6;border-radius:8px;background:#f5f3ff;color:#6d28d9;font-weight:700;cursor:pointer;">Find server on this Wi-Fi</button>
-                <div id="serverSaveMsg" style="font-size:12px;min-height:18px;margin-bottom:8px;"></div>
-                <div style="display:flex;gap:8px;margin-bottom:8px;">
-                    <button onclick="testServerUrl()" style="flex:1;padding:10px;border:1.5px solid #3b82f6;border-radius:8px;background:#eff6ff;color:#1d4ed8;font-weight:700;cursor:pointer;">🔌 Test</button>
-                    <button id="serverSaveBtn" onclick="applyServerUrl()" disabled style="flex:1;padding:10px;border:none;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;cursor:not-allowed;opacity:.45;">💾 Save &amp; Use</button>
-                    <button onclick="resetServerUrl()" title="Let the app choose between Wi-Fi and online" style="padding:10px 14px;border:1.5px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-weight:600;cursor:pointer;">🔄 Automatic</button>
+                <input id="serverUrlInput" type="text" placeholder="Shop code, or 192.168.1.5:5555"
+                    autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                    oninput="handleServerUrlInput()" onkeyup="if(event.key==='Enter')applyServerUrl()"
+                    style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:10px;">
+
+                <button id="serverSaveBtn" onclick="applyServerUrl()"
+                    style="width:100%;padding:12px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;cursor:pointer;">Connect</button>
+
+                <div id="serverSaveMsg" style="font-size:12px;min-height:34px;margin-top:10px;"></div>
+
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:2px;">
+                    <button id="serverAutoDetectBtn" onclick="toggleAutoDetectServer()"
+                        style="background:none;border:none;color:#2563eb;cursor:pointer;padding:0;">Search this Wi-Fi</button>
+                    <button onclick="refreshKioskData()"
+                        style="background:none;border:none;color:#6b7280;cursor:pointer;padding:0;">Reload menu</button>
                 </div>
-                <button onclick="refreshKioskData()" style="width:100%;padding:10px;border:1.5px solid #10b981;border-radius:8px;background:#ecfdf5;color:#047857;font-weight:700;cursor:pointer;">Refresh Data &amp; Images</button>
             </div>
-            <div style="padding:0 22px 18px;text-align:right;">
+            <div style="padding:0 22px 18px;display:flex;justify-content:space-between;">
+                <button onclick="resetServerUrl()" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;">Forget this server</button>
                 <button onclick="closeServerModal()" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;">Close</button>
             </div>
         </div>
@@ -176,7 +189,6 @@
     <script>
         var serverAutoDetectRunning = false;
         var serverAutoDetectCancelled = false;
-        var testedServerUrl = null;
 
         function serverMsg(text, colour) {
             const msg = document.getElementById('serverSaveMsg');
@@ -191,46 +203,30 @@
             modal.style.display = 'flex';
 
             /* The outage screen sits above everything, including this. If it
-               is up, the reason the user is here is to fix it. */
-            const overlay = document.getElementById('posnic-offline-overlay');
-            if (overlay) overlay.style.display = 'none';
+               is up, the reason the user is here is to clear it. */
+            const overlay = document.getElementById('posnic-offline');
+            if (overlay) overlay.hidden = true;
             document.documentElement.classList.remove('posnic-offline-active');
 
-            const pinned = POSNIC.server.pinned;
-            const shopCode = POSNIC.server.shopCode;
-            document.getElementById('serverUrlInput').value = pinned || shopCode || '';
-            invalidateServerTest();
+            document.getElementById('serverUrlInput').value =
+                POSNIC.server.pinned || POSNIC.server.shopCode || '';
             serverMsg('');
             renderServerMode();
 
-            /* Nothing configured at all: start looking straight away rather
-               than waiting for a tap nobody knows to make. */
-            if (!pinned && !shopCode && !POSNIC.server.isConfigured) {
-                setTimeout(function() {
-                    if (!document.getElementById('serverUrlInput').value.trim()) autoDetectServer();
-                }, 150);
+            /* Nothing configured: start looking rather than waiting for a tap
+               nobody knows to make. */
+            if (!document.getElementById('serverUrlInput').value.trim()) {
+                setTimeout(autoDetectServer, 150);
             }
         }
 
         function renderServerMode() {
             const info = document.getElementById('serverModeInfo');
             if (!info) return;
-            const pinned = POSNIC.server.pinned;
-            const lan = POSNIC.server.lan;
-            const cloud = POSNIC.server.cloud;
-
-            if (pinned) {
-                info.textContent = '📌 Pinned to ' + pinned;
-                info.style.background = '#fff7ed'; info.style.color = '#9a3412'; info.style.borderColor = '#fed7aa';
-            } else {
-                const parts = [];
-                if (lan) parts.push('Wi-Fi: ' + lan);
-                if (cloud) parts.push('Online: ' + cloud);
-                info.textContent = parts.length
-                    ? 'Automatic - ' + parts.join('  ·  ')
-                    : 'Automatic - no server known yet';
-                info.style.background = '#f0fdf4'; info.style.color = '#166534'; info.style.borderColor = '#bbf7d0';
-            }
+            const url = POSNIC.server.baseUrl;
+            info.textContent = url
+                ? (POSNIC.server.isLocal ? 'Using the till on this Wi-Fi' : 'Using ' + url)
+                : 'Not connected to a shop yet';
         }
 
         function closeServerModal() {
@@ -242,7 +238,6 @@
 
         function handleServerUrlInput() {
             if (serverAutoDetectRunning) stopAutoDetectServer(true);
-            invalidateServerTest();
         }
 
         function toggleAutoDetectServer() {
@@ -259,29 +254,13 @@
             const button = document.getElementById('serverAutoDetectBtn');
             if (button) button.textContent = 'Stopping...';
             if (showMessage) {
-                serverMsg('Search stopped. Enter the shop code or server address instead.');
+                serverMsg('Stopped. Enter the shop code or till address instead.');
                 const input = document.getElementById('serverUrlInput');
                 if (input) input.focus();
             }
         }
 
-        function invalidateServerTest() {
-            testedServerUrl = null;
-            const button = document.getElementById('serverSaveBtn');
-            if (!button) return;
-            button.disabled = true;
-            button.style.opacity = '.45';
-            button.style.cursor = 'not-allowed';
-        }
 
-        function markServerTestPassed(url) {
-            testedServerUrl = String(url || '').trim().replace(/\/+$/, '');
-            const button = document.getElementById('serverSaveBtn');
-            if (!button) return;
-            button.disabled = false;
-            button.style.opacity = '1';
-            button.style.cursor = 'pointer';
-        }
 
         /**
          * Look for the shop's own server on this Wi-Fi.
@@ -299,10 +278,8 @@
             const originalButtonText = button.textContent;
             button.disabled = false;
             button.textContent = 'Stop searching';
-            button.style.borderColor = '#dc3f4f';
-            button.style.background = '#fff2f3';
             button.style.color = '#dc3f4f';
-            serverMsg('Looking for this shop’s server on the Wi-Fi...');
+            serverMsg('Looking for the till on this Wi-Fi...');
 
             try {
                 /* Whatever is already in the box is the strongest hint there
@@ -314,8 +291,7 @@
                     if (serverAutoDetectCancelled) return;
                     if (hit) {
                         input.value = hit.base;
-                        invalidateServerTest();
-                        serverMsg('✅ Server detected: ' + hit.base + '. Tap Test to verify, then Save & Use.', '#16a34a');
+                                    serverMsg('Found the till at ' + hit.base + '. Tap Connect.', '#16a34a');
                         return;
                     }
                 }
@@ -331,42 +307,20 @@
 
                 if (found) {
                     input.value = found.base;
-                    invalidateServerTest();
-                    serverMsg('✅ Server detected: ' + found.base + '. Tap Test to verify, then Save & Use.', '#16a34a');
+                            serverMsg('Found the till at ' + found.base + '. Tap Connect.', '#16a34a');
                     return;
                 }
 
-                serverMsg('❌ No server on this Wi-Fi. Enter your shop code (for example: azure) to use the online server.', '#dc2626');
+                serverMsg('No till found on this Wi-Fi. Enter your shop code instead, and the app will use the online server.', '#6b7280');
             } finally {
                 serverAutoDetectRunning = false;
                 serverAutoDetectCancelled = false;
                 button.disabled = false;
                 button.textContent = originalButtonText;
-                button.style.borderColor = '#8b5cf6';
-                button.style.background = '#f5f3ff';
-                button.style.color = '#6d28d9';
+                button.style.color = '#2563eb';
             }
         }
 
-        async function testServerUrl() {
-            const raw = document.getElementById('serverUrlInput').value.trim();
-            if (!raw) { serverMsg('⚠️ Enter a shop code or server address first', '#dc2626'); return; }
-
-            const base = POSNIC.server.normalize(raw);
-            if (!base) { serverMsg('⚠️ That is not a shop code or an address', '#dc2626'); return; }
-
-            invalidateServerTest();
-            serverMsg('⏳ Testing ' + base + '...');
-            const hit = await POSNIC.discovery.probe(base, 8000);
-            if (hit) {
-                markServerTestPassed(hit.base);
-                document.getElementById('serverUrlInput').value = hit.base;
-                const where = hit.info && hit.info.mode === 'cloud' ? 'online server' : 'shop server';
-                serverMsg('✅ Connected to the ' + where + '. Now tap Save & Use.', '#16a34a');
-                return;
-            }
-            serverMsg('❌ No Posnic server answered at ' + base + '. Check the address, and that the till is switched on.', '#dc2626');
-        }
 
         function clearKioskDatabaseForServerSwitch() {
             return new Promise(function(resolve) {
@@ -383,30 +337,41 @@
             });
         }
 
+        /**
+         * Test and save, as one action.
+         *
+         * These were two buttons in a required order, and Save stayed disabled
+         * until Test had passed, so pressing the obvious one did nothing and
+         * said why in small text. There is no reason to save an address that
+         * does not answer, so this checks and then saves.
+         */
         async function applyServerUrl() {
             const raw = document.getElementById('serverUrlInput').value.trim();
-            if (!raw) {
-                serverMsg('⚠️ Enter a shop code or server address', '#dc2626');
-                return;
-            }
+            if (!raw) { serverMsg('Enter your shop code, or the till address.', '#dc2626'); return; }
+
             const base = POSNIC.server.normalize(raw);
-            if (!base || !testedServerUrl || testedServerUrl !== base) {
-                invalidateServerTest();
-                serverMsg('⚠️ Test this server successfully before Save & Use.', '#dc2626');
-                return;
-            }
+            if (!base) { serverMsg('That is not a shop code or an address.', '#dc2626'); return; }
+
+            const button = document.getElementById('serverSaveBtn');
+            button.disabled = true;
+            button.textContent = 'Checking...';
+            serverMsg('Checking ' + base + '...');
+
             try {
-                /* A pin is a decision: this address, until it is cleared. The
-                   shop code is remembered alongside it so "Automatic" still
-                   has an online address to fall back to later. */
-                POSNIC.server.pin(base);
-                if (!POSNIC.server.isLanUrl(base) && !/[.:/]/.test(raw)) POSNIC.server.useShopCode(raw);
+                const hit = await POSNIC.discovery.probe(base, 8000);
+                if (!hit) {
+                    serverMsg('Nothing answered at ' + base + '. Check the shop code, or that POSNIC is running on the till.', '#dc2626');
+                    return;
+                }
+                POSNIC.server.pin(hit.base);
+                if (!POSNIC.server.isLanUrl(hit.base) && !/[.:/]/.test(raw)) POSNIC.server.useShopCode(raw);
                 localStorage.setItem('POSNIC_IMAGE_CACHE_BUST', String(Date.now()));
                 sessionStorage.removeItem('posnic_editing_server');
-                serverMsg('✅ Saved. Reloading...', '#16a34a');
+                serverMsg('Connected. Reloading...', '#16a34a');
                 await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
-            } catch (e) {
-                serverMsg('❌ ' + e.message, '#dc2626');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Connect';
             }
         }
 
@@ -415,7 +380,6 @@
             sessionStorage.removeItem('posnic_editing_server');
             POSNIC.server.unpin();
             document.getElementById('serverUrlInput').value = '';
-            invalidateServerTest();
             renderServerMode();
             serverMsg('Automatic again - the app will use the shop Wi-Fi when it is there, and the online server otherwise. Reloading...', '#1d4ed8');
             await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
