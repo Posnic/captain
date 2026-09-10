@@ -28,7 +28,7 @@
     "@capacitor/cli": "^6.0.0",
     "@playwright/test": "^1.61.1",
     "bootstrap": "^5.3.0",
-    "sharp": "^0.35.2",
+    "sharp": "^0.35.4",
     "vite": "^5.4.0"
   },
   "description": "Order-taking app for restaurant floor staff. Talks to a Posnic POS server on the shop Wi-Fi or in the cloud.",
