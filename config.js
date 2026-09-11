@@ -217,6 +217,24 @@
     }
     if (!url.hostname) return null;
 
+    /*
+     * A PUBLIC host is https, even when it was handed to us saying otherwise.
+     *
+     * Servers printed pairing codes reading `http://shop.posnic.io/api` for
+     * months: nginx terminates TLS and forwards plain http, so Express saw
+     * `http` and put that on the QR. A phone scanned it, the address 301'd,
+     * and the handset reported that nothing answered - so the shop was told to
+     * check whether their till was running.
+     *
+     * The server is fixed, and those codes are printed and stuck to walls.
+     * Upgrading here means every one of them works without being reprinted.
+     *
+     * Only ever upwards, and only for a public host: a till on the shop's
+     * Wi-Fi holds no certificate, and forcing https on it would break every
+     * LAN install to tidy up a scheme.
+     */
+    if (url.protocol === 'http:' && !isPrivateHost(url.hostname)) url.protocol = 'https:';
+
     if (isPrivateHost(url.hostname) && !url.port) url.port = String(LAN_PORT);
 
     const path = trimSlashes(url.pathname);

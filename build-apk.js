@@ -201,6 +201,26 @@ if (fs.existsSync(manifestPath)) {
     ].join('\n');
     manifest = manifest.replace('<application', microphone);
   }
+  /*
+   * The keyboard has to be able to appear, and the page has to move out of its
+   * way.
+   *
+   * Capacitor's generated manifest sets no windowSoftInputMode, which leaves
+   * the system to choose for a full-screen WebView - and what it chooses does
+   * not reliably raise the IME or resize the page around it. A waiter taps the
+   * address box, nothing happens, and the app looks broken.
+   *
+   * adjustResize, so the WebView shrinks and the focused field stays on
+   * screen rather than being covered by the keyboard that was meant to fill
+   * it in.
+   */
+  if (!manifest.includes('windowSoftInputMode')) {
+    manifest = manifest.replace(
+      'android:name=".MainActivity"',
+      'android:name=".MainActivity"' +
+        '\n            android:windowSoftInputMode=\"adjustResize\"'
+    );
+  }
   fs.writeFileSync(manifestPath, manifest, 'utf8');
 }
 

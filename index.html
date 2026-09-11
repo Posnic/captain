@@ -235,6 +235,16 @@
             msg.textContent = text;
         }
 
+        /* A packaged app on a phone, as opposed to a browser at a desk. */
+        function isHandset() {
+            try {
+                return !!(window.Capacitor && window.Capacitor.isNativePlatform
+                    && window.Capacitor.isNativePlatform());
+            } catch (e) {
+                return false;
+            }
+        }
+
         /* Which of the three the user picked. Null means the menu itself. */
         function showChoice(which) {
             const choices = document.getElementById('connectChoices');
@@ -243,7 +253,22 @@
             choices.hidden = which !== null;
             manual.hidden = which !== 'manual';
             back.hidden = which === null;
-            if (which === 'manual') setTimeout(() => document.getElementById('serverUrlInput').focus(), 50);
+            /*
+             * NOT focused for them, on a phone.
+             *
+             * Android's WebView does not raise the keyboard for a
+             * programmatic focus - and worse, it leaves the field as
+             * document.activeElement, so the waiter's tap fires no focus event
+             * either and the keyboard never comes up at all. The field looks
+             * ready and cannot be typed in, which is exactly what was
+             * reported after scanning a code.
+             *
+             * A desktop still gets the convenience, because there a focused
+             * field genuinely is ready to type in.
+             */
+            if (which === 'manual' && !isHandset()) {
+                setTimeout(() => document.getElementById('serverUrlInput').focus(), 50);
+            }
         }
 
         /* A search found one: show the address and the button that uses it,
