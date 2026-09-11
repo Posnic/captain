@@ -12,6 +12,21 @@ Android and iOS, built with Capacitor. Source under AGPL-3.0.
 **[Download the latest build](../../releases/latest)** - APK for Android, IPA
 for iOS.
 
+## Connecting a handset for the first time
+
+Three ways, offered as a choice, because whoever is holding a new phone may
+know nothing about the shop:
+
+| | |
+|---|---|
+| **Scan** | Point at a QR code by the till. Nothing to know, nothing to type. |
+| **Search this Wi-Fi** | Finds the till by itself, when the phone is on the shop network and POSNIC is running. |
+| **Type it** | A shop code (`demo`), or a till address (`192.168.1.5:5555`). |
+
+A scanned code may carry a bare shop code, a full address, or a link with
+either in a `server=` parameter, because that code gets made by whatever is to
+hand and reprinted by somebody in a year.
+
 ## Which server the app talks to
 
 The app is not shipped pointing at one address. It chooses, in this order, and

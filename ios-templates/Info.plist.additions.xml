@@ -38,6 +38,16 @@
     <!-- Bonjour is what iOS gates local-network access behind. The app sweeps
          addresses rather than browsing services, but iOS still expects a
          declared service type before it will show the permission prompt. -->
+    <!--
+      The camera, for scanning the shop's code.
+
+      iOS kills an app outright that touches the camera without this key: not
+      a refusal the app can handle and explain, a termination. The sentence is
+      shown to the user verbatim, so it says why a waiter is being asked.
+    -->
+    <key>NSCameraUsageDescription</key>
+    <string>Captain uses the camera once, to scan the code by the till and learn which shop this device belongs to.</string>
+
     <key>NSBonjourServices</key>
     <array>
         <string>_http._tcp</string>
