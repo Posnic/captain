@@ -147,8 +147,25 @@
    * @returns {{item: object, exact: boolean}|null}
    */
   function matchOne(indexed, term, search) {
-    const found = search.search(indexed, term);
+    /*
+     * CERTAIN FIRST, THEN LIKELY, THEN ROUGH - and the caller is told which.
+     *
+     * `numbers` rewrites spoken numerals to digits, so "chicken sixty five"
+     * reaches Chicken 65, which is how every board in Tamil Nadu writes it.
+     * That is a deterministic rewrite rather than a guess, so a hit is as
+     * certain as a typed one.
+     *
+     * `heard` also allows a PHONETIC match, so "briyani", "panner" and
+     * "thosai" reach the right dish. That one is a guess, and it is reported
+     * as a near match so the screen shows it to be confirmed rather than
+     * adding it silently. Running both in one call would have collapsed that
+     * distinction and quietly turned every guess into a certainty.
+     */
+    const found = search.search(indexed, term, { numbers: true });
     if (found.length) return { item: found[0], exact: true };
+
+    const heard = search.search(indexed, term, { heard: true });
+    if (heard.length) return { item: heard[0], exact: false };
 
     /* One edit for a short word, two for a long one. A five-letter word three
        edits away is a different word. */
