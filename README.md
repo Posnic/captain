@@ -1,9 +1,11 @@
-# Captain
+# Captain for Posnic POS
 
-The order-taking app restaurant floor staff carry. Take an order at the table,
-send it to the kitchen, manage KOTs and look up what a table has already had.
-It talks to a [Posnic POS](https://github.com/Posnic/POS) server, either the
-till on the shop's own Wi-Fi or the shop's cloud address.
+The mobile order-taking companion for
+[Posnic open-source POS and billing software](https://www.posnic.com/).
+Restaurant floor staff can take an order at the table, send it to the kitchen,
+manage KOTs and look up what a table has already had. Captain talks to the
+[Posnic/POS](https://github.com/Posnic/POS) server, either the till on the
+shop's own Wi-Fi or the shop's cloud address.
 
 Android and iOS, built with Capacitor. Source under AGPL-3.0.
 
