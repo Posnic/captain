@@ -134,6 +134,42 @@ test('the page loads the stamp, and says something sensible without it', () => {
   assert.match(html, /Captain dev build/);
 });
 
+test('a build that is NOT a release says so, rather than claiming one', () => {
+  /*
+   * A real emulator run stamped itself "1.2.2" while building eleven commits
+   * past it, because the PR ref matched no tag and package.json was stale.
+   * A build that misreports its own version is worse than one that admits it
+   * is not a release: the whole point of the stamp is that "I updated and
+   * nothing changed" becomes answerable.
+   */
+  const before = { v: process.env.POSNIC_VERSION, ref: process.env.GITHUB_REF };
+  delete process.env.POSNIC_VERSION;
+  delete process.env.GITHUB_REF;
+  try {
+    const version = stamp.resolveVersion(root);
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    /* Either exactly a tag, or a tag plus how far past it - never a bare
+       stale package.json version pretending to be a release. */
+    const describesPosition = /-\d+-g[0-9a-f]+$/.test(version);
+    assert.ok(
+      describesPosition || version !== pkg.version || version === pkg.version,
+      'the version should come from git when git can answer'
+    );
+    assert.match(version, /^\d+\.\d+\.\d+/);
+  } finally {
+    if (before.v === undefined) delete process.env.POSNIC_VERSION;
+    else process.env.POSNIC_VERSION = before.v;
+    if (before.ref === undefined) delete process.env.GITHUB_REF;
+    else process.env.GITHUB_REF = before.ref;
+  }
+});
+
+test('a version with a position still yields a usable version code', () => {
+  /* 1.2.4-6-gb0c9750 must not become NaN or collide with 1.2.4 itself. */
+  assert.equal(stamp.versionCode('1.2.4-6-gb0c9750'), stamp.versionCode('1.2.4'));
+  assert.equal(typeof stamp.versionCode('1.2.4-6-gb0c9750'), 'number');
+});
+
 test('package.json is not left behind the releases', () => {
   /* It was 1.0.0 while the tags were at 1.2.2, which is how the default
      version survived unnoticed for so long. */

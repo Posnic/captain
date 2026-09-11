@@ -40,16 +40,25 @@ function resolveVersion(root) {
   const tagged = ref.match(/^refs\/tags\/v?(.+)$/);
   if (tagged) return tagged[1];
 
-  try {
-    const described = execSync('git describe --tags --exact-match', {
-      cwd: root,
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .toString()
-      .trim();
-    if (described) return described.replace(/^v/, '');
-  } catch (e) {
-    /* not on a tag: a desk build, which is the normal case */
+  /*
+   * On a tag, that tag. Off a tag, how far past the last one.
+   *
+   * `--exact-match` alone answers nothing for a build that is not a release,
+   * and the next fallback is package.json - which is written by hand and was
+   * eleven commits stale when a real emulator run stamped itself "1.2.2". A
+   * build that misreports its own version is worse than one that admits it is
+   * not a release: `1.2.4-6-gb0c9750` is unambiguous, and says at a glance
+   * that this is six commits past v1.2.4 rather than a version anybody shipped.
+   */
+  for (const command of ['git describe --tags --exact-match', 'git describe --tags --always']) {
+    try {
+      const described = execSync(command, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+      if (described) return described.replace(/^v/, '');
+    } catch (e) {
+      /* not on a tag, or no tags at all - try the next, then package.json */
+    }
   }
 
   try {
