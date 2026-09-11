@@ -269,3 +269,104 @@ test('a refused microphone is named, so somebody can act on it', async () => {
     delete globalThis.Capacitor;
   }
 });
+
+/*
+ * WHAT THE SHOP DECIDED, AND WHAT THIS DEVICE DECIDED.
+ *
+ * Two different decisions with a deliberate precedence. A handset with a
+ * broken microphone must be switchable off without touching the shop, and a
+ * shop that moves to a paid provider must not have to visit every phone.
+ *
+ * The shop's answer is saved when the menu loads, so a handset that has gone
+ * offline since still honours it - which is the whole reason it is read from
+ * storage rather than passed in by whichever page happens to remember.
+ */
+
+test('the shop setting is honoured without anybody passing it in', () => {
+  globalThis.localStorage.removeItem(Speech.STORE);
+  globalThis.localStorage.setItem(
+    Speech.SHOP_STORE,
+    JSON.stringify({ provider: 'server', language: 'ta-IN' })
+  );
+  try {
+    const config = Speech.config();
+    assert.equal(config.provider, 'server');
+    assert.equal(config.language, 'ta-IN');
+  } finally {
+    globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  }
+});
+
+test('this device overrules the shop, so one handset can be switched off', () => {
+  globalThis.localStorage.setItem(Speech.SHOP_STORE, JSON.stringify({ provider: 'server' }));
+  Speech.configure({ provider: 'off' });
+  try {
+    assert.equal(Speech.config().provider, 'off');
+  } finally {
+    globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+    globalThis.localStorage.removeItem(Speech.STORE);
+  }
+});
+
+test('a fresher answer passed in beats the one last saved', () => {
+  globalThis.localStorage.removeItem(Speech.STORE);
+  globalThis.localStorage.setItem(Speech.SHOP_STORE, JSON.stringify({ provider: 'device' }));
+  try {
+    assert.equal(Speech.config({ provider: 'server' }).provider, 'server');
+  } finally {
+    globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  }
+});
+
+test('a shop that has said nothing still gets something that works', () => {
+  globalThis.localStorage.removeItem(Speech.STORE);
+  globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  const config = Speech.config();
+  assert.equal(config.provider, 'device');
+  assert.equal(config.language, 'en-IN');
+});
+
+test('corrupt stored settings are ignored, not fatal', () => {
+  globalThis.localStorage.removeItem(Speech.STORE);
+  globalThis.localStorage.setItem(Speech.SHOP_STORE, 'not json at all');
+  try {
+    assert.equal(Speech.config().provider, 'device');
+  } finally {
+    globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  }
+});
+
+test('a server cannot name its VENDOR to a handset either', () => {
+  /*
+   * Not just the key. A phone told which company transcribes for this shop is
+   * a phone that will eventually be asked to hold the key for that company,
+   * and telling one phone tells every phone in the building.
+   */
+  globalThis.localStorage.removeItem(Speech.STORE);
+  const config = Speech.config({
+    provider: 'server',
+    vendor: 'openai',
+    voice_provider: 'openai',
+    apiKey: 'sk-secret',
+  });
+  assert.equal(config.provider, 'server');
+  assert.equal(config.vendor, undefined, 'a vendor name reached the handset');
+  assert.equal(config.voice_provider, undefined);
+  assert.equal(config.apiKey, undefined);
+});
+
+test('a key in the SHOP store is dropped too, not only one passed in', () => {
+  globalThis.localStorage.removeItem(Speech.STORE);
+  globalThis.localStorage.setItem(
+    Speech.SHOP_STORE,
+    JSON.stringify({ provider: 'server', apiKey: 'sk-secret', api_key: 'x', secret: 'y' })
+  );
+  try {
+    const config = Speech.config();
+    assert.equal(config.apiKey, undefined, 'a key reached the handset from storage');
+    assert.equal(config.api_key, undefined);
+    assert.equal(config.secret, undefined);
+  } finally {
+    globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  }
+});

@@ -48,6 +48,19 @@
   root.Speech = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window, function () {
   const STORE = 'posnic.voice';
+  /*
+   * What the SHOP decided, saved when the menu was last loaded.
+   *
+   * Its own key, separate from this device's own settings, because they are
+   * different decisions with a deliberate precedence: a handset with a broken
+   * microphone can be switched off without touching the shop, and a shop that
+   * moves to a paid provider does not have to visit every phone.
+   *
+   * Read from storage rather than passed in, so every page gets the shop's
+   * answer without each one having to remember to fetch it - and so a handset
+   * that has gone offline since the last menu load still honours it.
+   */
+  const SHOP_STORE = 'posnic.voice.shop';
 
   const DEFAULTS = {
     provider: 'device',
@@ -70,17 +83,31 @@
    */
   function config(fromServer) {
     let local = {};
+    let stored = {};
     try {
       local = JSON.parse(localStorage.getItem(STORE) || '{}') || {};
     } catch (e) {
       local = {};
     }
+    try {
+      stored = JSON.parse(localStorage.getItem(SHOP_STORE) || '{}') || {};
+    } catch (e) {
+      stored = {};
+    }
+    /* What was passed in beats what was last saved, so a caller holding a
+       fresher answer is not overruled by yesterday's. */
+    const fromShop = { ...stored, ...(fromServer || {}) };
     /* A key must never arrive here, whatever a server sends. Dropped rather
        than trusted, so a misconfigured server cannot put one on a handset. */
-    const shop = { ...(fromServer || {}) };
+    const shop = { ...fromShop };
     delete shop.apiKey;
     delete shop.api_key;
     delete shop.secret;
+    /* Nor may a server name its vendor here. The handset is told where the
+       audio goes; which company transcribes it is the till's business, and a
+       phone that knew would eventually be asked to hold the key for it. */
+    delete shop.vendor;
+    delete shop.voice_provider;
 
     return { ...DEFAULTS, ...shop, ...local };
   }
@@ -518,6 +545,7 @@
   return {
     DEFAULTS,
     STORE,
+    SHOP_STORE,
     MAX_SECONDS,
     config,
     configure,

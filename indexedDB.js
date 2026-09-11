@@ -327,6 +327,25 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
             const tableorders = result.data.tableorders || [];
             localStorage.setItem('kiosk_tableorders', JSON.stringify(tableorders));
 
+            /*
+             * What this SHOP decided about voice ordering.
+             *
+             * Kept separately from what this DEVICE was told, because they are
+             * different decisions and the device's own wins: a handset with a
+             * broken microphone can be switched off without touching the shop.
+             * See assets/common/speech.js for the order they are read in.
+             *
+             * Where the audio goes and in what language, never which vendor
+             * transcribes it and never a key. The server derives it; a phone
+             * that knew the vendor is a phone that would eventually be asked
+             * to hold the key for it.
+             */
+            try {
+                localStorage.setItem('posnic.voice.shop', JSON.stringify(result.data.voice || {}));
+            } catch (e) {
+                /* private mode: this session still runs on the default */
+            }
+
             // 🔴 IF NO PRODUCTS → show error, then force Choose Branch AFTER OK
             if (!Array.isArray(categories) || categories.length === 0) {
                 // இந்த branch use panna koodadhu → auto‑select clear pannunga
