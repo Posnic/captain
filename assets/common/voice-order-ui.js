@@ -266,21 +266,51 @@
   }
 
   /**
-   * Sit exactly on top of the bill bar, never over it.
+   * Sit exactly on top of whatever bar is at the bottom, never over it.
    *
-   * Measured rather than assumed: the bar's height changes with the safe
-   * area and with whether it is up. A panel that guessed would either float
-   * or cover the one button the waiter needs next.
+   * Measured rather than assumed, and not by one class name. This page has
+   * had two bottom bars in its life - a `.bill-bar` and, before it, a fixed
+   * footer holding #next-btn - and a panel that knew only one of them sat at
+   * bottom:0 on the other and covered the Next button, which is precisely
+   * the complaint this panel exists to fix. So: every fixed ancestor of the
+   * Next button and the bill bar are candidates, and the first one that is
+   * actually on screen at the bottom edge sets the offset.
    */
   function place() {
     const element = panel();
-    let bottom = 0;
-    const bar = document.querySelector('.bill-bar');
-    if (bar && typeof bar.getBoundingClientRect === 'function') {
-      const box = bar.getBoundingClientRect();
-      if (box && box.height && box.top < (window.innerHeight || 99999)) bottom = box.height;
+    element.style.bottom = `${bottomBarHeight()}px`;
+  }
+
+  function bottomBarHeight() {
+    const candidates = [];
+    const bill = document.querySelector('.bill-bar');
+    if (bill) candidates.push(bill);
+    let node = document.getElementById('next-btn');
+    while (node && node !== document.body) {
+      candidates.push(node);
+      node = node.parentElement || null;
     }
-    element.style.bottom = `${bottom}px`;
+
+    const viewport = Number(window.innerHeight) || 0;
+    if (!viewport) return 0;
+
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate.getBoundingClientRect !== 'function') continue;
+      let fixed = false;
+      try {
+        fixed = typeof getComputedStyle === 'function' && getComputedStyle(candidate).position === 'fixed';
+      } catch (e) {
+        fixed = false;
+      }
+      if (!fixed) continue;
+      const box = candidate.getBoundingClientRect();
+      /* On screen, and touching the bottom edge. A bill bar slid away below
+         the viewport is not a bar to sit on top of. */
+      if (box && box.height && box.top < viewport && box.bottom >= viewport - 2) {
+        return Math.round(box.height);
+      }
+    }
+    return 0;
   }
 
   function showPanel() {
