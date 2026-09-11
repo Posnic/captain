@@ -19,6 +19,7 @@
     "build:ipa": "node build-ipa.js"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^6.0.1",
     "@capacitor/android": "^6.0.0",
     "@capacitor/core": "^6.0.0",
     "@capacitor/ios": "^6.2.2",

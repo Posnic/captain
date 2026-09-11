@@ -66,7 +66,11 @@ const RESPONSES = {
       products: [
         {
           category_name: 'Food',
-          items: [item('p-biryani', 'Chicken Biryani', 220), item('p-coffee', 'Coffee', 40)],
+          items: [
+            item('p-biryani', 'Chicken Biryani', 220),
+            item('p-coffee', 'Coffee', 40),
+            item('p-dosa', 'Masala Dosa', 90),
+          ],
         },
       ],
       kiosk_images: {},
@@ -92,16 +96,27 @@ async function onTheMenu(page, heard) {
       /* Stubbed before any page script runs, so the mic button is drawn as
          available and listening resolves without a microphone. */
       window.__voiceHeard = heard;
+
+      /*
+       * A recogniser that is HELD OPEN, like the real one now is: it reports
+       * words while it runs and only ends when the page stops it. A stub that
+       * ended by itself would pass a test the app cannot pass, because the
+       * whole gesture is the page deciding when the order is finished.
+       */
       function Recogniser() {
         this.start = () => {
+          window.__voiceStarted = (window.__voiceStarted || 0) + 1;
           setTimeout(() => {
             if (this.onresult) {
               this.onresult({ results: [[{ transcript: window.__voiceHeard }]] });
             }
-            if (this.onend) this.onend();
           }, 0);
         };
-        this.stop = () => {};
+        this.stop = () => setTimeout(() => this.onend && this.onend(), 0);
+        this.abort = () => {
+          window.__voiceAborted = (window.__voiceAborted || 0) + 1;
+          this.stop();
+        };
       }
       /* BOTH names. Chromium defines the unprefixed SpeechRecognition as well
          as the webkit one, and speech.js reads the unprefixed first - so
@@ -143,6 +158,23 @@ async function onTheMenu(page, heard) {
 }
 
 const sheet = (page) => page.locator('#posnic-voice-sheet');
+const hud = (page) => page.locator('#posnic-voice-hud');
+
+/**
+ * Press the microphone, speak, and let go. What a waiter does.
+ *
+ * A real hold, not a click: the button records between pointerdown and
+ * pointerup, and a press shorter than the tap threshold is deliberately NOT a
+ * recording.
+ */
+async function holdAndSpeak(page, ms = 700) {
+  const mic = page.locator('#posnic-voice-mic');
+  await mic.hover();
+  await page.mouse.down();
+  await expect(hud(page)).toBeVisible();
+  await page.waitForTimeout(ms);
+  await page.mouse.up();
+}
 
 test('the mic button is there when the device can listen', async ({ page }) => {
   await onTheMenu(page, 'two chicken biryani');
@@ -164,7 +196,7 @@ test('the sheet does not cover the menu while it is closed', async ({ page }) =>
 
 test('what was said is shown for a person to read, and adds nothing yet', async ({ page }) => {
   await onTheMenu(page, 'two chicken biryani and three coffee');
-  await page.locator('#posnic-voice-mic').click();
+  await holdAndSpeak(page);
 
   await expect(sheet(page)).toBeVisible();
   await expect(sheet(page)).toContainText('Chicken Biryani');
@@ -177,17 +209,17 @@ test('what was said is shown for a person to read, and adds nothing yet', async 
 
 test('Add is what puts it in the cart, in the quantities said', async ({ page }) => {
   await onTheMenu(page, 'two chicken biryani and three coffee');
-  await page.locator('#posnic-voice-mic').click();
+  await holdAndSpeak(page);
   await expect(sheet(page)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add to order' }).click();
+  await page.locator('#posnic-voice-sheet-add').click();
   await expect(sheet(page)).toBeHidden();
   await expect(page.locator('#mobile-cart-count')).toHaveText('5');
 });
 
 test('closing the sheet orders nothing, and gives the menu back', async ({ page }) => {
   await onTheMenu(page, 'two chicken biryani');
-  await page.locator('#posnic-voice-mic').click();
+  await holdAndSpeak(page);
   await expect(sheet(page)).toBeVisible();
 
   await page.locator('#posnic-voice-sheet-close').click();
@@ -200,21 +232,137 @@ test('closing the sheet orders nothing, and gives the menu back', async ({ page 
 
 test('a dish that is not on the menu is shown, not invented', async ({ page }) => {
   await onTheMenu(page, 'two chicken biryani and one pizza');
-  await page.locator('#posnic-voice-mic').click();
+  await holdAndSpeak(page);
 
   await expect(sheet(page)).toContainText('pizza');
   await expect(sheet(page)).toContainText('not on this menu');
 
   /* The rest still goes. A line nobody could place must not take the ones
      that could with it. */
-  await page.getByRole('button', { name: 'Add to order' }).click();
+  await page.locator('#posnic-voice-sheet-add').click();
   await expect(page.locator('#mobile-cart-count')).toHaveText('2');
 });
 
 test('a rough match says so, so the waiter checks that one', async ({ page }) => {
   await onTheMenu(page, 'two chicken briyani');
-  await page.locator('#posnic-voice-mic').click();
+  await holdAndSpeak(page);
 
   await expect(sheet(page)).toContainText('Chicken Biryani');
   await expect(sheet(page)).toContainText('check this one');
+});
+
+/* ------------------------------------------------------------- the gesture */
+
+test('a quick tap is not a recording, and says how it works', async ({ page }) => {
+  /* Somebody brushing the button at a table gets told, not an open microphone
+     on the conversation they are having. */
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('#posnic-voice-mic').click();
+
+  await expect(hud(page)).toBeHidden();
+  await expect(sheet(page)).toBeHidden();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('0');
+});
+
+test('while held, the screen says it is listening', async ({ page }) => {
+  /*
+   * Several seconds of a screen that does not move reads as a dead button,
+   * and the waiter presses again and loses the first half of the order.
+   */
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('#posnic-voice-mic').hover();
+  await page.mouse.down();
+
+  await expect(hud(page)).toBeVisible();
+  await expect(hud(page)).toContainText('Slide left to cancel');
+  await expect(page.locator('#posnic-voice-hud-words')).toHaveText(/chicken biryani/i);
+
+  await page.mouse.up();
+  await expect(hud(page)).toBeHidden();
+});
+
+test('sliding left cancels, and nothing is transcribed', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  const box = await page.locator('#posnic-voice-mic').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(hud(page)).toBeVisible();
+
+  await page.mouse.move(box.x - 150, box.y + box.height / 2, { steps: 10 });
+  await page.mouse.up();
+
+  await expect(hud(page)).toBeHidden();
+  await expect(sheet(page)).toBeHidden();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('0');
+});
+
+test('sliding up locks it, so letting go does not end the order', async ({ page }) => {
+  /* A long order, or a hand carrying plates. */
+  await onTheMenu(page, 'two chicken biryani and three coffee');
+  const box = await page.locator('#posnic-voice-mic').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y - 120, { steps: 10 });
+  await expect(hud(page)).toContainText('Hands free');
+  await page.mouse.up();
+
+  /* Still going. */
+  await expect(hud(page)).toBeVisible();
+  await page.locator('#posnic-voice-hud-stop').click();
+
+  await expect(sheet(page)).toBeVisible();
+  await page.locator('#posnic-voice-sheet-add').click();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('5');
+});
+
+/* --------------------------------------------- all at once, or one by one */
+
+test('a second hold ADDS to the order rather than replacing it', async ({ page }) => {
+  /*
+   * The whole reason "say the table in one breath" and "say the items one at
+   * a time" are the same feature. Replacing would mean the second press
+   * silently deleted what the waiter had already said.
+   */
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+  await expect(sheet(page)).toContainText('Chicken Biryani');
+
+  await page.locator('#posnic-voice-sheet-close').click();
+  await page.evaluate(() => {
+    window.__voiceHeard = 'one masala dosa';
+  });
+  await holdAndSpeak(page);
+
+  await expect(sheet(page)).toContainText('Chicken Biryani');
+  await expect(sheet(page)).toContainText('Masala Dosa');
+
+  await page.locator('#posnic-voice-sheet-add').click();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('3');
+});
+
+test('Start again is the one thing that clears it, and it says so', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+  await expect(sheet(page)).toContainText('Chicken Biryani');
+
+  await page.getByRole('button', { name: 'Start again' }).click();
+  await expect(sheet(page)).toBeHidden();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('0');
+
+  await page.evaluate(() => {
+    window.__voiceHeard = 'one coffee';
+  });
+  await holdAndSpeak(page);
+  await expect(sheet(page)).not.toContainText('Chicken Biryani');
+  await expect(sheet(page)).toContainText('Coffee');
+});
+
+test('a quantity heard wrong is one tap to fix, not a whole order again', async ({ page }) => {
+  await onTheMenu(page, 'three coffee');
+  await holdAndSpeak(page);
+  await expect(sheet(page)).toContainText('Coffee');
+
+  await page.locator('#posnic-voice-sheet [data-act="less"]').first().click();
+  await page.locator('#posnic-voice-sheet-add').click();
+  await expect(page.locator('#mobile-cart-count')).toHaveText('2');
 });
