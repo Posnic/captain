@@ -480,6 +480,45 @@
    * separately, so when one cannot reach an address the other frequently can.
    * Only ever tried AFTER fetch has failed, so the normal path is untouched.
    */
+  /*
+   * A fetch the bridge has never seen.
+   *
+   * Capacitor's HTTP plugin replaces window.fetch on the page it runs in. A
+   * fresh same-origin iframe gets its own window, and the browser's own fetch
+   * with it - so this is the same request made by the engine underneath,
+   * unpatched, and it is the only way to tell "the address is unreachable"
+   * from "the bridge did not come back".
+   *
+   * The frame is kept while the request is in flight and removed after.
+   * Detaching it early invalidates the function taken from it.
+   */
+  function pristineFetch() {
+    try {
+      if (!document.documentElement) return null;
+      const frame = document.createElement('iframe');
+      frame.setAttribute('aria-hidden', 'true');
+      frame.style.cssText = 'display:none;width:0;height:0;border:0;';
+      document.documentElement.appendChild(frame);
+      const inner = frame.contentWindow;
+      if (!inner || typeof inner.fetch !== 'function') {
+        frame.remove();
+        return null;
+      }
+      return {
+        fetch: inner.fetch.bind(inner),
+        done: () => {
+          try {
+            frame.remove();
+          } catch (e) {
+            /* the page is going away anyway */
+          }
+        },
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   function fetchByXhr(url, timeoutMs) {
     return new Promise((resolve, reject) => {
       try {
@@ -562,12 +601,25 @@
       return null;
     };
 
+    /*
+     * A TRANSPORT KNOWN TO HANG GETS A SHORTER LEASH.
+     *
+     * Capacitor's patched fetch ignores an AbortSignal and can simply never
+     * come back. Waiting the full budget on it and THEN trying the roads that
+     * work would make a waiter stand at a table for twenty seconds to reach a
+     * server that answers in under one. So when the bridge is in play the
+     * first attempt gets a few seconds, and the fallbacks get the rest.
+     */
+    const bridged = /patched-fetch/.test(transport());
+    const firstBudget = bridged ? Math.min(timeoutMs, 3000) : timeoutMs;
+    const laterBudget = Math.max(2000, Math.min(timeoutMs, 5000));
+
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, timeoutMs);
+    }, firstBudget);
 
     try {
       const response = await rawFetch(target, {
@@ -593,32 +645,59 @@
       /* An abort is our own timer, not the network saying anything. Told
          apart because "it is slow" and "it is not there" send somebody to
          look in two different places. */
-      if (timedOut) return fail('TIMED_OUT', ' [' + transport() + ']');
-
       /*
-       * fetch could not do it. Try the other road before giving up.
+       * A TIMEOUT IS THE CASE THE FALLBACK EXISTS FOR, and the first draft
+       * gave up on it.
        *
-       * The bridge patches fetch and XMLHttpRequest separately and they fail
-       * separately, so an address one cannot reach is often reachable by the
-       * other. A shopkeeper does not care which was used.
+       * Capacitor's patched fetch ignores an AbortSignal and, on a real
+       * handset against a real server, simply never came back - eight seconds
+       * of nothing, reported as "it did not answer in time" about a server
+       * that answers a browser on the same phone instantly. Falling back only
+       * when fetch THREW meant never falling back at all.
        */
-      try {
-        const second = await fetchByXhr(target, timeoutMs);
-        if (second.ok) {
-          const info = await second.json();
-          if (looksLikePosnic(info)) {
-            probe.lastFailure = null;
-            return { base, info };
+      const notes = ['[' + transport() + ']', 'fetch: ' + (timedOut ? 'hung' : describe(e))];
+
+      /* The other roads, in the order most likely to work. An unpatched fetch
+         from a fresh frame is the engine's own; XHR is patched separately from
+         fetch and fails separately. */
+      const roads = [
+        ['clean-fetch', async (ms) => {
+          const clean = pristineFetch();
+          if (!clean) throw new Error('no frame');
+          try {
+            return await clean.fetch(target, {
+              method: 'GET',
+              headers: { Accept: 'application/json' },
+              cache: 'no-store',
+              signal: AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined,
+            });
+          } finally {
+            clean.done();
           }
-          return fail('NOT_POSNIC', ' [xhr]');
+        }],
+        ['xhr', (ms) => fetchByXhr(target, ms)],
+      ];
+
+      for (const [name, attempt] of roads) {
+        try {
+          const response = await attempt(laterBudget);
+          if (!response || !response.ok) {
+            notes.push(name + ': ' + (response ? String(response.status) : 'no response'));
+            continue;
+          }
+          const info = await response.json();
+          if (!looksLikePosnic(info)) return fail('NOT_POSNIC', ' [' + name + ']');
+          /* It worked by another road. The address is fine; the bridge is
+             not, and the shopkeeper does not need to know that. */
+          probe.lastFailure = null;
+          probe.usedRoad = name;
+          return { base, info };
+        } catch (road) {
+          notes.push(name + ': ' + describe(road));
         }
-        return fail('REFUSED', String(second.status) + ' [xhr]');
-      } catch (second) {
-        return fail(
-          'UNREACHABLE',
-          ' [' + transport() + '] fetch: ' + describe(e) + ' / xhr: ' + describe(second)
-        );
       }
+
+      return fail(timedOut ? 'TIMED_OUT' : 'UNREACHABLE', ' ' + notes.join(' / '));
     } finally {
       clearTimeout(timer);
     }
@@ -627,6 +706,7 @@
   probe.lastFailure = null;
   probe.REASONS = REASONS;
   probe.transport = transport;
+  probe.usedRoad = null;
 
   /** The /24 networks this device is on, most reliable source first. */
   async function localSubnets() {

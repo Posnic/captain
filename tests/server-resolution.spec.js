@@ -760,3 +760,89 @@ test('the app can say which transport it is using', async ({ page }) => {
   const transport = await page.evaluate(() => POSNIC.discovery.probe.transport());
   expect(transport).toMatch(/browser|native/);
 });
+
+/*
+ * A HUNG TRANSPORT IS THE CASE THE FALLBACK EXISTS FOR.
+ *
+ * Reported from a real handset against the real server:
+ *
+ *   Could not use https://develop.posnic.io/api. It did not answer in time.
+ *   It may be slow, or not listening. [native+patched-fetch]
+ *
+ * Capacitor's patched fetch ignores an AbortSignal and simply never came
+ * back - eight seconds of nothing, about a server that answers a browser on
+ * the same phone instantly. The first draft fell back only when fetch THREW,
+ * so on the one failure that mattered it never fell back at all.
+ */
+
+test('a fetch that never returns is rescued by another road', async ({ page }) => {
+  /*
+   * The FIRST request hangs and the next answers - which is the shape of the
+   * real failure: the bridge does not come back, and the same address over
+   * another transport answers at once.
+   *
+   * Hung at the network rather than by replacing window.fetch, because probe()
+   * captures fetch when config.js loads and a later replacement never reaches
+   * it. That capture is also why the bridge's patch is what the app really
+   * uses: Capacitor installs it before any of our scripts run.
+   */
+  let seen = 0;
+  await page.route('**/runtime-info', async (route) => {
+    seen += 1;
+    if (seen === 1) return new Promise(() => {});
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    });
+  });
+
+  await page.goto('/index.html');
+  const result = await page.evaluate(async () => {
+    const started = Date.now();
+    const hit = await POSNIC.discovery.probe('https://shop.example', 4000);
+    return {
+      ok: !!hit,
+      road: POSNIC.discovery.probe.usedRoad,
+      seconds: (Date.now() - started) / 1000,
+      why: POSNIC.discovery.probe.lastFailure,
+    };
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.road).toBeTruthy();
+  /* And it did not make somebody stand at a table for the full budget twice. */
+  expect(result.seconds).toBeLessThan(12);
+});
+
+test('when every road fails, the message names each one', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) => route.abort());
+
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('https://shop.example', 4000);
+    return POSNIC.discovery.probe.lastFailure;
+  });
+
+  expect(why.message).toContain('fetch:');
+  expect(why.message).toMatch(/clean-fetch|xhr/);
+});
+
+test('a working address still succeeds on the first road, untouched', async ({ page }) => {
+  /* The fallback must cost nothing when nothing is wrong. */
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    })
+  );
+
+  const result = await page.evaluate(async () => {
+    const hit = await POSNIC.discovery.probe('https://shop.example', 5000);
+    return { ok: !!hit, road: POSNIC.discovery.probe.usedRoad };
+  });
+  expect(result.ok).toBe(true);
+  expect(result.road).toBeNull();
+});
