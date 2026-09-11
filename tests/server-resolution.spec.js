@@ -846,3 +846,75 @@ test('a working address still succeeds on the first road, untouched', async ({ p
   expect(result.ok).toBe(true);
   expect(result.road).toBeNull();
 });
+
+/*
+ * SEARCHING BY ITSELF, THE FIRST TIME ONLY.
+ *
+ * This behaviour has been in and then out of the app, and both times for a
+ * good reason. It searched the moment the screen opened, which is exactly
+ * right for a handset out of its box - there is one sensible next move and
+ * making somebody tap for it is making them choose between three things they
+ * have not learned the difference between yet.
+ *
+ * It was removed because it held the whole screen for seconds against a
+ * network with no till on it, and somebody who came to type a shop code sat
+ * watching a spinner hunt for something they knew was not there.
+ *
+ * The reconciliation is that the search is not the screen. It runs in its own
+ * line at the top and the three choices stay under it the whole time.
+ */
+
+test('a handset that has never connected starts looking on its own', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.locator('#username').fill('someone');
+  await page.locator('#password').fill('a-password');
+  await page.locator('#login-btn').click();
+
+  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#connectAuto')).toBeVisible();
+  await expect(page.locator('#connectAutoNote')).toContainText(/Looking|Checking|Searching/);
+});
+
+test('and does not take the screen while it looks', async ({ page }) => {
+  /* The reason it was removed. All three ways in stay on offer, so somebody
+     who knows their shop code never waits for a search to give up. */
+  await page.goto('/index.html');
+  await page.locator('#username').fill('someone');
+  await page.locator('#password').fill('a-password');
+  await page.locator('#login-btn').click();
+
+  await expect(page.locator('#connectAuto')).toBeVisible();
+  await expect(page.locator('#connectChoices')).toBeVisible();
+  await expect(page.getByText('Type the shop code')).toBeVisible();
+  await expect(page.getByText('Scan the shop code')).toBeVisible();
+});
+
+test('choosing by hand ends the search nobody asked for', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.locator('#username').fill('someone');
+  await page.locator('#password').fill('a-password');
+  await page.locator('#login-btn').click();
+
+  await expect(page.locator('#connectAuto')).toBeVisible();
+  await page.getByText('Type the shop code').click();
+
+  await expect(page.locator('#connectAuto')).toBeHidden();
+  await expect(page.locator('#serverUrlInput')).toBeVisible();
+});
+
+test('a shop that is already set up starts on the menu, not on a search', async ({ page }) => {
+  /*
+   * That person came here to change something specific. Searching at them is
+   * answering a question they did not ask, and it would take several seconds
+   * to finish being wrong.
+   */
+  await seed(page, { pinned: CLOUD, active: CLOUD });
+  await page.goto('/index.html');
+  /* For the function, not for the element: everything in the modal is
+     display:none until it opens, so waiting to SEE one waits for ever. */
+  await page.waitForFunction(() => typeof window.openServerModal === 'function');
+  await page.evaluate(() => window.openServerModal());
+
+  await expect(page.locator('#connectChoices')).toBeVisible();
+  await expect(page.locator('#connectAuto')).toBeHidden();
+});

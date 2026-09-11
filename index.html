@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <!-- The decisions every screen shares, made once. -->
+    <link href="assets/common/design.css" rel="stylesheet">
     <script src="assets/jquery-3.6.0.min.js"></script>
     <!-- Written at build time by build-version.js. Absent at a desk, where
          the app simply says "dev" - which is true. -->
@@ -43,63 +45,78 @@
       does not, and had no way to find out. So the three ways in are offered as
       three choices, in the order a shop will use them.
     -->
-    <div id="serverModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:16px;width:360px;max-width:100%;max-height:92vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
-            <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:18px 22px;color:#fff;">
-                <div style="font-weight:700;font-size:16px;">Connect to your shop</div>
-                <div id="serverModeInfo" style="font-size:12px;opacity:.85;margin-top:3px;">Not connected yet</div>
+    <div id="serverModal" class="ui-scrim" style="display:none;">
+        <div class="ui-sheet">
+            <div class="ui-sheet-head">
+                <h2 class="ui-sheet-title">Connect to your shop</h2>
+                <p class="ui-sheet-sub" id="serverModeInfo">Not connected yet</p>
             </div>
 
-            <!-- The three ways in. -->
-            <div id="connectChoices" style="padding:16px 18px 4px;">
-                <button onclick="chooseScan()" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px;margin-bottom:10px;border:1.5px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;">
-                    <span style="font-size:22px;">&#128247;</span>
-                    <span>
-                        <span style="display:block;font-weight:700;font-size:14px;color:#111827;">Scan the shop code</span>
-                        <span style="display:block;font-size:12px;color:#6b7280;">Point at the code by the till. Nothing to type.</span>
-                    </span>
-                </button>
+            <div class="ui-sheet-body">
+                <!-- Looking, before anybody is asked anything. Shown only on a
+                     handset that has never been connected: see openServerModal. -->
+                <div id="connectAuto" hidden>
+                    <div class="ui-working">
+                        <span class="ui-spinner"></span>
+                        <span id="connectAutoNote">Looking for your till on this Wi-Fi&hellip;</span>
+                    </div>
+                </div>
 
-                <button onclick="chooseSearch()" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px;margin-bottom:10px;border:1.5px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;">
-                    <span style="font-size:22px;">&#128246;</span>
-                    <span>
-                        <span style="display:block;font-weight:700;font-size:14px;color:#111827;">Find the till on this Wi-Fi</span>
-                        <span style="display:block;font-size:12px;color:#6b7280;">For a phone already on the shop network.</span>
-                    </span>
-                </button>
+                <!-- The three ways in. -->
+                <div id="connectChoices">
+                    <button class="ui-choice" onclick="chooseScan()">
+                        <span class="ui-choice-icon"><i class="fas fa-qrcode"></i></span>
+                        <span class="ui-choice-text">
+                            <span class="ui-choice-title">Scan the shop code</span>
+                            <span class="ui-choice-note">Point at the code by the till. Nothing to type.</span>
+                        </span>
+                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                    </button>
 
-                <button onclick="chooseManual()" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px;margin-bottom:6px;border:1.5px solid #d1d5db;border-radius:10px;background:#fff;cursor:pointer;">
-                    <span style="font-size:22px;">&#9000;</span>
-                    <span>
-                        <span style="display:block;font-weight:700;font-size:14px;color:#111827;">Type the shop code</span>
-                        <span style="display:block;font-size:12px;color:#6b7280;">If your manager gave you one.</span>
-                    </span>
-                </button>
-            </div>
+                    <button class="ui-choice" onclick="chooseSearch()">
+                        <span class="ui-choice-icon"><i class="fas fa-wifi"></i></span>
+                        <span class="ui-choice-text">
+                            <span class="ui-choice-title">Find the till on this Wi-Fi</span>
+                            <span class="ui-choice-note">For a phone already on the shop network.</span>
+                        </span>
+                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                    </button>
 
-            <!-- Typing it in. Hidden until chosen. -->
-            <div id="connectManual" hidden style="padding:4px 18px 0;">
-                <input id="serverUrlInput" type="text" placeholder="Shop code, or 192.168.1.5:5555"
-                    autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-                    oninput="handleServerUrlInput()" onkeyup="if(event.key==='Enter')applyServerUrl()"
-                    style="width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;box-sizing:border-box;margin-bottom:10px;">
-                <button id="serverSaveBtn" onclick="applyServerUrl()"
-                    style="width:100%;padding:12px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;cursor:pointer;">Connect</button>
-            </div>
+                    <button class="ui-choice" onclick="chooseManual()">
+                        <span class="ui-choice-icon"><i class="fas fa-keyboard"></i></span>
+                        <span class="ui-choice-text">
+                            <span class="ui-choice-title">Type the shop code</span>
+                            <span class="ui-choice-note">If your manager gave you one.</span>
+                        </span>
+                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                    </button>
+                </div>
 
-            <div style="padding:0 18px;">
-                <div id="serverSaveMsg" style="font-size:12px;min-height:34px;margin-top:10px;"></div>
+                <!-- Typing it in. Hidden until chosen. -->
+                <div id="connectManual" hidden>
+                    <label class="ui-label" for="serverUrlInput">Shop code or till address</label>
+                    <input id="serverUrlInput" class="ui-field" type="text"
+                        placeholder="demo, or 192.168.1.5:5555"
+                        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                        oninput="handleServerUrlInput()" onkeyup="if(event.key==='Enter')applyServerUrl()">
+                    <div style="height:var(--s3);"></div>
+                    <button id="serverSaveBtn" class="ui-btn" onclick="applyServerUrl()">Connect</button>
+                </div>
+
+                <div id="serverSaveMsg" class="ui-note"></div>
                 <!-- Which build this is. Every release used to go out as
                      versionCode 1 / versionName "1.0", so "I updated and
                      nothing changed" could not be answered by anybody. -->
-                <div id="appVersionLine" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
-            </div>
+                <div id="appVersionLine" class="ui-meta"></div>
 
-            <div style="padding:0 18px 18px;display:flex;justify-content:space-between;align-items:center;">
-                <button id="connectBackBtn" hidden onclick="chooseNone()" style="font-size:12px;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;">Back</button>
-                <span style="flex:1"></span>
-                <button onclick="refreshKioskData()" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;padding:0;margin-right:14px;">Reload menu</button>
-                <button onclick="closeServerModal()" style="font-size:12px;color:#6b7280;background:none;border:none;cursor:pointer;padding:0;">Close</button>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--s3);">
+                    <button id="connectBackBtn" class="ui-btn-quiet" hidden onclick="chooseNone()">&larr; Back</button>
+                    <span style="flex:1"></span>
+                    <button class="ui-btn-quiet" style="color:var(--ink-soft);margin-right:var(--s4);"
+                        onclick="refreshKioskData()">Reload menu</button>
+                    <button class="ui-btn-quiet" style="color:var(--ink-soft);"
+                        onclick="closeServerModal()">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -304,6 +321,9 @@
         /* A search found one: show the address and the button that uses it,
            rather than leaving the result in a box the user cannot see. */
         function foundServer(base) {
+            /* Whatever was searching has finished, one way or another. */
+            const auto = document.getElementById('connectAuto');
+            if (auto) auto.hidden = true;
             document.getElementById('serverUrlInput').value = base;
             showChoice('manual');
             serverMsg('Found the till at ' + base + '. Tap Connect.', '#16a34a');
@@ -316,6 +336,10 @@
         }
 
         function chooseManual() {
+            /* A choice made by hand ends the search nobody asked for. */
+            stopAutoDetectServer(false);
+            const autoBox = document.getElementById('connectAuto');
+            if (autoBox) autoBox.hidden = true;
             serverMsg('A shop code looks like "demo". A till on this Wi-Fi looks like 192.168.1.5:5555.');
             showChoice('manual');
         }
@@ -326,6 +350,10 @@
         }
 
         function chooseScan() {
+            /* A choice made by hand ends the search nobody asked for. */
+            stopAutoDetectServer(false);
+            const autoBox = document.getElementById('connectAuto');
+            if (autoBox) autoBox.hidden = true;
             showChoice('scan');
             POSNIC_CONNECT.startScan(async function (base) {
                 document.getElementById('connectManual').hidden = false;
@@ -357,10 +385,30 @@
             serverMsg('');
             renderServerMode();
 
-            /* The menu, always. Searching the moment this opens was a guess
-               at what the user wanted, and it held the screen for seconds
-               against a network with no till on it. */
             showChoice(null);
+
+            /*
+             * SEARCH BY ITSELF, BUT ONLY THE FIRST TIME.
+             *
+             * A handset that has never been connected has exactly one sensible
+             * next move, and making somebody tap for it is making them choose
+             * between three things they have not learned the difference
+             * between yet. So it starts looking on its own.
+             *
+             * It did this once and was removed, because it held the whole
+             * screen for seconds against a network with no till on it - and
+             * somebody who came here to type a shop code sat watching a
+             * spinner search for something they knew was not there.
+             *
+             * Both are right. The search runs and the three choices stay on
+             * screen underneath it, so the automatic thing happens for the
+             * person who wants it and blocks nobody who does not. Changing an
+             * already-working setup starts on the menu, as before: that person
+             * came here to change something specific.
+             */
+            if (!POSNIC.server.baseUrl && !POSNIC.server.pinned && !POSNIC.server.shopCode) {
+                autoDetectServer({ quiet: true });
+            }
         }
 
         function renderServerMode() {
@@ -411,20 +459,37 @@
          * The saved address is tried first and answers in under a second on
          * every shift after the first; the sweep only runs when it does not.
          */
-        async function autoDetectServer() {
+        async function autoDetectServer(options) {
             if (serverAutoDetectRunning) return;
             serverAutoDetectRunning = true;
             serverAutoDetectCancelled = false;
 
+            /*
+             * Quiet means: this was nobody's decision, so it reports into its
+             * own line above the choices rather than into the message area,
+             * and it leaves the three ways in on screen the whole time.
+             */
+            const quiet = !!(options && options.quiet);
+            const auto = document.getElementById('connectAuto');
+            const autoNote = document.getElementById('connectAutoNote');
+            const say = function (text) {
+                if (quiet) {
+                    if (autoNote) autoNote.textContent = text;
+                } else {
+                    serverMsg(text);
+                }
+            };
+            if (quiet && auto) auto.hidden = false;
+
             const input = document.getElementById('serverUrlInput');
-            serverMsg('Looking for the till on this Wi-Fi...');
+            say('Looking for your till on this Wi-Fi...');
 
             try {
                 /* Whatever is already in the box is the strongest hint there
                    is - check it before sweeping hundreds of addresses. */
                 const typed = POSNIC.server.normalize(input.value);
                 if (typed) {
-                    serverMsg('Checking ' + typed + '...');
+                    say('Checking ' + typed + '...');
                     const hit = await POSNIC.discovery.probe(typed, 3000);
                     if (serverAutoDetectCancelled) return;
                     if (hit) {
@@ -436,8 +501,8 @@
                 const found = await POSNIC.discovery.findOnWifi({
                     shouldStop: function() { return serverAutoDetectCancelled; },
                     onProgress: function(done, total, where) {
-                        if (!total) serverMsg('Checking ' + where + '...');
-                        else serverMsg('Searching ' + where + ' (' + done + '/' + total + ')...');
+                        if (!total) say('Checking ' + where + '...');
+                        else say('Searching ' + where + ' (' + done + '/' + total + ')...');
                     }
                 });
                 if (serverAutoDetectCancelled) return;
@@ -449,11 +514,20 @@
 
                 /* Say what to do next. "Not found" on its own leaves somebody
                    holding a phone with no idea whose problem it is. */
-                serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
-                showChoice('manual');
+                if (quiet) {
+                    /* Nobody asked for this search, so failing it must not
+                       take over the screen. It says what it found and gets out
+                       of the way of the choices already on offer. */
+                    if (autoNote) autoNote.textContent = 'No till found on this Wi-Fi. Pick one of these instead.';
+                    if (auto) auto.classList.add('is-done');
+                } else {
+                    serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
+                    showChoice('manual');
+                }
             } finally {
                 serverAutoDetectRunning = false;
                 serverAutoDetectCancelled = false;
+                if (quiet && auto && !auto.classList.contains('is-done')) auto.hidden = true;
             }
         }
 
