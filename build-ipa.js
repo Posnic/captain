@@ -58,15 +58,57 @@ function mergeInfoPlist() {
   const body = block.slice(block.indexOf('<dict>') + '<dict>'.length, block.lastIndexOf('</dict>'));
 
   let plist = fs.readFileSync(target, 'utf8');
-  if (plist.includes('NSLocalNetworkUsageDescription')) {
-    console.log('Info.plist already carries the local-network declarations.');
+
+  /*
+   * Merged KEY BY KEY, not all-or-nothing on one sentinel.
+   *
+   * `cap add ios` is skipped when ios/ already exists, so a machine that has
+   * built before keeps the plist it has. A guard that returns early because
+   * ONE key is present then silently withholds every key added since - and the
+   * newest ones are the microphone declarations, whose absence does not
+   * produce a build error. iOS terminates the app the moment it reaches for
+   * the microphone, which reads as a crash in the voice code.
+   */
+  const chunks = splitPlistKeys(body);
+  const missing = chunks.filter(({ key }) => !plist.includes(`<key>${key}</key>`));
+  if (!missing.length) {
+    console.log('Info.plist already carries every declaration.');
     return;
   }
+
   /* Into the root dict, immediately after it opens. */
   const at = plist.indexOf('<dict>') + '<dict>'.length;
-  plist = plist.slice(0, at) + body + plist.slice(at);
+  plist = plist.slice(0, at) + missing.map((c) => c.text).join('') + plist.slice(at);
   fs.writeFileSync(target, plist, 'utf8');
-  console.log('Info.plist: added ATS and local-network declarations.');
+  console.log(`Info.plist: added ${missing.map((c) => c.key).join(', ')}.`);
+}
+
+/**
+ * One plist dict body, split into a chunk per top-level key.
+ *
+ * Nesting is tracked so a <dict> or <array> VALUE stays with the key it
+ * belongs to - NSAppTransportSecurity and NSBonjourServices are both of that
+ * shape, and splitting on every <key> would tear their contents loose and
+ * produce a plist Xcode refuses to read.
+ */
+function splitPlistKeys(body) {
+  const lines = body.split('\n');
+  const chunks = [];
+  let current = null;
+  let depth = 0;
+
+  for (const line of lines) {
+    const key = depth === 0 && line.match(/<key>([^<]+)<\/key>/);
+    if (key) {
+      if (current) chunks.push(current);
+      current = { key: key[1], text: '' };
+    }
+    if (current) current.text += line + '\n';
+    depth += (line.match(/<(dict|array)>/g) || []).length;
+    depth -= (line.match(/<\/(dict|array)>/g) || []).length;
+  }
+  if (current) chunks.push(current);
+  return chunks;
 }
 
 const teamId = process.env.IOS_TEAM_ID || '';
