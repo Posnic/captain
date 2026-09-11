@@ -69,6 +69,10 @@
 
   /* What the sheet is currently showing, so Add has something to add. */
   let lines = [];
+  /* Whether this handset can listen at all, answered once at startup. null
+     until the question has been asked. */
+  let canListen = null;
+
   /* The live recording, if there is one. */
   let session = null;
   let held = null;
@@ -323,7 +327,14 @@
   /* --------------------------------------------------------- the recording */
 
   function begin() {
-    if (!Speech.available(fromServer)) {
+    /*
+     * The CACHED answer, not a fresh one. Asking the native recogniser costs a
+     * round trip to the bridge, and this runs on the press itself - a delay
+     * here is a waiter who has already started talking into a microphone that
+     * is not open yet. Whether a handset can listen does not change between
+     * one order and the next.
+     */
+    if (canListen === false) {
       say('Voice ordering is not available on this phone.');
       held = null;
       return;
@@ -664,10 +675,14 @@
 
   /* ----------------------------------------------------------------- start */
 
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', async () => {
     /* Drawn only where it can work. A mic button that explains it cannot
-       listen is worse than no mic button. */
-    if (!Speech.available(fromServer)) return;
+       listen is worse than no mic button, and on a phone the answer needs a
+       round trip to the native recogniser - a handset can have the plugin and
+       still have nothing behind it. */
+    canListen = await Speech.available(fromServer);
+    if (!canListen) return;
+
     micButton();
     /* A press that ends somewhere the button never hears about - a finger
        dragged off the edge of the screen - must still end the recording. */
@@ -699,6 +714,17 @@
     },
     useServerSettings(value) {
       fromServer = value || null;
+    },
+    /* For a test, and for a screen that wants to draw the button itself. */
+    async refreshAvailability() {
+      canListen = await Speech.available(fromServer);
+      return canListen;
+    },
+    get canListen() {
+      return canListen;
+    },
+    set canListen(value) {
+      canListen = value;
     },
   };
 })();

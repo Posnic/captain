@@ -13,11 +13,17 @@
  * That leaves two kinds of provider, and they are chosen for different
  * reasons rather than one being better:
  *
- *   device   the phone's own recognition. Free, private, needs no key, and on
- *            both platforms can work with the internet down once a language
- *            is installed. Weaker on proper nouns, which is most of a menu -
- *            though matching against the shop's own items recovers much of
- *            that (see voice-order.js).
+ *   device   the phone's own recognition - Android's SpeechRecognizer, iOS's
+ *            SFSpeechRecognizer, the Web Speech API in a browser. Free,
+ *            private, needs no key, and on both phone platforms can work with
+ *            the internet down once a language pack is installed. Weaker on
+ *            proper nouns, which is most of a menu - though matching against
+ *            the shop's own items recovers much of that (see voice-order.js).
+ *
+ *            NOT the Web Speech API on a phone. Chrome has it; the WebView an
+ *            app is built on does not, on either platform. Relying on it means
+ *            a feature that works at a desk and is invisible on every handset
+ *            it was written for.
  *
  *   server   the shop's POS relays the audio to whichever provider it is
  *            configured for. Better with accents and noise, costs money per
@@ -95,19 +101,72 @@
     return globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition || null;
   }
 
+  /**
+   * The handset's OWN recogniser, reached the way a packaged app has to.
+   *
+   * THE WEB SPEECH API IS NOT IN A WEBVIEW. Chrome has it; the Android System
+   * WebView an app is built on does not, and neither does WKWebView on iOS. So
+   * the browser check above answers NO on exactly the two platforms this app
+   * ships to, the mic button is never drawn, and the feature that works
+   * perfectly at a desk is invisible on every phone it was written for. Worse
+   * is the half-supported device, where the call is accepted and the promise
+   * simply never settles - a button held down for ever with nothing happening.
+   *
+   * So on a phone the recognition is native: Android's SpeechRecognizer and
+   * iOS's SFSpeechRecognizer, through the Capacitor plugin. Free, no key, no
+   * account, and on both platforms it can work with the internet down once a
+   * language pack is installed - which is the whole reason a shop would choose
+   * the handset over a paid provider.
+   *
+   * Reached through the global bridge rather than an import, because these
+   * files are classic scripts the page loads directly. Both doors are tried:
+   * `Capacitor.Plugins` is populated from the native bridge's plugin headers,
+   * and `registerPlugin` is the documented way in when it is not.
+   */
+  function nativeRecogniser() {
+    const cap = globalThis.Capacitor;
+    if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) {
+      return null;
+    }
+    if (cap.Plugins && cap.Plugins.SpeechRecognition) return cap.Plugins.SpeechRecognition;
+    if (typeof cap.registerPlugin === 'function') {
+      try {
+        return cap.registerPlugin('SpeechRecognition');
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   const canRecord = () =>
     !!(globalThis.navigator && navigator.mediaDevices && globalThis.MediaRecorder);
 
   /**
    * Can this device transcribe at all, and how?
    *
-   * Asked rather than assumed, so the mic button is absent where it cannot
-   * work instead of present and disappointing.
+   * ASYNC, because the native recogniser has to be asked. A handset can have
+   * the plugin and still have no recogniser behind it - a stripped Android
+   * build with no Google app, most often - and the honest answer needs that
+   * round trip. Asked rather than assumed, so the mic button is absent where
+   * it cannot work instead of present and disappointing.
+   *
+   * Never throws. A screen has to be able to ask this without a guard.
    */
-  function available(fromServer) {
+  async function available(fromServer) {
     const chosen = config(fromServer).provider;
     if (chosen === 'off') return false;
     if (chosen === 'server') return canRecord(); // the till answers for itself
+
+    const plugin = nativeRecogniser();
+    if (plugin) {
+      try {
+        const answer = await plugin.available();
+        return !!(answer && answer.available);
+      } catch (e) {
+        return false;
+      }
+    }
     return !!deviceRecogniser();
   }
 
@@ -205,6 +264,84 @@
             if (done) settle();
           }, 4000);
         });
+      },
+    };
+  }
+
+  /**
+   * The phone's own recogniser, held open until somebody lets go.
+   *
+   * Same three calls as every other session. The permission is asked for here
+   * rather than at launch, because a waiter who never presses the microphone
+   * should never be asked for one - and a prompt that arrives with no context
+   * is the one people refuse.
+   */
+  function beginOnNative(plugin, { language, onPartial }) {
+    const startedAt = Date.now();
+    let best = '';
+    let handle = null;
+    let cancelled = false;
+    let listening = false;
+
+    /*
+     * Opening is asynchronous and the button is already down. The promise is
+     * kept so stop() can WAIT for it rather than race it: a waiter who says
+     * two words and releases would otherwise be stopping a recogniser that had
+     * not started, and the order would be silence.
+     */
+    const opening = (async () => {
+      const granted = await plugin.requestPermissions().catch(() => null);
+      if (granted && granted.speechRecognition && granted.speechRecognition !== 'granted') {
+        throw new Error('The microphone is blocked for this app. Allow it in Settings.');
+      }
+      if (cancelled) return;
+
+      handle = await plugin.addListener('partialResults', (data) => {
+        const said = (data && data.matches && data.matches[0]) || '';
+        /* Partial results ARRIVE AS A WHOLE SENTENCE, replacing the last one,
+           rather than as words to append. Appending them would give
+           "two two chicken two chicken biryani". */
+        if (said) {
+          best = said;
+          if (onPartial) onPartial(best);
+        }
+      });
+
+      /* popup:false because the order is read back on our own sheet. Android's
+         own dialogue would cover the menu, take the gesture over, and give a
+         waiter two different confirmations to read. */
+      await plugin.start({
+        language: language || DEFAULTS.language,
+        partialResults: true,
+        popup: false,
+        maxResults: 1,
+      });
+      listening = true;
+    })();
+
+    const release = async () => {
+      try {
+        if (listening) await plugin.stop();
+      } catch (e) {
+        /* already stopped, or stopped itself on a silence */
+      }
+      try {
+        if (handle && handle.remove) await handle.remove();
+      } catch (e) {
+        /* the listener goes with the page anyway */
+      }
+    };
+
+    return {
+      seconds: () => (Date.now() - startedAt) / 1000,
+      cancel() {
+        cancelled = true;
+        release();
+      },
+      async stop() {
+        await opening;
+        await release();
+        return cancelled ? '' : best;
       },
     };
   }
@@ -354,7 +491,13 @@
     const settings = config(options.fromServer);
     if (settings.provider === 'off') throw new Error('Voice ordering is turned off for this shop.');
     const shared = { language: settings.language, ...options };
-    return settings.provider === 'server' ? beginOnServer(shared) : beginOnDevice(shared);
+    if (settings.provider === 'server') return beginOnServer(shared);
+
+    /* On a phone the recogniser is native; in a browser it is the Web Speech
+       API. Neither is a fallback for a failure of the other - they are the
+       same feature on two platforms, and only one of them exists at a time. */
+    const plugin = nativeRecogniser();
+    return plugin ? beginOnNative(plugin, shared) : beginOnDevice(shared);
   }
 
   /**
@@ -382,6 +525,7 @@
     start,
     listen,
     deviceRecogniser,
+    nativeRecogniser,
     canRecord,
   };
 });
