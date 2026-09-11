@@ -321,6 +321,9 @@
         /* A search found one: show the address and the button that uses it,
            rather than leaving the result in a box the user cannot see. */
         function foundServer(base) {
+            /* Whatever was searching has finished, one way or another. */
+            const auto = document.getElementById('connectAuto');
+            if (auto) auto.hidden = true;
             document.getElementById('serverUrlInput').value = base;
             showChoice('manual');
             serverMsg('Found the till at ' + base + '. Tap Connect.', '#16a34a');
@@ -333,6 +336,10 @@
         }
 
         function chooseManual() {
+            /* A choice made by hand ends the search nobody asked for. */
+            stopAutoDetectServer(false);
+            const autoBox = document.getElementById('connectAuto');
+            if (autoBox) autoBox.hidden = true;
             serverMsg('A shop code looks like "demo". A till on this Wi-Fi looks like 192.168.1.5:5555.');
             showChoice('manual');
         }
@@ -343,6 +350,10 @@
         }
 
         function chooseScan() {
+            /* A choice made by hand ends the search nobody asked for. */
+            stopAutoDetectServer(false);
+            const autoBox = document.getElementById('connectAuto');
+            if (autoBox) autoBox.hidden = true;
             showChoice('scan');
             POSNIC_CONNECT.startScan(async function (base) {
                 document.getElementById('connectManual').hidden = false;
@@ -374,10 +385,30 @@
             serverMsg('');
             renderServerMode();
 
-            /* The menu, always. Searching the moment this opens was a guess
-               at what the user wanted, and it held the screen for seconds
-               against a network with no till on it. */
             showChoice(null);
+
+            /*
+             * SEARCH BY ITSELF, BUT ONLY THE FIRST TIME.
+             *
+             * A handset that has never been connected has exactly one sensible
+             * next move, and making somebody tap for it is making them choose
+             * between three things they have not learned the difference
+             * between yet. So it starts looking on its own.
+             *
+             * It did this once and was removed, because it held the whole
+             * screen for seconds against a network with no till on it - and
+             * somebody who came here to type a shop code sat watching a
+             * spinner search for something they knew was not there.
+             *
+             * Both are right. The search runs and the three choices stay on
+             * screen underneath it, so the automatic thing happens for the
+             * person who wants it and blocks nobody who does not. Changing an
+             * already-working setup starts on the menu, as before: that person
+             * came here to change something specific.
+             */
+            if (!POSNIC.server.baseUrl && !POSNIC.server.pinned && !POSNIC.server.shopCode) {
+                autoDetectServer({ quiet: true });
+            }
         }
 
         function renderServerMode() {
@@ -428,20 +459,37 @@
          * The saved address is tried first and answers in under a second on
          * every shift after the first; the sweep only runs when it does not.
          */
-        async function autoDetectServer() {
+        async function autoDetectServer(options) {
             if (serverAutoDetectRunning) return;
             serverAutoDetectRunning = true;
             serverAutoDetectCancelled = false;
 
+            /*
+             * Quiet means: this was nobody's decision, so it reports into its
+             * own line above the choices rather than into the message area,
+             * and it leaves the three ways in on screen the whole time.
+             */
+            const quiet = !!(options && options.quiet);
+            const auto = document.getElementById('connectAuto');
+            const autoNote = document.getElementById('connectAutoNote');
+            const say = function (text) {
+                if (quiet) {
+                    if (autoNote) autoNote.textContent = text;
+                } else {
+                    serverMsg(text);
+                }
+            };
+            if (quiet && auto) auto.hidden = false;
+
             const input = document.getElementById('serverUrlInput');
-            serverMsg('Looking for the till on this Wi-Fi...');
+            say('Looking for your till on this Wi-Fi...');
 
             try {
                 /* Whatever is already in the box is the strongest hint there
                    is - check it before sweeping hundreds of addresses. */
                 const typed = POSNIC.server.normalize(input.value);
                 if (typed) {
-                    serverMsg('Checking ' + typed + '...');
+                    say('Checking ' + typed + '...');
                     const hit = await POSNIC.discovery.probe(typed, 3000);
                     if (serverAutoDetectCancelled) return;
                     if (hit) {
@@ -453,8 +501,8 @@
                 const found = await POSNIC.discovery.findOnWifi({
                     shouldStop: function() { return serverAutoDetectCancelled; },
                     onProgress: function(done, total, where) {
-                        if (!total) serverMsg('Checking ' + where + '...');
-                        else serverMsg('Searching ' + where + ' (' + done + '/' + total + ')...');
+                        if (!total) say('Checking ' + where + '...');
+                        else say('Searching ' + where + ' (' + done + '/' + total + ')...');
                     }
                 });
                 if (serverAutoDetectCancelled) return;
@@ -466,11 +514,20 @@
 
                 /* Say what to do next. "Not found" on its own leaves somebody
                    holding a phone with no idea whose problem it is. */
-                serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
-                showChoice('manual');
+                if (quiet) {
+                    /* Nobody asked for this search, so failing it must not
+                       take over the screen. It says what it found and gets out
+                       of the way of the choices already on offer. */
+                    if (autoNote) autoNote.textContent = 'No till found on this Wi-Fi. Pick one of these instead.';
+                    if (auto) auto.classList.add('is-done');
+                } else {
+                    serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
+                    showChoice('manual');
+                }
             } finally {
                 serverAutoDetectRunning = false;
                 serverAutoDetectCancelled = false;
+                if (quiet && auto && !auto.classList.contains('is-done')) auto.hidden = true;
             }
         }
 

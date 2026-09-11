@@ -388,6 +388,14 @@
     transform: rotate(360deg);
   }
 }
+/*
+ * A wait that has finished without finding anything still has something to
+ * say, and a spinner still turning next to it says the opposite.
+ */
+.is-done .ui-spinner {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-spinner {
     animation-duration: 2.4s;
