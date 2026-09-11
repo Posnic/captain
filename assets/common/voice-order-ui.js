@@ -150,10 +150,43 @@
   display:flex;align-items:center;justify-content:center;touch-action:none;-webkit-user-select:none;
   user-select:none;-webkit-touch-callout:none;position:relative;transition:border-color .15s,color .15s}
 #${BUTTON_ID}[data-recording="true"]{border-color:var(--bad,#dc2626);color:var(--bad,#dc2626)}
-#${BUTTON_ID}[data-recording="true"]::after{content:"";position:absolute;inset:-6px;border-radius:50%;
-  border:2px solid var(--bad,#dc2626);opacity:.6;animation:posnic-voice-pulse 1.2s ease-out infinite}
-@keyframes posnic-voice-pulse{0%{transform:scale(.85);opacity:.7}100%{transform:scale(1.35);opacity:0}}
-@media (prefers-reduced-motion:reduce){#${BUTTON_ID}[data-recording="true"]::after{animation:none;opacity:.5}}
+/*
+ * LISTENING, as three rings leaving the button.
+ *
+ * One ring on a 1.2s loop read as a blink: it appeared, vanished, appeared,
+ * and the gap in between looked like something had stopped. Three rings on a
+ * 2.4s cycle, each starting 0.8s after the last, means one is always leaving
+ * and one is always arriving - so the edge of the button is never still, and
+ * the motion reads as continuous rather than repeated.
+ *
+ * transform and opacity only. Both are composited, so this costs no layout
+ * and no paint on the cheap Android a restaurant actually buys - which is the
+ * device most likely to be holding a live microphone open at the time.
+ */
+#${BUTTON_ID} .vm-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--bad,#dc2626);
+  opacity:0;pointer-events:none;will-change:transform,opacity}
+#${BUTTON_ID}[data-recording="true"] .vm-ring{animation:posnic-voice-ring 2.4s cubic-bezier(.22,.61,.36,1) infinite}
+#${BUTTON_ID}[data-recording="true"] .vm-ring:nth-child(2){animation-delay:.8s}
+#${BUTTON_ID}[data-recording="true"] .vm-ring:nth-child(3){animation-delay:1.6s}
+@keyframes posnic-voice-ring{
+  0%{transform:scale(1);opacity:.55}
+  70%{opacity:.12}
+  100%{transform:scale(2.6);opacity:0}}
+
+/*
+ * And the centre alive under them.
+ *
+ * On the ICON, not the button. A transform on the button is the coordinate
+ * system its rings expand in, so the two multiply and the rings pulse wider
+ * every time the button breathes out - a wobble rather than a wave.
+ */
+#${BUTTON_ID}[data-recording="true"] i{animation:posnic-voice-breathe 2s ease-in-out infinite}
+@keyframes posnic-voice-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+
+@media (prefers-reduced-motion:reduce){
+  #${BUTTON_ID}[data-recording="true"] i,
+  #${BUTTON_ID}[data-recording="true"] .vm-ring{animation:none}
+  #${BUTTON_ID}[data-recording="true"] .vm-ring:first-child{opacity:.4}}
 
 #${PANEL_ID}{position:fixed;left:0;right:0;z-index:60;background:var(--surface,#fff);color:var(--ink,#0f172a);
   border-top:1px solid var(--line,#e2e8f0);box-shadow:0 -2px 16px rgba(15,23,42,.08);
@@ -169,8 +202,40 @@
   font-size:22px;line-height:1;cursor:pointer;border-radius:50%}
 #${PANEL_ID} .vp-said{padding:2px var(--s4,16px) 0;color:var(--ink-soft,#475569);font-style:italic;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#${PANEL_ID} .vp-bars{display:flex;align-items:flex-end;gap:3px;height:22px;margin:var(--s2,8px) var(--s4,16px) 0}
-#${PANEL_ID} .vp-bars span{width:4px;height:4px;border-radius:2px;background:var(--bad,#dc2626);transition:height .08s}
+/*
+ * THE WAVE.
+ *
+ * scaleY on a fixed-height bar rather than an animated height: height is a
+ * layout property and animating it on nine bars sixty times a second is how a
+ * phone starts dropping frames while it is also holding a microphone open.
+ *
+ * Two modes, and the difference is honest rather than cosmetic. Where the
+ * audio is going to a server the app is holding the stream itself and can
+ * measure it, so the bars REACT to the voice. Where the phone's own
+ * recogniser is listening there is no stream to measure - it owns the
+ * microphone - so the bars run an ambient travelling wave instead. It says
+ * "listening", which is true, and it does not pretend to be somebody's voice,
+ * which would not be.
+ */
+#${PANEL_ID} .vp-bars{display:flex;align-items:center;justify-content:center;gap:3px;height:24px;
+  margin:var(--s2,8px) var(--s4,16px) 0}
+#${PANEL_ID} .vp-bars span{width:4px;height:22px;border-radius:2px;background:var(--bad,#dc2626);
+  transform:scaleY(.12);transform-origin:center;transition:transform .12s cubic-bezier(.22,.61,.36,1);
+  will-change:transform}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span{transition:none;
+  animation:posnic-voice-wave 1.4s ease-in-out infinite}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(1){animation-delay:0s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(2){animation-delay:.1s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(3){animation-delay:.2s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(4){animation-delay:.3s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(5){animation-delay:.4s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(6){animation-delay:.3s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(7){animation-delay:.2s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(8){animation-delay:.1s}
+#${PANEL_ID} .vp-bars[data-ambient="true"] span:nth-child(9){animation-delay:0s}
+@keyframes posnic-voice-wave{0%,100%{transform:scaleY(.15)}50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:reduce){
+  #${PANEL_ID} .vp-bars[data-ambient="true"] span{animation:none;transform:scaleY(.4)}}
 #${PANEL_ID} .vp-note{padding:var(--s2,8px) var(--s4,16px) 0;font-size:var(--t-sm,13px);color:var(--ink-soft,#475569)}
 #${PANEL_ID} .vp-lines{overflow:auto;padding:var(--s2,8px) var(--s4,16px)}
 #${PANEL_ID} .vp-row{display:flex;align-items:center;gap:var(--s2,8px);padding:var(--s2,8px) 0;
@@ -179,6 +244,29 @@
 #${PANEL_ID} .vp-row[data-changed="up"]{background:var(--accent-soft,#eef2ff);margin:0 calc(-1*var(--s4,16px));
   padding-left:var(--s4,16px);padding-right:var(--s4,16px)}
 #${PANEL_ID} .vp-row[data-changed="down"]{opacity:.85}
+/*
+ * THE ORDER ARRIVING, in the sequence it was said.
+ *
+ * Six lines appearing in one frame is a flicker; a person cannot read a list
+ * that was already finished before their eye reached it. Staggered, the rows
+ * land one after another and somebody watching sees their own sentence being
+ * written down, which is the whole reassurance the panel exists to give.
+ *
+ * The delay is capped at the eighth row. A table ordering twenty things
+ * should not wait a second and a half for the last one to admit it exists.
+ */
+#${PANEL_ID}[data-fresh="true"] .vp-row{animation:posnic-voice-land 300ms cubic-bezier(.22,.61,.36,1) both}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(1){animation-delay:0ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(2){animation-delay:45ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(3){animation-delay:90ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(4){animation-delay:135ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(5){animation-delay:180ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(6){animation-delay:225ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(7){animation-delay:270ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(n+8){animation-delay:315ms}
+@keyframes posnic-voice-land{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){
+  #${PANEL_ID}[data-fresh="true"] .vp-row{animation:none}}
 #${PANEL_ID} .vp-row[data-unplaced="true"]{color:var(--warn,#b45309)}
 #${PANEL_ID} .vp-step{width:34px;height:34px;border:1px solid var(--line-strong,#cbd5e1);border-radius:8px;
   background:var(--surface,#fff);color:var(--ink,#0f172a);font-size:18px;font-weight:700;line-height:1;cursor:pointer}
@@ -222,7 +310,13 @@
     button.id = BUTTON_ID;
     button.type = 'button';
     button.setAttribute('aria-label', 'Hold or tap to say the order');
-    button.innerHTML = '<i class="fas fa-microphone"></i>';
+    /* Rings first, icon last, so .vm-ring:nth-child(2) and (3) are rings two
+       and three. With the icon first they were rings ONE and two, and the
+       third never got its delay - two rings left together and the gap the
+       stagger exists to fill came straight back. */
+    button.innerHTML =
+      '<span class="vm-ring"></span><span class="vm-ring"></span><span class="vm-ring"></span>' +
+      '<i class="fas fa-microphone"></i>';
 
     button.addEventListener('pointerdown', onPress);
     button.addEventListener('pointermove', onMove);
@@ -237,6 +331,8 @@
     const button = $(BUTTON_ID);
     if (!button) return;
     button.setAttribute('data-recording', recording ? 'true' : 'false');
+    /* Ready for the next time it opens, whichever path listens then. */
+    if (!recording) resetLevel();
   }
 
   /* --------------------------------------------------------------- panel */
@@ -258,7 +354,7 @@
         <button type="button" class="vp-close" id="${PANEL_ID}-close" aria-label="Close">&times;</button>
       </div>
       <div class="vp-said" id="${PANEL_ID}-said"></div>
-      <div class="vp-bars" id="${PANEL_ID}-bars" hidden><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="vp-bars" id="${PANEL_ID}-bars" data-ambient="true" hidden><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
       <div class="vp-note" id="${PANEL_ID}-note"></div>
       <div class="vp-lines" id="${PANEL_ID}-lines"></div>
       <div class="vp-actions" id="${PANEL_ID}-actions"></div>`;
@@ -377,17 +473,53 @@
     if (element) element.textContent = text || '';
   };
 
+  /*
+   * How loud it is, if anybody can tell.
+   *
+   * Only the server path can: it holds the audio stream itself and meters it.
+   * The phone's own recogniser owns the microphone and hands back words, never
+   * samples - so on that path this is never called and the bars stay on their
+   * ambient wave, which says "listening" without pretending to be a voice.
+   *
+   * The first real level switches the ambient animation off for good, because
+   * a CSS animation and an inline transform fight over the same property and
+   * the winner changes between frames.
+   */
+  let smoothed = 0;
+
   function setLevel(level) {
     const bars = $(`${PANEL_ID}-bars`);
     if (!bars || !bars.children || !bars.children.length) return;
+    bars.setAttribute('data-ambient', 'false');
+
     const v = Math.max(0, Math.min(1, level));
-    /* Five bars, the middle tallest, so a voice reads as a wave and silence
-       as a flat line - the shape people already know from every phone. */
-    const shape = [0.5, 0.8, 1, 0.8, 0.5];
+
+    /*
+     * Smoothed towards the reading rather than snapped to it.
+     *
+     * Speech is not loud continuously - it has a gap between every syllable -
+     * and bars that follow the raw meter twitch between full and flat several
+     * times a word. Rising fast and falling slow is how every level meter ever
+     * built behaves, and it is why they look like sound rather than noise.
+     */
+    smoothed = v > smoothed ? v : smoothed + (v - smoothed) * 0.25;
+
+    /* Tallest in the middle, so a voice reads as a wave and silence as a flat
+       line - the shape people already know from every phone. */
+    const shape = [0.35, 0.55, 0.75, 0.9, 1, 0.9, 0.75, 0.55, 0.35];
     for (let i = 0; i < bars.children.length; i++) {
-      const h = 4 + Math.round(18 * v * shape[i] * (0.7 + 0.3 * Math.random()));
-      bars.children[i].style.height = `${h}px`;
+      const scale = 0.12 + 0.88 * smoothed * shape[i] * (0.85 + 0.15 * Math.random());
+      bars.children[i].style.transform = `scaleY(${Math.min(1, scale).toFixed(3)})`;
     }
+  }
+
+  /** Back to the ambient wave, for the next time the microphone opens. */
+  function resetLevel() {
+    smoothed = 0;
+    const bars = $(`${PANEL_ID}-bars`);
+    if (!bars) return;
+    bars.setAttribute('data-ambient', 'true');
+    for (const bar of bars.children) bar.style.transform = '';
   }
 
   function setTime(seconds) {
@@ -651,13 +783,31 @@
     view.pendingPlace = false;
 
     const { commands } = await resolve(heard);
-    await apply(commands);
+    const touched = await apply(commands);
     view.cart = await cartNow();
     view.status = describe(commands) || 'Nothing to change';
+    /* One render's worth of arrival. Left on, every tap of a stepper would
+       replay the whole list, which turns an event into a tic. */
+    view.fresh = true;
     render();
+    view.fresh = false;
+
+    /*
+     * And on the menu behind the panel, the rows that changed.
+     *
+     * The panel is a summary; the menu is where the waiter's picture of the
+     * order lives. Lighting the rows there in the order they were said means
+     * closing the panel leaves somebody looking at a menu that agrees with
+     * what they just heard back, rather than one that looks untouched.
+     */
+    if (touched.length && typeof MenuScreen !== 'undefined' && MenuScreen.heard) {
+      MenuScreen.heard(touched);
+    }
   }
 
   async function apply(commands) {
+    /* Which rows moved, in the order they were spoken. */
+    const touched = [];
     const change = async (id, delta) => {
       if (!delta) return;
       if (typeof updateQuantity !== 'function') return;
@@ -692,6 +842,7 @@
           continue;
         }
         const id = line.item.id;
+        if (!touched.includes(id)) touched.push(id);
         /* Heard cleanly the second time settles a line that was doubtful the
            first, which is what saying it again is for. */
         if (line.exact) delete view.rough[id];
@@ -730,12 +881,15 @@
         }
       }
     }
+    return touched;
   }
 
   /* --------------------------------------------------------------- render */
 
   function render() {
     showPanel();
+    const panel = $(PANEL_ID);
+    if (panel) panel.setAttribute('data-fresh', view.fresh ? 'true' : 'false');
     setText('status', view.pendingPlace ? 'Ready to send' : 'Heard');
     setText('said', view.said ? `"${view.said}"` : '');
     setText('note', view.status);

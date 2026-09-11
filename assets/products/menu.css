@@ -813,3 +813,136 @@ body.is-searching .fixed-categories {
 .next-page.disabled .cart-count {
   display: none;
 }
+
+/* ========================================================== it responds */
+
+/*
+ * WHAT A TAP SHOULD FEEL LIKE.
+ *
+ * Adding a dish changed a button into a stepper and a number at the bottom of
+ * the screen, both instantly, both silently. Correct, and completely inert:
+ * the waiter's eye is on the row they touched and the confirmation is 600px
+ * away, so the honest question "did that register?" gets asked by pressing
+ * again, and now there are two.
+ *
+ * So the row answers where it was touched, and the answer travels to the bill.
+ * Every one of these is transform or opacity, which are composited - no
+ * layout, no paint, and no reason for the cheap Android a restaurant actually
+ * buys to drop a frame over it.
+ *
+ * All of it is off under prefers-reduced-motion, at the bottom of this file.
+ * Somebody who has asked their phone to stop moving things has asked this too.
+ */
+
+/*
+ * The stepper arriving.
+ *
+ * Overshoot in the curve, not in the keyframes: a spring that settles is the
+ * difference between a control that appeared and one that was PUT there.
+ */
+@keyframes dish-step-in {
+  from { transform: scale(0.72); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.dish-step {
+  animation: dish-step-in 260ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* The count, when it changes on a stepper that is already there. */
+@keyframes dish-qty-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.dish-qty.is-bumped {
+  animation: dish-qty-bump 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * The row acknowledging the tap.
+ *
+ * A wash of the accent that arrives fast and leaves slowly - fast enough to
+ * feel caused by the finger, slow enough to still be there when the eye gets
+ * back from the button.
+ */
+@keyframes dish-took {
+  0%   { background: var(--accent-soft); }
+  100% { background: var(--surface); }
+}
+.dish.is-taking {
+  animation: dish-took 700ms ease-out;
+}
+/* A row already on the bill stays tinted, so it fades back to that instead. */
+.dish.is-in.is-taking {
+  animation: none;
+}
+
+/* The picture giving under the press. */
+.dish-media { transition: transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.dish.is-taking .dish-media { transform: scale(0.94); }
+
+/*
+ * The bill bar taking the news.
+ *
+ * It rises the first time (that is .is-up) and nudges every time after. The
+ * nudge is what connects a tap at the top of the screen to a total at the
+ * bottom: without it the number just differs, and a number that differs is
+ * something you have to check rather than something you saw happen.
+ */
+@keyframes bill-bump {
+  0%   { transform: translateY(0) scale(1); }
+  35%  { transform: translateY(-3px) scale(1.012); }
+  100% { transform: translateY(0) scale(1); }
+}
+.bill-bar.is-up.is-bumped {
+  animation: bill-bump 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes bill-total-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.bill-total.is-bumped {
+  display: inline-block;
+  animation: bill-total-bump 340ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* And the basket in the header, for anybody watching that instead. */
+@keyframes cart-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.45); }
+  100% { transform: scale(1); }
+}
+.cart-count.is-bumped {
+  animation: cart-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * A DISH ARRIVING BECAUSE SOMEBODY SAID SO.
+ *
+ * Voice puts several lines on the bill at once, and several rows changing in
+ * the same frame is a flicker rather than an event. Staggered, each row lands
+ * just after the one above it, so the order reads in the sequence it was
+ * spoken - which is also the order it will be read back to the table.
+ */
+@keyframes dish-heard {
+  0%   { transform: translateX(-10px); background: var(--accent-soft); }
+  100% { transform: translateX(0);     background: var(--surface); }
+}
+.dish.is-heard {
+  animation: dish-heard 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dish-step,
+  .dish-qty.is-bumped,
+  .dish.is-taking,
+  .dish.is-heard,
+  .bill-bar.is-up.is-bumped,
+  .bill-total.is-bumped,
+  .cart-count.is-bumped {
+    animation: none;
+  }
+  .dish.is-taking .dish-media { transform: none; }
+}
