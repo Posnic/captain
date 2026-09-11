@@ -177,6 +177,30 @@ if (fs.existsSync(manifestPath)) {
     ].join('\n');
     manifest = manifest.replace('<application', camera);
   }
+
+  /*
+   * The microphone, for a waiter who says the order instead of tapping it.
+   *
+   * BOTH permissions, because Capacitor's WebView asks for both when a page
+   * calls getUserMedia({audio}): it launches RECORD_AUDIO and
+   * MODIFY_AUDIO_SETTINGS together, and an undeclared one makes the whole
+   * request fail. The page then sees a plain permission denial with nothing to
+   * explain it, which reads as a broken microphone rather than a missing line
+   * in a manifest.
+   *
+   * required="false" so a handset without one still installs and takes orders
+   * by hand; the mic button is simply absent there.
+   */
+  if (!manifest.includes('android.permission.RECORD_AUDIO')) {
+    const microphone = [
+      '<uses-permission android:name="android.permission.RECORD_AUDIO" />',
+      '    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />',
+      '    <uses-feature android:name="android.hardware.microphone" android:required="false" />',
+      '',
+      '    <application',
+    ].join('\n');
+    manifest = manifest.replace('<application', microphone);
+  }
   fs.writeFileSync(manifestPath, manifest, 'utf8');
 }
 

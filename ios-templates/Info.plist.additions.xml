@@ -48,6 +48,26 @@
     <key>NSCameraUsageDescription</key>
     <string>Captain uses the camera once, to scan the code by the till and learn which shop this device belongs to.</string>
 
+    <!--
+      The microphone, for a waiter who says the order instead of tapping it.
+
+      Same class of failure as the camera: iOS terminates an app that reaches
+      for the microphone with no declaration. Written to a waiter, because the
+      sentence is what they are shown.
+    -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Captain listens when you press the microphone, so you can say an order at the table instead of typing it.</string>
+
+    <!--
+      Speech recognition is a SEPARATE permission from the microphone on iOS,
+      and asking for one does not ask for the other. Declared because a shop
+      may use the handset's own recogniser, which works with no key and with
+      the internet down; a shop using a cloud provider records here and
+      transcribes on its own server, and never reaches this.
+    -->
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Captain turns what you say into an order for this shop's menu. Nothing is sent to the kitchen until you have read it and pressed Add.</string>
+
     <key>NSBonjourServices</key>
     <array>
         <string>_http._tcp</string>
