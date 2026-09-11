@@ -17,145 +17,11 @@ import { test, expect } from '@playwright/test';
  * exactly what a shortcut here produced.
  */
 
-const SHOP_ORIGIN = 'https://smoke.posnic.io';
-const API_BASE = `${SHOP_ORIGIN}/api`;
-
-/* What a Posnic server says about itself. Discovery accepts nothing else. */
-const RUNTIME_INFO = {
-  edition: 'cloud',
-  mode: 'cloud',
-  version: '1.0.0',
-  channel: null,
-  apiSchema: 1,
-  syncProtocol: 1,
-  features: { account: true, idempotentOrders: true },
-};
-
-const item = (id, name, price) => ({
-  id,
-  name,
-  available_quantity: 50,
-  negative_stock: false,
-  price,
-  final_price: price,
-  discount_price: 0,
-  tax_price: 0,
-  img: '',
-});
-
-const RESPONSES = {
-  '/runtime-info': RUNTIME_INFO,
-  '/users/kioskMobileLogin': {
-    tokenType: 'Bearer',
-    token: 'smoke-token',
-    expiresIn: 86400,
-    shopKey: 'smoke-shop-key',
-    user: { id: 'user-1', name: 'smoke-user' },
-    branches: [
-      {
-        branch_name: 'Main Branch',
-        store_id: 'store-1',
-        branch_id: 'branch-1',
-        branch_image: 'store.png',
-      },
-    ],
-  },
-  '/items/accessQr': {
-    type: 'success',
-    data: {
-      products: [
-        {
-          category_name: 'Food',
-          items: [
-            item('p-biryani', 'Chicken Biryani', 220),
-            item('p-coffee', 'Coffee', 40),
-            item('p-dosa', 'Masala Dosa', 90),
-          ],
-        },
-      ],
-      kiosk_images: {},
-      tableorders: [],
-      kiosk_payment: {},
-    },
-  },
-  '/sales/getTablesWithActiveOrders': { type: 'success', data: { tables: [] } },
-  '/sales/getFrequentItems': { type: 'success', data: [] },
-  '/sales/getListKot': { type: 'success', data: { orders: [] } },
-  '/sales/getOrderHistory': { type: 'success', data: { orders: [] } },
-};
-
-/**
- * A handset signed in, at a table, looking at the menu, with a recogniser that
- * will report `heard`.
+/*
+ * The journey to the menu lives in tests/support/shop.js, because two specs
+ * walk it and a second copy of a fixture always drifts.
  */
-async function onTheMenu(page, heard) {
-  await page.addInitScript(
-    ({ url, heard }) => {
-      localStorage.setItem('posnic.server', JSON.stringify({ pinned: url, active: url }));
-
-      /* Stubbed before any page script runs, so the mic button is drawn as
-         available and listening resolves without a microphone. */
-      window.__voiceHeard = heard;
-
-      /*
-       * A recogniser that is HELD OPEN, like the real one now is: it reports
-       * words while it runs and only ends when the page stops it. A stub that
-       * ended by itself would pass a test the app cannot pass, because the
-       * whole gesture is the page deciding when the order is finished.
-       */
-      function Recogniser() {
-        this.start = () => {
-          window.__voiceStarted = (window.__voiceStarted || 0) + 1;
-          setTimeout(() => {
-            if (this.onresult) {
-              this.onresult({ results: [[{ transcript: window.__voiceHeard }]] });
-            }
-          }, 0);
-        };
-        this.stop = () => setTimeout(() => this.onend && this.onend(), 0);
-        this.abort = () => {
-          window.__voiceAborted = (window.__voiceAborted || 0) + 1;
-          this.stop();
-        };
-      }
-      /* BOTH names. Chromium defines the unprefixed SpeechRecognition as well
-         as the webkit one, and speech.js reads the unprefixed first - so
-         replacing only the prefixed name leaves the real recogniser in charge
-         and the test asks a headless browser for a microphone. */
-      for (const name of ['SpeechRecognition', 'webkitSpeechRecognition']) {
-        Object.defineProperty(window, name, { configurable: true, value: Recogniser });
-      }
-    },
-    { url: API_BASE, heard }
-  );
-
-  await page.route(`${SHOP_ORIGIN}/**`, async (route) => {
-    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(RESPONSES[path] || { type: 'success', data: {} }),
-    });
-  });
-
-  await page.goto('/index.html');
-  await page.locator('#username').fill('smoke-user');
-  await page.locator('#password').fill('smoke-password');
-  await page.locator('#login-btn').click();
-
-  /* One branch, so the app chooses it rather than asking. basic-flow.spec.js
-     covers the picker; this needs a handset at a table. */
-  await expect(page).toHaveURL(/kot-management\.html$/);
-
-  await page.waitForFunction(() => typeof window.goToAddKot === 'function');
-  await page.locator('.kot-btn-add').click();
-  await expect(page).toHaveURL(/discount\.html$/);
-  await page.locator('#manual_table_input').fill('T1');
-  await page.getByRole('button', { name: /Next/ }).click();
-
-  await expect(page).toHaveURL(/products\.html$/);
-  await expect(page.getByText('Chicken Biryani')).toBeVisible();
-}
+import { onTheMenu } from './support/shop.js';
 
 const sheet = (page) => page.locator('#posnic-voice-sheet');
 const hud = (page) => page.locator('#posnic-voice-hud');
@@ -458,8 +324,29 @@ test('the count is one small line, not a heading', async ({ page }) => {
   expect(box.height).toBeLessThan(30);
 });
 
-test('a search that matches nothing says so, in the same small line', async ({ page }) => {
+test('a search that matches nothing says so, and says what to try', async ({ page }) => {
+  /*
+   * WHERE THIS MOVED, and why.
+   *
+   * It used to be the small grey count line, above an empty list. One line of
+   * 12px grey over a blank screen is indistinguishable from a screen that
+   * failed to load, and the difference matters most to the person least able
+   * to tell.
+   *
+   * Nothing-found is now the only thing on the screen, so it gets the room to
+   * be useful: what did not match, and the trick that would have worked. The
+   * count line stays small for the case it was made small for, which is
+   * counting results that are actually there.
+   */
   await onTheMenu(page, 'two chicken biryani');
   await page.locator('#product-search-input').fill('zzzz');
-  await expect(page.locator('#search-count')).toContainText('Nothing matches');
+
+  const said = page.locator('.menu-nothing');
+  await expect(said).toContainText('Nothing matches');
+  await expect(said).toContainText('zzzz');
+  /* The one thing a waiter needs to know about this search box. */
+  await expect(said).toContainText('cb');
+
+  /* And the count line is empty rather than saying "0 items" underneath it. */
+  await expect(page.locator('#search-count')).toHaveText('');
 });

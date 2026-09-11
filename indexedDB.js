@@ -11,6 +11,22 @@ let db;
 let cart = {}; // ✅ Cart stored in IndexedDB
 let products = {};
 
+/*
+ * A thumbnail that is always SOMETHING.
+ *
+ * The cart line and the Frequently Ordered strip render a bare <img>, and a
+ * dish with no photograph now carries an empty path rather than a placeholder
+ * one - which would make those an `<img src="">`, and an empty src makes a
+ * browser re-request the page itself.
+ *
+ * The menu does not use this: a row with no photograph draws the dish's icon,
+ * which is better than a grey square forty times over. See
+ * assets/common/menu-view.js.
+ */
+function thumbUrl(src) {
+    return resolveLocalImageUrl(src) || "images/default-product.webp";
+}
+
 function resolveLocalImageUrl(src) {
     if (!src || typeof src !== "string") return src;
 
@@ -428,9 +444,38 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                 });
             }
 
-            categories.forEach(category => {
-                category.items.forEach(item => {
-                    let imageSrc = (!item.img || item.img.trim() === "" || item.img === "item.svg") ? "images/default-product.webp" : resolveLocalImageUrl(item.img);
+            /*
+             * THE SHOP'S OWN ORDER, KEPT.
+             *
+             * A menu is not alphabetical and it is not arbitrary: starters
+             * come before mains and desserts come last, because that is the
+             * order somebody eats in and the order the shop arranged its card
+             * in. The server sends the categories that way.
+             *
+             * It was thrown away here, and IndexedDB's getAll() hands rows back
+             * sorted by id - so the menu came out in whatever order the items
+             * happened to be created, which put Desserts second on a real
+             * shop's menu. Both positions are recorded so the screen can put
+             * the card back the way the shop wrote it.
+             */
+            categories.forEach((category, categoryIndex) => {
+                category.items.forEach((item, itemIndex) => {
+                    /*
+                     * NO PHOTOGRAPH MEANS NO PHOTOGRAPH.
+                     *
+                     * This used to substitute images/default-product.webp, so
+                     * a shop that had uploaded no pictures - which is most of
+                     * them - got the same grey square forty times down the
+                     * menu. That reads as an app that failed to load rather
+                     * than a menu without pictures.
+                     *
+                     * Left empty, the row draws the dish's own icon instead,
+                     * chosen on the server so this app, the kiosk and a QR
+                     * code all show the same thing for the same dish. See
+                     * assets/common/menu-view.js.
+                     */
+                    const hasPhoto = item.img && item.img.trim() !== "" && item.img !== "item.svg";
+
                     products.push({
                         id: item.id?.$oid || item.id?.toString() || Date.now(),
                         name: item.name || "Unknown",
@@ -442,8 +487,29 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                         tax_price: parseFloat(item.tax_price) || 0,   // 44.10
                         subtotal: parseFloat(item.price) || 0,   // 164.06
                         final_price: parseFloat(item.final_price) || 0,   // 201.60
-                        img: imageSrc,
+                        img: hasPhoto ? resolveLocalImageUrl(item.img) : "",
+                        /*
+                         * The emoji for this dish, picked from its name by the
+                         * server. Empty when the name suggests nothing, which
+                         * is an honest answer rather than a gap.
+                         */
+                        icon: item.icon || "",
                         category_name: category.category_name,
+                        category_sort: categoryIndex,
+                        item_sort: itemIndex,
+                        /*
+                         * The veg mark and the kitchen's timing. Both have been
+                         * in this response for months and neither was ever
+                         * stored, so the screen could not have shown them even
+                         * once it had somewhere to put them.
+                         */
+                        diet: item.diet || "",
+                        prep_minutes: Number(item.prep_minutes) || 0,
+                        /* The dish's own description, for the menu row. */
+                        description: item.description || "",
+                        /* And the same words as the DEFAULT NOTE on a line,
+                           which is what item_description has always meant to
+                           the cart and the kitchen ticket. */
                         item_description: item.description || item.item_description || ""
                     });
                 });
@@ -622,7 +688,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
                 onclick="toggleCartItemDetails('${item.id}', event)">
             <span class="expand-icon">${isExpanded ? '▴' : '▾'}</span>
         </button>
-        <img src="${resolveLocalImageUrl(item.img)}" alt="${item_name}" class="item-image">
+        <img src="${thumbUrl(item.img)}" alt="${item_name}" class="item-image">
         <div class="item-content">
             <div class="item-details">
                 <div class="item-name">${item_name}</div>
@@ -764,135 +830,99 @@ async function updateCartQuantity(id, change) {
     renderCart(cartData);
 }
 
+/*
+ * The menu, drawn once, top to bottom.
+ *
+ * WHAT THIS USED TO DO. It built a chip per category and drew ONE category at
+ * a time, swapping the whole list on every tap. That is the kiosk pattern, and
+ * a waiter is not a kiosk: a table orders a biryani, a Coke and a gulab jamun,
+ * so every third item cost a tap back up to the rail, a rebuilt list, and the
+ * scroll position gone.
+ *
+ * Now the whole menu is drawn in sections and the chips became an INDEX - they
+ * jump you to a section, and scrolling to a section lights the chip. Nothing
+ * is ever rebuilt, so no place is ever lost. See assets/products/menu.js.
+ */
 async function loadProducts() {
-    console.log("🔄 Loading products from IndexedDB...");
     const storedProducts = await getData("products");
 
-    if (storedProducts.length === 0) {
-        console.error("❌ No products found in IndexedDB!");
-        return;
+    products = {};
+
+    /*
+     * "Uncategorised" rather than a crash.
+     *
+     * category_name is whatever the shop typed, and an item saved before the
+     * field existed has none - on which the old `.toLowerCase()` threw, and
+     * the menu stopped drawing at that item. One bad row hid the rest of the
+     * shop's menu.
+     */
+    for (const product of storedProducts) {
+        const name = String(product.category_name || 'Uncategorised');
+        const key = name.toLowerCase().replace(/\s/g, "_") || 'uncategorised';
+        if (!products[key]) products[key] = [];
+        products[key].push({ ...product, category_name: name, _categoryKey: key });
     }
 
-    products = {};
-    let categories = new Set();
-
-    storedProducts.forEach(product => {
-        let categoryKey = product.category_name.toLowerCase().replace(/\s/g, "_");
-        if (!products[categoryKey]) products[categoryKey] = [];
-        products[categoryKey].push(product);
-        categories.add(
-            `<div class="category-item" data-category="${categoryKey}" onclick="showCategory('${categoryKey}', this)">${product.category_name}</div>`
-        );
-    });
-
-    // ✅ Build "All" category = combination of all products
+    /* Still built, because search and the voice matcher both read it. It is
+       not drawn: MenuView skips it, or the menu would appear twice. */
     const allProducts = [];
     Object.values(products).forEach(arr => allProducts.push(...arr));
     products["all"] = allProducts;
 
-    // ✅ Build HTML with "All" first, then other categories
-    const allChip = `<div class="category-item" data-category="all" onclick="showCategory('all', this)">All</div>`;
-    const otherChips = [...categories].join("");
-    $("#category-list").html(allChip + otherChips);
+    /*
+     * DRAWING IS THE MENU SCREEN'S JOB, and only the menu screen has one.
+     *
+     * indexedDB.js is loaded by every page. Login calls this the moment a
+     * branch's items arrive, to fill `products` before it redirects - and on
+     * THAT page there is no #product-list, no MenuView and no MenuScreen.
+     *
+     * Reaching for them anyway threw a ReferenceError inside an await, which
+     * does not stop the page or print anything a person would see: the login
+     * simply never redirected, and the screen sat there looking like a server
+     * that had not answered. Exactly the shape of the bug that cost a day in
+     * assets/common/self-test.js, in a different file.
+     *
+     * So the menu is built for whoever asked, and drawn only where there is
+     * somewhere to draw it.
+     */
+    const listEl = document.getElementById('product-list');
+    if (!listEl || typeof MenuScreen === 'undefined' || typeof MenuView === 'undefined') return;
 
-    // ✅ Retrieve last active category from localStorage
-    let lastActiveCategory = localStorage.getItem("lastActiveCategory");
+    const loader = document.getElementById('page-loader');
 
-    // ✅ If we have a saved category, restore it
-    if (lastActiveCategory && products[lastActiveCategory]) {
-        const categoryElement = $(`.category-item[data-category='${lastActiveCategory}']`).first();
-        if (categoryElement.length) {
-            categoryElement.addClass("active");
-            showCategory(lastActiveCategory, categoryElement[0]);
-            return;
-        }
+    if (!storedProducts.length) {
+        listEl.innerHTML = MenuView.nothing(
+            'No items for this branch yet',
+            'Whoever set up the till needs to add them. Tap refresh once they have.'
+        );
+        $("#category-list").empty();
+        if (loader) loader.style.display = 'none';
+        return;
     }
 
-    // ✅ Otherwise, default to "All"
-    const allElement = $(".category-item[data-category='all']").first();
-    if (allElement.length) {
-        allElement.addClass("active");
-        showCategory("all", allElement[0]);
-    }
-}
-
-async function showCategory(category, element) {
-    $(".category-item").removeClass("active");
-    $(element).addClass("active");
-
-    // ✅ Update heading dynamically
-    let categoryName = $(element).text();
-    $("#category-heading").text(categoryName);
-
-    // ✅ Store the last active category in localStorage
-    localStorage.setItem("lastActiveCategory", category);
-
-    let html = "";
-
-    // make a sorted copy: in-stock first, then "Not available"
-    const sortedProducts = [...products[category]].sort((a, b) => {
-        const aAllowNeg = a.negative_stock === true;
-        const bAllowNeg = b.negative_stock === true;
-
-        const aOut = !aAllowNeg && (a.available_quantity || 0) <= 0;
-        const bOut = !bAllowNeg && (b.available_quantity || 0) <= 0;
-
-        if (aOut === bOut) return 0;   // both in-stock or both out-of-stock → keep order
-        return aOut ? 1 : -1;          // out-of-stock goes AFTER in-stock
-    });
-
-    // ✅ read cart only once
     const storedCart = await getCartData();
     const cartMap = new Map(storedCart.map(i => [i.id, i]));
 
-    for (let product of sortedProducts) {
-        let cartItem = cartMap.get(product.id);
-        let quantity = cartItem ? cartItem.quantity : 0;
-        const hasQty = quantity > 0;
-        const activeClass = quantity > 0 ? "active" : "";
+    MenuScreen.draw(products, cartMap, {
+        image: resolveLocalImageUrl,
+        popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
+    });
 
-        let product_name = product.name;
-
-        const allowNegative = product.negative_stock === true;
-        const outOfStock = !allowNegative && (product.available_quantity || 0) <= 0;
-        const remaining = Math.max((product.available_quantity || 0) - quantity, 0);
-
-        const stockLabel = allowNegative
-            ? 'Stock: ∞'
-            : `Stock: ${remaining}`;
-
-        html += `
-        <div class="product-card ${activeClass} ${outOfStock ? 'disabled' : ''}" data-id="${product.id}">
-            <div class="stock-badge" id="stock-${product.id}">
-                ${stockLabel}
-            </div>
-            <img src="${resolveLocalImageUrl(product.img)}" alt="${product_name}">
-            <p class="product-title">${product_name}</p>
-            <div class="product-price">
-                ${outOfStock
-                ? '<span class="out-of-stock">Not available</span>'
-                : `₹${product.price.toFixed(2)}`
-            }
-            </div>
-
-            <!-- When qty = 0 → show ADD -->
-            <div class="cart-empty ${hasQty ? 'hidden' : ''}">
-                <button class="btn-add" data-id="${product.id}" ${outOfStock ? 'disabled' : ''}>ADD</button>
-            </div>
-
-            <!-- When qty > 0 → show - 0 + -->
-            <div class="cart-controls ${hasQty ? '' : 'hidden'}">
-                <button class="btn-decrease" data-id="${product.id}" ${outOfStock || quantity <= 0 ? 'disabled' : ''}>-</button>
-                <span id="qty-${product.id}" style="font-size: 18px; font-weight: bold;">${quantity}</span>
-                <button class="btn-increase" data-id="${product.id}" ${outOfStock ? 'disabled' : ''}>+</button>
-            </div>
-        </div>`;
-    }
-
-    $("#product-list").html(html);
     updateCart();
-    const loader = document.getElementById('page-loader');
-    loader.style.display = 'none';
+    if (loader) loader.style.display = 'none';
+}
+
+/*
+ * Go to a category, rather than becoming one.
+ *
+ * This used to redraw the list with only that category in it. Nothing calls it
+ * that way any more - the rail scrolls - but the name is kept because it is
+ * how the rest of the app has always said "take me to the drinks", and a
+ * rename would be a second change riding along with this one.
+ */
+function showCategory(category) {
+    if (typeof MenuScreen === 'undefined') return;
+    MenuScreen.goTo(category);
 }
 
 // ✅ Event Binding for `.product-card` Clicks
@@ -974,23 +1004,15 @@ async function updateQuantity(id, change) {
     await saveCartData(cartData);
     updateCart();
 
-    // ✅ Update UI quantity text
-    $('#qty-' + id).text(item.quantity);
-    // Toggle ADD vs - 0 + controls
-    const hasQty = item.quantity > 0;
-    const $card = $(`.product-card[data-id="${id}"]`);
-    $card.find(".cart-empty").toggleClass("hidden", hasQty);
-    $card.find(".cart-controls").toggleClass("hidden", !hasQty);
-
-    // ✅ Disable or enable "-" button
-    const $decreaseBtn = $(`.btn-decrease[data-id="${id}"]`);
-    const $productCard = $(`.product-card[data-id="${id}"]`);
-    if (item.quantity === 0) {
-        $decreaseBtn.prop("disabled", true);
-        $productCard.removeClass("active");
-    } else {
-        $decreaseBtn.prop("disabled", false);
-        $productCard.addClass("active");
+    /*
+     * The one row that changed, and nothing else.
+     *
+     * Not a redraw. Somebody halfway down a long menu who adds a dish and is
+     * returned to the top has lost their place for no reason they can see,
+     * and the menu is the one screen where that is most of the screen.
+     */
+    if (typeof MenuScreen !== 'undefined') {
+        MenuScreen.setRow(id, item.quantity, storedProduct);
     }
 }
 
@@ -1025,6 +1047,10 @@ async function updateCart() {
         $("#cart-total").text(totalPrice.toFixed(2));
         $("#summary-display").text(`${totalQty} Items | ₹${totalPrice.toFixed(2)}`);
         $("#next-btn").prop("disabled", totalQty === 0);
+
+        /* And the bar at the bottom, which rises only once there is something
+           on the bill worth crossing the screen for. */
+        if (typeof MenuScreen !== 'undefined') MenuScreen.bill(totalQty, totalPrice);
     } catch (error) {
         console.error("❌ Error updating cart:", error);
     }
