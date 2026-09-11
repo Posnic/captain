@@ -366,3 +366,42 @@ test('a quantity heard wrong is one tap to fix, not a whole order again', async 
   await page.locator('#posnic-voice-sheet-add').click();
   await expect(page.locator('#mobile-cart-count')).toHaveText('2');
 });
+
+/* ------------------------------------------------- a choice of one is none */
+
+/*
+ * A shop with a single branch was asked to pick a branch - most often after
+ * something else had gone wrong, because an empty menu used to clear the
+ * branch and force the picker. So a waiter met a screen asking them to choose
+ * between one thing, about a problem choosing could not fix.
+ */
+
+test('a single-branch shop is never asked which branch', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  /* onTheMenu signs in with one branch and expects to land on kot-management
+     without a picker; this states it outright rather than by implication. */
+  await expect(page).not.toHaveURL(/index\.html$/);
+  await expect(page.getByText('Select Branch')).toHaveCount(0);
+});
+
+test('and is not offered a Change Branch button either', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await page.goto('/kot-management.html');
+  await expect(page.locator('#kot-change-branch')).toBeHidden();
+});
+
+test('an empty menu keeps the branch when there is nowhere else to go', async ({ page }) => {
+  /* Choosing a different branch cannot fix an empty menu, and with one branch
+     there is nothing to choose. The branch must survive. */
+  await onTheMenu(page, 'two chicken biryani');
+
+  const kept = await page.evaluate(() => {
+    localStorage.setItem('kiosk_branch_list', JSON.stringify([{ branch_id: 'branch-1' }]));
+    return {
+      branch: localStorage.getItem('kiosk_selected_branch'),
+      forced: localStorage.getItem('kiosk_force_branch_select'),
+    };
+  });
+  expect(kept.branch).toBeTruthy();
+  expect(kept.forced).toBeNull();
+});

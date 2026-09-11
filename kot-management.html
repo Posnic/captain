@@ -24,7 +24,11 @@
         <div class="kot-header">
             <!-- <div class="kot-title">KOT</div> -->
             <div class="kot-actions">
-                <button class="kot-btn kot-btn-branch" onclick="changeBranch()">
+                <!-- Hidden until there is more than one branch to change to.
+                     A shop with a single branch was offered a button that
+                     takes them to a list with one card on it: not a choice,
+                     and one more thing on a screen a waiter reads at speed. -->
+                <button class="kot-btn kot-btn-branch" id="kot-change-branch" hidden onclick="changeBranch()">
                     <i class="fas fa-store"></i> Change Branch
                 </button>
                 <button class="kot-btn kot-btn-refresh" onclick="refreshPage()">
