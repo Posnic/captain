@@ -13,9 +13,24 @@
  * not: a waiter who types has seen what they typed, and a waiter who speaks
  * has not seen anything yet.
  *
- * Nothing here orders anything. It produces a list for a person to look at,
- * because the one thing worse than failing to hear an order is confidently
- * sending the wrong one to a kitchen.
+ * TWO LAYERS, ON PURPOSE.
+ *
+ *   understand()  what was said, as dishes and quantities. It has no opinion
+ *                 about what to DO with them.
+ *   commands()    what was MEANT: add these, take those off, make it three,
+ *                 send it to the kitchen. A waiter at a table talks in verbs,
+ *                 and an app that only hears nouns makes them tap for the
+ *                 rest.
+ *
+ * The verbs are a fixed list rather than anything cleverer, because a
+ * restaurant needs the same dozen every night and a misread verb is worse
+ * than a misread dish: "remove" heard as "add" doubles an order instead of
+ * halving it. Where a shop has an AI provider configured the server can do
+ * the reading instead (see voice-order-ui.js); this is what every shop gets.
+ *
+ * Nothing here orders anything. It produces commands for something else to
+ * carry out, and the one that reaches a kitchen is never carried out without
+ * a person pressing a button first.
  */
 
 (function (root, factory) {
@@ -35,6 +50,67 @@
   };
 
   const MAX = 99;
+
+  /*
+   * What a waiter says to change an order, grouped by what it means.
+   *
+   * Multi-word phrases are listed so they can be matched before their parts:
+   * "take off" is a removal, "take" alone is nothing, and "send to kitchen"
+   * must be seen before "to" is read as the number two.
+   *
+   * Removal is the shorter, more careful list. An extra way to say "add" that
+   * is wrong costs one line somebody deletes; an extra way to say "remove"
+   * that is wrong costs a dish the table asked for. "without" and "no" are
+   * deliberately absent - "biryani without onion" and "no ice" are notes on a
+   * dish, not dishes taken off.
+   */
+  const VERBS = {
+    add: [
+      'add', 'put', 'get me', 'get us', 'give me', 'give us', 'bring', 'bring me',
+      'i want', 'we want', 'i need', 'we need', "i'd like", 'i would like', 'we would like',
+      'order', 'also', 'plus', 'one more', 'another', 'include',
+    ],
+    remove: [
+      'remove', 'delete', 'cancel', 'take off', 'take out', 'take away', 'minus', 'drop',
+      'scrap', 'strike', 'no more', 'less', 'fewer', 'get rid of',
+    ],
+    set: ['make it', 'make that', 'change it to', 'change to', 'change that to', 'set', 'instead'],
+    /* Whole-utterance commands: no dish follows them. */
+    place: [
+      'send to kitchen', 'send it to kitchen', 'send to the kitchen', 'send it to the kitchen',
+      'send this to the kitchen', 'send the order', 'send it', 'send order', 'place order',
+      'place the order', 'place this order', 'fire it', 'fire the order', 'submit order',
+      'submit the order', 'confirm order', 'confirm the order', "that's all", 'thats all',
+      'that is all', 'that will be all', 'all done', 'done', 'finish', 'finished', 'go ahead',
+      'punch it', 'punch the order',
+    ],
+    clear: [
+      'clear the cart', 'clear cart', 'clear everything', 'clear it', 'clear all', 'start over',
+      'start again', 'empty the cart', 'empty cart', 'cancel everything', 'cancel the order',
+      'cancel order', 'cancel all', 'remove everything', 'remove all', 'delete everything',
+      'delete all', 'scrap it', 'scrap the order', 'forget it', 'forget that',
+    ],
+    show: [
+      'show cart', 'show the cart', 'show me the cart', 'show order', 'show the order',
+      "what's in the cart", 'whats in the cart', 'what is in the cart', 'read it back',
+      'read back', 'read the order', 'repeat', 'repeat the order', 'what did i say',
+      'what do we have', 'what have we got',
+    ],
+  };
+
+  /* Longest phrase first, so "take off" is found before "take" could be. */
+  const VERB_LIST = Object.keys(VERBS)
+    .flatMap((verb) => VERBS[verb].map((phrase) => ({ verb, words: phrase.split(' ') })))
+    .sort((a, b) => b.words.length - a.words.length);
+
+  /* Words that carry no order in them. Stripped once, AFTER verbs are found,
+     so every rule after this sees "chicken biryani" and not "some of the
+     chicken biryani for the table please". */
+  const FILLER = new Set([
+    'please', 'kindly', 'the', 'some', 'of', 'um', 'uh', 'er', 'like', 'just', 'then', 'so',
+    'okay', 'ok', 'now', 'can', 'could', 'you', 'we', 'i', 'me', 'us', 'for', 'table', 'them',
+    'it', 'this', 'that', 'those', 'these',
+  ]);
 
   /**
    * Split what was said into one phrase per dish.
@@ -193,5 +269,117 @@
     });
   }
 
-  return { parse, phrases, quantityOf, understand, matchOne, distance, WORDS };
+  /* ------------------------------------------------------------- commands */
+
+  /**
+   * Words, lower-cased, with the punctuation a recogniser adds taken off.
+   *
+   * A comma is a token of its own, never glued to the word before it. The
+   * first version left "kitchen," as one word, so "two dosa, send to kitchen,"
+   * never matched "send to kitchen" and the order went in as three dishes -
+   * one of them a kitchen. Two tests caught it before a waiter did.
+   */
+  function wordsOf(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[.!?;]+/g, ' , ')
+      .replace(/,/g, ' , ')
+      .replace(/[^a-z0-9,'\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  /** The verb phrase that starts at this position, if any. */
+  function verbAt(words, at) {
+    for (const entry of VERB_LIST) {
+      const n = entry.words.length;
+      if (at + n > words.length) continue;
+      let hit = true;
+      for (let k = 0; k < n; k++) {
+        if (words[at + k] !== entry.words[k]) {
+          hit = false;
+          break;
+        }
+      }
+      if (hit) return { verb: entry.verb, length: n };
+    }
+    return null;
+  }
+
+  /**
+   * What was MEANT, as a list of commands in the order they were said.
+   *
+   *   "add two coffee"                        -> [add 2 Coffee]
+   *   "remove one coffee"                     -> [remove 1 Coffee]
+   *   "two biryani and take off the coffee"   -> [add 2 Biryani, remove 1 Coffee]
+   *   "make it three coffee"                  -> [set 3 Coffee]
+   *   "send it to the kitchen"                -> [place]
+   *   "two dosa, send to kitchen"             -> [add 2 Dosa, place]
+   *   "clear the cart"                        -> [clear]
+   *
+   * Words before any verb are an addition, because that is what a waiter
+   * reading an order off a table is doing. A verb starts a new command and
+   * owns every dish until the next verb. "send to kitchen" and its kin own
+   * nothing and are moved to the END whatever position they were said in -
+   * "send it, and two more coffee" means both, in the only order that makes
+   * sense. "clear" goes FIRST, so what follows is added to an empty cart.
+   *
+   * @returns {Array<{verb: string, lines: Array}>}
+   */
+  function commands(text, indexed, search) {
+    const words = wordsOf(text);
+    const out = [];
+    let current = null;
+    let trailing = null; // place / show, carried out last
+    let clearFirst = false;
+
+    const open = (verb) => {
+      current = { verb, words: [] };
+      out.push(current);
+    };
+
+    for (let i = 0; i < words.length; ) {
+      const hit = verbAt(words, i);
+      if (hit) {
+        if (hit.verb === 'place' || hit.verb === 'show') {
+          trailing = hit.verb;
+        } else if (hit.verb === 'clear') {
+          clearFirst = true;
+        } else {
+          open(hit.verb);
+        }
+        i += hit.length;
+        continue;
+      }
+      if (words[i] === ',') {
+        /* A comma inside a command separates dishes, which understand()
+           already handles; kept in place for it. */
+        if (current) current.words.push(',');
+        i += 1;
+        continue;
+      }
+      if (!current) open('add');
+      current.words.push(words[i]);
+      i += 1;
+    }
+
+    const result = [];
+    if (clearFirst) result.push({ verb: 'clear', lines: [] });
+
+    for (const command of out) {
+      /* Strip the filler here, AFTER verbs were found: "i want" is a verb and
+         "i" is filler, and the verb has to win. */
+      const cleaned = command.words
+        .filter((w) => w === ',' || !FILLER.has(w))
+        .join(' ')
+        .replace(/\s+,\s*/g, ', ');
+      const lines = understand(cleaned, indexed, search);
+      if (lines.length) result.push({ verb: command.verb, lines });
+    }
+
+    if (trailing) result.push({ verb: trailing, lines: [] });
+    return result;
+  }
+
+  return { parse, phrases, quantityOf, understand, matchOne, distance, commands, WORDS, VERBS };
 });
