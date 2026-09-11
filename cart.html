@@ -12,7 +12,12 @@
     <script src="indexedDB.js?v=5"></script>
     <script src="assets/common/order-queue-ui.js"></script>
     <script src="assets/cart/script.js"></script>
+    <!-- The decisions every screen shares, made once. Before the screen's own
+         stylesheet, so a screen can override a token rather than fight one. -->
+    <link href="assets/common/design.css" rel="stylesheet">
     <link href="assets/cart/style.css" rel="stylesheet">
+    <!-- After style.css, which it replaces most of. -->
+    <link href="assets/cart/bill.css" rel="stylesheet">
     <link href="assets/cart/notes-modal.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <script src="assets/checkout/checkout.js"></script>
@@ -24,7 +29,7 @@
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
 </head>
 
-<body>
+<body class="bill-screen">
 
     <!-- Page Loader -->
     <div id="page-loader">
@@ -38,33 +43,50 @@
     </div>
     <div class="container">
 
-        <div class="cart-header">
-            <a href="products.html" class="back-link">← Back</a>
-            <div class="cart-title">Summary</div>
+        <div class="bill-head">
+            <a href="products.html" class="back-link" aria-label="Back to the menu">←</a>
+            <div class="bill-head-title">Bill</div>
             <button class="header-btn" onclick="openOrderHistory()" title="Order History">
                 <i class="fas fa-history"></i>
             </button>
         </div>
 
-        <div class="cart-items" id="cart-summary">
-            <!-- Cart items will be dynamically inserted here -->
+        <!-- Which table this is for: the one piece of context a waiter
+             carrying three orders needs before reading a word of it. -->
+        <div class="bill-where" id="bill-where" hidden></div>
+
+        <div class="bill-lines" id="cart-summary">
+            <!-- Lines are drawn by renderCart in indexedDB.js -->
         </div>
-        <!-- Cart Footer (same style as products/discount) -->
-        <div class="btn-footer">
-            <button type="button" class="btn btn-clear" onclick="onCancelClick()">
+
+        <!--
+            ONE totals block, at the bottom, where a bill puts it. This used to
+            be twelve accordions, one per line, each holding that line's own
+            subtotal, discount and tax. Nobody adds up twelve accordions.
+        -->
+        <div class="bill-totals" id="bill-totals" hidden></div>
+
+        <!--
+            ONE of these sends food to a kitchen.
+
+            The old footer was Clear, a total and Confirm, all the same size and
+            weight, so the button that throws the order away looked exactly like
+            the one that commits it. The destructive one is quiet and on the
+            left; the committing one is the accent and carries the amount.
+        -->
+        <div class="bill-bar-actions">
+            <button type="button" class="bill-clear" onclick="onCancelClick()">
                 <i class="fas fa-trash-alt"></i> Clear
             </button>
-
-            <div class="discount-cart-summary">
-                <i class="fas fa-shopping-cart"></i>
-                <span id="cart-qty">0</span> |
-                ₹<span id="cart-total">0.00</span>
-            </div>
-
-            <button type="button" class="btn btn-next" id="next-btn" onclick="kioskPlaceOrder()">
-                <i class="fas fa-check-circle"></i> Confirm
+            <button type="button" class="bill-send" id="next-btn" onclick="kioskPlaceOrder()">
+                <span>Send to kitchen</span>
+                <span class="bill-send-amount" id="bill-send-amount"></span>
             </button>
         </div>
+
+        <!-- Still written to by renderCart and by code on other screens. -->
+        <span id="cart-qty" hidden>0</span>
+        <span id="cart-total" hidden>0.00</span>
     </div>
 
     <!-- Cancel Modal -->
@@ -129,6 +151,31 @@
     </div>
 
     <script src="assets/cart/notes-modal.js"></script>
+    <script>
+        /*
+         * Which table, at the top.
+         *
+         * The waiter chose it two screens ago and has taken an order since.
+         * Carrying three at once, "is this the one for table four" is the
+         * question they ask before reading a single line - and the screen
+         * could not answer it.
+         */
+        (function () {
+            const where = document.getElementById('bill-where');
+            if (!where) return;
+            const table = localStorage.getItem('kiosk_table_no');
+            const type = localStorage.getItem('orderType');
+            if (!table && !type) return;
+
+            where.hidden = false;
+            where.innerHTML = table
+                ? 'For <strong></strong>'
+                : '<strong></strong>';
+            const strong = where.querySelector('strong');
+            /* textContent, not a template: a table number is typed by hand. */
+            strong.textContent = table ? 'Table ' + table : type;
+        })();
+    </script>
 
 </body>
 

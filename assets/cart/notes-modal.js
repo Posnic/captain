@@ -5,12 +5,22 @@ let currentCartNotesProductId = null;
 $(document).ready(function () {
     console.log("✅ Cart notes modal script loaded");
 
-    // Open notes modal when clicking on item-details (product name area)
-    $(document).on("click", ".item-details", function (e) {
+    /*
+     * Open the notes editor by tapping the line.
+     *
+     * THE SELECTORS FOLLOW THE BILL MARKUP, which was rewritten: .item-details
+     * and .cart-item no longer exist, and a jQuery selector that matches
+     * nothing does not error - it binds to nothing and the tap silently does
+     * nothing at all. That is the whole hazard with delegated handlers, and it
+     * is why these are pinned by a test.
+     *
+     * The row's id is deliberately unchanged: cart-item-<id> is what the write
+     * back below looks up, and what every other screen expects.
+     */
+    $(document).on("click", ".bill-body", function (e) {
         e.stopPropagation();
-        console.log("📝 Product details clicked!");
 
-        const $cartItem = $(this).closest('.cart-item');
+        const $cartItem = $(this).closest('.bill-line');
         const itemId = $cartItem.attr('id'); // e.g., "cart-item-123"
 
         if (!itemId) {
@@ -19,10 +29,10 @@ $(document).ready(function () {
         }
 
         const productId = itemId.replace('cart-item-', '');
-        const productName = $cartItem.find('.item-name').text().trim();
+        const productName = $cartItem.find('.bill-name').text().trim();
 
         // Get current notes text (remove "Note:" prefix if exists)
-        const $notesDiv = $cartItem.find('.item-notes');
+        const $notesDiv = $cartItem.find('.bill-note');
         let currentNotes = '';
         if ($notesDiv.length > 0) {
             currentNotes = $notesDiv.text().trim();
@@ -81,20 +91,19 @@ $(document).ready(function () {
 
             // Update the UI immediately without reload
             const $cartItem = $(`#cart-item-${currentCartNotesProductId}`);
-            const $notesDiv = $cartItem.find('.item-notes');
+            const $notesDiv = $cartItem.find('.bill-note');
 
             if (notes) {
-                // If notes exist, update or create the notes div
                 if ($notesDiv.length > 0) {
-                    // Update existing notes
                     $notesDiv.text(notes);
                 } else {
-                    // Create new notes div
-                    const $itemName = $cartItem.find('.item-name');
-                    $itemName.after(`<div class="item-notes">${notes}</div>`);
+                    /* .text(), not an interpolated div: a note is typed by a
+                       waiter or dictated to a recogniser, and it used to go
+                       into the page as markup. */
+                    $cartItem.find('.bill-name')
+                        .after($('<div class="bill-note"></div>').text(notes));
                 }
             } else {
-                // If notes are empty, remove the notes div
                 $notesDiv.remove();
             }
 

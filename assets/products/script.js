@@ -524,6 +524,7 @@ async function setCartItemNotes(id, notes) {
             tax_price: Number(p.tax_price || 0),
             final_price: Number(p.final_price || 0),
             img: p.img,
+            icon: p.icon || "",
             quantity: 0,
             notes: notes || ""
         };
