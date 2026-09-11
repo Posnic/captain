@@ -175,3 +175,101 @@ test('the shortcut finds the dish it is short for', () => {
   assert.equal(typed.quantity, 2);
   assert.equal(ItemSearch.search(index, typed.term)[0].name, 'Chicken Biryani');
 });
+
+/*
+ * THREE ATTEMPTS, EACH ONLY IF THE ONE BEFORE FOUND NOTHING.
+ *
+ * The safety argument for the two new passes is that they are strictly
+ * additive: a search that matched something today matches the same things in
+ * the same order tomorrow, because the later passes never run for it. The only
+ * searches that change are the ones that used to come back empty.
+ *
+ * Everything above this line is that guarantee, unchanged.
+ */
+
+const SPOKEN_MENU = [
+  'Chicken Biryani', 'Mutton Biryani', 'Chicken 65', 'Masala Dosa',
+  'Paneer Butter Masala', 'Filter Coffee', 'Gobi Manchurian', 'Medhu Vada',
+].map((name, id) => ({ id: String(id), name }));
+
+const HEARD = ItemSearch.index(SPOKEN_MENU);
+const top = (term, opts) => {
+  const hits = ItemSearch.search(HEARD, term, opts || {});
+  return hits.length ? hits[0].name : null;
+};
+
+test('a dish whose name is a number is findable by saying the number', () => {
+  /*
+   * THE DISH IS CALLED CHICKEN 65. It is written with digits on every board in
+   * Tamil Nadu and nobody says "chicken six five", so a recogniser hands back
+   * "sixty five" and the old search looked for a dish spelled that way.
+   */
+  assert.equal(top('chicken sixty five', { numbers: true }), 'Chicken 65');
+  assert.equal(top('sixty five', { numbers: true }), 'Chicken 65');
+  /* And through the speech path, which turns numbers on as well. */
+  assert.equal(top('chicken sixty five', { heard: true }), 'Chicken 65');
+  assert.equal(ItemSearch.numerals('chicken sixty five'), 'chicken 65');
+  assert.equal(ItemSearch.numerals('twenty one'), '21');
+  assert.equal(ItemSearch.numerals('sixty'), '60');
+});
+
+test('a word that is not a number is left alone', () => {
+  assert.equal(ItemSearch.numerals('masala dosa'), 'masala dosa');
+});
+
+test('TYPING IS UNCHANGED: no phonetic help unless it was spoken', () => {
+  /*
+   * The deliberate decision at the top of this file. A waiter who types has
+   * seen what they typed and can fix it; the same keystrokes must always
+   * produce the same order, or typing another letter moves the row they were
+   * aiming at.
+   */
+  assert.equal(top('briyani'), null);
+  assert.equal(top('chiken'), null);
+  assert.equal(top('panner'), null);
+});
+
+test('but a recogniser gets the benefit of the doubt', () => {
+  assert.equal(top('chiken briyani', { heard: true }), 'Chicken Biryani');
+  assert.equal(top('masala thosai', { heard: true }), 'Masala Dosa');
+  assert.equal(top('panner butter masala', { heard: true }), 'Paneer Butter Masala');
+  assert.equal(top('gopi manchurian', { heard: true }), 'Gobi Manchurian');
+  assert.equal(top('medhu wada', { heard: true }), 'Medhu Vada');
+});
+
+test('every word said has to land somewhere in the name', () => {
+  /*
+   * Scoring a fraction and taking the best would match "chicken biryani" to
+   * Mutton Biryani on the strength of the half that is right, which is the one
+   * mistake nobody would forgive at a table.
+   */
+  assert.equal(top('chiken briyani', { heard: true }), 'Chicken Biryani');
+  assert.equal(top('mutton briyani', { heard: true }), 'Mutton Biryani');
+  assert.equal(top('zzzz briyani', { heard: true }), null);
+});
+
+test('a name with fewer spare words wins', () => {
+  const menu = [
+    { id: 'a', name: 'Chicken Biryani Family Pack' },
+    { id: 'b', name: 'Chicken Biryani' },
+  ];
+  const ix = ItemSearch.index(menu);
+  assert.equal(ItemSearch.search(ix, 'chiken briyani', { heard: true })[0].name, 'Chicken Biryani');
+});
+
+test('sounding like nothing on the menu finds nothing', () => {
+  /* The failure that matters: silence beats a confident wrong dish. */
+  assert.equal(top('helicopter', { heard: true }), null);
+  assert.equal(top('uh a the', { heard: true }), null);
+
+  /* An empty box is not a failed search: it is the whole menu, which is what
+     the screen shows when nobody has typed anything. */
+  assert.equal(ItemSearch.search(HEARD, '', { heard: true }).length, SPOKEN_MENU.length);
+});
+
+test('an exact match is never displaced by a phonetic one', () => {
+  /* The later passes run only when the earlier ones came back empty, so this
+     holds by construction - and this is the test that says so out loud. */
+  assert.equal(top('filter coffee', { heard: true }), 'Filter Coffee');
+  assert.equal(top('chicken 65', { heard: true }), 'Chicken 65');
+});

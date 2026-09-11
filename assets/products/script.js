@@ -1002,6 +1002,16 @@ async function applyProductFilter() {
         /* What the shop actually sells, from the frequent items already
            fetched for the shortcuts row. Breaks ties only. */
         popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
+        /*
+         * "chicken sixty five" finds Chicken 65 when typed out too.
+         *
+         * A deterministic rewrite, not a guess, and it runs only when the term
+         * as typed found nothing - so no search that works today changes. NOT
+         * `heard`: phonetic matching stays off for typing, because somebody
+         * who types has seen what they typed and the same keystrokes must
+         * always give the same order.
+         */
+        numbers: true,
     });
 
     // Load cart so qty / stock status stay correct
