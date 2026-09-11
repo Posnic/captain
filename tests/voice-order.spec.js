@@ -253,15 +253,19 @@ test('a rough match says so, so the waiter checks that one', async ({ page }) =>
 
 /* ------------------------------------------------------------- the gesture */
 
-test('a quick tap is not a recording, and says how it works', async ({ page }) => {
-  /* Somebody brushing the button at a table gets told, not an open microphone
-     on the conversation they are having. */
-  await onTheMenu(page, 'two chicken biryani');
-  await page.locator('#posnic-voice-mic').click();
+test('a TAP starts it, and a second tap stops it', async ({ page }) => {
+  /* Like a voice note: tap and it listens until you tap again, hold and it
+     listens until you let go. Both are the same intention, and the app
+     should not have an opinion about which somebody used. */
+  await onTheMenu(page, 'two chicken biryani and three coffee');
 
-  await expect(hud(page)).toBeHidden();
-  await expect(sheet(page)).toBeHidden();
-  await expect(page.locator('#mobile-cart-count')).toHaveText('0');
+  await page.locator('#posnic-voice-mic').click();
+  await expect(hud(page)).toBeVisible();
+  await expect(hud(page)).toContainText('tap the mic again to stop');
+
+  await page.locator('#posnic-voice-mic').click();
+  await expect(sheet(page)).toBeVisible();
+  await expect(sheet(page)).toContainText('Chicken Biryani');
 });
 
 test('while held, the screen says it is listening', async ({ page }) => {
@@ -277,6 +281,9 @@ test('while held, the screen says it is listening', async ({ page }) => {
   await expect(hud(page)).toContainText('Slide left to cancel');
   await expect(page.locator('#posnic-voice-hud-words')).toHaveText(/chicken biryani/i);
 
+  /* Held past the tap threshold, or releasing reads as a tap and deliberately
+     keeps listening - see "a TAP starts it" above. */
+  await page.waitForTimeout(500);
   await page.mouse.up();
   await expect(hud(page)).toBeHidden();
 });

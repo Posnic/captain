@@ -371,16 +371,37 @@ test('Add clears the sheet, so the next table starts empty', async () => {
 
 /* ---------------------------------------------------------- the gesture */
 
-test('a quick tap is not a recording', async () => {
-  /* Somebody brushing the button at a table gets told how it works, not an
-     open microphone on a conversation they are having. */
-  const { api, toasts, sessions } = load();
+test('a TAP starts it and keeps listening, like a voice note', async () => {
+  /*
+   * The first version refused a tap and said "hold the button" - one more
+   * thing to learn, and not even what a voice note does. Somebody in a hurry
+   * taps; somebody careful holds. Both are the same intention.
+   */
+  const { api, sessions } = load();
   api.onPress({ clientX: 10, clientY: 10, pointerId: 1, preventDefault() {}, target: {} });
   api.onRelease({ clientX: 10, clientY: 10, pointerId: 1 });
 
+  assert.equal(api.recording, true, 'a tap did not leave it listening');
+  assert.equal(sessions[0].cancelled, false, 'a tap threw the recording away');
+});
+
+test('and a second tap is what stops it', async () => {
+  const { api } = load();
+  api.onPress({ clientX: 10, clientY: 10, pointerId: 1, preventDefault() {}, target: {} });
+  api.onRelease({ clientX: 10, clientY: 10, pointerId: 1 });
+
+  api.onPress({ clientX: 10, clientY: 10, pointerId: 2, preventDefault() {}, target: {} });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(api.recording, false, 'a second tap did not stop it');
+});
+
+test('holding still works, and releasing still ends it', async () => {
+  const { api } = load();
+  api.begin();
+  assert.equal(api.recording, true);
+  await api.finish();
   assert.equal(api.recording, false);
-  assert.equal(sessions[0].cancelled, true, 'a tap left a microphone open');
-  assert.match(toasts.join(' '), /hold the button/i);
+  assert.deepEqual(names(api), ['2 x Chicken Biryani', '3 x Coffee']);
 });
 
 test('sliding left cancels, and nothing is transcribed', async () => {

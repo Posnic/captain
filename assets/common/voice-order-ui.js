@@ -76,6 +76,8 @@
   /* The live recording, if there is one. */
   let session = null;
   let held = null;
+  /* Listening without a finger on the button - by a tap, or by sliding up. */
+  let locked = false;
   let ticker = null;
 
   /**
@@ -269,6 +271,13 @@
   /* ---------------------------------------------------------- the gesture */
 
   function onPress(event) {
+    /* Already listening because of a tap: this press is the one that ends it,
+       the way tapping a voice note again does. */
+    if (session && locked) {
+      event.preventDefault();
+      finish();
+      return;
+    }
     if (session) return;
     event.preventDefault();
     if (event.target.setPointerCapture) {
@@ -286,7 +295,7 @@
   }
 
   function onMove(event) {
-    if (!held || held.locked || !session) return;
+    if (!held || held.locked || locked || !session) return;
     const dx = held.x - event.clientX;
     const dy = held.y - event.clientY;
 
@@ -312,13 +321,31 @@
   function onRelease() {
     if (!held) return;
     /* Locked means hands free: letting go is not the end of it. */
-    if (held.locked) return;
+    if (held.locked) {
+      locked = true;
+      return;
+    }
 
     const quick = Date.now() - held.at < TAP_MS;
     held = null;
+
+    /*
+     * A TAP STARTS IT. A HOLD ALSO STARTS IT. Either is fine.
+     *
+     * The first version refused a tap and said "hold the button" - which is
+     * one more thing to learn, and it is not even what a voice note does: tap
+     * and it listens until you tap again, hold and it listens until you let
+     * go. Somebody in a hurry taps. Somebody being careful holds. Both are
+     * the same intention and the app should not have an opinion.
+     *
+     * The recording is already open by this point, so a tap simply LEAVES it
+     * open and the button becomes Stop.
+     */
     if (quick) {
-      abandon();
-      say('Hold the button while you say the order.');
+      locked = true;
+      setHudHint('Listening - tap the mic again to stop');
+      const stop = document.getElementById(`${HUD_ID}-stop`);
+      if (stop) stop.hidden = false;
       return;
     }
     finish();
@@ -327,6 +354,7 @@
   /* --------------------------------------------------------- the recording */
 
   function begin() {
+    locked = false;
     /*
      * The CACHED answer, not a fresh one. Asking the native recogniser costs a
      * round trip to the bridge, and this runs on the press itself - a delay
@@ -386,6 +414,7 @@
     if (!current) return;
     session = null;
     held = null;
+    locked = false;
     clearInterval(ticker);
     paint(false);
     buzz(15);
@@ -409,6 +438,7 @@
 
   function close(alsoHud) {
     session = null;
+    locked = false;
     held = null;
     clearInterval(ticker);
     paint(false);
