@@ -231,6 +231,22 @@ if (fs.existsSync(manifestPath)) {
    * screen rather than being covered by the keyboard that was meant to fill
    * it in.
    */
+  /*
+   * Chromium's net stack watches connectivity through this.
+   *
+   * Not required to open a socket, and its absence is quiet: the WebView's
+   * NetworkChangeNotifier simply never learns what kind of connection the
+   * device has. Declared because a net stack that cannot see the network is
+   * the wrong thing to be guessing about while chasing requests that hang.
+   */
+  if (!manifest.includes('ACCESS_NETWORK_STATE')) {
+    manifest = manifest.replace(
+      '<uses-permission android:name="android.permission.INTERNET" />',
+      '<uses-permission android:name="android.permission.INTERNET" />' +
+        '\n    <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />'
+    );
+  }
+
   if (!manifest.includes('windowSoftInputMode')) {
     manifest = manifest.replace(
       'android:name=".MainActivity"',
