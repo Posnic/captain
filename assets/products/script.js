@@ -969,6 +969,25 @@ async function renderCartSummaryIntoSheet() {
     `;
 }
 
+/*
+ * How many matched, in one small line.
+ *
+ * It had a heading's worth of space around it, which is a lot of a phone
+ * screen to spend telling somebody how many things they can already see.
+ */
+function setSearchCount(text) {
+    let line = document.getElementById('search-count');
+    if (!line) {
+        const host = document.querySelector('.product-search');
+        if (!host) return;
+        line = document.createElement('div');
+        line.id = 'search-count';
+        line.className = 'search-count';
+        host.appendChild(line);
+    }
+    line.textContent = text || '';
+}
+
 async function applyProductFilter() {
     const input = document.getElementById('product-search-input');
     if (!input) return;
@@ -979,6 +998,14 @@ async function applyProductFilter() {
     window._pendingQuantity = typed.quantity;
     const term = typed.term.trim().toLowerCase();
     showQuantityHint(typed.quantity);
+
+    /*
+     * Searching is a different screen, and the keyboard has already taken
+     * half of it. Everything that is not a result steps aside while there is
+     * something in the box - see .is-searching in products/style.css.
+     */
+    document.body.classList.toggle('is-searching', !!term);
+    setSearchCount('');
 
     // 🔁 If search is empty → do nothing (keep current list)
     if (!term) {
@@ -1072,6 +1099,15 @@ async function applyProductFilter() {
 
     const listEl = document.getElementById('product-list');
     if (listEl) listEl.innerHTML = html;
+
+    /* Said quietly, and only while it is worth saying. */
+    setSearchCount(
+        seenIds.size === 0
+            ? 'Nothing matches "' + term + '"'
+            : seenIds.size === 1
+                ? '1 item'
+                : seenIds.size + ' items'
+    );
 
     const loader = document.getElementById('page-loader');
     if (loader) loader.style.display = 'none';
