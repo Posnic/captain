@@ -331,6 +331,26 @@ test('every line can be stepped and struck after the fact', async () => {
   assert.deepEqual(lines(cart), []);
 });
 
+test('a rough match is flagged on its line, and settles when said cleanly', async () => {
+  /*
+   * "briyani" resolving to Chicken Biryani is usually right and sometimes the
+   * wrong biryani. It goes in the cart - one tap to fix beats saying it again -
+   * but the line says what was actually heard, so the waiter checks that one.
+   * Said cleanly a second time, the flag goes: that is what repeating is for.
+   */
+  const { api, cart, context } = load({ recognised: 'two chicken briyani' });
+  api.begin();
+  await api.finish();
+  assert.deepEqual(lines(cart), ['2 x Chicken Biryani']);
+  assert.deepEqual(api.view.rough, { 0: 'chicken briyani' }, 'the guess is not flagged');
+
+  context.__heard = 'one chicken biryani';
+  api.begin();
+  await api.finish();
+  assert.deepEqual(api.view.rough, {}, 'a clean hearing did not settle the doubtful line');
+  assert.deepEqual(lines(cart), ['3 x Chicken Biryani']);
+});
+
 /* ------------------------------------------------ the panel is beside the work */
 
 test('the panel never dims the screen or covers the bill bar', async () => {

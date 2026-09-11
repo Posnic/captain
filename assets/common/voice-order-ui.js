@@ -66,9 +66,20 @@
   let locked = false;
   let ticker = null;
 
-  /* What the panel shows: the cart as it stands, what just changed, and
-     anything said that could not be placed on the menu. */
-  let view = { cart: [], changed: {}, unplaced: [], said: '', status: '', pendingPlace: false };
+  /* What the panel shows: the cart as it stands, what just changed, which of
+     those were a guess, and anything said that could not be placed at all. */
+  let view = {
+    cart: [],
+    changed: {},
+    /* item id -> the words actually said, for a line matched roughly.
+       "briyani" resolving to Chicken Biryani is usually right and sometimes
+       the wrong biryani, and the waiter can only check it if told. */
+    rough: {},
+    unplaced: [],
+    said: '',
+    status: '',
+    pendingPlace: false,
+  };
 
   /* ------------------------------------------------------------- helpers */
 
@@ -174,6 +185,7 @@
 #${PANEL_ID} .vp-qty{min-width:26px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
 #${PANEL_ID} .vp-name{flex:1;min-width:0;padding-left:var(--s1,4px)}
 #${PANEL_ID} .vp-delta{font-size:var(--t-xs,12px);font-weight:700;color:var(--ink-soft,#475569)}
+#${PANEL_ID} .vp-rough{font-size:var(--t-xs,12px);color:var(--warn,#b45309)}
 #${PANEL_ID} .vp-x{border:0;background:none;color:var(--ink-faint,#94a3b8);font-size:20px;cursor:pointer;
   width:34px;height:34px;line-height:1}
 #${PANEL_ID} .vp-empty{padding:var(--s4,16px) 0;color:var(--ink-soft,#475569)}
@@ -304,14 +316,42 @@
       }
       if (!fixed) continue;
       const box = candidate.getBoundingClientRect();
-      /* On screen, and touching the bottom edge. A bill bar slid away below
-         the viewport is not a bar to sit on top of. */
-      if (box && box.height && box.top < viewport && box.bottom >= viewport - 2) {
+      if (!box || !box.height) continue;
+      /*
+       * On screen and touching the bottom edge - or ON ITS WAY there.
+       *
+       * The bill bar slides up over 220ms when the first item lands, and the
+       * panel is placed the instant the words are applied, while the bar is
+       * still mid-slide and measures as off-screen. Read only the geometry and
+       * the panel takes bottom:0, then the bar arrives underneath it and the
+       * bill button is covered - the exact complaint. So a bar that has
+       * declared where it is going (.is-up) is measured by its height now,
+       * and a transitionend re-places the panel for good measure.
+       */
+      const arriving = candidate.classList && candidate.classList.contains('is-up');
+      if (arriving || (box.top < viewport && box.bottom >= viewport - 2)) {
         return Math.round(box.height);
       }
     }
     return 0;
   }
+
+  /* The bar moves after the panel is placed; follow it. Bound once. */
+  (function followTheBar() {
+    if (typeof document.addEventListener !== 'function') return;
+    document.addEventListener('transitionend', (event) => {
+      const target = event && event.target;
+      if (!target || !target.classList || !target.classList.contains('bill-bar')) return;
+      const element = $(PANEL_ID);
+      if (element && element.getAttribute('data-open') === 'true') place();
+    });
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', () => {
+        const element = $(PANEL_ID);
+        if (element && element.getAttribute('data-open') === 'true') place();
+      });
+    }
+  })();
 
   function showPanel() {
     place();
@@ -643,6 +683,10 @@
           continue;
         }
         const id = line.item.id;
+        /* Heard cleanly the second time settles a line that was doubtful the
+           first, which is what saying it again is for. */
+        if (line.exact) delete view.rough[id];
+        else view.rough[id] = line.term;
         if (command.verb === 'add') await change(id, line.quantity);
         else if (command.verb === 'remove') await change(id, -line.quantity);
         else if (command.verb === 'set') {
@@ -673,6 +717,10 @@
             <button type="button" class="vp-step" data-act="more" data-id="${escapeHtml(row.id)}" aria-label="One more">+</button>
             <span class="vp-name">${escapeHtml(row.name)}${
               delta ? ` <span class="vp-delta">${delta > 0 ? '+' : ''}${delta}</span>` : ''
+            }${
+              view.rough[row.id]
+                ? `<div class="vp-rough">heard "${escapeHtml(view.rough[row.id])}" - check this one</div>`
+                : ''
             }</span>
             <button type="button" class="vp-x" data-act="strike" data-id="${escapeHtml(row.id)}" aria-label="Remove">&times;</button>
           </div>`);
