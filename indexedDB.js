@@ -85,6 +85,7 @@ function clearKioskLocalCache(options = {}) {
         "kiosk_force_branch_select",
         "branch_id",
         "kiosk_tableorders",
+        "kiosk_table_service",
         "orderType",
         "lastActiveCategory",
         "kiosk_table_no",
@@ -358,6 +359,27 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
             const kioskImages = result.data.kiosk_images;
             const tableorders = result.data.tableorders || [];
             localStorage.setItem('kiosk_tableorders', JSON.stringify(tableorders));
+
+            /*
+             * WHETHER THIS SHOP DOES TABLE SERVICE AT ALL.
+             *
+             * An empty floor plan means two completely different things: a
+             * restaurant that has not typed its tables in yet, and a shop that
+             * does not seat anybody. Both arrived as an empty array, so the
+             * handset drew the same bare "Enter Table Number" box for a waiter
+             * at a restaurant mid-setup and for somebody signing in at a
+             * grocer, and told neither of them which.
+             *
+             * The server sends the branch's own switch now, so the screen can
+             * say the true thing. Stored as a string because localStorage has
+             * no other kind, and read back with an explicit compare - '' and
+             * 'false' are both truthy here, which is how a switch ends up
+             * permanently on.
+             */
+            localStorage.setItem(
+                'kiosk_table_service',
+                result.data.table_service === true ? 'yes' : 'no'
+            );
 
             /*
              * What this SHOP decided about voice ordering.

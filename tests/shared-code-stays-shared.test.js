@@ -101,3 +101,56 @@ test('a script that is linked exists', () => {
     }
   }
 });
+
+/*
+ * WHY THERE ARE NO TABLES, which is two different answers.
+ *
+ * The table screen drew the same bare "Enter Table Number" box whether the
+ * shop had not finished setting its tables up or did not do table service at
+ * all. A waiter at a restaurant mid-setup and somebody signing in at a grocer
+ * got the same blank box, and neither was told which they were looking at.
+ */
+
+test('the handset stores whether this shop does table service', () => {
+  const source = fs.readFileSync(path.join(root, 'indexedDB.js'), 'utf8');
+  assert.match(
+    source,
+    /result\.data\.table_service === true \? 'yes' : 'no'/,
+    'the table service switch is not stored'
+  );
+
+  /*
+   * Compared explicitly, because localStorage has only strings and both ''
+   * and 'false' are truthy - which is how a switch ends up permanently on.
+   */
+  const page = fs.readFileSync(path.join(root, 'discount.html'), 'utf8');
+  assert.match(page, /tableService === 'no'/, 'the flag is read as a truthy string');
+});
+
+test('an empty floor plan says WHICH kind of empty it is', () => {
+  const page = fs.readFileSync(path.join(root, 'discount.html'), 'utf8');
+  assert.match(page, /Restaurant is turned off for this shop/, 'no message for a shop without table service');
+  assert.match(page, /No tables set up yet/, 'no message for a restaurant mid-setup');
+});
+
+test('the message never blocks the order', () => {
+  /*
+   * Typing a table number by hand has to keep working while somebody goes and
+   * changes the setting. A notice that stops the order helps nobody standing
+   * at a table with a customer waiting.
+   */
+  const page = fs.readFileSync(path.join(root, 'discount.html'), 'utf8');
+  /* Forward from the notice, not from the top of the file: restoreTableChoice
+     is called in several places and the first one is well above this. */
+  const from = page.indexOf('const tableService');
+  const block = page.slice(from, page.indexOf('restoreTableChoice(choice)', from));
+  assert.match(block, /manual_table_input/, 'the box is gone when there are no tables');
+  assert.match(block, /You can still type a table number below/, 'the message does not say the order can continue');
+});
+
+test('the flag is forgotten when the shop is', () => {
+  /* Or a handset moved to a second shop keeps the first shop's answer. */
+  const source = fs.readFileSync(path.join(root, 'indexedDB.js'), 'utf8');
+  const cleared = source.slice(source.indexOf('"kiosk_selected_branch"'), source.indexOf('].forEach'));
+  assert.match(cleared, /kiosk_table_service/, 'the flag survives clearing the shop');
+});
