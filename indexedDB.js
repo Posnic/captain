@@ -601,6 +601,7 @@ async function validateCartWithProducts(updatedProducts) {
                     ...item,
                     name: updatedProduct.name,
                     img: updatedProduct.img,
+                    icon: updatedProduct.icon || "",
                     price: Number(updatedProduct.price || item.price || 0),
                     discount_price: Number(updatedProduct.discount_price || item.discount_price || 0),
                     tax_price: Number(updatedProduct.tax_price || item.tax_price || 0),
@@ -636,6 +637,7 @@ async function syncCartSilently(updatedProducts) {
                     ...item,
                     name: updatedProduct.name,
                     img: updatedProduct.img,
+                    icon: updatedProduct.icon || "",
                     price: updatedProduct.price,
                     tax_price: updatedProduct.tax_price,
                 };
@@ -653,38 +655,75 @@ async function syncCartSilently(updatedProducts) {
 }
 
 // ✅ Optimized renderCart function
+/*
+ * THE BILL. The screen a waiter reads back to the table.
+ *
+ * Rewritten with the menu, because tapping "View bill" used to leave one
+ * design and arrive in another, and an app that changes character between two
+ * screens somebody crosses forty times a night does not read as one app.
+ *
+ * Three things were wrong beyond the look, and all three are fixed here:
+ *
+ *   THE NAMES WERE CUT at twenty-five characters with an ellipsis, in
+ *   JavaScript, on the one screen that gets read out loud to a customer.
+ *
+ *   EVERY LINE HAD ITS OWN ACCORDION holding that line's subtotal, discount
+ *   and tax. Nobody adds up twelve accordions. The question is what the WHOLE
+ *   thing comes to, and it is asked once, at the bottom.
+ *
+ *   NOTHING WAS ESCAPED. Dish names come from the shop's own database and
+ *   notes now come from a speech recogniser, and both went into innerHTML raw.
+ */
 async function renderCart(cartData = null, skipRedirect = false) {
     try {
         if (!cartData) {
-            cartData = await getCartData(); // ✅ Fetch only if not already available
+            cartData = await getCartData();
         }
 
-        // remember which extra panels are currently open
-        const expandedIds = new Set(
-            Array.from(document.querySelectorAll('.cart-item-extra'))
-                .filter(el => el.style.display !== 'none')
-                .map(el => el.id.replace('cart-item-extra-', ''))
-        );
-
-        let totalPrice = 0;
-        let totalQty = 0;
-        let html = "";
+        const host = document.getElementById('cart-summary');
+        const loader = document.getElementById('page-loader');
 
         if (cartData.length === 0) {
             $("#next-btn").prop("disabled", true);
-            $("#cart-summary").html("<p class='text-center'>Cart is empty</p>");
             $("#cart-total,#cart-qty,#mobile-cart-count").text("0.00");
-            $("#summary-display").text(`0 Items | ₹0.00`);
+            $("#summary-display").text('0 Items | ₹0.00');
+            setBillTotals(null);
 
-            if (!skipRedirect) {
-                setTimeout(() => {
-                    window.location.href = "kot-management.html";
-                }, 2000);
+            if (host) {
+                host.innerHTML =
+                    '<div class="bill-empty">' +
+                    '<div class="bill-empty-face">\u{1f9fe}</div>' +
+                    '<div class="bill-empty-said">Nothing on this bill yet</div>' +
+                    '<div class="bill-empty-why">Add something from the menu and it will show up here.</div>' +
+                    '<a href="products.html">Back to the menu</a>' +
+                    '</div>';
             }
+
+            /*
+             * AND NO TIMED REDIRECT.
+             *
+             * This used to throw you back to the table list two seconds after
+             * you removed the last line - the app deciding you had finished.
+             * Somebody who takes an item off is usually about to add a
+             * different one, and being moved mid-thought is how an order gets
+             * started again from scratch. The way back is a button now, which
+             * is a decision rather than a countdown.
+             *
+             * skipRedirect stays in the signature because callers still pass
+             * it, and one of them is a queue flush that must not navigate.
+             */
+            if (loader) loader.style.display = 'none';
             return;
         }
 
-        cartData.forEach(item => {
+        let totalQty = 0;
+        let subtotalAll = 0;
+        let discountAll = 0;
+        let taxAll = 0;
+        let totalPrice = 0;
+        let html = '';
+
+        for (const item of cartData) {
             const qty = item.quantity || 0;
             const subtotal = Number(item.subtotal || 0);
             const discountUnit = Number(item.discount_price || 0);
@@ -694,111 +733,137 @@ async function renderCart(cartData = null, skipRedirect = false) {
             const lineSubtotal = subtotal * qty;
             const lineDiscount = discountUnit * qty;
             const lineTax = taxUnit * qty;
-            const lineFinal = finalUnit
-                ? finalUnit * qty
-                : lineSubtotal - lineDiscount + lineTax;
+            const lineFinal = finalUnit ? finalUnit * qty : lineSubtotal - lineDiscount + lineTax;
 
             totalQty += qty;
-            totalPrice += lineFinal;   // use final for footer total
+            subtotalAll += lineSubtotal;
+            discountAll += lineDiscount;
+            taxAll += lineTax;
+            totalPrice += lineFinal;
 
-            const item_name = item.name.length > 25 ? item.name.substring(0, 25) + '...' : item.name;
-            const isExpanded = expandedIds.has(String(item.id));
+            const id = billText(item.id);
 
-            html += `
-    <div class="cart-item" id="cart-item-${item.id}">
-        <button class="expand-toggle ${isExpanded ? 'expanded' : ''}"
-                onclick="toggleCartItemDetails('${item.id}', event)">
-            <span class="expand-icon">${isExpanded ? '▴' : '▾'}</span>
-        </button>
-        <img src="${thumbUrl(item.img)}" alt="${item_name}" class="item-image">
-        <div class="item-content">
-            <div class="item-details">
-                <div class="item-name">${item_name}</div>
-                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ""}
-                <div class="item-prices">
-                    <span class="unit-price">₹${finalUnit.toFixed(2)} per item</span>
-                    <span class="total-price">₹${lineFinal.toFixed(2)}</span>
-                </div>
-            </div>
+            /* The photograph, or the dish's own icon - the same fallback the
+               menu uses, so a shop with no pictures looks deliberate on both
+               screens rather than broken on one. */
+            const thumb = item.img
+                ? '<img class="bill-thumb" src="' + billText(thumbUrl(item.img)) + '" alt="">'
+                : '<div class="bill-thumb" aria-hidden="true">' + billText(item.icon || '\u{1f37d}') + '</div>';
 
-            <div class="quantity-control">
-                <button class="qty-btn" onclick="updateCartQuantity('${item.id}', -1)">-</button>
-                <span class="qty-value" id="qty-${item.id}">${qty}</span>
-                <button class="qty-btn" onclick="updateCartQuantity('${item.id}', 1)">+</button>
-            </div>
-        </div>
+            html +=
+                '<div class="bill-line" id="cart-item-' + id + '">' +
+                thumb +
+                '<div class="bill-body">' +
+                /* WHOLE. Wrapped by CSS at two lines, never cut at
+                   twenty-five characters in JavaScript. */
+                '<p class="bill-name">' + billText(item.name) + '</p>' +
+                (item.notes ? '<div class="bill-note">' + billText(item.notes) + '</div>' : '') +
+                '<div class="bill-each">₹' + finalUnit.toFixed(2) + ' each</div>' +
+                '</div>' +
+                '<div class="bill-right">' +
+                '<span class="bill-amount">₹' + lineFinal.toFixed(2) + '</span>' +
+                '<div class="bill-step">' +
+                '<button type="button" data-bill="less" data-id="' + id + '" aria-label="One fewer">&minus;</button>' +
+                '<span class="bill-qty" id="qty-' + id + '">' + qty + '</span>' +
+                '<button type="button" data-bill="more" data-id="' + id + '" aria-label="One more">+</button>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+        }
 
-        <!-- Hidden extra price details -->
-        <div class="cart-item-extra" id="cart-item-extra-${item.id}" style="${isExpanded ? '' : 'display:none;'}">
-            <div class="cart-item-extra-inner">
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Subtotal</span>
-                    <span class="cart-line-value">₹${lineSubtotal.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Discount</span>
-                    <span class="cart-line-value">‑₹${lineDiscount.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Tax</span>
-                    <span class="cart-line-value">₹${lineTax.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line cart-item-final">
-                    <span class="cart-line-label">Total</span>
-                    <span class="cart-line-value">
-                        ₹${finalUnit.toFixed(2)} × ${qty} = ₹${lineFinal.toFixed(2)}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>`;
+        if (host) host.innerHTML = html;
+
+        setBillTotals({
+            subtotal: subtotalAll,
+            discount: discountAll,
+            tax: taxAll,
+            total: totalPrice,
+            quantity: totalQty,
         });
 
-        $("#cart-summary").html(html);
-        $("#summary-display").text(`${totalQty} Items | ₹${totalPrice.toFixed(2)}`);
-        $('#cart-qty,#mobile-cart-count').html(totalQty);
+        $("#summary-display").text(totalQty + ' Items | ₹' + totalPrice.toFixed(2));
+        $('#cart-qty,#mobile-cart-count').text(totalQty);
         $("#cart-total").text(totalPrice.toFixed(2));
-        // Auto-adjust font size based on content length
-        const cartTotalEl = document.getElementById('cart-total');
-        const cartSummary = document.querySelector('.discount-cart-summary');
-        if (cartTotalEl && cartSummary) {
-            const totalText = cartTotalEl.textContent;
-            cartSummary.classList.remove('long-content', 'very-long-content');
+        $("#next-btn").prop("disabled", totalQty === 0);
 
-            if (totalText.length > 8) {
-                cartSummary.classList.add('very-long-content');
-            } else if (totalText.length > 6) {
-                cartSummary.classList.add('long-content');
-            }
-        }
-        const loader = document.getElementById('page-loader');
-        loader.style.display = 'none';
-
+        if (loader) loader.style.display = 'none';
     } catch (error) {
         console.error("❌ Error rendering cart:", error);
     }
 }
 
-function toggleCartItemDetails(id, evt) {
-    if (evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
-    }
-    const el = document.getElementById(`cart-item-extra-${id}`);
-    if (!el) return;
+/*
+ * The steppers, delegated.
+ *
+ * Bound once rather than written into every row as an onclick. An onclick
+ * carrying an id is a string containing that id, so a dish whose name or id
+ * holds an apostrophe ends the attribute early and the button silently stops
+ * working - which is the kind of thing that happens to one shop's menu and
+ * nobody else's.
+ */
+document.addEventListener('click', function (event) {
+    const button = event.target.closest && event.target.closest('[data-bill]');
+    if (!button) return;
+    updateCartQuantity(button.getAttribute('data-id'), button.getAttribute('data-bill') === 'more' ? 1 : -1);
+});
 
-    const willShow = (el.style.display === 'none' || el.style.display === '');
-    el.style.display = willShow ? 'block' : 'none';
+/*
+ * Text that cannot become markup.
+ *
+ * Dish names come from the shop's own database and notes now come from a
+ * speech recogniser, and both went into innerHTML raw. Neither is a stranger's
+ * input, which is why it never broke - but "never broke" is not the same as
+ * safe.
+ */
+function billText(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
-    // update arrow icon on the same row
-    const row = document.getElementById(`cart-item-${id}`);
-    if (!row) return;
-    const btn = row.querySelector('.expand-toggle');
-    const icon = btn ? btn.querySelector('.expand-icon') : null;
-    if (btn && icon) {
-        btn.classList.toggle('expanded', willShow);
-        icon.textContent = willShow ? '▴' : '▾';
+/*
+ * What the whole bill comes to, in one place.
+ *
+ * A row is drawn only when it says something. A shop that charges no tax does
+ * not need a line reading "Tax 0.00", and a bill with no discount does not
+ * need to be told so - every row that is always there is a row nobody reads.
+ */
+function setBillTotals(totals) {
+    const host = document.getElementById('bill-totals');
+    if (!host) return;
+
+    if (!totals || !totals.quantity) {
+        host.innerHTML = '';
+        host.hidden = true;
+        return;
     }
+    host.hidden = false;
+
+    const money = (n) => '₹' + (Number(n) || 0).toFixed(2);
+    let rows = '';
+
+    /* Subtotal is only worth a line when something happens BELOW it. With no
+       discount and no tax it is the total, said twice. */
+    if (totals.discount > 0 || totals.tax > 0) {
+        rows += '<div class="bill-row"><span>Subtotal</span><span>' + money(totals.subtotal) + '</span></div>';
+    }
+    if (totals.discount > 0) {
+        rows += '<div class="bill-row is-off"><span>Discount</span><span>-' + money(totals.discount) + '</span></div>';
+    }
+    if (totals.tax > 0) {
+        rows += '<div class="bill-row"><span>Tax</span><span>' + money(totals.tax) + '</span></div>';
+    }
+    rows += '<div class="bill-row is-total"><span>Total</span><span>' + money(totals.total) + '</span></div>';
+
+    host.innerHTML = rows;
+
+    /* And on the button that commits it, so the amount and the action are one
+       thing rather than two places to look. */
+    const amount = document.getElementById('bill-send-amount');
+    if (amount) amount.textContent = money(totals.total);
 }
 
 // ✅ Optimized remove function: No redundant IndexedDB calls
@@ -976,6 +1041,7 @@ async function updateQuantity(id, change) {
             id: product.id,
             name: product.name,
             img: product.img,
+            icon: product.icon || "",
             price: Number(product.price || 0),
             discount_price: Number(product.discount_price || 0),
             tax_price: Number(product.tax_price || 0),
