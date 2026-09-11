@@ -24,6 +24,15 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.SelfTest = api;
 })(typeof globalThis !== 'undefined' ? globalThis : window, function () {
+  /*
+   * globalThis inside here, never `root`.
+   *
+   * `root` is the WRAPPER's parameter; this factory is called with no
+   * arguments, so every reference to it here throws ReferenceError - which is
+   * what the first emulator run found, on line 42, in an uncaught promise that
+   * left the app silent and looking as though it had never started. Every
+   * other file in assets/common already does it this way.
+   */
   /* The tag CI greps for. One line, machine-readable, and still legible to a
      person reading a log over somebody's shoulder. */
   const TAG = 'POSNIC_SELFTEST';
@@ -39,14 +48,14 @@
     const started = Date.now();
     const report = {
       url,
-      build: (root.POSNIC_BUILD && root.POSNIC_BUILD.version) || 'dev',
-      commit: (root.POSNIC_BUILD && root.POSNIC_BUILD.commit) || '',
-      native: !!(root.Capacitor && root.Capacitor.isNativePlatform && root.Capacitor.isNativePlatform()),
-      transport: root.POSNIC && POSNIC.discovery.probe.transport
+      build: (globalThis.POSNIC_BUILD && globalThis.POSNIC_BUILD.version) || 'dev',
+      commit: (globalThis.POSNIC_BUILD && globalThis.POSNIC_BUILD.commit) || '',
+      native: !!(globalThis.Capacitor && globalThis.Capacitor.isNativePlatform && globalThis.Capacitor.isNativePlatform()),
+      transport: globalThis.POSNIC && POSNIC.discovery.probe.transport
         ? POSNIC.discovery.probe.transport()
         : 'unknown',
       online: typeof navigator !== 'undefined' ? navigator.onLine : null,
-      origin: root.location ? root.location.origin : '',
+      origin: globalThis.location ? globalThis.location.origin : '',
     };
 
     try {
@@ -76,7 +85,7 @@
      * lets the host read it back with evaluateJavascript, which cannot be
      * filtered by anybody.
      */
-    root.__selftest = report;
+    globalThis.__selftest = report;
     return report;
   }
 
@@ -89,7 +98,7 @@
    */
   async function fromLocation() {
     try {
-      const asked = new URLSearchParams(root.location.search).get('selftest');
+      const asked = new URLSearchParams(globalThis.location.search).get('selftest');
       if (!asked) return null;
       return await run(asked);
     } catch (e) {
