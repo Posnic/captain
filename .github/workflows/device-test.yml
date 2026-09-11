@@ -102,9 +102,13 @@ jobs:
 
             echo '--- what the handset said ---'
             adb logcat -d | grep POSNIC_SELFTEST | tail -3 || true
+            echo '--- what the app itself logged ---'
+            adb logcat -d | grep -iE 'Capacitor|posnic' | tail -30 || true
             echo '--- anything the WebView complained about ---'
-            adb logcat -d | grep -iE 'chromium|net::ERR|SecurityError' | tail -25 || true
+            adb logcat -d | grep -iE 'net::ERR|SecurityError|CONSOLE' | tail -25 || true
 
-            adb logcat -d | grep POSNIC_SELFTEST | tail -1 > /tmp/said.txt || true
+            # The line native code logged, which is the one that cannot be
+            # filtered. A WebView's console.log can be, and was.
+            adb logcat -d | grep POSNIC_SELFTEST | tail -1 | sed 's/.*POSNIC_SELFTEST *: *//' > /tmp/said.txt || true
             if [ ! -s /tmp/said.txt ]; then echo "::error::The app never reported. It may not have started."; exit 1; fi
             if grep -q '"ok":true' /tmp/said.txt; then echo "::notice::The handset reached $TARGET_URL"; else echo "::error::The handset could NOT reach $TARGET_URL"; cat /tmp/said.txt; exit 1; fi

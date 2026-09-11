@@ -65,6 +65,18 @@
 
     /* One line, so a log with a thousand others in it is still greppable. */
     console.log(TAG + ' ' + JSON.stringify(report));
+
+    /*
+     * And left somewhere native code can fetch it.
+     *
+     * A WebView's console.log does NOT reliably reach logcat: Capacitor's
+     * WebChromeClient takes onConsoleMessage and decides for itself whether to
+     * forward it, so the first emulator run printed nothing at all and looked
+     * exactly like an app that never started. Leaving the answer on `window`
+     * lets the host read it back with evaluateJavascript, which cannot be
+     * filtered by anybody.
+     */
+    root.__selftest = report;
     return report;
   }
 
