@@ -494,7 +494,17 @@
             serverMsg('Checking ' + base + '...');
 
             try {
-                const hit = await POSNIC.discovery.probe(base, 8000);
+                /*
+                 * Fifteen seconds, not eight.
+                 *
+                 * A real Android was measured taking up to 7.3s for a single
+                 * request to this server - so an eight second budget was one
+                 * slow response away from telling a shop their till was not
+                 * running. Somebody who has pressed Connect and is watching
+                 * will wait; being told the wrong thing quickly is worse than
+                 * being told the right thing slowly. This runs once, at setup.
+                 */
+                const hit = await POSNIC.discovery.probe(base, 15000);
                 if (!hit) {
                     /*
                      * WHY, not just that. "Nothing answered" covered a wrong
