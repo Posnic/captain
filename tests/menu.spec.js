@@ -339,3 +339,70 @@ test('a quantity typed in front of it carries into the add', async ({ page }) =>
   await first.locator('.dish-add').click();
   await expect(first.locator('.dish-qty')).toHaveText('2');
 });
+
+/* ------------------------------------------------------------ it responds */
+
+test('the row answers where the finger was', async ({ page }) => {
+  /*
+   * Adding a dish changed a button into a stepper and a number at the bottom
+   * of the screen, both instantly and both silently. Correct, and inert: the
+   * eye is on the row that was touched and the confirmation is 600px away, so
+   * "did that register?" gets asked by pressing again - and now there are two.
+   */
+  await atTheMenu(page);
+  const row = page.locator('.dish[data-id="p-1"]');
+
+  await row.locator('.dish-add').click();
+  await expect(row).toHaveClass(/is-taking/);
+  await expect(row.locator('.dish-step')).toBeVisible();
+
+  /* And it lets go again, rather than staying lit. */
+  await expect(row).not.toHaveClass(/is-taking/, { timeout: 2000 });
+});
+
+test('the count itself moves when the stepper is already there', async ({ page }) => {
+  /* The second and third taps on the same dish are the ones somebody is least
+     sure registered, and nothing new arrives on those to be noticed. */
+  await atTheMenu(page);
+  const row = page.locator('.dish[data-id="p-1"]');
+  await row.locator('.dish-add').click();
+  await expect(row.locator('.dish-qty')).toHaveText('1');
+
+  await row.locator('.btn-increase').click();
+  await expect(row.locator('.dish-qty')).toHaveClass(/is-bumped/);
+  await expect(row.locator('.dish-qty')).toHaveText('2');
+});
+
+test('the bill bar nudges when the total moves, and not when it does not', async ({ page }) => {
+  /*
+   * updateCart runs on every render, including ones that change nothing. A bar
+   * that jumps when nothing happened is worse than one that never jumps,
+   * because it stops meaning anything.
+   */
+  await atTheMenu(page);
+  await page.locator('.dish[data-id="p-1"] .dish-add').click();
+  await expect(page.locator('#bill-bar')).toHaveClass(/is-bumped/);
+  await expect(page.locator('#bill-bar')).not.toHaveClass(/is-bumped/, { timeout: 2000 });
+
+  /* A redraw that changes no total leaves it alone. */
+  await page.evaluate(() => updateCart());
+  await expect(page.locator('#bill-bar')).not.toHaveClass(/is-bumped/);
+});
+
+test('nothing moves for somebody who asked their phone to stop', async ({ page, browser }) => {
+  /* prefers-reduced-motion is an accessibility setting, not a preference to
+     be overridden by a design somebody liked. */
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const quiet = await context.newPage();
+  await onTheMenu(quiet, 'two chicken biryani', { menu: MENU });
+
+  const moving = await quiet.evaluate(() => {
+    const row = document.querySelector('.dish');
+    row.classList.add('is-taking');
+    const name = getComputedStyle(row).animationName;
+    row.classList.remove('is-taking');
+    return name;
+  });
+  expect(moving).toBe('none');
+  await context.close();
+});

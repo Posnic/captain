@@ -381,7 +381,22 @@ test('the microphone and panel are drawn in the app\'s own tokens, not a blue ci
   assert.ok(!/gradient/i.test(style.textContent), 'a gradient is back');
   assert.ok(!/#2563eb/i.test(style.textContent), 'the old hard-coded blue is back');
   assert.match(style.textContent, /var\(--accent/, 'the accent is not a design token');
-  assert.match(style.textContent, /posnic-voice-pulse/, 'nothing moves while it listens');
+  /*
+   * Three rings on a stagger, not one on a loop. A single ring appeared,
+   * vanished and appeared again, and the gap between looked like something
+   * had stopped - the opposite of what a live microphone should be saying.
+   */
+  assert.match(style.textContent, /posnic-voice-ring/, 'nothing leaves the button while it listens');
+  assert.match(style.textContent, /animation-delay:1\.6s/, 'the rings are not staggered');
+  assert.match(style.textContent, /posnic-voice-breathe/, 'the centre of the button is dead');
+  assert.match(style.textContent, /posnic-voice-wave/, 'the bars are still when nobody is metering');
+
+  /* transform and opacity only: both are composited, so a live microphone and
+     a sixty-frame animation can share a cheap Android. */
+  assert.ok(
+    !/animation:[^;}]*\b(height|width|top|left|margin)\b/.test(style.textContent),
+    'something animates a layout property'
+  );
   assert.match(style.textContent, /prefers-reduced-motion/, 'the animation ignores the phone\'s motion setting');
 });
 

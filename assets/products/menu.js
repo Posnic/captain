@@ -28,6 +28,28 @@
   const $ = (selector) => document.querySelector(selector);
 
   /**
+   * Play a one-shot animation again, on an element that already has it.
+   *
+   * A CSS animation fires when the class ARRIVES, so re-adding a class that is
+   * already there does nothing at all - which is exactly the case that matters
+   * here, because the second and third taps on the same dish are the ones
+   * somebody is least sure registered.
+   *
+   * Reading offsetWidth between the remove and the add forces the style to be
+   * recalculated, so the browser sees the class genuinely leave and come back.
+   * It is the standard trick and it is load-bearing: without the read, the two
+   * changes are batched into one frame and cancel out.
+   */
+  function replay(element, className, ms) {
+    if (!element) return;
+    element.classList.remove(className);
+    /* eslint-disable-next-line no-unused-expressions */
+    void element.offsetWidth;
+    element.classList.add(className);
+    setTimeout(() => element.classList.remove(className), ms);
+  }
+
+  /**
    * Draw the whole menu.
    *
    * `products` is the category-keyed object loadProducts builds. Everything
@@ -247,7 +269,23 @@
     const count = $('#bill-count');
     const sum = $('#bill-total');
     if (count) count.textContent = qty === 1 ? '1 item' : qty + ' items';
-    if (sum) sum.textContent = (currency || '₹') + (Number(total) || 0).toFixed(2);
+
+    const money = (currency || '₹') + (Number(total) || 0).toFixed(2);
+    /*
+     * Nudged only when the number actually MOVED.
+     *
+     * updateCart runs on every render, including ones that change nothing -
+     * a redraw, a returning page. A bar that jumps when nothing happened is
+     * worse than one that never jumps, because it stops meaning anything.
+     */
+    const moved = sum && sum.textContent !== money;
+    if (sum) sum.textContent = money;
+
+    if (moved && qty > 0) {
+      replay(bar, 'is-bumped', 400);
+      replay(sum, 'is-bumped', 360);
+      replay(document.querySelector('.cart-count'), 'is-bumped', 420);
+    }
   }
 
   /* -------------------------------------------------------------- a row */
@@ -270,12 +308,18 @@
        offering a dish the kitchen has run out of. */
     if (row.classList.contains('is-out')) return;
 
+    /* Where the finger was, before anything at the bottom of the screen. */
+    replay(row, 'is-taking', 720);
+
     row.classList.toggle('is-in', qty > 0);
 
     if (qty > 0) {
       const shown = slot.querySelector('.dish-qty');
       if (shown) {
         shown.textContent = qty;
+        /* The stepper is already there, so nothing arrives to be noticed. The
+           number itself has to do the noticing. */
+        replay(shown, 'is-bumped', 320);
       } else {
         slot.innerHTML =
           '<div class="dish-step">' +
@@ -316,6 +360,35 @@
     }
   }
 
+  /**
+   * These dishes arrived because somebody SAID so.
+   *
+   * Voice puts several lines on the bill in one go, and several rows changing
+   * in the same frame is a flicker rather than an event. Staggered, each row
+   * lands just after the one above it, so the order reads down the menu in the
+   * sequence it was spoken - which is also the order it gets read back to the
+   * table.
+   *
+   * 70ms apart: below about 50 the rows read as simultaneous, and above about
+   * 100 a five-item order takes long enough that somebody starts scrolling
+   * through it while it is still arriving.
+   */
+  function heard(ids) {
+    if (!Array.isArray(ids) || !ids.length) return;
+    ids.forEach((id, at) => {
+      const row = document.querySelector('.dish[data-id="' + String(id).replace(/"/g, '\\"') + '"]');
+      if (!row) return;
+      setTimeout(() => replay(row, 'is-heard', 560), at * 70);
+    });
+
+    /* And put the first of them on screen, because a dish that was added out
+       of sight was, to the waiter, not added. */
+    const first = document.querySelector('.dish[data-id="' + String(ids[0]).replace(/"/g, '\\"') + '"]');
+    if (first && first.scrollIntoView) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
   /* ------------------------------------------------------------- wiring */
 
   /** The handlers that do not belong to any one render. */
@@ -352,5 +425,5 @@
     window.addEventListener('orientationchange', () => setTimeout(stick, 200));
   }
 
-  return { draw, goTo, setRow, bill, stick, openIndex, closeIndex, start, point };
+  return { draw, goTo, setRow, bill, stick, openIndex, closeIndex, start, point, heard };
 });
