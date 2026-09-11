@@ -20,6 +20,31 @@
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <link href="assets/table/style.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
+    <style>
+    /*
+     * Why there are no tables. A note, not an alarm: nothing is broken and the
+     * waiter can still work, so it reads as information rather than a failure.
+     */
+    .table-note {
+        max-width: 420px;
+        margin: 0 auto 14px;
+        padding: 12px 14px;
+        border: 1px solid var(--line, #e2e8f0);
+        border-left: 3px solid var(--accent, #4f46e5);
+        border-radius: 10px;
+        background: var(--surface-sunk, #f8fafc);
+        color: var(--ink-soft, #475569);
+        font-size: 13px;
+        line-height: 1.5;
+        text-align: left;
+    }
+    .table-note strong {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--ink, #0f172a);
+        font-size: 14px;
+    }
+    </style>
 </head>
 
 <body>
@@ -312,7 +337,36 @@
                 if (isPollingUpdate && previousTableMode === 'manual') return;
                 previousTableMode = 'manual';
 
-                let html = `
+                /*
+                 * WHY THERE ARE NO TABLES, which is two different answers.
+                 *
+                 * This screen drew the same bare "Enter Table Number" box
+                 * whether the shop had not finished setting its tables up or
+                 * did not do table service at all - so a waiter at a
+                 * restaurant mid-setup and somebody signing in at a grocer got
+                 * the same blank box, and neither was told which they were
+                 * looking at.
+                 *
+                 * The server now sends the branch's own Restaurant switch. The
+                 * box stays either way, because typing a table number by hand
+                 * has to keep working while somebody goes and fixes the
+                 * setting - a message that BLOCKS the order helps nobody
+                 * standing at a table.
+                 */
+                const tableService = localStorage.getItem('kiosk_table_service');
+                const notice = tableService === 'no'
+                    ? `<div class="table-note" role="status">
+                           <strong>Restaurant is turned off for this shop.</strong>
+                           Turn on Restaurant in Posnic (Manage &rsaquo; Features &rsaquo; Restaurant)
+                           to lay out your tables. You can still type a table number below.
+                       </div>`
+                    : `<div class="table-note" role="status">
+                           <strong>No tables set up yet.</strong>
+                           Add them in Posnic under Manage &rsaquo; Restaurant.
+                           You can still type a table number below.
+                       </div>`;
+
+                let html = notice + `
                     <div class="table-input-wrapper" style="display: flex; justify-content: center; margin-top: 10px;">
                         <input type="text"
                             id="manual_table_input"
