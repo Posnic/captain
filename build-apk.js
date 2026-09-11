@@ -158,6 +158,25 @@ if (fs.existsSync(manifestPath)) {
   if (!manifest.includes('networkSecurityConfig')) {
     manifest = manifest.replace('<application', '<application\n        android:networkSecurityConfig="@xml/network_security_config"');
   }
+
+  /*
+   * The camera, for scanning the shop's code.
+   *
+   * Without this the scanner does not fail loudly: getUserMedia rejects with
+   * NotAllowedError and the screen reports the camera as blocked, sending
+   * somebody into Settings to grant a permission the app never asked for.
+   * required="false" so a device without a camera can still install and use
+   * the other two ways in.
+   */
+  if (!manifest.includes('android.permission.CAMERA')) {
+    const camera = [
+      '<uses-permission android:name="android.permission.CAMERA" />',
+      '    <uses-feature android:name="android.hardware.camera" android:required="false" />',
+      '',
+      '    <application',
+    ].join('\n');
+    manifest = manifest.replace('<application', camera);
+  }
   fs.writeFileSync(manifestPath, manifest, 'utf8');
 }
 

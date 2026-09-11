@@ -785,6 +785,32 @@
     let offline = false;
     let delay = HEALTH_OK_MS;
     let timer = null;
+    let attempts = 0;
+    let nextAt = 0;
+    let ticker = null;
+
+    /*
+     * Show that waiting is a real option.
+     *
+     * The app retries on its own, but a screen that only offers two buttons
+     * looks like it is waiting for the user, so people tap Try now every few
+     * seconds and conclude it is broken. Saying when the next attempt happens
+     * turns doing nothing into a choice.
+     */
+    function countdown() {
+      clearInterval(ticker);
+      const status = document.getElementById('posnic-offline-status');
+      if (!status) return;
+      const paint = () => {
+        if (!offline) return;
+        const left = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
+        status.textContent =
+          (attempts === 1 ? 'Tried once' : `Tried ${attempts} times`) +
+          (left > 0 ? `, trying again in ${left}s` : ', trying again now');
+      };
+      paint();
+      ticker = setInterval(paint, 1000);
+    }
 
     function settingsOpen() {
       const modal = document.getElementById('serverModal');
@@ -812,21 +838,30 @@
         'font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
       ].join(';');
       element.innerHTML = `
-        <div style="max-width:360px;width:100%;">
+        <div style="max-width:380px;width:100%;">
           <div style="font-size:42px;margin-bottom:12px;">!</div>
-          <h2 style="margin:0 0 8px;font-size:24px;font-weight:800;color:#f97316;">No connection</h2>
-          <p style="margin:0 0 10px;color:#e5e7eb;font-size:14px;line-height:1.5;">
-            The shop's server is not answering. Checking the Wi-Fi and the online address.
-          </p>
-          <div id="posnic-offline-url" style="margin:12px 0 18px;color:#94a3b8;font-size:12px;word-break:break-all;"></div>
+          <h2 id="posnic-offline-title" style="margin:0 0 8px;font-size:23px;font-weight:800;color:#f97316;">Shop server is not responding</h2>
+          <p id="posnic-offline-body" style="margin:0 0 4px;color:#e5e7eb;font-size:14px;line-height:1.5;"></p>
+          <div id="posnic-offline-url" style="margin:10px 0 4px;color:#94a3b8;font-size:12px;word-break:break-all;"></div>
+          <div id="posnic-offline-status" style="margin:0 0 18px;color:#64748b;font-size:12px;min-height:16px;"></div>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <button type="button" id="posnic-offline-retry" style="border:none;border-radius:8px;background:#f97316;color:#111827;font-weight:800;padding:10px 16px;">Retry now</button>
-            <button type="button" id="posnic-offline-settings" style="border:1px solid #475569;border-radius:8px;background:#111827;color:#fff;font-weight:700;padding:10px 16px;">Change server</button>
+            <button type="button" id="posnic-offline-retry" style="border:none;border-radius:8px;background:#f97316;color:#111827;font-weight:800;padding:11px 18px;cursor:pointer;">Try now</button>
+            <button type="button" id="posnic-offline-settings" style="border:1px solid #475569;border-radius:8px;background:#111827;color:#fff;font-weight:700;padding:11px 18px;cursor:pointer;">Change server</button>
           </div>
         </div>`;
       document.body.appendChild(element);
 
-      element.querySelector('#posnic-offline-retry').addEventListener('click', () => net.check(true));
+      element.querySelector('#posnic-offline-retry').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = 'Trying...';
+        try {
+          await net.check(true);
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Try now';
+        }
+      });
       element.querySelector('#posnic-offline-settings').addEventListener('click', () => {
         sessionStorage.setItem('posnic.open-server-settings', '1');
         window.location.href = 'index.html';
@@ -841,28 +876,54 @@
 
       setOffline() {
         offline = true;
+        attempts += 1;
         delay = HEALTH_DOWN_MS;
 
-        /* Never wall off a device that has simply not been set up. "No
-           connection" and "no server chosen" look identical from here and are
-           completely different problems; the outage screen would hide the
-           sign-in form and the settings gear, the only two things that could
-           fix it. */
+        /*
+         * Never wall off a device that has simply not been set up yet.
+         *
+         * "No connection" and "no server chosen" look identical from here and
+         * are completely different problems. Painting the outage screen over a
+         * fresh install hides the sign-in form and the settings gear, which
+         * are the only two things that could fix it.
+         */
         if (!server.isConfigured || settingsOpen()) return;
 
         const element = overlay();
+        const local = server.isLocal;
+
+        /*
+         * Name the thing that is down, and say whose it is.
+         *
+         * "No connection" reads as a problem with the phone, so people restart
+         * the phone. The address is nearly always fine and the till is off, so
+         * the screen says which one it is and what would fix it.
+         */
+        const title = element.querySelector('#posnic-offline-title');
+        const body = element.querySelector('#posnic-offline-body');
         const url = element.querySelector('#posnic-offline-url');
+
+        if (title) title.textContent = local ? 'The till is not responding' : 'The shop server is not responding';
+        if (body) {
+          body.textContent = local
+            ? 'This address answered before, so it is usually the till: check POSNIC is open on it, and that this phone is on the shop Wi-Fi.'
+            : 'This address answered before, so it is usually the connection: check this phone has internet.';
+        }
         if (url) url.textContent = server.baseUrl || '';
+
         ['loader', 'page-loader'].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.hidden = true;
         });
         element.hidden = false;
         document.documentElement.classList.add('posnic-offline-active');
+        countdown();
       },
 
       setOnline() {
         delay = HEALTH_OK_MS;
+        attempts = 0;
+        clearInterval(ticker);
         if (!offline) return;
         offline = false;
         const element = document.getElementById('posnic-offline');
@@ -892,6 +953,7 @@
         net.check(false);
         const tick = () => {
           clearTimeout(timer);
+          nextAt = Date.now() + delay;
           timer = setTimeout(async () => {
             await net.check(false);
             tick();

@@ -283,15 +283,14 @@ test('auto detect checks the known local server before sweeping', async ({ page 
 
   await page.goto('/index.html');
   await page.getByTitle('Server Settings').click();
-  await page.locator('#serverUrlInput').fill('');
-  await page.locator('#serverAutoDetectBtn').click();
+  await page.getByText('Find the till on this Wi-Fi').click();
 
-  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
   await expect(page.locator('#serverSaveMsg')).toContainText(`Found the till at ${LAN}`);
   /* One button, always usable. Test and Save were two, in a required order,
      so the obvious one did nothing until the other had been pressed. */
   await expect(page.locator('#serverSaveBtn')).toBeEnabled();
   await expect(page.locator('#serverSaveBtn')).toHaveText('Connect');
+  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
 });
 
 test('signing in against an older server still finds the shop', async ({ page }) => {
@@ -392,4 +391,165 @@ test('a locked-out device is told to wait, not that its password is wrong', asyn
   await page.locator('#login-btn').click();
 
   await expect(page.locator('#login-message')).toContainText('too many times');
+});
+
+/*
+ * Finding the shop for the first time.
+ *
+ * Three ways in, because the person holding a new handset may know nothing:
+ * scan the code by the till, search the Wi-Fi, or type a code somebody gave
+ * them. The screen used to be a text box, which only serves the third.
+ */
+
+test('the connect screen offers all three ways, and asks nothing first', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.getByTitle('Server Settings').click();
+
+  await expect(page.getByText('Scan the shop code')).toBeVisible();
+  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
+  await expect(page.getByText('Type the shop code')).toBeVisible();
+
+  /* The text box is not the front door any more. Opening the sheet also must
+     not start a network sweep: that held the screen for seconds against a
+     network with no till on it. */
+  await expect(page.locator('#connectManual')).toBeHidden();
+  await expect(page.locator('#serverSaveMsg')).toHaveText('');
+});
+
+test('typing is one of the three, reached deliberately', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.getByTitle('Server Settings').click();
+  await page.getByText('Type the shop code').click();
+
+  await expect(page.locator('#connectManual')).toBeVisible();
+  await expect(page.locator('#serverUrlInput')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
+
+  // And there is a way back to the other two.
+  await page.locator('#connectBackBtn').click();
+  await expect(page.getByText('Scan the shop code')).toBeVisible();
+});
+
+test('a scanned code is read however it was written', async ({ page }) => {
+  await page.goto('/index.html');
+  const read = await page.evaluate(() => ({
+    bareCode: POSNIC_CONNECT.serverFromScan('demo'),
+    fullUrl: POSNIC_CONNECT.serverFromScan('https://demo.posnic.io/api'),
+    tillAddress: POSNIC_CONNECT.serverFromScan('192.168.1.5:5555'),
+    linkCarrying: POSNIC_CONNECT.serverFromScan('https://posnic.com/pair?server=demo'),
+    linkCarryingUrl: POSNIC_CONNECT.serverFromScan(
+      'https://posnic.com/pair?server=' + encodeURIComponent('http://192.168.1.5:5555')),
+    someoneElsesQr: POSNIC_CONNECT.serverFromScan('WIFI:S:ShopGuest;T:WPA;P:hunter2;;'),
+    empty: POSNIC_CONNECT.serverFromScan(''),
+  }));
+
+  expect(read.bareCode).toBe('https://demo.posnic.io/api');
+  expect(read.fullUrl).toBe('https://demo.posnic.io/api');
+  expect(read.tillAddress).toBe('http://192.168.1.5:5555/api');
+  // A link is unwrapped, not mistaken for the address of the page hosting it.
+  expect(read.linkCarrying).toBe('https://demo.posnic.io/api');
+  expect(read.linkCarryingUrl).toBe('http://192.168.1.5:5555/api');
+  // Codes that are not ours are refused rather than turned into an address.
+  expect(read.someoneElsesQr).toBeNull();
+  expect(read.empty).toBeNull();
+});
+
+test('a device with no camera says so instead of failing silently', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: () => Promise.reject(Object.assign(new Error('no'), { name: 'NotFoundError' })) },
+      configurable: true,
+    });
+  });
+  await page.goto('/index.html');
+  await page.getByTitle('Server Settings').click();
+  await page.getByText('Scan the shop code').click();
+
+  await expect(page.locator('#scanNote')).toContainText('No camera available');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
+});
+
+test('a blocked camera explains the way out', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia: () => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })) },
+      configurable: true,
+    });
+  });
+  await page.goto('/index.html');
+  await page.getByTitle('Server Settings').click();
+  await page.getByText('Scan the shop code').click();
+
+  /* Refusing the camera is a decision, not a fault: say what to do next
+     rather than reporting a DOMException at somebody. */
+  await expect(page.locator('#scanNote')).toContainText('Allow it in Settings');
+});
+
+/*
+ * A stored address that stops working.
+ *
+ * The common case in a shop: the handset was set up weeks ago, and this
+ * morning the till is off. "No connection" reads as a problem with the phone,
+ * so people restart the phone.
+ */
+
+test('a till that stops answering is named as the thing that is down', async ({ page }) => {
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+
+  const overlay = page.locator('#posnic-offline');
+  await expect(overlay).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-title')).toContainText('till is not responding');
+  // The address it is trying, so nobody guesses which shop it means.
+  await expect(page.locator('#posnic-offline-url')).toContainText(LAN);
+  // What would actually fix it.
+  await expect(page.locator('#posnic-offline-body')).toContainText('POSNIC is open on it');
+  // Both ways out are offered.
+  await expect(page.getByRole('button', { name: 'Try now' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Change server' })).toBeVisible();
+});
+
+test('the outage screen shows that it keeps trying by itself', async ({ page }) => {
+  await seed(page, { pinned: CLOUD, active: CLOUD, cloud: CLOUD });
+  await refuse(page, CLOUD_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  /* Waiting has to look like a choice. Two buttons and nothing else reads as
+     "this is waiting for you", so people tap Try now every few seconds. */
+  await expect(page.locator('#posnic-offline-status')).toContainText(/Tried .*trying again/);
+  // A cloud address blames the connection, not the till.
+  await expect(page.locator('#posnic-offline-title')).toContainText('shop server is not responding');
+});
+
+test('the outage screen clears itself when the server comes back', async ({ page }) => {
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+
+  let up = false;
+  await page.route(`${LAN_ORIGIN}/**`, async route => {
+    if (!up) return route.abort('connectionrefused');
+    await route.fulfill({
+      status: 200, contentType: 'application/json', body: JSON.stringify(RUNTIME_INFO)
+    });
+  });
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  up = true;
+  await page.getByRole('button', { name: 'Try now' }).click();
+  await expect(page.locator('#posnic-offline')).toBeHidden({ timeout: 15000 });
+});
+
+test('a device that was never set up is not shown an outage', async ({ page }) => {
+  /* Nothing stored and nothing on the network. This is a setup problem, and
+     the outage screen would cover the only two things that could fix it. */
+  await page.goto('/index.html');
+  await page.waitForTimeout(1500);
+  const count = await page.locator('#posnic-offline').count();
+  if (count) await expect(page.locator('#posnic-offline')).toBeHidden();
 });
