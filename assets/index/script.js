@@ -347,6 +347,40 @@ document.addEventListener("DOMContentLoaded", async () => {
      * happening, and getting the address right now is what stops every screen
      * after this one from failing.
      */
+    /*
+     * A line on the sign-in screen while the app looks for the shop.
+     *
+     * Without it a first run shows nothing at all for as long as the sweep
+     * takes, and silence that long reads as a broken app rather than a busy
+     * one. It clears itself either way, so a device that is already
+     * configured never sees it.
+     */
+    (function showSearchProgress() {
+        const message = document.getElementById('login-message');
+        if (!message) return;
+        let searching = false;
+
+        window.addEventListener('posnic:searching', function (event) {
+            searching = true;
+            const { done, total } = event.detail || {};
+            message.style.display = 'block';
+            message.classList.remove('text-danger');
+            message.textContent = total
+                ? `Looking for your shop on the Wi-Fi... (${done} of ${total})`
+                : 'Looking for your shop on the Wi-Fi...';
+        });
+
+        window.addEventListener('posnic:searched', function (event) {
+            if (!searching) return;
+            searching = false;
+            message.classList.add('text-danger');
+            /* A find is announced by the screen changing; only a miss needs
+               words, and those come from the connect sheet. */
+            if (event.detail && event.detail.found) showLoginMessage('');
+            else showLoginMessage('');
+        });
+    })();
+
     POSNIC.net.check(true).then(function(ok) {
         if (!ok && typeof openServerModal === 'function' && !POSNIC.server.isConfigured) {
             openServerModal();
