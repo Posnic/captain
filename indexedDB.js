@@ -23,9 +23,25 @@ function resolveLocalImageUrl(src) {
         localOrigin = "";
     }
 
-    const resolvedUrl = localOrigin
+    let resolvedUrl = localOrigin
         ? src.replace(/^http:\/\/(localhost|127\.0\.0\.1):5555/i, localOrigin)
         : src;
+
+    /*
+     * A RELATIVE PATH IS RELATIVE TO THE SERVER, NOT TO THE APP.
+     *
+     * Items carry paths like `/uploads/demo/rtl-sta-002.jpg`. In a browser
+     * served BY the shop's server that resolves correctly and always has. In
+     * the packaged app the page is served from http://localhost - so the same
+     * path resolved to http://localhost/uploads/..., which is inside the APK,
+     * and every item on the menu drew a broken image.
+     *
+     * Nothing in a browser test could see it: there the app and the images
+     * share an origin, which is exactly the assumption the WebView breaks.
+     */
+    if (/^\//.test(resolvedUrl) && localOrigin) {
+        resolvedUrl = localOrigin.replace(/\/+$/, '') + resolvedUrl;
+    }
 
     try {
         if (!/^https?:\/\//i.test(resolvedUrl)) return resolvedUrl;
