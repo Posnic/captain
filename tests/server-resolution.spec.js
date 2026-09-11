@@ -553,3 +553,54 @@ test('a device that was never set up is not shown an outage', async ({ page }) =
   const count = await page.locator('#posnic-offline').count();
   if (count) await expect(page.locator('#posnic-offline')).toBeHidden();
 });
+
+/*
+ * A CODE ON A WALL THAT SAYS http, FOR A HOST THAT ONLY ANSWERS ON https.
+ *
+ * Servers printed pairing codes reading `http://shop.posnic.io/api` for
+ * months: nginx terminates TLS and forwards plain http, so Express saw `http`
+ * and put that on the QR. A phone scanned it, the address 301'd, and the
+ * handset reported that nothing answered - so the shop was told to check
+ * whether their till was running.
+ *
+ * The server is fixed. Those codes are printed and stuck to walls, so the app
+ * has to make them work too.
+ */
+
+test('a scanned http address for a public host is used over https', async ({ page }) => {
+  await page.goto('/index.html');
+  const results = await page.evaluate(() => ({
+    scanned: POSNIC.server.normalize('http://develop.posnic.io/api'),
+    typed: POSNIC.server.normalize('http://shop.posnic.io'),
+    ownDomain: POSNIC.server.normalize('http://pos.myshop.com/api'),
+  }));
+
+  expect(results.scanned).toBe('https://develop.posnic.io/api');
+  expect(results.typed).toBe('https://shop.posnic.io/api');
+  expect(results.ownDomain).toBe('https://pos.myshop.com/api');
+});
+
+test('a till on the shop Wi-Fi is left on http, because it holds no certificate', async ({
+  page,
+}) => {
+  /* Only ever upwards, and only for a public host. Forcing https on a LAN
+     address would break every till install to tidy up a scheme. */
+  await page.goto('/index.html');
+  const results = await page.evaluate(() => ({
+    lan: POSNIC.server.normalize('http://192.168.1.8:5555/'),
+    tenDot: POSNIC.server.normalize('http://10.0.0.9:5555'),
+    localhost: POSNIC.server.normalize('http://localhost:5555'),
+  }));
+
+  for (const url of Object.values(results)) expect(url.startsWith('http://')).toBe(true);
+});
+
+test('a code the scanner reads is understood the same way', async ({ page }) => {
+  /* The scan path and the typing path must not disagree about an address, or
+     a waiter who scans and a waiter who types reach different servers. */
+  await page.goto('/index.html');
+  const scanned = await page.evaluate(() =>
+    POSNIC_CONNECT.serverFromScan('http://develop.posnic.io/api')
+  );
+  expect(scanned).toBe('https://develop.posnic.io/api');
+});

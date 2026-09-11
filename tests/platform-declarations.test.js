@@ -144,6 +144,18 @@ test('neither camera nor microphone is REQUIRED to install', () => {
   }
 });
 
+test('the keyboard can appear, and the page moves out of its way', () => {
+  /*
+   * Capacitor's generated manifest sets no windowSoftInputMode, which leaves
+   * the system to choose for a full-screen WebView - and what it chooses does
+   * not reliably raise the IME or resize around it. A waiter taps the address
+   * box, nothing happens, and the app looks broken. That was reported from a
+   * real handset after scanning a pairing code.
+   */
+  assert.match(APK, /windowSoftInputMode/);
+  assert.match(APK, /adjustResize/);
+});
+
 test('the Android permissions are added only when absent', () => {
   /* Run on a project that already has them, the injection must not double
      them: two identical <uses-permission> lines is a manifest merger error. */
