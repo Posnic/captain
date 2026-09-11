@@ -66,7 +66,33 @@ test('this device overrides the shop, so one handset can be changed', () => {
 test('voice turned off means no microphone at all', () => {
   globalThis.localStorage.removeItem(Speech.STORE);
   assert.equal(Speech.available({ provider: 'off' }), false);
-  /* And the server path needs no device support, so it is offered wherever
-     the shop has configured it. */
-  assert.equal(Speech.available({ provider: 'server' }), true);
+});
+
+test('the server path still needs a device that can RECORD', () => {
+  /*
+   * The shop having configured a provider says nothing about this handset.
+   * Answering yes on the strength of the setting alone draws a microphone
+   * button on a device with no MediaRecorder, and the waiter finds that out
+   * by pressing it at a table.
+   */
+  globalThis.localStorage.removeItem(Speech.STORE);
+  assert.equal(Speech.canRecord(), false, 'node has no MediaRecorder; the test is meaningless');
+  assert.equal(Speech.available({ provider: 'server' }), false);
+
+  /* defineProperty, not assignment: node exposes `navigator` as a read-only
+     global, so `globalThis.navigator = ...` silently does nothing and the
+     test would pass by measuring the wrong thing. */
+  const real = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { mediaDevices: {} },
+  });
+  globalThis.MediaRecorder = function () {};
+  try {
+    assert.equal(Speech.available({ provider: 'server' }), true);
+  } finally {
+    if (real) Object.defineProperty(globalThis, 'navigator', real);
+    else delete globalThis.navigator;
+    delete globalThis.MediaRecorder;
+  }
 });
