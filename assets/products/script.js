@@ -77,6 +77,9 @@ async function refreshProductsPage(button) {
 document.addEventListener("DOMContentLoaded", async () => {
     await loadProducts();
     loadFrequentItems();
+    /* After the menu, so an item can be matched to it; awaited so the cart
+       check is against the real cart rather than an empty one mid-load. */
+    await renderRepeatLastOrder();
     await openDB();
     await setKioskImagesFromIndexedDB();
 
@@ -566,6 +569,101 @@ async function loadExistingNotesForProduct(id) {
     }
 }
 // ADD button → behaves like first + click
+/**
+ * Show how many the next tap will add, when it is more than one.
+ *
+ * Without it, typing "3 cb" and tapping add looks identical to adding one,
+ * and the difference only shows up on the bill.
+ */
+/**
+ * Put the last order back in the cart.
+ *
+ * "Same again" is a normal thing to say at a table, and doing it by hand
+ * means finding every item a second time. Only offered when the remembered
+ * order belongs to this branch and the cart is empty, so it can never
+ * quietly double an order somebody is part way through building.
+ *
+ * Items no longer on the menu are skipped and counted, rather than added as
+ * ids the kitchen cannot resolve.
+ */
+async function repeatLastOrder() {
+    let last = null;
+    try { last = JSON.parse(localStorage.getItem('posnic.last-order') || 'null'); }
+    catch (e) { last = null; }
+
+    const branchId = localStorage.getItem('kiosk_selected_branch');
+    if (!last || !Array.isArray(last.items) || !last.items.length) return;
+    if (last.branch && branchId && String(last.branch) !== String(branchId)) return;
+
+    const known = new Map();
+    for (const itemsArr of Object.values(products || {})) {
+        for (const p of itemsArr) known.set(String(p.id), p);
+    }
+
+    let added = 0;
+    let missing = 0;
+    for (const line of last.items) {
+        const product = known.get(String(line.item_id));
+        if (!product) { missing += 1; continue; }
+        await updateQuantity(product.id, Number(line.item_quantity) || 1);
+        added += 1;
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(missing
+            ? `Added ${added} items. ${missing} are no longer on the menu.`
+            : `Added ${added} items from the last order.`);
+    }
+}
+
+/** Offered only when it can do something: same branch, and an empty cart. */
+async function renderRepeatLastOrder() {
+    const host = document.querySelector('.product-search');
+    if (!host) return;
+    document.getElementById('repeat-last')?.remove();
+
+    let last = null;
+    try { last = JSON.parse(localStorage.getItem('posnic.last-order') || 'null'); }
+    catch (e) { return; }
+    if (!last || !Array.isArray(last.items) || !last.items.length) return;
+
+    const branchId = localStorage.getItem('kiosk_selected_branch');
+    if (last.branch && branchId && String(last.branch) !== String(branchId)) return;
+
+    const cart = await getCartData();
+    if (cart && cart.length) return;
+
+    const button = document.createElement('button');
+    button.id = 'repeat-last';
+    button.type = 'button';
+    button.textContent = `Repeat last order (${last.items.length} items)`;
+    button.style.cssText =
+        'display:block;width:100%;margin:8px 0 0;padding:10px;border:1.5px solid #d1d5db;' +
+        'border-radius:8px;background:#fff;color:#111827;font-weight:600;cursor:pointer;';
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        await repeatLastOrder();
+        button.remove();
+    });
+    host.appendChild(button);
+}
+
+function showQuantityHint(quantity) {
+    let hint = document.getElementById('qty-hint');
+    if (!hint) {
+        const search = document.querySelector('.product-search-inner');
+        if (!search) return;
+        hint = document.createElement('span');
+        hint.id = 'qty-hint';
+        hint.style.cssText =
+            'margin-left:8px;padding:2px 9px;border-radius:999px;background:#2563eb;' +
+            'color:#fff;font-size:12px;font-weight:700;white-space:nowrap;';
+        search.appendChild(hint);
+    }
+    hint.hidden = !(quantity > 1);
+    hint.textContent = quantity > 1 ? `x${quantity}` : '';
+}
+
 $(document).on("click", ".btn-add", async function () {
     const id = $(this).data("id");
 
@@ -574,7 +672,13 @@ $(document).on("click", ".btn-add", async function () {
         await setCartItemNotes(id, notes);
     }
 
-    await updateQuantity(id, 1);
+    /* Whatever the search asked for, then back to one: a quantity typed for
+       one item must not silently apply to the next thing touched. */
+    const quantity = window._pendingQuantity || 1;
+    window._pendingQuantity = 1;
+    showQuantityHint(1);
+
+    await updateQuantity(id, quantity);
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);
@@ -869,7 +973,12 @@ async function applyProductFilter() {
     const input = document.getElementById('product-search-input');
     if (!input) return;
 
-    const term = input.value.trim().toLowerCase();
+    /* "3 cb" is three of whatever "cb" finds. The number is remembered for
+       the next add, then forgotten, so it cannot leak into a later tap. */
+    const typed = ItemSearch.parseTerm(input.value.trim());
+    window._pendingQuantity = typed.quantity;
+    const term = typed.term.trim().toLowerCase();
+    showQuantityHint(typed.quantity);
 
     // 🔁 If search is empty → do nothing (keep current list)
     if (!term) {

@@ -105,3 +105,34 @@ test('a code matches whole, never partially', () => {
   assert.equal(ItemSearch.search(coded, '8901234').length, 1);
   assert.equal(ItemSearch.search(coded, '89012').length, 0);
 });
+
+/*
+ * Quantity typed before the item.
+ *
+ * Adding three of something meant finding it and tapping plus three times.
+ * Every till lets you say the number first, and a waiter taking a table of six
+ * says "three biryani" before they say which biryani.
+ */
+
+test('a number in front is a quantity', () => {
+  assert.deepEqual(ItemSearch.parseTerm('3 cb'), { quantity: 3, term: 'cb' });
+  assert.deepEqual(ItemSearch.parseTerm('12 masala dosa'), { quantity: 12, term: 'masala dosa' });
+});
+
+test('a bare number is still a search', () => {
+  /* "65" is Chicken 65, not an order for sixty-five of the next thing
+     touched. */
+  assert.deepEqual(ItemSearch.parseTerm('65'), { quantity: 1, term: '65' });
+});
+
+test('a number can be searched for after a quantity', () => {
+  assert.deepEqual(ItemSearch.parseTerm('2 65'), { quantity: 2, term: '65' });
+});
+
+test('a slipped finger cannot send ninety-nine mains', () => {
+  /* Three digits is not a quantity anybody means, so it stays a search. */
+  assert.equal(ItemSearch.parseTerm('999 cb').quantity, 1);
+  assert.equal(ItemSearch.parseTerm('999 cb').term, '999 cb');
+  /* And zero is one, not nothing. */
+  assert.equal(ItemSearch.parseTerm('0 cb').quantity, 1);
+});

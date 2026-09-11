@@ -38,8 +38,21 @@
   const REQUEST_TIMEOUT_MS = 10000;
   const PROBE_TIMEOUT_MS = 2500;
   /* A LAN round trip is under 10ms. A host silent for this long is not there. */
-  const SCAN_TIMEOUT_MS = 900;
-  const SCAN_CONCURRENCY = 32;
+  /*
+   * Measured on a real network rather than guessed, sweeping four subnets
+   * with nothing to find - the worst case, and the one a waiter waits through:
+   *
+   *   32 at a time, 900ms   7.3s
+   *   48 at a time, 700ms   4.4s
+   *   64 at a time, 500ms   2.2s
+   *
+   * A LAN round trip is under 10ms, so 500ms is already fifty times the
+   * budget an answer needs; anything longer is only waiting on addresses with
+   * nothing behind them. 64 is where a phone's connection pool starts being
+   * the limit rather than the network.
+   */
+  const SCAN_TIMEOUT_MS = 500;
+  const SCAN_CONCURRENCY = 64;
 
   /* Ask whether the active server is still there: rarely while it answers,
      often while it does not, because that is the only time it can change. */
@@ -521,7 +534,7 @@
     return found;
   }
 
-  async function scanSubnet(subnet, { onProgress, shouldStop } = {}) {
+  async function scanSubnet(subnet, { onProgress, onBatch, shouldStop } = {}) {
     /* Start from the host that worked last, so a re-scan on the same network
        usually finishes on the first batch rather than the tenth. */
     const previous = String(server.lan || '').match(/(?:\d{1,3}\.){3}(\d{1,3})/);
@@ -533,11 +546,12 @@
 
     for (let start = 0; start < hosts.length; start += SCAN_CONCURRENCY) {
       if (shouldStop && shouldStop()) return null;
-      if (onProgress) onProgress(Math.min(start + SCAN_CONCURRENCY, hosts.length), hosts.length);
       const batch = hosts.slice(start, start + SCAN_CONCURRENCY);
       const results = await Promise.all(
         batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS))
       );
+      if (onBatch) onBatch(batch.length);
+      if (onProgress) onProgress(Math.min(start + SCAN_CONCURRENCY, hosts.length), hosts.length);
       const hit = results.find(Boolean);
       if (hit) return hit;
     }
@@ -559,15 +573,51 @@
     }
     if (shouldStop && shouldStop()) return null;
 
-    for (const subnet of await localSubnets()) {
-      if (shouldStop && shouldStop()) return null;
-      const hit = await scanSubnet(subnet, {
-        shouldStop,
-        onProgress: onProgress ? (done, total) => onProgress(done, total, `${subnet}.x`) : null,
-      });
-      if (hit) return hit;
-    }
-    return null;
+    const subnets = await localSubnets();
+
+    /*
+     * Every network at once, not one after another.
+     *
+     * This swept subnets in sequence, and a Windows machine has more networks
+     * than anybody thinks: measured on the development desk it offered four -
+     * the Wi-Fi, a minikube bridge and two WSL bridges - so a first run took
+     * 24 seconds to find a till that was answering the whole time. A waiter
+     * watching a screen do nothing for 24 seconds concludes the app is broken.
+     *
+     * Ranking them better was the other option and is guesswork: nothing in a
+     * WebRTC candidate says which interface it came from. Searching all of
+     * them together makes the ranking not matter, because only a real Posnic
+     * server answers and the first one that does wins.
+     */
+    let stopped = false;
+    const stop = () => stopped || (shouldStop ? shouldStop() : false);
+
+    /* Progress is reported as one number across the whole search rather than
+       per subnet, because "3 of 4 networks" means nothing to the person
+       holding the phone. */
+    let done = 0;
+    const total = subnets.length * 254;
+    const report = (delta) => {
+      done += delta;
+      if (onProgress) onProgress(Math.min(done, total), total, 'this Wi-Fi');
+    };
+
+    const hits = await Promise.all(
+      subnets.map((subnet) =>
+        scanSubnet(subnet, {
+          shouldStop: stop,
+          onProgress: (batchDone, batchTotal, previous = 0) => report(0),
+          onBatch: (size) => report(size),
+        }).then((hit) => {
+          /* The first answer ends the others: there is one till, and the
+             remaining sweeps are only spending the phone's radio. */
+          if (hit) stopped = true;
+          return hit;
+        })
+      )
+    );
+
+    return hits.find(Boolean) || null;
   }
 
   /* ------------------------------------------------------------ resolution */
@@ -602,7 +652,22 @@
          the sign-in screen. Mid-service it would stall the screen a waiter is
          holding for seconds, to find what is not there. */
       if (allowScan) {
-        const hit = await findOnWifi();
+        /*
+         * Say that something is happening.
+         *
+         * A first run on a shop's Wi-Fi connects with no taps at all, which is
+         * the point - but it took 24 seconds on the measured desk, and for all
+         * of them the screen said nothing. Silence for that long is
+         * indistinguishable from a broken app, and the person holding the
+         * phone starts pressing things. The search is the same; only now it
+         * admits to being under way.
+         */
+        window.dispatchEvent(new CustomEvent('posnic:searching', { detail: { done: 0, total: 0 } }));
+        const hit = await findOnWifi({
+          onProgress: (done, total) =>
+            window.dispatchEvent(new CustomEvent('posnic:searching', { detail: { done, total } })),
+        });
+        window.dispatchEvent(new CustomEvent('posnic:searched', { detail: { found: !!hit } }));
         if (hit && server.canAdopt(hit.base)) {
           server.adopt(hit.base);
           return hit.base;
