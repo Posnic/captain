@@ -436,9 +436,9 @@ test('a scanned code is read however it was written', async ({ page }) => {
     bareCode: POSNIC_CONNECT.serverFromScan('demo'),
     fullUrl: POSNIC_CONNECT.serverFromScan('https://demo.posnic.io/api'),
     tillAddress: POSNIC_CONNECT.serverFromScan('192.168.1.5:5555'),
-    linkCarrying: POSNIC_CONNECT.serverFromScan('https://posnic.com/pair?server=demo'),
+    linkCarrying: POSNIC_CONNECT.serverFromScan('https://www.posnic.com/pair?server=demo'),
     linkCarryingUrl: POSNIC_CONNECT.serverFromScan(
-      'https://posnic.com/pair?server=' + encodeURIComponent('http://192.168.1.5:5555')),
+      'https://www.posnic.com/pair?server=' + encodeURIComponent('http://192.168.1.5:5555')),
     someoneElsesQr: POSNIC_CONNECT.serverFromScan('WIFI:S:ShopGuest;T:WPA;P:hunter2;;'),
     empty: POSNIC_CONNECT.serverFromScan(''),
   }));
