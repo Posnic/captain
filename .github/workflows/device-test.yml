@@ -90,30 +90,21 @@ jobs:
 
             # The app's own check, run by a device with no hands. It prints one
             # line the log can be grepped for; see assets/common/self-test.js.
-            adb shell am start -n com.posnic.captain/.MainActivity \
-              -a android.intent.action.VIEW \
-              -e selftest "$TARGET_URL" >/dev/null
+            # ONE LINE. The runner hands each line to its own `sh -c`, so a
+            # backslash continuation is not a continuation at all - the second
+            # half ran as its own command and died on "Illegal option".
+            adb shell am start -n com.posnic.captain/.MainActivity -e selftest "$TARGET_URL" >/dev/null
 
             echo "Waiting for the app to answer about $TARGET_URL"
-            for i in $(seq 1 40); do
-              if adb logcat -d | grep -q POSNIC_SELFTEST; then break; fi
-              sleep 3
-            done
+            # Also one line, for the same reason as above: a loop split across
+            # lines is not a loop here, it is four broken commands.
+            for i in $(seq 1 40); do if adb logcat -d | grep -q POSNIC_SELFTEST; then break; fi; sleep 3; done
 
             echo '--- what the handset said ---'
             adb logcat -d | grep POSNIC_SELFTEST | tail -3 || true
             echo '--- anything the WebView complained about ---'
             adb logcat -d | grep -iE 'chromium|net::ERR|SecurityError' | tail -25 || true
 
-            LINE=$(adb logcat -d | grep POSNIC_SELFTEST | tail -1 || true)
-            if [ -z "$LINE" ]; then
-              echo "::error::The app never reported. It may not have started."
-              exit 1
-            fi
-            if echo "$LINE" | grep -q '"ok":true'; then
-              echo "::notice::The handset reached $TARGET_URL"
-            else
-              echo "::error::The handset could NOT reach $TARGET_URL"
-              echo "$LINE"
-              exit 1
-            fi
+            adb logcat -d | grep POSNIC_SELFTEST | tail -1 > /tmp/said.txt || true
+            if [ ! -s /tmp/said.txt ]; then echo "::error::The app never reported. It may not have started."; exit 1; fi
+            if grep -q '"ok":true' /tmp/said.txt; then echo "::notice::The handset reached $TARGET_URL"; else echo "::error::The handset could NOT reach $TARGET_URL"; cat /tmp/said.txt; exit 1; fi
