@@ -4,6 +4,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const stamp = require('./scripts/build-version');
 
 function readDirectories(dir) {
   try {
@@ -112,11 +113,27 @@ const androidDir = path.join(__dirname, 'android');
 console.log(`\nBuilding Captain ${isRelease ? 'release' : 'debug'} APK...`);
 run(`${npm} run build`);
 
+/*
+ * Stamp the version into the bundle BEFORE cap sync copies it.
+ *
+ * Every release went out as versionCode 1 / versionName "1.0" - the Capacitor
+ * default nobody changed - so every build looked identical to Android and to
+ * the person holding the phone. A shopkeeper who installed a fix and said
+ * "nothing changed" could not be answered. See build-version.js.
+ */
+const version = stamp.resolveVersion(__dirname);
+const build = { version, commit: stamp.resolveCommit(__dirname), at: new Date().toISOString() };
+stamp.stampBundle(path.join(__dirname, 'dist'), build);
+console.log(`Version ${version} (${build.commit || 'no commit'})`);
+
 if (!fs.existsSync(androidDir)) {
   run(`${npx} cap add android`);
 }
 
 run(`${npx} cap sync android`);
+
+/* After sync, because `cap add` writes the gradle file this edits. */
+stamp.stampGradle(path.join(androidDir, 'app', 'build.gradle'), version);
 
 const javaSourceDir = path.join(androidDir, 'app', 'src', 'main', 'java', 'com', 'posnic', 'captain');
 const javaTemplateDir = path.join(__dirname, 'android-templates');
