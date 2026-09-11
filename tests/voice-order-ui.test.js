@@ -1,20 +1,22 @@
 /*
- * The sheet between the microphone and the kitchen, and the gesture in front
- * of it.
+ * The microphone, the cart, and the one button between them and the kitchen.
  *
- * voice-order.test.js checks that the right words find the right dish. This
- * checks the things that matter more:
+ * voice-order.test.js checks that the right words find the right dish and
+ * the right verb. This checks what happens next, which matters more:
  *
- *   NOTHING reaches a cart until a person has read it and pressed Add
- *   a line that was doubtful, or could not be placed at all, is still on the
- *     screen when they do
- *   a second press ADDS to the order rather than replacing it, because
- *     replacing would silently delete what a waiter had already said
+ *   a spoken "add" ADDS to the cart, a spoken "take off" takes off - through
+ *     the same function the menu's own buttons use, so stock rules are one
+ *   a spoken "send to kitchen" does NOT send. It puts a button on the panel,
+ *     and a person presses it. A cart can be corrected; a ticket cannot.
+ *   a dish that could not be placed on the menu stays on screen, named
+ *   the panel never covers the bill bar and never dims the page - the
+ *     owner's "bottom buttons are in active" - so the rest of the screen
+ *     keeps working while it is up
  *   a tap is not a recording, and a slide is a way out
  *
- * The DOM here is the smallest one the file will run against - enough of a
- * page for the sheet to build itself, and no more. voice-order.spec.js drives
- * the same file in a real browser.
+ * The DOM here is the smallest one the file will run against. Only what
+ * voice-order-ui.js actually touches is here; a method it starts using that is
+ * missing shows up as a loud failure, not a silent pass.
  */
 
 const test = require('node:test');
@@ -33,19 +35,13 @@ const MENU = ['Chicken Biryani', 'Coffee', 'Masala Dosa'].map((name, id) => ({
 
 /* ------------------------------------------------------------------- a DOM */
 
-/*
- * Hand-built rather than jsdom, because jsdom is not a dependency of this repo
- * and adding one to test a handful of elements would cost more than it
- * explains. Only what voice-order-ui.js actually touches is here; a method it
- * starts using that is missing shows up as a loud failure, not a silent pass.
- */
 function makeElement(tag) {
   const element = {
     tagName: String(tag).toUpperCase(),
     children: [],
     attributes: {},
     listeners: {},
-    style: { cssText: '', display: '' },
+    style: { cssText: '', display: '', bottom: '' },
     hidden: false,
     disabled: false,
     innerHTML: '',
@@ -87,15 +83,11 @@ function makeWindow() {
     listeners: {},
     createElement: (tag) => makeElement(tag),
     getElementById: (id) => byId.get(id) || null,
-    /* The search pill the mic button attaches to. */
     querySelector: (selector) => (selector === '.product-search-inner' ? pill : null),
     addEventListener(name, handler) {
       (this.listeners[name] = this.listeners[name] || []).push(handler);
     },
   };
-
-  /* appendChild is where an element becomes findable by id, which is how the
-     file actually reaches everything it builds. */
   const register = (element) => {
     if (element.id) byId.set(element.id, element);
     element.children.forEach(register);
@@ -110,26 +102,20 @@ function makeWindow() {
   };
   wrap(document.body);
   wrap(pill);
-
   return { document, pill, byId };
 }
 
 /**
- * Load voice-order-ui.js into a context of our own making.
- *
- * Run rather than required, because the file is a browser IIFE that reaches
- * for globals rather than importing them - which is what every other file in
- * assets/common does, and changing that for a test would be testing something
- * the app does not run.
+ * Load voice-order-ui.js into a context of our own making, with a cart that
+ * remembers what was done to it the way indexedDB.js's does.
  */
-function load({ recognised = 'two chicken biryani and three coffee', added = [] } = {}) {
-  const source = fs.readFileSync(
-    path.join(__dirname, '..', 'assets', 'common', 'voice-order-ui.js'),
-    'utf8'
-  );
+function load({ recognised = 'two chicken biryani and three coffee' } = {}) {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'assets', 'common', 'voice-order-ui.js'), 'utf8');
   const { document, pill, byId } = makeWindow();
   const toasts = [];
   const sessions = [];
+  const calls = { quantity: [], cleared: 0, placed: 0 };
+  let cart = [];
 
   const context = {
     document,
@@ -139,17 +125,14 @@ function load({ recognised = 'two chicken biryani and three coffee', added = [] 
       MAX_SECONDS: 45,
       available: () => true,
       config: () => ({ provider: 'device', language: 'en-IN' }),
-      /* A held session, the way speech.js hands one back. */
       start() {
         const session = {
           cancelled: false,
-          stopped: false,
           seconds: () => 3,
           cancel() {
             this.cancelled = true;
           },
           async stop() {
-            this.stopped = true;
             return context.__heard;
           },
         };
@@ -158,12 +141,29 @@ function load({ recognised = 'two chicken biryani and three coffee', added = [] 
       },
     },
     __heard: recognised,
-    /* The menu as the app stores it: a flat list in IndexedDB, which is where
-       the page's own copy comes from and what survives the server being
-       unreachable. */
     getData: async (store) => (store === 'products' ? MENU.slice() : []),
-    updateQuantity: async (id, quantity) => {
-      added.push({ id, quantity });
+    getCartData: async () => cart.map((row) => ({ ...row })),
+    saveCartData: async (rows) => {
+      cart = rows.map((row) => ({ ...row }));
+      calls.cleared += rows.length === 0 ? 1 : 0;
+    },
+    /* The real one adds a row when there is none, removes it at zero, and
+       refuses a decrease on nothing - mirrored, because "remove one coffee"
+       on an empty cart must be a no-op and not a negative coffee. */
+    updateQuantity: async (id, change) => {
+      calls.quantity.push({ id, change });
+      const item = MENU.find((m) => m.id === id);
+      let row = cart.find((r) => r.id === id);
+      if (!row) {
+        if (change < 0) return;
+        row = { id, name: item ? item.name : id, quantity: 0 };
+        cart.push(row);
+      }
+      row.quantity += change;
+      if (row.quantity <= 0) cart = cart.filter((r) => r.id !== id);
+    },
+    kioskPlaceOrder: () => {
+      calls.placed += 1;
     },
     showToast: (message) => toasts.push(message),
     console,
@@ -172,49 +172,34 @@ function load({ recognised = 'two chicken biryani and three coffee', added = [] 
     setInterval: () => 0,
     clearInterval: () => {},
     navigator: {},
+    Date,
+    Math,
+    Promise,
+    Map,
+    Event: function Event() {},
   };
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(source, context);
 
-  return {
-    api: context.window.POSNIC_VOICE_UI,
-    document,
-    pill,
-    byId,
-    added,
-    toasts,
-    sessions,
-    context,
-  };
+  const api = context.window.POSNIC_VOICE_UI;
+  /* The till is not asked: this is the handset reading by itself. */
+  api.serverReads = false;
+
+  return { api, document, pill, byId, calls, toasts, sessions, context, cart: () => cart };
 }
 
-const understood = (text) =>
-  VoiceOrder.understand(text, ItemSearch.index(MENU), ItemSearch).map((line) => ({
-    ...line,
-    dropped: false,
-  }));
-
-const names = (api) =>
-  api.lines.map((line) => `${line.quantity} x ${line.item ? line.item.name : '?'}`);
+const lines = (cart) => cart().map((row) => `${row.quantity} x ${row.name}`);
 
 /* ---------------------------------------------------------- the menu index */
 
 test('the menu is indexed from the copy the app has stored', async () => {
-  /*
-   * NOT from the page's `products`, which is a top-level `let` in a classic
-   * script and so is not on `window`. Reading it from here finds undefined,
-   * silently, and every spoken dish comes back "not on this menu" on a page
-   * visibly full of dishes. That shipped in the first draft of this file and
-   * only a real browser caught it.
-   */
   const { api } = load();
   assert.equal((await api.menuIndex()).length, MENU.length);
 });
 
 test('the index the search box built is reused, not rebuilt', async () => {
-  /* The same menu indexed twice is two things that can disagree. */
   const { api, context } = load();
   const shared = ItemSearch.index(MENU.slice(0, 1));
   context.window._itemSearchIndex = shared;
@@ -227,243 +212,178 @@ test('no stored menu means nothing is matched, not a crash', async () => {
   assert.deepEqual(await api.menuIndex(), []);
 });
 
-/* -------------------------------------------------------------- the sheet */
+/* ----------------------------------------------------- words move the cart */
 
-test('speaking does NOT put anything in the cart', async () => {
-  const added = [];
-  const { api } = load({ added });
+test('what is said goes into the cart', async () => {
+  /* Owner: "if user say add 2 chicken briyani cart needs to get added." */
+  const { api, cart } = load({ recognised: 'add two chicken biryani' });
   api.begin();
   await api.finish();
-  assert.deepEqual(added, [], 'a spoken order reached the cart without anybody confirming it');
+  assert.deepEqual(lines(cart), ['2 x Chicken Biryani']);
 });
 
-test('speaking leaves the heard order on the sheet for a person to read', async () => {
-  const { api } = load();
+test('an order read off a table, with no verb, is an addition', async () => {
+  const { api, cart } = load({ recognised: 'two chicken biryani and three coffee' });
   api.begin();
   await api.finish();
-  assert.deepEqual(names(api), ['2 x Chicken Biryani', '3 x Coffee']);
+  assert.deepEqual(lines(cart), ['2 x Chicken Biryani', '3 x Coffee']);
 });
 
-test('Add is what puts it in the cart, once, in the quantities said', async () => {
-  const added = [];
-  const { api } = load({ added });
+test('"take off" takes off, through the same door the menu buttons use', async () => {
+  /* Owner: "if user says remove 2 chicken briyani remove it." */
+  const { api, cart, calls, context } = load({ recognised: 'remove one coffee' });
+  await context.updateQuantity('1', 3);
   api.begin();
   await api.finish();
-  await api.accept();
-  assert.deepEqual(added, [
-    { id: '0', quantity: 2 },
-    { id: '1', quantity: 3 },
-  ]);
+  assert.deepEqual(lines(cart), ['2 x Coffee']);
+  assert.deepEqual(calls.quantity.at(-1), { id: '1', change: -1 }, 'removal did not go through updateQuantity');
 });
 
-test('a line struck off is not added', async () => {
-  const added = [];
-  const { api } = load({ added });
-  api.lines = understood('two chicken biryani, three coffee');
-  api.lines[0].dropped = true;
-  await api.accept();
-  assert.deepEqual(added, [{ id: '1', quantity: 3 }]);
-});
-
-test('a dish that is not on the menu is never invented into one', async () => {
-  const added = [];
-  const { api } = load({ recognised: 'two pizza', added });
+test('removing what is not there does nothing, rather than going negative', async () => {
+  const { api, cart } = load({ recognised: 'remove two coffee' });
   api.begin();
   await api.finish();
-  assert.equal(api.lines.length, 1);
-  assert.equal(api.lines[0].found, false, 'something not on the menu was matched to a dish');
-  await api.accept();
-  assert.deepEqual(added, []);
+  assert.deepEqual(lines(cart), []);
 });
 
-test('an unheard line is KEPT on the sheet, not quietly dropped', async () => {
-  /* A line that vanishes is a dish nobody knows to re-order until a customer
-     asks where it is. */
-  const { api } = load({ recognised: 'two chicken biryani and one pizza' });
+test('"make it three" sets the quantity, whatever it was', async () => {
+  const { api, cart, context } = load({ recognised: 'make it three coffee' });
+  await context.updateQuantity('1', 1);
   api.begin();
   await api.finish();
-  assert.equal(api.lines.length, 2);
-  assert.equal(api.lines[1].term, 'pizza');
+  assert.deepEqual(lines(cart), ['3 x Coffee']);
 });
 
-test('a rough match is marked as rough, so the screen can say so', async () => {
-  const { api } = load({ recognised: 'two chicken briyani' });
+test('add and remove in one breath are both carried out, in order', async () => {
+  const { api, cart, context } = load({ recognised: 'two masala dosa and take off the coffee' });
+  await context.updateQuantity('1', 2);
   api.begin();
   await api.finish();
-  assert.equal(api.lines[0].item.name, 'Chicken Biryani');
-  assert.equal(api.lines[0].exact, false);
+  assert.deepEqual(lines(cart), ['1 x Coffee', '2 x Masala Dosa']);
 });
 
-test('hearing nothing adds nothing and says so', async () => {
-  const added = [];
-  const { api, toasts } = load({ recognised: '', added });
+test('"start over" empties the cart before what follows is added', async () => {
+  const { api, cart, calls, context } = load({ recognised: 'start over, two coffee' });
+  await context.updateQuantity('0', 4);
   api.begin();
   await api.finish();
-  assert.deepEqual(added, []);
-  assert.match(toasts.join(' '), /nothing was heard/i);
+  assert.equal(calls.cleared, 1, 'the cart was not cleared');
+  assert.deepEqual(lines(cart), ['2 x Coffee']);
 });
 
-test('one item failing to add does not lose the rest of the order', async () => {
-  const added = [];
-  const { api, context } = load({ added });
-  context.updateQuantity = async (id, quantity) => {
-    if (id === '0') throw new Error('stock check blew up');
-    added.push({ id, quantity });
-  };
-  api.lines = understood('two chicken biryani, three coffee');
-  await api.accept();
-  assert.deepEqual(added, [{ id: '1', quantity: 3 }]);
-});
+/* --------------------------------------------- the kitchen needs a finger */
 
-/* ------------------------------------------------- said all, or one by one */
-
-test('a second press ADDS to the order instead of replacing it', async () => {
+test('"send to kitchen" does NOT send. It offers the button', async () => {
   /*
-   * The whole reason "say it all at once" and "say it one at a time" are the
-   * same feature. Replacing would mean the second press silently deleted what
-   * the waiter had already said, at a table, with no way back.
+   * A cart can be corrected; a ticket on the pass cannot. The words put the
+   * button on the panel and a person who has just read the cart presses it.
    */
-  const { api, context } = load({ recognised: 'two chicken biryani' });
+  const { api, calls, context } = load({ recognised: 'send it to the kitchen' });
+  await context.updateQuantity('1', 2);
   api.begin();
   await api.finish();
+  assert.equal(calls.placed, 0, 'a spoken word placed an order with nobody confirming it');
+  assert.equal(api.pendingPlace, true, 'the send button was not offered');
+});
 
-  context.__heard = 'one masala dosa';
+test('the button places it, the way the cart page does', async () => {
+  const { api, calls } = load({ recognised: 'two coffee, send to kitchen' });
   api.begin();
   await api.finish();
-
-  assert.deepEqual(names(api), ['2 x Chicken Biryani', '1 x Masala Dosa']);
+  assert.equal(api.pendingPlace, true);
+  api.confirmPlace();
+  assert.equal(calls.placed, 1);
+  assert.equal(api.pendingPlace, false);
 });
 
-test('the same dish said twice becomes one line, not two', async () => {
-  /* Two "2 Coffee" rows is something a person has to read twice and add up.
-     "4 Coffee" is not. */
-  const { api, context } = load({ recognised: 'two coffee' });
+test('nothing in the cart, nothing to send', async () => {
+  const { api, calls } = load({ recognised: 'send to kitchen' });
   api.begin();
   await api.finish();
+  api.confirmPlace();
+  assert.equal(calls.placed, 0, 'an empty cart was sent to the kitchen');
+});
 
-  context.__heard = 'two more coffee';
+/* --------------------------------------------------- what could not be placed */
+
+test('a dish not on the menu stays on screen, named, instead of vanishing', async () => {
+  const { api, cart } = load({ recognised: 'two coffee and five widgets' });
   api.begin();
   await api.finish();
-
-  assert.deepEqual(names(api), ['4 x Coffee']);
-});
-
-test('heard cleanly the second time settles a line that was doubtful', async () => {
-  const { api, context } = load({ recognised: 'two chicken briyani' });
-  api.begin();
-  await api.finish();
-  assert.equal(api.lines[0].exact, false);
-
-  context.__heard = 'one chicken biryani';
-  api.begin();
-  await api.finish();
-  assert.equal(api.lines[0].exact, true, 'saying it again clearly did not settle it');
-  assert.equal(api.lines[0].quantity, 3);
-});
-
-test('Add clears the sheet, so the next table starts empty', async () => {
-  const { api } = load();
-  api.begin();
-  await api.finish();
-  await api.accept();
-  assert.deepEqual(api.lines, []);
-});
-
-/* ---------------------------------------------------------- the gesture */
-
-test('a TAP starts it and keeps listening, like a voice note', async () => {
-  /*
-   * The first version refused a tap and said "hold the button" - one more
-   * thing to learn, and not even what a voice note does. Somebody in a hurry
-   * taps; somebody careful holds. Both are the same intention.
-   */
-  const { api, sessions } = load();
-  api.onPress({ clientX: 10, clientY: 10, pointerId: 1, preventDefault() {}, target: {} });
-  api.onRelease({ clientX: 10, clientY: 10, pointerId: 1 });
-
-  assert.equal(api.recording, true, 'a tap did not leave it listening');
-  assert.equal(sessions[0].cancelled, false, 'a tap threw the recording away');
-});
-
-test('and a second tap is what stops it', async () => {
-  const { api } = load();
-  api.onPress({ clientX: 10, clientY: 10, pointerId: 1, preventDefault() {}, target: {} });
-  api.onRelease({ clientX: 10, clientY: 10, pointerId: 1 });
-
-  api.onPress({ clientX: 10, clientY: 10, pointerId: 2, preventDefault() {}, target: {} });
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.equal(api.recording, false, 'a second tap did not stop it');
-});
-
-test('holding still works, and releasing still ends it', async () => {
-  const { api } = load();
-  api.begin();
-  assert.equal(api.recording, true);
-  await api.finish();
-  assert.equal(api.recording, false);
-  assert.deepEqual(names(api), ['2 x Chicken Biryani', '3 x Coffee']);
-});
-
-test('sliding left cancels, and nothing is transcribed', async () => {
-  const { api, sessions } = load();
-  api.onPress({ clientX: 300, clientY: 700, pointerId: 1, preventDefault() {}, target: {} });
-  assert.equal(api.recording, true);
-
-  api.onMove({ clientX: 300 - 120, clientY: 700, pointerId: 1 });
-
-  assert.equal(api.recording, false);
-  assert.equal(sessions[0].cancelled, true);
-  assert.equal(sessions[0].stopped, false, 'a cancelled recording was still sent to be transcribed');
-  assert.deepEqual(api.lines, []);
-});
-
-test('sliding up locks it, so letting go does NOT end the order', async () => {
-  /* A long order, or a hand carrying plates. */
-  const { api } = load();
-  api.onPress({ clientX: 300, clientY: 700, pointerId: 1, preventDefault() {}, target: {} });
-  api.onMove({ clientX: 300, clientY: 700 - 100, pointerId: 1 });
-
-  api.onRelease({ clientX: 300, clientY: 700 - 100, pointerId: 1 });
-  assert.equal(api.recording, true, 'letting go ended a locked recording');
-
-  await api.finish();
-  assert.deepEqual(names(api), ['2 x Chicken Biryani', '3 x Coffee']);
-});
-
-test('a press while already recording is ignored', async () => {
-  const { api, sessions } = load();
-  api.onPress({ clientX: 10, clientY: 10, pointerId: 1, preventDefault() {}, target: {} });
-  api.onPress({ clientX: 10, clientY: 10, pointerId: 2, preventDefault() {}, target: {} });
-  assert.equal(sessions.length, 1, 'a second microphone was opened over the first');
-});
-
-test('finishing twice transcribes once', async () => {
-  const added = [];
-  const { api, sessions } = load({ added });
-  api.begin();
-  await Promise.all([api.finish(), api.finish()]);
-  assert.equal(sessions.length, 1);
-  assert.deepEqual(names(api), ['2 x Chicken Biryani', '3 x Coffee']);
-});
-
-/* -------------------------------------------------------- the layout trap */
-
-test('the sheet and the recording bar are hidden with display, not just [hidden]', () => {
-  /*
-   * An inline display beats the browser's rule for [hidden]. order-queue-ui.js
-   * shipped with exactly this bug: a bar set hidden was still laid out,
-   * invisible and full width, swallowing the taps meant for Place Order
-   * underneath it. A full-screen sheet would swallow the entire menu.
-   */
-  const source = fs.readFileSync(
-    path.join(__dirname, '..', 'assets', 'common', 'voice-order-ui.js'),
-    'utf8'
+  assert.deepEqual(lines(cart), ['2 x Coffee']);
+  assert.deepEqual(
+    api.unplaced.map((m) => `${m.quantity} ${m.term}`),
+    ['5 widgets'],
+    'a line that could not be placed was dropped silently'
   );
-  const hides = source.match(/style\.display = 'none'/g) || [];
-  assert.ok(hides.length >= 2, 'something that can be shown is never explicitly hidden');
-  assert.doesNotMatch(
-    source,
-    /'display:flex',\s*\]\.join\(';'\)/,
-    'an overlay sets display:flex in its static style, so hiding it will not work'
-  );
+});
+
+/* ---------------------------------------------------- editing what was heard */
+
+test('every line can be stepped and struck after the fact', async () => {
+  /* "three coffee" heard as two is one tap to fix, not a whole order again. */
+  const { api, cart } = load({ recognised: 'two coffee' });
+  api.begin();
+  await api.finish();
+  await api.bump('1', 1);
+  assert.deepEqual(lines(cart), ['3 x Coffee']);
+  await api.strike('1');
+  assert.deepEqual(lines(cart), []);
+});
+
+/* ------------------------------------------------ the panel is beside the work */
+
+test('the panel never dims the screen or covers the bill bar', async () => {
+  /*
+   * Owner: "bottom buttons are in active when showing voice to text." The
+   * first version put a full-screen shade behind a sheet. This one sits above
+   * the bill bar with no backdrop, so the menu and the bill button keep
+   * working while it is up.
+   */
+  const { api, byId } = load({ recognised: 'two coffee' });
+  api.begin();
+  await api.finish();
+  const panel = byId.get('posnic-voice-panel');
+  assert.ok(panel, 'no panel was drawn');
+  assert.equal(panel.getAttribute('data-open'), 'true');
+  assert.ok(!/inset\s*:\s*0/.test(panel.style.cssText || ''), 'the panel is a full-screen overlay');
+  assert.ok(!/rgba\(/.test(panel.style.cssText || ''), 'the panel dims the page behind it');
+  /* Anchored to the bar's height, measured; with no bar it sits on the floor. */
+  assert.equal(panel.style.bottom, '0px');
+});
+
+test('the microphone and panel are drawn in the app\'s own tokens, not a blue circle', async () => {
+  const { api, byId } = load({ recognised: 'two coffee' });
+  api.begin();
+  await api.finish();
+  const style = byId.get('posnic-voice-style');
+  assert.ok(style, 'no stylesheet was injected');
+  assert.ok(!/gradient/i.test(style.textContent), 'a gradient is back');
+  assert.ok(!/#2563eb/i.test(style.textContent), 'the old hard-coded blue is back');
+  assert.match(style.textContent, /var\(--accent/, 'the accent is not a design token');
+  assert.match(style.textContent, /posnic-voice-pulse/, 'nothing moves while it listens');
+  assert.match(style.textContent, /prefers-reduced-motion/, 'the animation ignores the phone\'s motion setting');
+});
+
+/* ------------------------------------------------------------- the gesture */
+
+test('a quick press is a tap, and a tap listens until the next tap', () => {
+  const { api } = load();
+  api.onPress({ preventDefault() {}, clientX: 0, clientY: 0, pointerId: 1, target: {} });
+  api.onRelease();
+  assert.equal(api.recording, true, 'a tap did not leave the microphone open');
+});
+
+test('sliding left throws the recording away', () => {
+  const { api, sessions } = load();
+  api.onPress({ preventDefault() {}, clientX: 200, clientY: 0, pointerId: 1, target: {} });
+  api.onMove({ clientX: 50, clientY: 0 });
+  assert.equal(api.recording, false);
+  assert.equal(sessions[0].cancelled, true, 'the session was not cancelled');
+});
+
+test('the mic is absent where the phone cannot listen', async () => {
+  const { api, context } = load();
+  context.Speech.available = () => false;
+  assert.equal(await api.refreshAvailability(), false);
 });

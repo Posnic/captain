@@ -225,9 +225,50 @@
         let previousOccupiedTablesKey = '';
         let previousTableordersKey = '';
 
+        /*
+         * The list is rebuilt every few seconds by the poll, and a rebuild
+         * used to throw away whatever the waiter had typed into "Other".
+         *
+         * Owner: "when focus out from table number input box keep saying
+         * enter table number its cleared." Not focus-out at all - the poll
+         * landed, container.innerHTML was replaced, and the typed value went
+         * with it. Then Next read an empty box and nagged. So what a person
+         * has typed or picked is captured before any rebuild and put back
+         * after, and a rebuild that would change nothing is skipped.
+         */
+        function rememberTableChoice() {
+            const typed = document.getElementById('manual_table_input');
+            const picked = document.querySelector('input[name="table_no"]:checked');
+            return {
+                typed: typed ? typed.value : '',
+                picked: picked ? picked.value : null,
+                manual: !!(picked && picked.id === 'table_manual_radio'),
+            };
+        }
+
+        function restoreTableChoice(choice) {
+            if (!choice) return;
+            const typed = document.getElementById('manual_table_input');
+            if (typed && choice.typed) {
+                typed.value = choice.typed;
+                const manualRadio = document.getElementById('table_manual_radio');
+                if (manualRadio && (choice.manual || !choice.picked)) {
+                    manualRadio.value = choice.typed;
+                    manualRadio.checked = true;
+                }
+            }
+            if (choice.picked && !choice.manual) {
+                const radio = document.querySelector(`input[name="table_no"][value="${choice.picked}"]`);
+                if (radio && !radio.disabled) radio.checked = true;
+            }
+        }
+
+        let previousTableMode = '';
+
         async function loadTablesFromTableorders(isPollingUpdate = false) {
             const container = document.querySelector('.table-list');
             if (!container) return;
+            const choice = rememberTableChoice();
 
             // wrapper <div> that contains BOTH: .section-title + .table-list
             const sectionWrapper = container.closest('.discount-container > div') || container.parentElement;
@@ -264,7 +305,10 @@
             // 🔒 EMPTY → show input box only
             if (!Array.isArray(tableorders) || tableorders.length === 0) {
                 if (sectionWrapper) sectionWrapper.style.display = '';
-                
+                /* Already showing the box: leave it, and what is typed in it. */
+                if (isPollingUpdate && previousTableMode === 'manual') return;
+                previousTableMode = 'manual';
+
                 let html = `
                     <div class="table-input-wrapper" style="display: flex; justify-content: center; margin-top: 10px;">
                         <input type="text"
@@ -287,6 +331,7 @@
                         this.value = v;
                     });
                 }
+                restoreTableChoice(choice);
                 return;
             }
 
@@ -307,11 +352,12 @@
             // ✅ OPTIMIZATION: Only update DOM if occupied tables OR configured tables changed
             const newOccupiedKey = JSON.stringify([...occupiedTables].sort());
             const newTableordersKey = JSON.stringify(tableorders.map(t => t.tableorder_id || t.tableorder_value));
-            if (isPollingUpdate) {
+            if (isPollingUpdate && previousTableMode === 'list') {
                 if (newOccupiedKey === previousOccupiedTablesKey && newTableordersKey === previousTableordersKey) {
                     return; // No changes, skip DOM update
                 }
             }
+            previousTableMode = 'list';
 
             // Store current state for next comparison
             previousOccupiedTablesKey = newOccupiedKey;
@@ -371,6 +417,10 @@
                     restoredRadio.checked = true;
                 }
             }
+            /* And what was typed into Other, which the block above never
+               covered: its radio's value was "" until somebody typed, so a
+               rebuild between keystrokes lost the keystrokes. */
+            restoreTableChoice(choice);
             
             // 👉 Setup manual input behaviour
             const manualInput = document.getElementById('manual_table_input');
