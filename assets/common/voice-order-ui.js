@@ -186,6 +186,15 @@
 #${PANEL_ID} .vp-name{flex:1;min-width:0;padding-left:var(--s1,4px)}
 #${PANEL_ID} .vp-delta{font-size:var(--t-xs,12px);font-weight:700;color:var(--ink-soft,#475569)}
 #${PANEL_ID} .vp-rough{font-size:var(--t-xs,12px);color:var(--warn,#b45309)}
+/* How it was wanted. In the accent rather than the warning colour: a
+   requirement is something the waiter asked for, not something that
+   went wrong.
+
+   NOT .vp-note - that class is already the panel's status line, and
+   reusing it restyled the status line to bold accent 12px as a side
+   effect nobody asked for. A Playwright strict-mode violation caught
+   the duplicate before the styling was noticed. */
+#${PANEL_ID} .vp-want{font-size:var(--t-xs,12px);color:var(--accent,#4f46e5);font-weight:600}
 #${PANEL_ID} .vp-x{border:0;background:none;color:var(--ink-faint,#94a3b8);font-size:20px;cursor:pointer;
   width:34px;height:34px;line-height:1}
 #${PANEL_ID} .vp-empty{padding:var(--s4,16px) 0;color:var(--ink-soft,#475569)}
@@ -693,6 +702,32 @@
           const now = (await cartNow()).find((row) => row.id === id);
           await change(id, line.quantity - (now ? now.quantity : 0));
         }
+
+        /*
+         * HOW IT WAS WANTED, onto the line.
+         *
+         * "chicken biryani without onion" is one dish with a note, and the
+         * note is the half the kitchen cannot guess. It goes in the same field
+         * the notes modal on the menu writes, so a spoken requirement and a
+         * typed one are the same thing by the time anybody downstream reads
+         * it - the cart row shows it, and it prints on the ticket.
+         *
+         * Only ever added, never cleared: saying a dish again without
+         * repeating the requirement does not withdraw it. Somebody who wants
+         * the onion back takes it off the line by hand, which is a decision
+         * worth making on purpose.
+         */
+        if (line.note && command.verb !== 'remove' && typeof setCartItemNotes === 'function') {
+          try {
+            const now = (await cartNow()).find((row) => row.id === id);
+            const had = (now && now.notes) || '';
+            const already = had.toLowerCase().includes(line.note.toLowerCase());
+            await setCartItemNotes(id, had && !already ? had + ', ' + line.note : (already ? had : line.note));
+          } catch (e) {
+            /* the dish is on the bill either way; a lost note is not a lost
+               order, and the waiter can still see what was heard */
+          }
+        }
       }
     }
   }
@@ -717,6 +752,10 @@
             <button type="button" class="vp-step" data-act="more" data-id="${escapeHtml(row.id)}" aria-label="One more">+</button>
             <span class="vp-name">${escapeHtml(row.name)}${
               delta ? ` <span class="vp-delta">${delta > 0 ? '+' : ''}${delta}</span>` : ''
+            }${
+              row.notes
+                ? `<div class="vp-want">${escapeHtml(row.notes)}</div>`
+                : ''
             }${
               view.rough[row.id]
                 ? `<div class="vp-rough">heard "${escapeHtml(view.rough[row.id])}" - check this one</div>`

@@ -305,3 +305,62 @@ test('a search that matches nothing says so, and says what to try', async ({ pag
   await expect(said).toContainText('cb');
   await expect(page.locator('#search-count')).toHaveText('');
 });
+
+/* --------------------------------------------- how the dish is wanted */
+
+test('a requirement lands on the line, not as a second dish', async ({ page }) => {
+  /*
+   * "chicken biryani without onion" is one dish with a note. Parsed as two
+   * things it would put a mystery on the bill and lose the half the kitchen
+   * cannot guess.
+   */
+  await onTheMenu(page, 'two chicken biryani without onion');
+  await holdAndSpeak(page);
+
+  await expect(panel(page)).toContainText('Chicken Biryani');
+  await expect(panel(page).locator('.vp-want')).toHaveText('Without onion');
+  /* Two, not three: the onion is not an item. */
+  await expect(count(page)).toHaveText('2');
+});
+
+test('the requirement reaches the cart itself, where the kitchen reads it', async ({ page }) => {
+  /* The same field the notes modal on the menu writes, so a spoken
+     requirement and a typed one are one thing by the time anything
+     downstream sees it. */
+  await onTheMenu(page, 'one chicken biryani no onion extra spicy');
+  await holdAndSpeak(page);
+  await expect(panel(page).locator('.vp-want')).toBeVisible();
+
+  const notes = await page.evaluate(async () => {
+    const cart = await getCartData();
+    return cart.map((row) => row.notes || '');
+  });
+  assertHasNote(notes);
+});
+
+function assertHasNote(notes) {
+  expect(notes.join(' ').toLowerCase()).toContain('onion');
+}
+
+test('a waiter counting in Tamil is counting', async ({ page }) => {
+  /* "rendu" is two, and it is what gets said in a Tamil Nadu dining room
+     whatever language the rest of the sentence is in. */
+  await onTheMenu(page, 'rendu chicken biryani');
+  await holdAndSpeak(page);
+
+  await expect(panel(page)).toContainText('Chicken Biryani');
+  await expect(count(page)).toHaveText('2');
+});
+
+test('a dish heard by ear is flagged for a second look', async ({ page }) => {
+  /*
+   * "briyani" is what a recogniser hands back, and it reaches the right dish
+   * phonetically - but a guess is shown to be confirmed rather than added as
+   * a fact. See assets/common/sounds-like.js.
+   */
+  await onTheMenu(page, 'two chiken briyani');
+  await holdAndSpeak(page);
+
+  await expect(panel(page)).toContainText('Chicken Biryani');
+  await expect(panel(page).locator('.vp-rough')).toContainText('check this one');
+});

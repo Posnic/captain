@@ -47,7 +47,75 @@
     nineteen: 19, twenty: 20,
     /* Recognisers hear these for small numbers more often than not. */
     to: 2, too: 2, for: 4, ate: 8,
+
+    /*
+     * TAMIL, because this app is used in Tamil Nadu and a waiter counting
+     * plates does it in Tamil whatever language the rest of the sentence is
+     * in. "rendu chicken biryani" is two, and it is what gets said.
+     *
+     * Spelled the way a recogniser set to English transcribes the sound,
+     * which is the only spelling that will ever arrive here - and several
+     * ways each, because it guesses differently every time.
+     */
+    onnu: 1, ondru: 1, onru: 1, onnum: 1,
+    rendu: 2, irandu: 2, rendo: 2,
+    moonu: 3, moondru: 3, munu: 3,
+    naalu: 4, naangu: 4, nalu: 4,
+    anju: 5, ainthu: 5, anchu: 5,
+    aaru: 6, aru: 6,
+    ezhu: 7, elu: 7,
+    ettu: 8,
+    onbathu: 9, onbadhu: 9,
+    pathu: 10, patthu: 10,
+
+    /*
+     * HINDI, for the same reason one town over.
+     *
+     * "do" is DELIBERATELY ABSENT even though it is Hindi for two. It is also
+     * the commonest English auxiliary verb there is, and "do you have chicken
+     * biryani" would come through as two of something called "have chicken
+     * biryani" - which matches nothing, so a perfectly good question becomes
+     * a silence. Two is the one number a waiter can always say another way.
+     */
+    ek: 1, teen: 3, chaar: 4, paanch: 5, saat: 7, aath: 8, nau: 9, das: 10,
   };
+
+  /*
+   * HOW A DISH IS WANTED, as opposed to which dish it is.
+   *
+   * "chicken biryani without onion" is one line with a note on it, not a
+   * biryani and a mystery. The note is what the kitchen ticket needs and the
+   * app has carried a field for it all along - the cart calls it
+   * item_description, and the notes modal on the menu writes the same field -
+   * so a spoken requirement lands exactly where a typed one does.
+   *
+   * ONLY MARKER-INTRODUCED CLAUSES ARE TAKEN, never a bare adjective. No dish
+   * is called "something without onion", so splitting on "without" is safe;
+   * plenty of dishes are called "Plain Dosa" or "Spicy Chicken", and a rule
+   * that stripped bare adjectives would quietly search for the wrong dish.
+   */
+  const MARKERS = new Set([
+    'without', 'no', 'with', 'extra', 'more', 'less', 'light', 'hold', 'skip',
+    'add', 'minus', 'not',
+  ]);
+
+  /*
+   * How much of it, which is a note and not a quantity.
+   *
+   * A half plate is one line on a bill, not half a line, and "one by two" -
+   * one drink poured into two cups - is ordered by the hundred every morning
+   * in every tea shop in the state. Both change what the kitchen does and
+   * neither changes how many.
+   */
+  const PORTIONS = [
+    { say: ['one', 'by', 'two'], note: 'One by two' },
+    { say: ['one', 'by', 'three'], note: 'One by three' },
+    { say: ['half', 'plate'], note: 'Half plate' },
+    { say: ['full', 'plate'], note: 'Full plate' },
+    { say: ['quarter', 'plate'], note: 'Quarter plate' },
+    { say: ['half'], note: 'Half' },
+    { say: ['quarter'], note: 'Quarter' },
+  ];
 
   const MAX = 99;
 
@@ -159,14 +227,119 @@
   const clamp = (n) => Math.min(Math.max(n, 1), MAX);
 
   /**
+   * Split "chicken biryani without onion" into the dish and the note.
+   *
+   *   "chicken biryani without onion" -> biryani,  "Without onion"
+   *   "no sugar coffee"               -> coffee,   "No sugar"
+   *   "half plate chicken 65"         -> chicken 65, "Half plate"
+   *   "one by two tea"                -> tea,      "One by two"
+   *   "chicken biryani"               -> biryani,  ""
+   *
+   * A MARKER AFTER THE DISH takes everything to the end, because that is how
+   * anybody says it: the dish, then how they want it. A marker BEFORE the dish
+   * takes itself and one word - "no sugar coffee", "extra spicy biryani" -
+   * because the dish is what follows and swallowing more would eat it.
+   *
+   * If nothing is left to order, nothing is split. "no onion" on its own is
+   * somebody amending the line before, not a dish called onion, and returning
+   * an empty term would have the matcher search for nothing and find the first
+   * thing on the menu.
+   */
+  function splitNote(term) {
+    let words = String(term || '').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return { term: '', note: '' };
+
+    const notes = [];
+
+    /* Portions first, and anywhere in the phrase: "tea one by two" and "one by
+       two tea" are the same order said by two people. */
+    for (const portion of PORTIONS) {
+      const at = runAt(words, portion.say);
+      if (at === -1) continue;
+      const rest = words.slice(0, at).concat(words.slice(at + portion.say.length));
+      /* Only if a dish survives it. "Half" alone is not an order. */
+      if (!rest.length) continue;
+      notes.push(portion.note);
+      words = rest;
+    }
+
+    /* Then the first marker, if one is left. */
+    for (let i = 0; i < words.length; i += 1) {
+      if (!MARKERS.has(words[i])) continue;
+
+      if (i > 0) {
+        const clause = words.slice(i);
+        notes.push(sentence(clause.join(' ')));
+        words = words.slice(0, i);
+      } else {
+        /* Leading: the marker and one word, and only if a dish is left. */
+        if (words.length < 3) break;
+        notes.push(sentence(words.slice(0, 2).join(' ')));
+        words = words.slice(2);
+      }
+      break;
+    }
+
+    return { term: words.join(' '), note: notes.join(', ') };
+  }
+
+  /** Where a run of words starts inside another, or -1. */
+  function runAt(words, run) {
+    for (let i = 0; i + run.length <= words.length; i += 1) {
+      let hit = true;
+      for (let k = 0; k < run.length; k += 1) {
+        if (words[i + k] !== run[k]) {
+          hit = false;
+          break;
+        }
+      }
+      if (hit) return i;
+    }
+    return -1;
+  }
+
+  /* A note goes on a kitchen ticket, so it reads like something written for a
+     person rather than a fragment of a transcript. */
+  const sentence = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+  /*
+   * Words that make "less" and "fewer" a REQUIREMENT rather than a removal.
+   *
+   * "less" is in the remove verbs, and rightly - "less coffee" takes one off.
+   * But "less spicy" takes nothing off anything; it is the single most common
+   * thing said about food in this country, and reading it as a removal both
+   * loses the requirement and deletes a dish nobody cancelled.
+   */
+  const TASTE = new Set([
+    'spicy', 'spice', 'salt', 'salty', 'sugar', 'sweet', 'oil', 'oily', 'masala',
+    'chilli', 'chili', 'ghee', 'butter', 'ice', 'water', 'milk', 'gravy',
+  ]);
+
+  /**
    * What was said, as a list of things to look up.
    *
    * @param {string} text  a transcript
    * @returns {Array<{quantity: number, term: string}>}
    */
   function parse(text) {
+    /*
+     * HOW IT IS WANTED COMES OFF FIRST, then how many.
+     *
+     * The other order does not work, and "one by two tea" is why: quantityOf
+     * sees a leading "one", takes it as the count, and hands on "by two tea" -
+     * from which the portion has already been eaten and can never be
+     * recovered. The requirement has to be lifted out while it is still whole.
+     *
+     * It falls out nicely for the rest too: "two chicken biryani without
+     * onion" loses the onion, and what is left is an ordinary "two chicken
+     * biryani" for the counter to read.
+     */
     return phrases(text)
-      .map(quantityOf)
+      .map((phrase) => {
+        const wanted = splitNote(phrase);
+        const counted = quantityOf(wanted.term);
+        return { quantity: counted.quantity, term: counted.term, note: wanted.note };
+      })
       .filter((line) => line.term.length > 1);
   }
 
@@ -279,6 +452,9 @@
       return {
         quantity: line.quantity,
         term: line.term,
+        /* Goes on the cart line and onto the kitchen ticket, in the same field
+           the notes modal on the menu writes. parse() lifted it out. */
+        note: line.note,
         item: match ? match.item : null,
         exact: !!(match && match.exact),
         found: !!match,
@@ -308,6 +484,18 @@
 
   /** The verb phrase that starts at this position, if any. */
   function verbAt(words, at) {
+    /*
+     * "less spicy" is not a removal.
+     *
+     * "less" and "fewer" earn their place in the remove verbs - "less coffee"
+     * takes one off - but "less spicy" takes nothing off anything, and reading
+     * it as a removal both loses the requirement and deletes a dish nobody
+     * cancelled. The same word, two jobs, told apart by what follows it.
+     */
+    if ((words[at] === 'less' || words[at] === 'fewer') && TASTE.has(words[at + 1])) {
+      return null;
+    }
+
     for (const entry of VERB_LIST) {
       const n = entry.words.length;
       if (at + n > words.length) continue;
@@ -398,5 +586,8 @@
     return result;
   }
 
-  return { parse, phrases, quantityOf, understand, matchOne, distance, commands, WORDS, VERBS };
+  return {
+    parse, phrases, quantityOf, understand, matchOne, distance, commands, splitNote,
+    WORDS, VERBS, MARKERS, PORTIONS,
+  };
 });
