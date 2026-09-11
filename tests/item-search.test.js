@@ -136,3 +136,42 @@ test('a slipped finger cannot send ninety-nine mains', () => {
   /* And zero is one, not nothing. */
   assert.equal(ItemSearch.parseTerm('0 cb').quantity, 1);
 });
+
+/*
+ * THE SPACE IS OPTIONAL, because a thumb in a hurry does not type one.
+ *
+ * "2 cb" worked and "2cb" did not - a distinction nobody standing at a table
+ * is making on purpose, and the kind of thing that makes an app feel like it
+ * is arguing with you.
+ */
+
+test('a quantity sticks to the word it counts', () => {
+  assert.deepEqual(ItemSearch.parseTerm('2cb'), { quantity: 2, term: 'cb' });
+  assert.deepEqual(ItemSearch.parseTerm('2 cb'), { quantity: 2, term: 'cb' });
+  assert.deepEqual(ItemSearch.parseTerm('3coffee'), { quantity: 3, term: 'coffee' });
+  assert.deepEqual(ItemSearch.parseTerm('12cb'), { quantity: 12, term: 'cb' });
+});
+
+test('a number inside a name is still part of the name', () => {
+  /* The rule that keeps this safe: a dish's digits are not at the front. */
+  assert.deepEqual(ItemSearch.parseTerm('chicken 65'), { quantity: 1, term: 'chicken 65' });
+  assert.deepEqual(ItemSearch.parseTerm('a4 paper'), { quantity: 1, term: 'a4 paper' });
+});
+
+test('a number on its own is a search, not a quantity', () => {
+  /* Somebody typing "65" is looking for Chicken 65, not ordering sixty-five
+     of whatever they touch next. */
+  assert.deepEqual(ItemSearch.parseTerm('65'), { quantity: 1, term: '65' });
+  assert.deepEqual(ItemSearch.parseTerm('2'), { quantity: 1, term: '2' });
+});
+
+test('the shortcut finds the dish it is short for', () => {
+  const menu = ['Chicken Biryani', 'Coffee', 'Chicken 65'].map((name, id) => ({
+    id: String(id),
+    name,
+  }));
+  const index = ItemSearch.index(menu);
+  const typed = ItemSearch.parseTerm('2cb');
+  assert.equal(typed.quantity, 2);
+  assert.equal(ItemSearch.search(index, typed.term)[0].name, 'Chicken Biryani');
+});

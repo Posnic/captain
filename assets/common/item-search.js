@@ -79,8 +79,18 @@
    * @returns {{quantity: number, term: string}}
    */
   function parseTerm(value) {
-    const match = String(value || '').match(/^\s*(\d{1,2})\s+(\S.*)$/);
-    if (!match) return { quantity: 1, term: String(value || '') };
+    /*
+     * The space is optional, because a thumb in a hurry does not type one.
+     *
+     * "2 cb" worked and "2cb" did not, which is a distinction nobody typing at
+     * a table is making on purpose. The number has to be followed by a LETTER
+     * for the no-space form to count, so "chicken 65" is still a dish and not
+     * sixty-five of something - the rule that keeps a number inside a name
+     * safe is that a name's digits are not at the front.
+     */
+    const text = String(value || '');
+    const match = text.match(/^\s*(\d{1,2})\s+(\S.*)$/) || text.match(/^\s*(\d{1,2})([a-z].*)$/i);
+    if (!match) return { quantity: 1, term: text };
     const quantity = Math.min(Math.max(Number(match[1]), 1), 99);
     return { quantity, term: match[2] };
   }
