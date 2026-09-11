@@ -23,6 +23,10 @@ on:
         description: 'The server the app should try to reach'
         required: false
         default: 'https://develop.posnic.io/api'
+      matrix:
+        description: 'Try every shape of request and report which ones work'
+        required: false
+        default: 'false'
   pull_request:
     paths:
       # The files whose behaviour only a real WebView can settle.
@@ -75,6 +79,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         env:
           TARGET_URL: ${{ github.event.inputs.url || 'https://develop.posnic.io/api' }}
+          WANT_MATRIX: ${{ github.event.inputs.matrix || 'false' }}
         with:
           api-level: 33
           target: google_apis
@@ -93,7 +98,7 @@ jobs:
             # ONE LINE. The runner hands each line to its own `sh -c`, so a
             # backslash continuation is not a continuation at all - the second
             # half ran as its own command and died on "Illegal option".
-            adb shell am start -n com.posnic.captain/.MainActivity -e selftest "$TARGET_URL" >/dev/null
+            adb shell am start -n com.posnic.captain/.MainActivity -e selftest "$TARGET_URL" --ez matrix "$WANT_MATRIX" >/dev/null
 
             echo "Waiting for the app to answer about $TARGET_URL"
             # Also one line, for the same reason as above: a loop split across
@@ -111,4 +116,5 @@ jobs:
             # filtered. A WebView's console.log can be, and was.
             adb logcat -d | grep POSNIC_SELFTEST | tail -1 | sed 's/.*POSNIC_SELFTEST *: *//' > /tmp/said.txt || true
             if [ ! -s /tmp/said.txt ]; then echo "::error::The app never reported. It may not have started."; exit 1; fi
+            if [ "$WANT_MATRIX" = "true" ]; then echo "::notice::Matrix run - read the line above, not a verdict"; cat /tmp/said.txt; exit 0; fi
             if grep -q '"ok":true' /tmp/said.txt; then echo "::notice::The handset reached $TARGET_URL"; else echo "::error::The handset could NOT reach $TARGET_URL"; cat /tmp/said.txt; exit 1; fi

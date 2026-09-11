@@ -61,8 +61,13 @@ public class MainActivity extends BridgeActivity {
         webView.postDelayed(new Runnable() {
             @Override
             public void run() {
+                /* `matrix` when the host asked which SHAPE of request this
+                   WebView will make, `run` for the ordinary question. */
+                final boolean wantsMatrix = getIntent() != null
+                    && getIntent().getBooleanExtra("matrix", false);
                 webView.evaluateJavascript(
-                    "window.SelfTest && SelfTest.run(" + toJsString(url) + ")",
+                    "window.SelfTest && SelfTest." + (wantsMatrix ? "matrix" : "run")
+                        + "(" + toJsString(url) + ")",
                     null
                 );
                 pollForAnswer(webView, 0);

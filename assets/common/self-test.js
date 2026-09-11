@@ -106,5 +106,92 @@
     }
   }
 
-  return { run, fromLocation, TAG };
+  /*
+   * WHICH SHAPE OF REQUEST THIS WEBVIEW WILL ACTUALLY MAKE.
+   *
+   * A real Android reached the server - but only on the third road, and only
+   * after thirty-four seconds. Plain fetch did not fail loudly; it hung, with
+   * no net::ERR and nothing on the console to say why.
+   *
+   * Guessing at which option upsets it costs a round each time. Asking costs
+   * one: every shape is tried, each with its own short budget, and the report
+   * says which worked and how long each took. The difference between "fetch
+   * is broken here" and "fetch with THIS option is broken here" is the whole
+   * fix, and no amount of reasoning from a desk produces it.
+   */
+  function shapes(url) {
+    const target = url.replace(/\/+$/, '') + '/runtime-info';
+    const budget = 6000;
+
+    const timed = (name, attempt) => async () => {
+      const started = Date.now();
+      try {
+        const response = await attempt();
+        const ok = !!(response && response.ok);
+        return { name, ok, status: response ? response.status : 0, ms: Date.now() - started };
+      } catch (e) {
+        return {
+          name,
+          ok: false,
+          ms: Date.now() - started,
+          error: String((e && e.name ? e.name + ': ' : '') + ((e && e.message) || e)).slice(0, 80),
+        };
+      }
+    };
+
+    const signal = () => (AbortSignal.timeout ? AbortSignal.timeout(budget) : undefined);
+
+    return [
+      timed('bare', () => fetch(target)),
+      timed('signal', () => fetch(target, { signal: signal() })),
+      timed('no-store', () => fetch(target, { cache: 'no-store', signal: signal() })),
+      timed('accept', () =>
+        fetch(target, { headers: { Accept: 'application/json' }, signal: signal() })
+      ),
+      timed('as-probed', () =>
+        fetch(target, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          signal: signal(),
+        })
+      ),
+      timed('xhr', () => {
+        return new Promise((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open('GET', target, true);
+          request.timeout = budget;
+          request.onload = () => resolve({ ok: request.status < 400, status: request.status });
+          request.onerror = () => reject(new Error('xhr failed'));
+          request.ontimeout = () => reject(new Error('xhr timed out'));
+          request.send();
+        });
+      }),
+    ];
+  }
+
+  /**
+   * Run every shape, one after another, and report the lot.
+   *
+   * Serially rather than at once: six requests in flight together share a
+   * connection pool, and a pool is one of the things that might be stuck.
+   */
+  async function matrix(url) {
+    const tried = [];
+    for (const attempt of shapes(url)) {
+      /* eslint-disable-next-line no-await-in-loop */
+      tried.push(await attempt());
+    }
+    const report = { url, matrix: tried, native: isNative() };
+    globalThis.__selftest = report;
+    console.log(TAG + ' ' + JSON.stringify(report));
+    return report;
+  }
+
+  const isNative = () =>
+    !!(globalThis.Capacitor &&
+      globalThis.Capacitor.isNativePlatform &&
+      globalThis.Capacitor.isNativePlatform());
+
+  return { run, matrix, fromLocation, TAG };
 });
