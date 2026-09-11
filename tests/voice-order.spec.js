@@ -412,3 +412,54 @@ test('an empty menu keeps the branch when there is nowhere else to go', async ({
   expect(kept.branch).toBeTruthy();
   expect(kept.forced).toBeNull();
 });
+
+/* ------------------------------------------------ searching needs the room */
+
+/*
+ * A waiter types two letters and the soft keyboard covers the bottom half of
+ * the phone. What is left has to be results - but the page kept the header,
+ * the category strip, the frequently-ordered row and the repeat-last button,
+ * so a search for "cof" showed one and a half cards through a letterbox.
+ */
+
+test('searching clears the screen of everything that is not a result', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+
+  await expect(page.locator('.mobile-header')).toBeVisible();
+  await expect(page.locator('.fixed-categories')).toBeVisible();
+
+  await page.locator('#product-search-input').fill('cof');
+  await expect(page.locator('.mobile-header')).toBeHidden();
+  await expect(page.locator('.fixed-categories')).toBeHidden();
+
+  /* And the results are still there, with room for them. */
+  await expect(page.getByText('Coffee')).toBeVisible();
+});
+
+test('and gives it all back when the box is empty', async ({ page }) => {
+  /* A search is a temporary state, not a different page. */
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('#product-search-input').fill('cof');
+  await expect(page.locator('.mobile-header')).toBeHidden();
+
+  await page.locator('#product-search-input').fill('');
+  await expect(page.locator('.mobile-header')).toBeVisible();
+  await expect(page.locator('.fixed-categories')).toBeVisible();
+});
+
+test('the count is one small line, not a heading', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('#product-search-input').fill('cof');
+
+  const count = page.locator('#search-count');
+  await expect(count).toHaveText('1 item');
+  /* Small enough not to cost a result its place on the screen. */
+  const box = await count.boundingBox();
+  expect(box.height).toBeLessThan(30);
+});
+
+test('a search that matches nothing says so, in the same small line', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('#product-search-input').fill('zzzz');
+  await expect(page.locator('#search-count')).toContainText('Nothing matches');
+});

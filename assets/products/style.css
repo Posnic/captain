@@ -1173,3 +1173,47 @@ body {
     font-size: 18px;
     font-weight: 700;
 }
+
+
+/*
+ * SEARCHING IS A DIFFERENT SCREEN, and the keyboard has already taken half
+ * of it.
+ *
+ * A waiter types two letters and the soft keyboard covers the bottom half of
+ * the phone. What is left has to be results - but the page kept the header,
+ * the category strip, the frequently-ordered row and the repeat-last button,
+ * so a search for "cof" showed one and a half cards through a letterbox.
+ *
+ * Everything that is not a result steps aside while there is something in the
+ * box, and comes back the moment it is empty. Nothing is removed; a search is
+ * a temporary state, not a different page.
+ */
+body.is-searching .mobile-header,
+body.is-searching .fixed-categories,
+body.is-searching .frequent-section,
+body.is-searching #repeat-last {
+    display: none !important;
+}
+
+/* The search pill itself stays, tightened: it is the one thing being used. */
+body.is-searching .product-search {
+    padding-top: 6px;
+    padding-bottom: 2px;
+}
+
+/*
+ * The count, said quietly.
+ *
+ * "12 products found" had a heading's worth of space around it, which is a lot
+ * of a phone screen to spend telling somebody how many things they can already
+ * see. One small line, and it disappears when there is nothing to count.
+ */
+.search-count {
+    padding: 2px 14px 6px;
+    font-size: 12px;
+    color: #6b7280;
+}
+.search-count:empty {
+    display: none;
+    padding: 0;
+}
