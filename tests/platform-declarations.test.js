@@ -144,6 +144,33 @@ test('neither camera nor microphone is REQUIRED to install', () => {
   }
 });
 
+test('the net stack can see the network it is using', () => {
+  /* Chromium's NetworkChangeNotifier watches connectivity through this. Not
+     required to open a socket, and its absence is quiet - the WebView simply
+     never learns what kind of connection the device has. */
+  assert.match(APK, /ACCESS_NETWORK_STATE/);
+});
+
+test('the native HTTP bridge is OFF', () => {
+  /*
+   * Capacitor's HTTP plugin does not merely patch window.fetch - it
+   * intercepts at the native WebViewClient, which reaches every frame and
+   * every transport. On a real handset against a real server, fetch, an
+   * unpatched fetch from a fresh iframe, and XMLHttpRequest ALL timed out on
+   * an address Chrome on the same phone loaded instantly. Three independent
+   * transports do not fail together by coincidence; something underneath all
+   * three was holding them.
+   *
+   * It is not needed. The server sends CORS headers for the app's own origins
+   * - http://localhost, capacitor://localhost, https://localhost - which is
+   * the only thing the bridge was buying.
+   */
+  const config = JSON.parse(
+    fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8')
+  );
+  assert.equal(config.plugins.CapacitorHttp.enabled, false);
+});
+
 test('the keyboard can appear, and the page moves out of its way', () => {
   /*
    * Capacitor's generated manifest sets no windowSoftInputMode, which leaves
