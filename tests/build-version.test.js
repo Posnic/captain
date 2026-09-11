@@ -137,25 +137,46 @@ test('the page loads the stamp, and says something sensible without it', () => {
 test('a build that is NOT a release says so, rather than claiming one', () => {
   /*
    * A real emulator run stamped itself "1.2.2" while building eleven commits
-   * past it, because the PR ref matched no tag and package.json was stale.
-   * A build that misreports its own version is worse than one that admits it
-   * is not a release: the whole point of the stamp is that "I updated and
-   * nothing changed" becomes answerable.
+   * past it, because the pull-request ref matched no tag and package.json was
+   * stale. A build that misreports its own version defeats the whole point of
+   * stamping one.
    */
   const before = { v: process.env.POSNIC_VERSION, ref: process.env.GITHUB_REF };
   delete process.env.POSNIC_VERSION;
   delete process.env.GITHUB_REF;
   try {
     const version = stamp.resolveVersion(root);
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    /* Either exactly a tag, or a tag plus how far past it - never a bare
-       stale package.json version pretending to be a release. */
-    const describesPosition = /-\d+-g[0-9a-f]+$/.test(version);
-    assert.ok(
-      describesPosition || version !== pkg.version || version === pkg.version,
-      'the version should come from git when git can answer'
-    );
-    assert.match(version, /^\d+\.\d+\.\d+/);
+
+    /*
+     * ALWAYS semver-shaped, with or without tags in the checkout.
+     *
+     * CI clones shallow and fetches none, so `git describe --always` answered
+     * with a bare commit hash - not a version at all, and a versionCode of
+     * zero. Android refuses an install whose code is not higher, so a zero
+     * strands every handset on whatever it already has.
+     */
+    assert.match(version, /^\d+\.\d+\.\d+/, `"${version}" is not a version`);
+    assert.ok(stamp.versionCode(version) > 0, 'a version code of zero strands every handset');
+  } finally {
+    if (before.v === undefined) delete process.env.POSNIC_VERSION;
+    else process.env.POSNIC_VERSION = before.v;
+    if (before.ref === undefined) delete process.env.GITHUB_REF;
+    else process.env.GITHUB_REF = before.ref;
+  }
+});
+
+test('a checkout with no tags at all still stamps a version', () => {
+  /* Exactly what CI has. The fallback must be package.json, never a hash. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'posnic-notags-'));
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ version: '3.4.5' }));
+
+  const before = { v: process.env.POSNIC_VERSION, ref: process.env.GITHUB_REF };
+  delete process.env.POSNIC_VERSION;
+  delete process.env.GITHUB_REF;
+  try {
+    const version = stamp.resolveVersion(dir);
+    assert.equal(version, '3.4.5');
+    assert.ok(stamp.versionCode(version) > 0);
   } finally {
     if (before.v === undefined) delete process.env.POSNIC_VERSION;
     else process.env.POSNIC_VERSION = before.v;

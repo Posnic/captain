@@ -49,8 +49,16 @@ function resolveVersion(root) {
    * build that misreports its own version is worse than one that admits it is
    * not a release: `1.2.4-6-gb0c9750` is unambiguous, and says at a glance
    * that this is six commits past v1.2.4 rather than a version anybody shipped.
+   *
+   * NOT `--always`. That answers with a bare commit hash when there are no
+   * tags, and CI checks out shallow with none - so the stamp became `b0c9750`,
+   * which is not a version at all and makes versionCode zero. Android refuses
+   * to install over a build whose code is not higher, so a zero would strand
+   * every handset on whatever it already had. Without a tag this falls through
+   * to package.json, and the commit rides alongside in its own field where it
+   * was always going to be more use.
    */
-  for (const command of ['git describe --tags --exact-match', 'git describe --tags --always']) {
+  for (const command of ['git describe --tags --exact-match', 'git describe --tags']) {
     try {
       const described = execSync(command, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] })
         .toString()
