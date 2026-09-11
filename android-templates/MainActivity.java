@@ -1,6 +1,8 @@
 package com.posnic.captain;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
@@ -60,12 +62,63 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void run() {
                 webView.evaluateJavascript(
-                    "window.SelfTest ? SelfTest.run(" + toJsString(url) + ")"
-                        + " : console.log('POSNIC_SELFTEST {\"ok\":false,\"why\":\"no SelfTest\"}')",
+                    "window.SelfTest && SelfTest.run(" + toJsString(url) + ")",
                     null
                 );
+                pollForAnswer(webView, 0);
             }
         }, 4000);
+    }
+
+    /**
+     * Read the answer back, rather than hoping it was printed.
+     *
+     * A WebView's console.log does NOT reliably reach logcat. Capacitor's
+     * WebChromeClient takes onConsoleMessage and decides for itself whether to
+     * forward it, so the first emulator run printed nothing at all - which
+     * looked exactly like an app that never started, and cost a round to tell
+     * apart from one.
+     *
+     * evaluateJavascript hands the value straight back to this process, where
+     * Log.i cannot be filtered by anybody. The probe is asynchronous, so this
+     * asks until there is something to read or the patience runs out.
+     */
+    private void pollForAnswer(final WebView webView, final int attempt) {
+        if (attempt > 30) {
+            Log.i(SELF_TEST_TAG, "{\"ok\":false,\"why\":\"the app never answered\"}");
+            return;
+        }
+        webView.evaluateJavascript(
+            "JSON.stringify(window.__selftest || null)",
+            new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    /* evaluateJavascript hands back a JSON-encoded STRING, so
+                       the report arrives wrapped and escaped once over. */
+                    if (value == null || "null".equals(value) || "\"null\"".equals(value)) {
+                        webView.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                pollForAnswer(webView, attempt + 1);
+                            }
+                        }, 1000);
+                        return;
+                    }
+                    Log.i(SELF_TEST_TAG, unwrap(value));
+                }
+            }
+        );
+    }
+
+    private static final String SELF_TEST_TAG = "POSNIC_SELFTEST";
+
+    /** The JSON string evaluateJavascript wraps a result in, unwrapped once. */
+    private static String unwrap(String value) {
+        String out = value;
+        if (out.length() > 1 && out.charAt(0) == '"' && out.endsWith("\"")) {
+            out = out.substring(1, out.length() - 1);
+        }
+        return out.replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
     /** A Java string as a JavaScript literal, so a quote cannot end the call. */
