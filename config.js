@@ -459,28 +459,94 @@
     typeof info.apiSchema !== 'undefined' &&
     typeof info.edition === 'string';
 
+  /*
+   * WHY A PROBE FAILED, in words somebody can act on.
+   *
+   * Every failure used to come back as null, and the screen said "nothing
+   * answered at that address - check the shop code, or that POSNIC is running
+   * on the till." That one sentence covered a wrong address, no internet, a
+   * name that does not resolve, a certificate a phone will not accept, a
+   * server that answered 500, and a server that answered perfectly but is not
+   * a Posnic one. A shopkeeper cannot act on it and neither can anybody
+   * helping them over the phone: "it says nothing answered" is the end of the
+   * conversation rather than the start.
+   *
+   * So the reason is carried out. It costs nothing - the information was
+   * already in the exception that was being discarded.
+   */
+  const REASONS = {
+    BAD_ADDRESS: 'That is not an address this app can use.',
+    UNREACHABLE: 'Could not reach it. Check the phone is online and the address is right.',
+    TIMED_OUT: 'It did not answer in time. It may be slow, or not listening.',
+    REFUSED: 'It answered, but refused: ',
+    NOT_POSNIC: 'Something answered, but it is not a Posnic server.',
+    UNREADABLE: 'It answered with something this app could not read.',
+  };
+
+  /**
+   * Try one address.
+   *
+   * @returns {{base, info}|null} on success, null otherwise - unchanged, so
+   *   every existing caller behaves exactly as before. `probe.lastFailure`
+   *   holds why the most recent one failed, for a screen that wants to say.
+   */
   async function probe(url, timeoutMs = PROBE_TIMEOUT_MS) {
     const base = normalize(url);
-    if (!base) return null;
+    if (!base) {
+      probe.lastFailure = { reason: 'BAD_ADDRESS', message: REASONS.BAD_ADDRESS, url };
+      return null;
+    }
+
+    const target = base + '/runtime-info';
+    const fail = (reason, extra) => {
+      probe.lastFailure = {
+        reason,
+        message: (REASONS[reason] || reason) + (extra || ''),
+        url: target,
+      };
+      return null;
+    };
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+
     try {
-      const response = await rawFetch(base + '/runtime-info', {
+      const response = await rawFetch(target, {
         method: 'GET',
         signal: controller.signal,
         headers: { Accept: 'application/json' },
         cache: 'no-store',
       });
-      if (!response || !response.ok) return null;
-      const info = await response.json();
-      return looksLikePosnic(info) ? { base, info } : null;
+      if (!response) return fail('UNREACHABLE');
+      if (!response.ok) return fail('REFUSED', String(response.status));
+
+      let info;
+      try {
+        info = await response.json();
+      } catch (e) {
+        return fail('UNREADABLE');
+      }
+      if (!looksLikePosnic(info)) return fail('NOT_POSNIC');
+
+      probe.lastFailure = null;
+      return { base, info };
     } catch (e) {
-      return null;
+      /* An abort is our own timer, not the network saying anything. Told
+         apart because "it is slow" and "it is not there" send somebody to
+         look in two different places. */
+      if (timedOut) return fail('TIMED_OUT');
+      return fail('UNREACHABLE', e && e.message ? ' (' + e.message + ')' : '');
     } finally {
       clearTimeout(timer);
     }
   }
+
+  probe.lastFailure = null;
+  probe.REASONS = REASONS;
 
   /** The /24 networks this device is on, most reliable source first. */
   async function localSubnets() {

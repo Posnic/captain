@@ -604,3 +604,99 @@ test('a code the scanner reads is understood the same way', async ({ page }) => 
   );
   expect(scanned).toBe('https://develop.posnic.io/api');
 });
+
+/*
+ * WHY A PROBE FAILED, not just that it did.
+ *
+ * Every failure used to come back as null and the screen said "nothing
+ * answered at that address - check the shop code, or that POSNIC is running
+ * on the till". That one sentence covered a wrong address, no internet, a
+ * name that does not resolve, a certificate the phone refused, a 500, and a
+ * server that answered perfectly and is not a Posnic one.
+ *
+ * A shopkeeper cannot act on it, and neither can anybody helping them: "it
+ * says nothing answered" is the end of a support call rather than the start.
+ * The information was already in the exception being discarded.
+ */
+
+test('a reachable server that is not Posnic is named as such', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '{"hello":"router"}' })
+  );
+
+  const result = await page.evaluate(async () => {
+    const hit = await POSNIC.discovery.probe('https://shop.example');
+    return { hit, why: POSNIC.discovery.probe.lastFailure };
+  });
+  expect(result.hit).toBeNull();
+  expect(result.why.reason).toBe('NOT_POSNIC');
+});
+
+test('a server that refuses says so, with its status', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) => route.fulfill({ status: 502, body: 'nope' }));
+
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('https://shop.example');
+    return POSNIC.discovery.probe.lastFailure;
+  });
+  expect(why.reason).toBe('REFUSED');
+  expect(why.message).toContain('502');
+});
+
+test('an unreachable address is told apart from a slow one', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) => route.abort());
+
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('https://shop.example');
+    return POSNIC.discovery.probe.lastFailure;
+  });
+  expect(why.reason).toBe('UNREACHABLE');
+});
+
+test('a server that never answers is TIMED OUT, not unreachable', async ({ page }) => {
+  /* "It is slow" and "it is not there" send somebody to look in two
+     different places. */
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', async () => {
+    await new Promise(() => {});
+  });
+
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('https://shop.example', 600);
+    return POSNIC.discovery.probe.lastFailure;
+  });
+  expect(why.reason).toBe('TIMED_OUT');
+});
+
+test('an address that is not an address is named before any request', async ({ page }) => {
+  await page.goto('/index.html');
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('!!');
+    return POSNIC.discovery.probe.lastFailure;
+  });
+  expect(why.reason).toBe('BAD_ADDRESS');
+});
+
+test('a success clears the last failure, so a stale reason is never shown', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    })
+  );
+
+  const result = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('!!');
+    const stale = POSNIC.discovery.probe.lastFailure;
+    const hit = await POSNIC.discovery.probe('https://shop.example');
+    return { stale: stale && stale.reason, after: POSNIC.discovery.probe.lastFailure, ok: !!hit };
+  });
+  expect(result.stale).toBe('BAD_ADDRESS');
+  expect(result.ok).toBe(true);
+  expect(result.after).toBeNull();
+});

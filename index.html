@@ -466,7 +466,22 @@
             try {
                 const hit = await POSNIC.discovery.probe(base, 8000);
                 if (!hit) {
-                    serverMsg('Nothing answered at ' + base + '. Check the shop code, or that POSNIC is running on the till.', '#dc2626');
+                    /*
+                     * WHY, not just that. "Nothing answered" covered a wrong
+                     * address, no internet, a name that does not resolve, a
+                     * certificate the phone refused, a 500, and a server that
+                     * answered perfectly and is not a Posnic one. It is the
+                     * end of a support call rather than the start of one.
+                     */
+                    const why = POSNIC.discovery.probe.lastFailure;
+                    serverMsg(
+                        'Could not use ' + base + '. ' +
+                        (why && why.message ? why.message : 'Nothing answered.') +
+                        (why && why.reason === 'UNREACHABLE'
+                            ? ' Check the shop code, or that POSNIC is running on the till.'
+                            : ''),
+                        '#dc2626'
+                    );
                     return;
                 }
                 POSNIC.server.pin(hit.base);
