@@ -1169,8 +1169,14 @@ async function checkout(transactionId) {
         }
         //const savedNumber = localStorage.getItem("kiosk_mobile_number");
 
+        /* Made once, before the first attempt, and reused on every retry:
+           a key minted per attempt makes each resend look like a new order,
+           which is the thing it exists to prevent. */
+        const orderKey = OrderQueue.newKey();
+
         // 🚀 Send checkout request
-        const result = await POSNIC.api.post("/sales/qrOrder", {
+        const orderBody = {
+                idempotencyKey: orderKey,
                 branch: branchId,
                 items: payload,
                 customerMobile: '+910000000000',
@@ -1190,11 +1196,38 @@ async function checkout(transactionId) {
                 kiosk_table_id: tableId,
                 dine_type: orderType || 'Dine-in',
                 person_count: (orderType === 'Dine-in') ? personCount : ''
-        });
+        };
+
+        /* Held so the catch below can keep exactly what was sent, rather than
+           rebuilding it from state the failure may already have changed. */
+        window._pendingOrder = { key: orderKey, branch: branchId, body: orderBody };
+
+        const result = await POSNIC.api.post("/sales/qrOrder", orderBody);
+        window._pendingOrder = null;
 
         if (result.type === "success") {
             const tokenId = result.data.tokenId; // 🔐 3-digit non-repeating token
             localStorage.setItem("kioskReceipt", JSON.stringify(result.data));
+
+            /*
+             * Keep what was just ordered, so it can be ordered again.
+             *
+             * "Same again" is a normal thing to say at a table and currently
+             * means finding every item by hand a second time. Stored per
+             * branch and kept small: this is a convenience, not a record, and
+             * the sale itself is the record.
+             */
+            try {
+                localStorage.setItem('posnic.last-order', JSON.stringify({
+                    branch: branchId,
+                    at: Date.now(),
+                    items: (payload || []).map(i => ({
+                        item_id: i.item_id,
+                        item_name: i.item_name,
+                        item_quantity: i.item_quantity,
+                    })),
+                }));
+            } catch (e) { /* a convenience, never worth failing an order for */ }
 
             // 🔄 After order, refresh branch products so stock is updated immediately
             try {
@@ -1229,6 +1262,28 @@ async function checkout(transactionId) {
 
     } catch (error) {
         console.log("❌ Error during checkout:", error);
+
+        /*
+         * An order that never reached a server is kept, not lost.
+         *
+         * Only when the request never got an answer. A server that REFUSED
+         * the order refused it for a reason - an item gone, a branch not
+         * configured - and queueing that would retry a rejection for ever.
+         */
+        const unreachable = error && (error.code === 'OFFLINE' || error.code === 'TIMEOUT');
+        if (unreachable && typeof OrderQueue !== 'undefined' && window._pendingOrder) {
+            OrderQueue.add(window._pendingOrder);
+            window._pendingOrder = null;
+            hideOrderProcessingScreen();
+            showErrorPopup(
+                "No connection to the shop, so this order is saved on the phone and " +
+                "NOT yet with the kitchen. It will be sent when the connection is back."
+            );
+            await saveCartData([]);
+            await renderCart([]);
+            return false;
+        }
+
         showErrorPopup("Order failed. Please try again.");
     }
 }

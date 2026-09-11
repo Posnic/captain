@@ -63,6 +63,28 @@
 
   const tokensOf = (value) => fold(value).split(' ').filter(Boolean);
 
+  /**
+   * Split "3 cb" into three of whatever "cb" finds.
+   *
+   * Adding three of something meant finding it and then tapping plus three
+   * times. Every till lets you say the number first, and a waiter taking a
+   * table of six says "three biryani" before they say which biryani.
+   *
+   * Only a leading number followed by something else counts. A bare "65" is a
+   * search for Chicken 65, not an order for sixty-five of the next thing
+   * touched, and "2 65" is two of it. The number is capped because a slipped
+   * finger on a phone keypad should not send ninety-nine mains to a kitchen.
+   *
+   * @param {string} value what was typed
+   * @returns {{quantity: number, term: string}}
+   */
+  function parseTerm(value) {
+    const match = String(value || '').match(/^\s*(\d{1,2})\s+(\S.*)$/);
+    if (!match) return { quantity: 1, term: String(value || '') };
+    const quantity = Math.min(Math.max(Number(match[1]), 1), 99);
+    return { quantity, term: match[2] };
+  }
+
   /** First letter of each word: "Masala Dosa Paper" -> "mdp". */
   const initialsOf = (words) => words.map((w) => w[0]).join('');
 
@@ -164,5 +186,5 @@
     return hits.map((hit) => hit.entry.item);
   }
 
-  return { fold, index, search, scoreToken, RANK: { EXACT, PREFIX, WORD_START, INITIALS, CONTAINS } };
+  return { fold, index, search, scoreToken, parseTerm, RANK: { EXACT, PREFIX, WORD_START, INITIALS, CONTAINS } };
 });
