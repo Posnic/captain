@@ -409,7 +409,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (forceSelect && cachedBranchesRaw) {
         try {
             const branches = JSON.parse(cachedBranchesRaw) || [];
-            if (Array.isArray(branches) && branches.length > 0) {
+            /*
+             * A CHOICE OF ONE IS NOT A CHOICE.
+             *
+             * A shop with a single branch was still shown a list with a single
+             * card on it and asked to pick - most often after something else
+             * had gone wrong, because an empty menu clears the branch and sets
+             * this flag. So a waiter met a screen asking them to choose
+             * between one thing, about a problem choosing could not fix.
+             *
+             * Below one, there is nothing to ask. Sign in again, which is the
+             * screen that can actually get them somewhere.
+             */
+            if (Array.isArray(branches) && branches.length === 1) {
+                const only = branches[0];
+                localStorage.removeItem("kiosk_force_branch_select");
+                localStorage.setItem("kiosk_selected_branch", only.store_id || only.branch_id);
+                localStorage.setItem("branch_id", only.branch_id);
+                await selectBranch(only.store_id || only.branch_id);
+                return;
+            }
+            if (Array.isArray(branches) && branches.length > 1) {
                 localStorage.removeItem("kiosk_force_branch_select");
                 localStorage.removeItem("kiosk_selected_branch");
                 renderBranchList(branches);

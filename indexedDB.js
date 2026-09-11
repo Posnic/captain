@@ -348,16 +348,37 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 
             // 🔴 IF NO PRODUCTS → show error, then force Choose Branch AFTER OK
             if (!Array.isArray(categories) || categories.length === 0) {
-                // இந்த branch use panna koodadhu → auto‑select clear pannunga
-                localStorage.removeItem("kiosk_selected_branch");
+                /*
+                 * AN EMPTY MENU IS NOT A REASON TO FORGET WHICH SHOP THIS IS.
+                 *
+                 * This used to clear the branch and force the picker on the
+                 * next load - so a waiter whose menu failed to load was asked
+                 * to choose a branch, about a problem choosing cannot fix. For
+                 * a shop with one branch it asked them to choose between one
+                 * thing, which is not a question.
+                 *
+                 * Only offered where it could possibly help: more than one
+                 * branch to move between. Otherwise the branch is kept and the
+                 * waiter is told what is actually wrong.
+                 */
+                let branchCount = 1;
+                try {
+                    branchCount = (JSON.parse(localStorage.getItem("kiosk_branch_list") || "[]") || []).length;
+                } catch (e) {
+                    branchCount = 1;
+                }
 
-                // next load la direct‑ah branch list kaamikkanum
-                localStorage.setItem("kiosk_force_branch_select", "1");
+                if (branchCount > 1) {
+                    localStorage.removeItem("kiosk_selected_branch");
+                    localStorage.setItem("kiosk_force_branch_select", "1");
+                }
 
                 hideLoader();
 
                 showErrorPopup(
-                    "No products found for this branch. Please contact admin to configure items.",
+                    branchCount > 1
+                        ? "This branch has no items to sell yet. Try another branch, or ask your manager to add items."
+                        : "This shop has no items to sell yet. Ask your manager to add them, then try again.",
                     function () {
                         // user OK button press pannina apram dhaan redirect / reload
                         if (!window.location.pathname.endsWith("index.html")) {

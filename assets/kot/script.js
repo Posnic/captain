@@ -20,6 +20,26 @@ function goToAddKot() {
     window.location.href = 'discount.html';
 }
 
+/*
+ * Offered only when there is somewhere to change TO.
+ *
+ * A shop with a single branch was shown this button, and it led to a list
+ * with one card on it. Not a choice, and one more thing on a screen a waiter
+ * reads at speed while standing at a table.
+ */
+function showChangeBranchIfUseful() {
+    const button = document.getElementById('kot-change-branch');
+    if (!button) return;
+    let branches = [];
+    try {
+        branches = JSON.parse(localStorage.getItem('kiosk_branch_list') || '[]') || [];
+    } catch (e) {
+        branches = [];
+    }
+    button.hidden = branches.length < 2;
+}
+document.addEventListener('DOMContentLoaded', showChangeBranchIfUseful);
+
 async function changeBranch() {
     try {
         localStorage.setItem('kiosk_force_branch_select', '1');
