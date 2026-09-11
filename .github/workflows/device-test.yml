@@ -1,0 +1,119 @@
+# Run the app on a real Android, and ask it whether it can reach a server.
+#
+# WHY THIS EXISTS. A shop's handset could not reach an address that the same
+# phone's browser loaded instantly. Finding out why took a day: every round was
+# a release, an install, a photograph of an error message, and one line of new
+# information. Three of those rounds were spent on guesses that a real device
+# would have settled in a minute - including one fix that could never have
+# worked, because it bypassed a JavaScript patch when the interception was
+# happening underneath in native code.
+#
+# Node tests cannot find that. Playwright cannot find it either: it drives
+# Chromium, and the whole class of bug lives in the difference between Chromium
+# and the Android WebView an app is built on.
+#
+# So this boots an actual Android, installs the actual APK, and has the app run
+# its own check against a real server. It is slow and it is worth it.
+name: Device test
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'The server the app should try to reach'
+        required: false
+        default: 'https://develop.posnic.io/api'
+  pull_request:
+    paths:
+      # The files whose behaviour only a real WebView can settle.
+      - 'capacitor.config.json'
+      - 'config.js'
+      - 'build-apk.js'
+      - 'assets/common/self-test.js'
+      - '.github/workflows/device-test.yml'
+
+concurrency:
+  group: device-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  emulator:
+    name: Android emulator
+    # Not macos: an ubuntu runner has KVM, which makes the emulator usable
+    # rather than a twenty-minute boot.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - run: npm ci
+
+      - name: Build the APK
+        run: node build-apk.js
+
+      # The emulator will not start without it, and the runner ships it
+      # disabled for everyone but root.
+      - name: Let the runner use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Boot an Android, install, and ask it
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          TARGET_URL: ${{ github.event.inputs.url || 'https://develop.posnic.io/api' }}
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          # -no-snapshot so every run starts from the same place; a warm
+          # snapshot is how a test starts passing for reasons nobody chose.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            set -e
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
+
+            # The app's own check, run by a device with no hands. It prints one
+            # line the log can be grepped for; see assets/common/self-test.js.
+            adb shell am start -n com.posnic.captain/.MainActivity \
+              -a android.intent.action.VIEW \
+              -e selftest "$TARGET_URL" >/dev/null
+
+            echo "Waiting for the app to answer about $TARGET_URL"
+            for i in $(seq 1 40); do
+              if adb logcat -d | grep -q POSNIC_SELFTEST; then break; fi
+              sleep 3
+            done
+
+            echo '--- what the handset said ---'
+            adb logcat -d | grep POSNIC_SELFTEST | tail -3 || true
+            echo '--- anything the WebView complained about ---'
+            adb logcat -d | grep -iE 'chromium|net::ERR|SecurityError' | tail -25 || true
+
+            LINE=$(adb logcat -d | grep POSNIC_SELFTEST | tail -1 || true)
+            if [ -z "$LINE" ]; then
+              echo "::error::The app never reported. It may not have started."
+              exit 1
+            fi
+            if echo "$LINE" | grep -q '"ok":true'; then
+              echo "::notice::The handset reached $TARGET_URL"
+            else
+              echo "::error::The handset could NOT reach $TARGET_URL"
+              echo "$LINE"
+              exit 1
+            fi

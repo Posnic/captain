@@ -19,6 +19,9 @@
          no internet, which is the whole point of scanning the till's code. -->
     <script src="assets/vendor/jsqr/jsQR.js"></script>
     <script src="assets/common/connect.js"></script>
+    <!-- Can this handset reach that server, and if not what stopped it. Runs
+         only when the URL asks; see assets/common/self-test.js. -->
+    <script src="assets/common/self-test.js"></script>
     <link href="assets/index/style.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
 </head>
@@ -247,6 +250,13 @@
                 : 'Captain dev build';
         }
         document.addEventListener('DOMContentLoaded', showAppVersion);
+
+        /* An emulator has no hands. `?selftest=<url>` runs the same check a
+           person would and prints one line a log can be grepped for, which is
+           what lets a real device answer this without a day of photographs. */
+        document.addEventListener('DOMContentLoaded', function () {
+            if (window.SelfTest) SelfTest.fromLocation();
+        });
 
         function serverMsg(text, colour) {
             const msg = document.getElementById('serverSaveMsg');
