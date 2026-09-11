@@ -158,6 +158,9 @@ async function loadFrequentItems() {
             return;
         }
 
+        /* Remembered for the search ranking: these are the shop's own answer
+           to which of two equally-good text matches somebody meant. */
+        window._frequentItemIds = new Set((data.data.items || []).map(i => String(i.id)));
         renderFrequentItems(data.data.items);
         section.style.display = 'block';
     } catch (e) {
@@ -874,7 +877,14 @@ async function applyProductFilter() {
         return;
     }
 
-    // 🔹 Flatten all products across every category (global "products" from loadProducts)
+    /*
+     * Ranked search, not a substring test.
+     *
+     * `name.includes(term)` finds Chicken Biryani from "biry" and from nothing
+     * else: not from "chick biry", because two words are never one substring,
+     * and not from "cb", which is what somebody selling two hundred a day
+     * actually types. See assets/common/item-search.js for the ranking.
+     */
     const allFlatProducts = [];
     for (const [categoryKey, itemsArr] of Object.entries(products || {})) {
         itemsArr.forEach(p => {
@@ -882,29 +892,16 @@ async function applyProductFilter() {
         });
     }
 
-    // Filter by name with normalized text (remove extra spaces, trim)
-    const filtered = allFlatProducts.filter(p => {
-        const productName = (p.name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-        const searchTerm = term.replace(/\s+/g, ' ');
-        return productName.includes(searchTerm);
-    });
+    /* Indexed once per render of the menu, not once per keystroke. */
+    if (!window._itemSearchIndex || window._itemSearchIndexSize !== allFlatProducts.length) {
+        window._itemSearchIndex = ItemSearch.index(allFlatProducts);
+        window._itemSearchIndexSize = allFlatProducts.length;
+    }
 
-    // Sort results: prioritize matches that start with search term, then alphabetically
-    filtered.sort((a, b) => {
-        const nameA = (a.name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-        const nameB = (b.name || '').toLowerCase().trim().replace(/\s+/g, ' ');
-        const searchTerm = term.replace(/\s+/g, ' ');
-        
-        // Check if name starts with search term
-        const aStartsWith = nameA.startsWith(searchTerm);
-        const bStartsWith = nameB.startsWith(searchTerm);
-        
-        // Prioritize items that start with search term
-        if (aStartsWith && !bStartsWith) return -1;
-        if (!aStartsWith && bStartsWith) return 1;
-        
-        // Both start with search term OR both don't - sort alphabetically
-        return nameA.localeCompare(nameB);
+    const filtered = ItemSearch.search(window._itemSearchIndex, term, {
+        /* What the shop actually sells, from the frequent items already
+           fetched for the shortcuts row. Breaks ties only. */
+        popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
     });
 
     // Load cart so qty / stock status stay correct
