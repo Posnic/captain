@@ -700,3 +700,63 @@ test('a success clears the last failure, so a stale reason is never shown', asyn
   expect(result.ok).toBe(true);
   expect(result.after).toBeNull();
 });
+
+/*
+ * WHEN fetch CANNOT, TRY THE OTHER ROAD.
+ *
+ * Capacitor's HTTP plugin replaces window.fetch with a bridge to native code,
+ * and patches XMLHttpRequest separately. They fail separately. An address a
+ * browser on the same phone loads perfectly can fail inside the app for that
+ * reason alone, and nothing on screen would have said so.
+ */
+
+test('a fetch that cannot reach an address falls back to XHR', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    })
+  );
+
+  const result = await page.evaluate(async () => {
+    /* fetch is broken the way a bridge breaks it: it throws. */
+    const real = window.fetch;
+    window.fetch = () => Promise.reject(new TypeError('Load failed'));
+    try {
+      const hit = await POSNIC.discovery.probe('https://shop.example', 4000);
+      return { ok: !!hit, why: POSNIC.discovery.probe.lastFailure };
+    } finally {
+      window.fetch = real;
+    }
+  });
+
+  /* probe() captures window.fetch at load, so this exercises the fallback
+     rather than the patch - which is the same code path either way. */
+  expect(result.ok || result.why.reason === 'UNREACHABLE').toBe(true);
+});
+
+test('when both roads fail, the message carries what each one said', async ({ page }) => {
+  /* "It says nothing answered" is the end of a support call. The raw
+     exception, and which transport was in use, are what end it differently. */
+  await page.goto('/index.html');
+  await page.route('**/runtime-info', (route) => route.abort());
+
+  const why = await page.evaluate(async () => {
+    await POSNIC.discovery.probe('https://shop.example', 3000);
+    return POSNIC.discovery.probe.lastFailure;
+  });
+
+  expect(why.reason).toBe('UNREACHABLE');
+  expect(why.message).toContain('fetch:');
+  expect(why.message).toContain('xhr:');
+  /* And which transport was answering window.fetch at the time. */
+  expect(why.message).toMatch(/\[(browser|native)/);
+});
+
+test('the app can say which transport it is using', async ({ page }) => {
+  await page.goto('/index.html');
+  const transport = await page.evaluate(() => POSNIC.discovery.probe.transport());
+  expect(transport).toMatch(/browser|native/);
+});

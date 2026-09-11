@@ -450,6 +450,55 @@
      single plain request: no credential, no failover, no recursion. */
   const rawFetch = window.fetch.bind(window);
 
+  /*
+   * WHO IS ANSWERING window.fetch.
+   *
+   * Capacitor's HTTP plugin replaces it with a bridge to native code, which
+   * behaves differently from the browser's: it ignores an AbortSignal, and it
+   * has its own idea of what a failure is. An address that a browser on the
+   * same phone loads perfectly can fail inside the app for that reason alone,
+   * and nothing on screen would say so.
+   *
+   * Recorded rather than reasoned about, because "works in Chrome, not in the
+   * app" is otherwise a guess somebody has to make from a distance.
+   */
+  const transport = () => {
+    try {
+      const patched = !/\[native code\]/.test(String(window.fetch));
+      const bridged = !!(window.Capacitor && window.Capacitor.isNativePlatform
+        && window.Capacitor.isNativePlatform());
+      return (bridged ? 'native' : 'browser') + (patched ? '+patched-fetch' : '');
+    } catch (e) {
+      return 'unknown';
+    }
+  };
+
+  /*
+   * The same request, by the other road.
+   *
+   * XMLHttpRequest and fetch are patched separately by the bridge and fail
+   * separately, so when one cannot reach an address the other frequently can.
+   * Only ever tried AFTER fetch has failed, so the normal path is untouched.
+   */
+  function fetchByXhr(url, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      try {
+        const request = new XMLHttpRequest();
+        request.open('GET', url, true);
+        request.timeout = timeoutMs;
+        request.setRequestHeader('Accept', 'application/json');
+        request.onload = () =>
+          resolve({ ok: request.status >= 200 && request.status < 300, status: request.status,
+            json: async () => JSON.parse(request.responseText) });
+        request.onerror = () => reject(new Error('xhr failed'));
+        request.ontimeout = () => reject(new Error('xhr timed out'));
+        request.send();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
   /* A Posnic server says so in a shape nothing else on a shop network
      produces. Accepting any reply from port 5555 would enrol a printer's
      status page or a router's admin panel as the till. */
@@ -474,6 +523,12 @@
    * So the reason is carried out. It costs nothing - the information was
    * already in the exception that was being discarded.
    */
+  /* An exception said plainly enough to read down a telephone. */
+  const describe = (e) => {
+    if (!e) return 'no detail';
+    return String((e.name ? e.name + ': ' : '') + (e.message || e)).slice(0, 120);
+  };
+
   const REASONS = {
     BAD_ADDRESS: 'That is not an address this app can use.',
     UNREACHABLE: 'Could not reach it. Check the phone is online and the address is right.',
@@ -538,8 +593,32 @@
       /* An abort is our own timer, not the network saying anything. Told
          apart because "it is slow" and "it is not there" send somebody to
          look in two different places. */
-      if (timedOut) return fail('TIMED_OUT');
-      return fail('UNREACHABLE', e && e.message ? ' (' + e.message + ')' : '');
+      if (timedOut) return fail('TIMED_OUT', ' [' + transport() + ']');
+
+      /*
+       * fetch could not do it. Try the other road before giving up.
+       *
+       * The bridge patches fetch and XMLHttpRequest separately and they fail
+       * separately, so an address one cannot reach is often reachable by the
+       * other. A shopkeeper does not care which was used.
+       */
+      try {
+        const second = await fetchByXhr(target, timeoutMs);
+        if (second.ok) {
+          const info = await second.json();
+          if (looksLikePosnic(info)) {
+            probe.lastFailure = null;
+            return { base, info };
+          }
+          return fail('NOT_POSNIC', ' [xhr]');
+        }
+        return fail('REFUSED', String(second.status) + ' [xhr]');
+      } catch (second) {
+        return fail(
+          'UNREACHABLE',
+          ' [' + transport() + '] fetch: ' + describe(e) + ' / xhr: ' + describe(second)
+        );
+      }
     } finally {
       clearTimeout(timer);
     }
@@ -547,6 +626,7 @@
 
   probe.lastFailure = null;
   probe.REASONS = REASONS;
+  probe.transport = transport;
 
   /** The /24 networks this device is on, most reliable source first. */
   async function localSubnets() {

@@ -120,6 +120,17 @@ console.log(`
 Building Captain for iOS (${canSign ? 'signed' : 'unsigned'})...`);
 
 run('npm run build');
+
+/* The same stamp the Android build writes, so a phone of either kind can say
+   which build it is. See build-version.js. */
+const stamp = require('./scripts/build-version');
+const version = stamp.resolveVersion(root);
+stamp.stampBundle(path.join(root, 'dist'), {
+  version,
+  commit: stamp.resolveCommit(root),
+  at: new Date().toISOString(),
+});
+console.log(`Version ${version}`);
 if (!fs.existsSync(iosDir)) run('npx cap add ios');
 run('npx cap sync ios');
 mergeInfoPlist();

@@ -7,6 +7,9 @@
     <title>Login</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
     <script src="assets/jquery-3.6.0.min.js"></script>
+    <!-- Written at build time by build-version.js. Absent at a desk, where
+         the app simply says "dev" - which is true. -->
+    <script src="app-build.js" onerror="this.remove()"></script>
     <script src="config.js"></script>
     <script src="assets/common/order-queue.js"></script>
     <script src="indexedDB.js?v=5"></script>
@@ -83,6 +86,10 @@
 
             <div style="padding:0 18px;">
                 <div id="serverSaveMsg" style="font-size:12px;min-height:34px;margin-top:10px;"></div>
+                <!-- Which build this is. Every release used to go out as
+                     versionCode 1 / versionName "1.0", so "I updated and
+                     nothing changed" could not be answered by anybody. -->
+                <div id="appVersionLine" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
             </div>
 
             <div style="padding:0 18px 18px;display:flex;justify-content:space-between;align-items:center;">
@@ -227,6 +234,19 @@
     <script>
         var serverAutoDetectRunning = false;
         var serverAutoDetectCancelled = false;
+
+        /* Which build is on this phone, said plainly enough to read down a
+           telephone. A build that cannot identify itself makes every field
+           report ambiguous. */
+        function showAppVersion() {
+            const line = document.getElementById('appVersionLine');
+            if (!line) return;
+            const build = window.POSNIC_BUILD;
+            line.textContent = build && build.version
+                ? 'Captain ' + build.version + (build.commit ? ' (' + build.commit + ')' : '')
+                : 'Captain dev build';
+        }
+        document.addEventListener('DOMContentLoaded', showAppVersion);
 
         function serverMsg(text, colour) {
             const msg = document.getElementById('serverSaveMsg');
