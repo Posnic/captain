@@ -167,15 +167,29 @@
     });
 
     /*
-     * And bring the lit chip into view.
+     * And bring the lit chip into view - BY MOVING THE RAIL, NOT THE PAGE.
      *
      * A rail that says "you are in Desserts" while Desserts is off the
-     * right-hand edge has told you nothing. `nearest` so it only moves when it
-     * has to: re-centring on every section makes the rail slide about under
-     * the thumb for no reason.
+     * right-hand edge has told you nothing. This used to be scrollIntoView
+     * with `inline: 'nearest'`, which looks like it only scrolls the rail and
+     * does not: scrollIntoView walks every scrollable ancestor, the document
+     * included, and it does it with its own smooth animation.
+     *
+     * TWO SMOOTH SCROLLS ON ONE SCROLLER DO NOT ADD UP - the second replaces
+     * the first. goTo() starts the page moving and then calls this, so the
+     * chip's animation cut the page's off partway and the section stopped
+     * wherever it had got to. Tapping a chip near the right-hand end of the
+     * rail, which is the case that makes the rail scroll at all, landed 80px
+     * short; tapping one already on screen was fine. That is exactly the shape
+     * of "sometimes the category jump does nothing".
+     *
+     * Setting scrollLeft on the rail itself cannot touch the document.
      */
-    if (lit && lit.scrollIntoView) {
-      lit.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    const rail = lit && lit.parentElement;
+    if (rail && typeof rail.scrollTo === 'function' && rail.scrollWidth > rail.clientWidth) {
+      const centred = lit.offsetLeft - (rail.clientWidth - lit.offsetWidth) / 2;
+      const most = rail.scrollWidth - rail.clientWidth;
+      rail.scrollTo({ left: Math.max(0, Math.min(most, centred)), behavior: 'smooth' });
     }
   }
 
