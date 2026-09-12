@@ -15,6 +15,27 @@
  * four and one tap beats two.
  */
 
+/*
+ * A SCREEN A THUMB CAN MOVE.
+ *
+ * table/style.css says `html, body { height: 100%; overflow: hidden }`, and
+ * this sheet replaced everything about that screen EXCEPT those two
+ * declarations - so a shop with more tables than fit could not reach the ones
+ * below the fold, and on a short phone neither the pax stepper nor Next was
+ * reachable.
+ *
+ * It hid because `overflow: hidden` still allows PROGRAMMATIC scrolling.
+ * Everything automated moves the page with scrollTo and passes; only a finger
+ * is refused. The menu screen had the identical bug and it was reported as
+ * "menu(category) i can able to scroll but items not able to scroll".
+ */
+html,
+body.seat-screen {
+  height: auto;
+  overflow: visible;
+  display: block;
+}
+
 body.seat-screen {
   margin: 0;
   background: var(--ground);

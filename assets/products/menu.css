@@ -648,6 +648,32 @@ body.menu-index-open .menu-index-btn {
  * MenuScreen.stick() measures rather than guesses, because the header's height
  * depends on the phone and the rail is not there while searching.
  */
+/*
+ * AND THE SAME ON html, WHICH IS THE WHOLE BUG.
+ *
+ * style.css says `html, body { height: 100%; overflow: hidden }`. Resetting
+ * only `body` leaves the document element hidden and 100% tall, and that alone
+ * decides whether a finger can move the page: `overflow: hidden` still allows
+ * PROGRAMMATIC scrolling, so window.scrollTo() worked perfectly - the chip
+ * jump, the index sheet, every scroll assertion in the suite - while a thumb
+ * on the list did nothing at all.
+ *
+ * That is why 136 browser tests passed over a menu nobody could scroll: every
+ * one of them scrolled by calling scrollTo, which is the one way of moving the
+ * page that overflow:hidden does not block. Measured: 9255px of dishes in an
+ * 844px window, wheel gesture moved it 0px.
+ *
+ * The category rail kept working throughout because it is its own
+ * `overflow-x: auto` box and never asked the document for anything - which is
+ * exactly how this reads on a handset: "menu(category) i can able to scroll
+ * but items not able to scroll".
+ */
+html {
+  height: auto;
+  overflow: visible;
+  display: block;
+}
+
 body {
   height: auto;
   overflow: visible;
