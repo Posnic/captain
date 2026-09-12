@@ -1590,3 +1590,155 @@ function showToast(message, type = 'success', duration = 3000) {
         toast.style.display = 'none';
     }, duration);
 }
+/* ==================================================================
+ * ADDING TO AN ORDER, FROM THE MENU ITSELF
+ * ==================================================================
+ *
+ * Owner, relaying a client: "for adding within that screen so conjested.
+ * adding new item should have button like add item and same as first scree
+ * menu item list other so many stuff should neatly available. after adding
+ * confirmation and add to existing order."
+ *
+ * The modify screen used to offer a text box and a list of names, squeezed
+ * into half a column beside the order, the discount fields, the dine type,
+ * the table and the cover count - on a phone. A waiter hunting for a dish got
+ * none of what the menu screen gives them: categories, prices, photographs,
+ * what is sold out, and a stepper that counts.
+ *
+ * So this opens the REAL MENU, drawn by the same MenuView the menu screen
+ * uses. Not a copy: a copy would drift from the original the week after it was
+ * written, and the two would disagree about what is on the card.
+ *
+ * Nothing is saved from in here. Items land in editingOrder the way they
+ * always did, the modify screen shows them, and "Update the order" is still
+ * the one button that talks to the till. Adding is a choice; committing is a
+ * separate decision, and they stay separate.
+ */
+
+let pickerMenu = null;
+
+async function openItemPicker() {
+    const sheet = document.getElementById('item-picker');
+    const body = document.getElementById('item-picker-body');
+    const rail = document.getElementById('item-picker-rail');
+    if (!sheet || !body) return;
+
+    sheet.hidden = false;
+    document.body.classList.add('picker-open');
+    body.innerHTML = '<div class="menu-nothing">Loading the menu...</div>';
+
+    try {
+        const products = await getData(STORE_NAME);
+        if (!products || !products.length) {
+            body.innerHTML = MenuView.nothing(
+                'No items for this branch yet',
+                'Whoever set up the till needs to add them.'
+            );
+            return;
+        }
+
+        /*
+         * MenuView.sections wants the shape the menu screen holds - products
+         * grouped by category - and IndexedDB hands back a flat list here.
+         * Grouped by the name each row already carries, so the sections come
+         * out in the shop's own order rather than alphabetically.
+         */
+        const grouped = {};
+        for (const item of products) {
+            const key = item.category_name || 'Menu';
+            (grouped[key] = grouped[key] || []).push(item);
+        }
+
+        pickerMenu = MenuView.sections(grouped, {});
+        rail.innerHTML = MenuView.rail(pickerMenu, {});
+        /* An empty cart map: this sheet shows the MENU, and what is already on
+           the order is on the screen behind it. Showing quantities here would
+           be two places claiming to be the count. */
+        body.innerHTML = MenuView.render(pickerMenu, new Map(), {});
+    } catch (error) {
+        console.error('Could not open the menu', error);
+        body.innerHTML = MenuView.nothing('Could not load the menu', 'Try again in a moment.');
+    }
+}
+
+function closeItemPicker() {
+    const sheet = document.getElementById('item-picker');
+    if (sheet) sheet.hidden = true;
+    document.body.classList.remove('picker-open');
+}
+
+/* One listener for the whole sheet, because the rows are redrawn. */
+document.addEventListener('click', function (event) {
+    if (!event.target.closest) return;
+
+    if (event.target.closest('#open-item-picker')) {
+        openItemPicker();
+        return;
+    }
+    if (event.target.closest('#item-picker-close') || event.target.closest('#item-picker-done')) {
+        closeItemPicker();
+        return;
+    }
+
+    /* A chip jumps to its section, the way the menu screen's rail does. */
+    const chip = event.target.closest('.menu-chip');
+    if (chip && chip.closest('#item-picker-rail')) {
+        const section = document.getElementById('sec-' + chip.dataset.category);
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelectorAll('#item-picker-rail .menu-chip').forEach((c) => {
+            c.classList.toggle('is-here', c === chip);
+        });
+        return;
+    }
+
+    /*
+     * ADD, from inside the picker.
+     *
+     * Scoped to the sheet: .btn-add is the menu screen's own class and this
+     * page must not start answering for taps that are not in here.
+     */
+    const add = event.target.closest('.btn-add, .btn-increase');
+    if (add && add.closest('#item-picker')) {
+        const id = add.getAttribute('data-id');
+        if (!id) return;
+
+        /*
+         * Named from the menu this sheet drew, NOT from searchedProducts.
+         *
+         * addProductToOrderById reads a map the SEARCH box fills in. Nothing
+         * in here fills it, so routing through that helper would have logged
+         * "Product not found" to a console nobody is looking at and added
+         * nothing - with a row that said "Added" over the top of it.
+         */
+        const found = pickerItem(id);
+        if (!found) return;
+        addProductToOrder(id, found.name, found.selling_price || found.price || 0);
+        say(add);
+        return;
+    }
+});
+
+/** The dish behind a row, out of the menu this sheet is showing. */
+function pickerItem(id) {
+    for (const section of pickerMenu || []) {
+        const hit = (section.items || []).find((item) => String(item.id) === String(id));
+        if (hit) return hit;
+    }
+    return null;
+}
+
+/*
+ * What a tap did, said on the row that was tapped.
+ *
+ * The order it lands on is behind this sheet, so without a word here a waiter
+ * taps ADD and nothing whatsoever happens in front of them.
+ */
+function say(button) {
+    const said = button.textContent;
+    button.textContent = 'Added';
+    button.disabled = true;
+    setTimeout(() => {
+        button.textContent = said;
+        button.disabled = false;
+    }, 700);
+}

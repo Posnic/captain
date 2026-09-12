@@ -1092,3 +1092,116 @@ body {
     margin: 4px 0 0 6px;
     opacity: 0.9;
 }
+/* ============================================ adding from the real menu */
+
+/*
+ * "+ Add items from the menu" — the way into the picker.
+ *
+ * Outlined and full width rather than a filled accent button: the filled one
+ * on this screen is "Update the order", which is the thing that actually
+ * reaches the till. Two filled buttons on one form is two primary actions,
+ * and a waiter would have to read both to find out which one commits.
+ */
+.add-items-btn {
+    width: 100%;
+    min-height: var(--touch, 48px);
+    margin-bottom: var(--s3, 12px);
+    border: 1px dashed var(--line-strong, #cbd5e1);
+    border-radius: var(--radius, 12px);
+    background: var(--surface, #fff);
+    color: var(--ink, #0f172a);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.add-items-btn:hover {
+    border-color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5);
+}
+
+/*
+ * THE MENU, OVER EVERYTHING, WHILE ADDING.
+ *
+ * Full screen on purpose. The complaint was that adding was squeezed in beside
+ * the order, the discount, the dine type, the table and the cover count - so
+ * the answer is not a slightly bigger box in the same place, it is the whole
+ * screen doing one thing, which is what the menu screen already does.
+ */
+.item-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    background: var(--ground, #f1f5f9);
+}
+.item-picker[hidden] {
+    display: none !important;
+}
+/* The form underneath must not scroll while this is up. */
+body.picker-open {
+    overflow: hidden;
+}
+
+.item-picker-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s3, 12px);
+    padding: calc(var(--s3, 12px) + env(safe-area-inset-top, 0px)) var(--s4, 16px) var(--s3, 12px);
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.item-picker-back {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--ink, #0f172a);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+.item-picker-title {
+    font-weight: 700;
+    font-size: var(--t-lg, 17px);
+    color: var(--ink, #0f172a);
+}
+
+.item-picker-rail {
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+    overflow-x: auto;
+}
+
+/* The one part that scrolls, so the head and the way out never leave. */
+.item-picker-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: var(--s4, 16px);
+}
+
+.item-picker-foot {
+    padding: var(--s3, 12px) var(--s4, 16px)
+        calc(var(--s3, 12px) + env(safe-area-inset-bottom, 0px));
+    background: var(--surface, #fff);
+    border-top: 1px solid var(--line, #e2e8f0);
+}
+/*
+ * "Done" and not "Add". Nothing is added by pressing it - the dishes went onto
+ * the order as they were tapped, and this only puts the menu away. A button
+ * that says Add here would read as the moment the order changes, and the
+ * moment the order changes is "Update the order" on the screen behind.
+ */
+.item-picker-done {
+    width: 100%;
+    min-height: var(--touch, 48px);
+    border: none;
+    border-radius: var(--radius, 12px);
+    background: var(--accent, #4f46e5);
+    color: var(--accent-ink, #fff);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
