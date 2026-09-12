@@ -741,13 +741,32 @@
   probe.usedRoad = null;
 
   /** The /24 networks this device is on, most reliable source first. */
+  /* Host numbers this device holds, filled in by localSubnets(). See the
+     comment in `add` for why they matter more than any guessed list. */
+  let ownHosts = [];
+
   async function localSubnets() {
     const found = [];
+    ownHosts = [];
     const add = (value) => {
       const match = String(value || '').match(/(?:\d{1,3}\.){3}\d{1,3}/);
       if (!match) return;
-      const subnet = match[0].split('.').slice(0, 3).join('.');
+      const parts = match[0].split('.');
+      const subnet = parts.slice(0, 3).join('.');
       if (!found.includes(subnet)) found.push(subnet);
+      /*
+       * AND THE HOST NUMBER THIS DEVICE ITSELF WAS GIVEN.
+       *
+       * The strongest hint there is about where the till sits. A router hands
+       * out its pool in order, so the phone and the till are usually near each
+       * other in it - and the pool is not always low: a real shop's till came
+       * back on .170, which no list of "likely" numbers would have guessed.
+       *
+       * Knowing one address in the pool is worth more than guessing at the
+       * shape of every router's defaults.
+       */
+      const host = Number(parts[3]);
+      if (host >= 2 && host <= 254 && !ownHosts.includes(host)) ownHosts.push(host);
     };
 
     /* The native plugin reads the Wi-Fi interface outright. It is the only
@@ -826,13 +845,30 @@
     };
 
     if (first) add(first);
+
+    /*
+     * THIS DEVICE'S OWN NEIGHBOURHOOD, before any general guess.
+     *
+     * A router hands out its pool in order, so whatever address the phone was
+     * given, the till is usually within a dozen of it. A real shop's till came
+     * back on .170 - not low, not round, and not on any list anybody would
+     * have written. Its phone would have been in the same part of the pool.
+     */
+    for (const own of ownHosts) {
+      for (let step = 0; step <= 12; step += 1) {
+        add(own - step);
+        add(own + step);
+      }
+    }
+
     LIKELY_HOSTS.forEach(add);
     for (let host = 2; host <= 254; host++) add(host);
     return hosts;
   }
 
-  /** How many of those are the fast first pass. */
-  const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1;
+  /** How many of those are the fast first pass: the known host, this device's
+      neighbourhood, and the general guesses. Still under sixty probes. */
+  const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1 + ownHosts.length * 25;
 
   async function scanSubnet(subnet, { hosts, onProgress, onBatch, shouldStop, concurrency } = {}) {
     const list = hosts || hostOrder();

@@ -40,6 +40,22 @@ function showChangeBranchIfUseful() {
 }
 document.addEventListener('DOMContentLoaded', showChangeBranchIfUseful);
 
+/*
+ * Back to the connect sheet, from a screen that has one.
+ *
+ * The sheet is on index.html and nowhere else. Rather than build a second one
+ * here - two copies of a screen always drift - this asks that page to open it
+ * on arrival. The server itself is left alone: somebody may only be looking.
+ */
+function changeServer() {
+    try {
+        sessionStorage.setItem('posnic_change_server', '1');
+    } catch (e) {
+        /* private mode: the page still opens, just without the sheet */
+    }
+    window.location.href = 'index.html';
+}
+
 async function changeBranch() {
     try {
         localStorage.setItem('kiosk_force_branch_select', '1');

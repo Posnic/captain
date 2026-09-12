@@ -85,8 +85,8 @@
                     <button class="ui-choice" onclick="chooseManual()">
                         <span class="ui-choice-icon"><i class="fas fa-keyboard"></i></span>
                         <span class="ui-choice-text">
-                            <span class="ui-choice-title">Type the shop code</span>
-                            <span class="ui-choice-note">If your manager gave you one.</span>
+                            <span class="ui-choice-title">Type the address</span>
+                            <span class="ui-choice-note">A shop code, a web address, or the till on this Wi-Fi.</span>
                         </span>
                         <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
                     </button>
@@ -94,9 +94,9 @@
 
                 <!-- Typing it in. Hidden until chosen. -->
                 <div id="connectManual" hidden>
-                    <label class="ui-label" for="serverUrlInput">Shop code or till address</label>
+                    <label class="ui-label" for="serverUrlInput">Shop code, web address, or till address</label>
                     <input id="serverUrlInput" class="ui-field" type="text"
-                        placeholder="demo, or 192.168.1.5:5555"
+                        placeholder="demo &nbsp;·&nbsp; shop.posnic.io &nbsp;·&nbsp; 192.168.1.5"
                         autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
                         oninput="handleServerUrlInput()" onkeyup="if(event.key==='Enter')applyServerUrl()">
                     <div style="height:var(--s3);"></div>
@@ -340,7 +340,14 @@
             stopAutoDetectServer(false);
             const autoBox = document.getElementById('connectAuto');
             if (autoBox) autoBox.hidden = true;
-            serverMsg('A shop code looks like "demo". A till on this Wi-Fi looks like 192.168.1.5:5555.');
+            /*
+             * All three forms, because the box takes all three and the old
+             * label said "shop code" while people were typing a full URL.
+             * The app completes each one: a bare code becomes
+             * https://<code>.posnic.io/api, a web address gains /api, and a
+             * private address gains the till's port.
+             */
+            serverMsg('Shop code "demo", a web address like shop.posnic.io, or the till on this Wi-Fi like 192.168.1.5.');
             showChoice('manual');
         }
 
@@ -368,6 +375,23 @@
             POSNIC_CONNECT.stopScan();
             chooseNone();
         }
+
+        /*
+         * REOPENED FROM ANOTHER SCREEN.
+         *
+         * The gear is on this page and nowhere else, so once somebody had
+         * signed in there was no way to change the server short of signing
+         * out - which on a handset pointed at the wrong till is the one thing
+         * they need to do and the one thing they cannot.
+         *
+         * The tables screen sends them here with this flag set. Read once and
+         * cleared, so a later visit to sign in does not reopen it.
+         */
+        document.addEventListener('DOMContentLoaded', function () {
+            if (sessionStorage.getItem('posnic_change_server') !== '1') return;
+            sessionStorage.removeItem('posnic_change_server');
+            setTimeout(openServerModal, 60);
+        });
 
         function openServerModal() {
             const modal = document.getElementById('serverModal');

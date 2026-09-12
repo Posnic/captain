@@ -311,3 +311,25 @@ test('a wrong password does not blame the shop server', () => {
     'a failed sign-in is still reported as an out-of-date server'
   );
 });
+
+test('the search looks near the address this device was given', () => {
+  /*
+   * THE STRONGEST HINT THERE IS, and a guessed list is not it.
+   *
+   * A router hands out its pool in order, so whatever address the phone got,
+   * the till is usually within a dozen of it. A real shop's till came back on
+   * .170 - not low, not round, and on no list anybody would have written. Its
+   * phone would have been in the same part of the pool.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /ownHosts/, 'the device does not remember its own host number');
+  assert.match(config, /add\(own - step\)/, 'the search does not look below its own address');
+  assert.match(config, /add\(own \+ step\)/, 'the search does not look above its own address');
+
+  /* And that neighbourhood is part of the FAST pass, not the slow one. */
+  assert.match(
+    config,
+    /likelyCount = \(\) =>[\s\S]{0,160}ownHosts\.length/,
+    'the neighbourhood is not counted into the first pass'
+  );
+});
