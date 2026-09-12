@@ -150,6 +150,11 @@ test('a spoken requirement is on the bill, where the kitchen reads it', async ({
   await page.waitForTimeout(700);
   await page.mouse.up();
   await expect(page.locator('#posnic-voice-panel')).toBeVisible();
+  /* The panel is visible before the order is understood and the note is
+     written; on a slow runner, leaving for the bill at that moment loses the
+     note that was still on its way to the line. Wait for the panel to show
+     it, which is when it is on the row. */
+  await expect(page.locator('#posnic-voice-panel .vp-want')).toHaveText('Without onion');
 
   await page.goto('/cart.html');
   await expect(page.locator('.bill-note')).toHaveText('Without onion');
