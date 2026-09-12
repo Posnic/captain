@@ -109,7 +109,7 @@
         </div>
     </div>
 
-    <!-- Edit Order Modal -->
+    <!-- Modify Order Modal -->
     <div class="modal fade" id="editOrderModal" tabindex="-1">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
@@ -219,8 +219,14 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn action-btn edit-btn" id="save-order-changes">Save Changes</button>
+                    <!-- "Cancel" on a screen that also has a real Cancel Order button
+                         is the one word that must not be ambiguous here. -->
+                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Leave it as it was</button>
+                    <!-- Owner: "save changes is system language or normal languag...
+                         make changes according to that." Nobody standing at a
+                         table thinks about saving changes; they think about
+                         updating the order. -->
+                    <button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button>
                 </div>
             </div>
         </div>
