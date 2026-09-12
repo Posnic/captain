@@ -502,3 +502,50 @@ body.seat-screen {
 .person-icon-btn.active {
   box-shadow: none !important;
 }
+
+/*
+ * "Other", inside the chip, where there is no room for the rule above.
+ *
+ * #manual_table_input is written for the FULL-WIDTH box a shop with no tables
+ * laid out gets. The same id also appears inside the last chip of the table
+ * grid, and a chip is 78px wide: 8px of label padding and 16px of the input's
+ * own padding on each side leave about 26px of content box, so the word
+ * "Other" - and every table number typed after it - was drawn outside the
+ * input and clipped. The text was never missing; there was nowhere to put it.
+ *
+ * An id beats a class, so this has to be at least as specific to undo it.
+ */
+.table-list .manual-table {
+  /* Two cells. "Other" is a word, not a number, and it needs the width. */
+  grid-column: span 2;
+}
+.table-list .manual-label {
+  padding: 0;
+}
+.table-list .manual-label #manual_table_input {
+  width: 100%;
+  max-width: none;
+  min-height: var(--touch);
+  padding: 0 var(--s2);
+  border: 0 !important;
+  border-radius: var(--radius) !important;
+  background: transparent;
+  /* The chip is white when it is not picked and accent when it is. Following
+     it means the typed number is legible in both, which a fixed colour is
+     not. */
+  color: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.table-list .manual-label #manual_table_input::placeholder {
+  color: currentColor;
+  opacity: 0.55;
+}
+.table-list .manual-label #manual_table_input:focus {
+  box-shadow: none;
+}
+/* The chip itself takes the focus ring, so the whole target shows it. */
+.table-list .manual-label:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

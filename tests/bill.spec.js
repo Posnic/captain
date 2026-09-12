@@ -151,6 +151,10 @@ test('a spoken requirement is on the bill, where the kitchen reads it', async ({
   await page.mouse.up();
   await expect(page.locator('#posnic-voice-panel')).toBeVisible();
 
+  /* Agreed to, first. Nothing reaches the cart until somebody presses the
+     button that says how many items it will add. */
+  await page.locator('#posnic-voice-panel [data-act="confirm"]').click();
+
   /*
    * WAIT FOR THE NOTE, NOT FOR THE PANEL.
    *

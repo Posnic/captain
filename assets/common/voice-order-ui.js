@@ -79,6 +79,16 @@
     said: '',
     status: '',
     pendingPlace: false,
+    /*
+     * WHICH OF THREE THINGS THIS PANEL IS: 'listening', 'review' or 'done'.
+     *
+     * It used to be one screen doing all three at once, which is why nobody
+     * could tell what state it was in - and why the dishes were already on the
+     * bill before anybody had agreed to them.
+     */
+    stage: 'listening',
+    /* Understood, and NOT yet applied. The whole point of the review. */
+    proposed: null,
   };
 
   /* ------------------------------------------------------------- helpers */
@@ -191,7 +201,7 @@
 #${PANEL_ID}{position:fixed;left:0;right:0;z-index:60;background:var(--surface,#fff);color:var(--ink,#0f172a);
   border-top:1px solid var(--line,#e2e8f0);box-shadow:0 -2px 16px rgba(15,23,42,.08);
   font:var(--t-base,15px)/1.45 var(--font,system-ui,-apple-system,'Segoe UI',sans-serif);
-  max-height:58vh;display:none;flex-direction:column}
+  max-height:68vh;display:none;flex-direction:column}
 #${PANEL_ID}[data-open="true"]{display:flex}
 #${PANEL_ID} .vp-head{display:flex;align-items:center;gap:var(--s3,12px);padding:var(--s3,12px) var(--s4,16px) 0}
 #${PANEL_ID} .vp-status{font-size:var(--t-xs,12px);font-weight:700;letter-spacing:.04em;text-transform:uppercase;
@@ -200,8 +210,29 @@
 #${PANEL_ID} .vp-time{font-variant-numeric:tabular-nums;color:var(--ink-soft,#475569);font-size:var(--t-sm,13px)}
 #${PANEL_ID} .vp-close{margin-left:auto;width:36px;height:36px;border:0;background:none;color:var(--ink-faint,#94a3b8);
   font-size:22px;line-height:1;cursor:pointer;border-radius:50%}
-#${PANEL_ID} .vp-said{padding:2px var(--s4,16px) 0;color:var(--ink-soft,#475569);font-style:italic;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/*
+ * THE TRANSCRIPT, AS A TRANSCRIPT.
+ *
+ * Owner: "i want live transcribe and what you understood both side by side...
+ * left what you talked in text. right what you extracted and modifieble."
+ *
+ * This was one italic line with an ellipsis on the end, sitting above an orb
+ * that filled the panel - so somebody talking watched a 13px strip they could
+ * not read being truncated, and reasonably concluded the thing had hung. It is
+ * a column of its own now: it wraps, it scrolls, and the last words said stay
+ * in view.
+ */
+#${PANEL_ID} .vp-said{flex:1 1 auto;min-height:0;overflow:auto;color:var(--ink,#0f172a);
+  font-size:var(--t-base,15px);line-height:1.5;overflow-wrap:anywhere}
+#${PANEL_ID} .vp-said:empty::before{content:attr(data-empty);color:var(--ink-faint,#94a3b8)}
+/* A caret, so an open microphone that has heard nothing yet still looks
+   awake. The one state this panel must never look like is stuck. */
+#${PANEL_ID}[data-stage="listening"] .vp-said::after{content:'';display:inline-block;width:2px;height:1em;
+  margin-left:3px;vertical-align:-2px;background:var(--bad,#dc2626);
+  animation:posnic-voice-caret 1.1s steps(1) infinite}
+@keyframes posnic-voice-caret{0%,49%{opacity:1}50%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  #${PANEL_ID}[data-stage="listening"] .vp-said::after{animation:none}}
 /*
  * THE WAVE.
  *
@@ -237,7 +268,7 @@
 @media (prefers-reduced-motion:reduce){
   #${PANEL_ID} .vp-bars[data-ambient="true"] span{animation:none;transform:scaleY(.4)}}
 #${PANEL_ID} .vp-note{padding:var(--s2,8px) var(--s4,16px) 0;font-size:var(--t-sm,13px);color:var(--ink-soft,#475569)}
-#${PANEL_ID} .vp-lines{overflow:auto;padding:var(--s2,8px) var(--s4,16px)}
+#${PANEL_ID} .vp-lines{flex:1 1 auto;min-height:0;overflow:auto}
 #${PANEL_ID} .vp-row{display:flex;align-items:center;gap:var(--s2,8px);padding:var(--s2,8px) 0;
   border-bottom:1px solid var(--line,#e2e8f0)}
 #${PANEL_ID} .vp-row:last-child{border-bottom:0}
@@ -255,18 +286,28 @@
  * The delay is capped at the eighth row. A table ordering twenty things
  * should not wait a second and a half for the last one to admit it exists.
  */
-#${PANEL_ID}[data-fresh="true"] .vp-row{animation:posnic-voice-land 300ms cubic-bezier(.22,.61,.36,1) both}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(1){animation-delay:0ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(2){animation-delay:45ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(3){animation-delay:90ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(4){animation-delay:135ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(5){animation-delay:180ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(6){animation-delay:225ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(7){animation-delay:270ms}
-#${PANEL_ID}[data-fresh="true"] .vp-row:nth-child(n+8){animation-delay:315ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row,
+#${PANEL_ID}[data-fresh="true"] .vp-prop{animation:posnic-voice-land 300ms cubic-bezier(.22,.61,.36,1) both}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(1),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(1){animation-delay:0ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(2),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(2){animation-delay:45ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(3),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(3){animation-delay:90ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(4),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(4){animation-delay:135ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(5),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(5){animation-delay:180ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(6),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(6){animation-delay:225ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(7),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(7){animation-delay:270ms}
+#${PANEL_ID}[data-fresh="true"] .vp-row:nth-of-type(n+8),
+#${PANEL_ID}[data-fresh="true"] .vp-prop:nth-of-type(n+8){animation-delay:315ms}
 @keyframes posnic-voice-land{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){
-  #${PANEL_ID}[data-fresh="true"] .vp-row{animation:none}}
+  #${PANEL_ID}[data-fresh="true"] .vp-row,
+  #${PANEL_ID}[data-fresh="true"] .vp-prop{animation:none}}
 #${PANEL_ID} .vp-row[data-unplaced="true"]{color:var(--warn,#b45309)}
 #${PANEL_ID} .vp-step{width:34px;height:34px;border:1px solid var(--line-strong,#cbd5e1);border-radius:8px;
   background:var(--surface,#fff);color:var(--ink,#0f172a);font-size:18px;font-weight:700;line-height:1;cursor:pointer}
@@ -286,6 +327,61 @@
 #${PANEL_ID} .vp-x{border:0;background:none;color:var(--ink-faint,#94a3b8);font-size:20px;cursor:pointer;
   width:34px;height:34px;line-height:1}
 #${PANEL_ID} .vp-empty{padding:var(--s4,16px) 0;color:var(--ink-soft,#475569)}
+
+/*
+ * LISTENING IS A BIGGER MOMENT THAN A STRIP OF BARS.
+ *
+ * Owner: "when mic listening and stop i need some proper animation and bigger
+ * area. that part not handled well."
+ *
+ * It was a 24px row of bars above a cart. Somebody holding a phone to take an
+ * order has one question - is it hearing me - and a detail that small at the
+ * top of a busy panel does not answer it across a table in a loud room.
+ *
+ * So while the microphone is open the panel IS the microphone: a large orb
+ * with rings leaving it, the bars under it at a size worth looking at, and
+ * nothing else competing.
+ */
+/* The right-hand column KEEPS WORKING while the microphone is open - that is
+   the entire point of the split. Only the status note steps aside. */
+#${PANEL_ID}[data-stage="listening"] .vp-note{display:none}
+#${PANEL_ID} .vp-ear{display:none;flex-direction:column;align-items:center;gap:var(--s2,8px);
+  margin-top:auto;padding-top:var(--s3,12px)}
+#${PANEL_ID}[data-stage="listening"] .vp-ear{display:flex}
+#${PANEL_ID} .vp-orb{position:relative;width:72px;height:72px;border-radius:50%;
+  display:grid;place-items:center;background:var(--bad,#dc2626);color:#fff;font-size:28px;
+  box-shadow:0 8px 30px rgba(220,38,38,.32)}
+#${PANEL_ID} .vp-orb-ring{position:absolute;inset:0;border-radius:50%;border:2px solid var(--bad,#dc2626);
+  opacity:0;will-change:transform,opacity;
+  animation:posnic-voice-orb 2.4s cubic-bezier(.22,.61,.36,1) infinite}
+#${PANEL_ID} .vp-orb-ring:nth-child(2){animation-delay:.8s}
+#${PANEL_ID} .vp-orb-ring:nth-child(3){animation-delay:1.6s}
+@keyframes posnic-voice-orb{0%{transform:scale(1);opacity:.5}70%{opacity:.1}100%{transform:scale(2.1);opacity:0}}
+#${PANEL_ID}[data-stage="listening"] .vp-bars{height:34px;margin:0}
+#${PANEL_ID}[data-stage="listening"] .vp-bars span{width:5px;height:30px}
+#${PANEL_ID} .vp-ear-hint{font-size:var(--t-sm,13px);color:var(--ink-soft,#475569);text-align:center}
+/* Stopping is a primary action and lives in the actions row with every other
+   one, so the button that ends the current step is always in the same place.
+   Red because it belongs to the microphone, which is the only red on screen -
+   it is what somebody looks for the moment they finish talking. */
+#${PANEL_ID} .vp-btn[data-act="stop"]{border-color:transparent;background:var(--bad,#dc2626);color:#fff}
+
+/* The review: one row per line, sized for a thumb and a glance. */
+#${PANEL_ID} .vp-prop{display:flex;align-items:flex-start;gap:var(--s3,12px);padding:var(--s3,12px) 0;
+  border-bottom:1px solid var(--line,#e2e8f0)}
+#${PANEL_ID} .vp-prop:last-child{border-bottom:0}
+#${PANEL_ID} .vp-prop-qty{flex:0 0 40px;height:40px;border-radius:var(--radius,12px);
+  background:var(--accent-soft,#eef2ff);color:var(--accent,#4f46e5);display:grid;place-items:center;
+  font-weight:800;font-size:var(--t-lg,17px);font-variant-numeric:tabular-nums}
+#${PANEL_ID} .vp-prop[data-kind="remove"] .vp-prop-qty{background:#fee2e2;color:#b91c1c}
+#${PANEL_ID} .vp-prop[data-kind="missing"] .vp-prop-qty{background:var(--surface-sunk,#f8fafc);color:var(--ink-faint,#94a3b8)}
+#${PANEL_ID} .vp-prop-what{flex:1;min-width:0;font-size:var(--t-base,15px);line-height:1.35}
+#${PANEL_ID} .vp-prop-verb{color:var(--ink-soft,#475569);font-weight:600}
+#${PANEL_ID} .vp-prop-note{display:block;margin-top:2px;font-size:var(--t-xs,12px);font-weight:600;
+  color:var(--accent,#4f46e5)}
+#${PANEL_ID} .vp-prop-why{display:block;margin-top:2px;font-size:var(--t-xs,12px);color:var(--warn,#b45309)}
+#${PANEL_ID} .vp-prop-act{flex:0 0 auto;min-height:36px;padding:0 var(--s3,12px);font-size:var(--t-sm,13px)}
+@media (prefers-reduced-motion:reduce){#${PANEL_ID} .vp-orb-ring{animation:none;opacity:.35}}
 #${PANEL_ID} .vp-actions{display:flex;gap:var(--s2,8px);padding:var(--s2,8px) var(--s4,16px)
   calc(var(--s3,12px) + env(safe-area-inset-bottom,0px))}
 #${PANEL_ID} .vp-btn{flex:1;min-height:44px;border:1px solid var(--line-strong,#cbd5e1);border-radius:var(--radius,12px);
@@ -293,6 +389,47 @@
 #${PANEL_ID} .vp-btn[data-primary="true"]{flex:2;border-color:transparent;background:var(--accent,#4f46e5);
   color:var(--accent-ink,#fff)}
 #${PANEL_ID} .vp-btn:disabled{opacity:.5;cursor:default}
+/* The microphone again, beside two buttons that need their words more. */
+#${PANEL_ID} .vp-btn[data-icon="true"]{flex:0 0 48px;padding:0;font-size:18px}
+
+/*
+ * TWO COLUMNS: what was said, and what that became.
+ *
+ * Owner: "lets say you split left and right. left what you talked in text.
+ * right what you extracted and modifieble. basically items quantity. below
+ * confirm button ... existing addeded to cart also should be there."
+ *
+ * Side by side rather than one after the other, because the only question a
+ * waiter has here is whether the right column matches the left, and two
+ * things you have to scroll between cannot be compared at all.
+ */
+#${PANEL_ID} .vp-split{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.1fr);
+  flex:1 1 auto;min-height:0;overflow:hidden}
+#${PANEL_ID} .vp-side{display:flex;flex-direction:column;min-width:0;min-height:0;
+  padding:var(--s3,12px) var(--s4,16px)}
+#${PANEL_ID} .vp-side + .vp-side{border-left:1px solid var(--line,#e2e8f0)}
+#${PANEL_ID} .vp-side-head{margin:0 0 var(--s2,8px);font-size:var(--t-xs,12px);font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint,#94a3b8)}
+/* Narrower than a one-handed phone in portrait. Below this a column cannot
+   hold a dish name, and stacking beats breaking every word in half. */
+@media (max-width:359px){
+  #${PANEL_ID} .vp-split{grid-template-columns:minmax(0,1fr)}
+  #${PANEL_ID} .vp-side + .vp-side{border-left:0;border-top:1px solid var(--line,#e2e8f0)}}
+/* What separates the lines just heard from the ones already on the bill. */
+#${PANEL_ID} .vp-group{margin:var(--s3,12px) 0 var(--s1,4px);padding-top:var(--s2,8px);
+  border-top:1px solid var(--line,#e2e8f0);font-size:var(--t-xs,12px);font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint,#94a3b8)}
+#${PANEL_ID} .vp-group:first-child{margin-top:0;padding-top:0;border-top:0}
+/*
+ * THE QUANTITY, AS A CONTROL, BEFORE IT IS COMMITTED.
+ *
+ * Three heard as two used to be fixable only on the bill - which meant the
+ * wrong number went onto the bill first, and on a busy night it stayed there.
+ */
+#${PANEL_ID} .vp-prop-stack{flex:0 0 34px;display:flex;flex-direction:column;align-items:center;gap:2px}
+#${PANEL_ID} .vp-prop-stack .vp-step{width:34px;height:26px;font-size:15px}
+#${PANEL_ID} .vp-prop-stack .vp-prop-qty{flex:0 0 auto;width:34px;height:auto;padding:1px 0;
+  font-size:var(--t-base,15px)}
 `;
     (document.head || document.body).appendChild(style);
   }
@@ -353,10 +490,25 @@
         <span class="vp-time" id="${PANEL_ID}-time"></span>
         <button type="button" class="vp-close" id="${PANEL_ID}-close" aria-label="Close">&times;</button>
       </div>
-      <div class="vp-said" id="${PANEL_ID}-said"></div>
-      <div class="vp-bars" id="${PANEL_ID}-bars" data-ambient="true" hidden><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="vp-split">
+        <section class="vp-side" aria-label="What was said">
+          <h3 class="vp-side-head">You said</h3>
+          <div class="vp-said" id="${PANEL_ID}-said" data-empty="Waiting for you to speak..."></div>
+          <div class="vp-ear">
+            <div class="vp-orb">
+              <span class="vp-orb-ring"></span><span class="vp-orb-ring"></span><span class="vp-orb-ring"></span>
+              &#127908;
+            </div>
+            <div class="vp-bars" id="${PANEL_ID}-bars" data-ambient="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="vp-ear-hint" id="${PANEL_ID}-hint">Keep talking. It is being written down.</div>
+          </div>
+        </section>
+        <section class="vp-side" aria-label="What was understood">
+          <h3 class="vp-side-head">The order</h3>
+          <div class="vp-lines" id="${PANEL_ID}-lines"></div>
+        </section>
+      </div>
       <div class="vp-note" id="${PANEL_ID}-note"></div>
-      <div class="vp-lines" id="${PANEL_ID}-lines"></div>
       <div class="vp-actions" id="${PANEL_ID}-actions"></div>`;
 
     document.body.appendChild(element);
@@ -385,6 +537,12 @@
           if (mic) mic.click();
         }, 120);
       }
+      else if (act === 'confirm') confirm();
+      else if (act === 'stop') finish();
+      /* Changing what was understood, before it is carried out. */
+      else if (act === 'prop-more') editProposed(control.getAttribute('data-ci'), control.getAttribute('data-li'), 1);
+      else if (act === 'prop-less') editProposed(control.getAttribute('data-ci'), control.getAttribute('data-li'), -1);
+      else if (act === 'prop-drop') dropProposed(control.getAttribute('data-ci'), control.getAttribute('data-li'));
       else if (act === 'bill') {
         /* The dishes are already on the bill; this is the way to look at it. */
         window.location.href = 'cart.html';
@@ -620,15 +778,37 @@
     buzz(15);
     view.said = '';
     view.status = '';
+    view.stage = 'listening';
+    view.proposed = null;
+    /* A fresh round. Last round's marks belong to last round. */
+    view.changed = {};
+    view.unplaced = [];
+    view.pendingPlace = false;
     showPanel();
+    const opening = $(PANEL_ID);
+    if (opening) opening.setAttribute('data-stage', 'listening');
     const status = $(`${PANEL_ID}-status`);
     if (status) status.setAttribute('data-live', 'true');
-    setText('status', 'Listening. Slide left to cancel, up to lock');
+    setText('status', 'Listening');
     setText('said', '');
     setText('note', '');
-    const bars = $(`${PANEL_ID}-bars`);
-    if (bars) bars.hidden = false;
     setTime(0);
+    renderLines();
+    renderActions();
+
+    /*
+     * THE ORDER AS IT STANDS, from the moment the microphone opens.
+     *
+     * Owner: "existing addeded to cart also should be there. so captain can
+     * finalize and send it." A waiter adding a fourth round needs the three
+     * already down in front of them while they say it - not after.
+     *
+     * Not awaited: the microphone is already open and the read is local.
+     */
+    cartNow().then((rows) => {
+      view.cart = rows;
+      if (view.stage === 'listening') renderLines();
+    });
 
     ticker = setInterval(() => {
       if (!session) return;
@@ -647,13 +827,22 @@
    */
   async function livePreview(text) {
     view.said = text || '';
-    setText('said', view.said ? `"${view.said}"` : '');
+    setText('said', view.said);
     if (!view.said) return;
     try {
-      const commands = VoiceOrder.commands(view.said, await menuIndex(), ItemSearch);
-      setText('note', describe(commands) || '');
+      /*
+       * READ AS THEY ARRIVE, into the right-hand column.
+       *
+       * The recogniser rewrites its own sentence several times before it
+       * settles, so none of this is applied - but the column fills while
+       * somebody is still talking, and they can stop the moment it is right.
+       * Before this the panel showed an orb and one truncated line, which is
+       * why an open microphone looked like a hung one.
+       */
+      view.proposed = VoiceOrder.commands(view.said, await menuIndex(), ItemSearch);
+      if (view.stage === 'listening') renderLines();
     } catch (e) {
-      /* a preview is a nicety */
+      /* a preview is a nicety; a bad partial must not end the recording */
     }
   }
 
@@ -685,8 +874,6 @@
     buzz(15);
     const status = $(`${PANEL_ID}-status`);
     if (status) status.setAttribute('data-live', 'false');
-    const bars = $(`${PANEL_ID}-bars`);
-    if (bars) bars.hidden = true;
 
     let heard = '';
     try {
@@ -701,7 +888,10 @@
       say('Nothing was heard. Try again, closer to the phone.');
       return;
     }
-    setText('status', 'Reading');
+    /* Between the microphone closing and the review appearing there is a
+       moment of matching against the menu. Saying so beats a blank panel. */
+    setText('status', 'Reading it back');
+    setText('said', heard);
     await absorb(heard);
   }
 
@@ -805,7 +995,24 @@
     view.pendingPlace = false;
 
     const { commands } = await resolve(heard);
-    const touched = await apply(commands);
+
+    /*
+     * UNDERSTOOD, NOT DONE.
+     *
+     * Owner: "what you understood just show properly. or confirm button to add
+     * to cart. i need world class ux and proper mechanism."
+     *
+     * This called apply() here, so the bill changed before the panel had drawn
+     * a single word of what it thought it had heard. A waiter then read the
+     * screen to find out what had ALREADY happened to their order, which is
+     * the wrong way round: a person should read it to decide whether it should
+     * happen at all.
+     *
+     * So the commands are held. Nothing reaches the cart until somebody
+     * presses the button that says how many items it will add.
+     */
+    view.proposed = commands;
+    view.stage = 'review';
     view.cart = await cartNow();
     view.status = describe(commands) || 'Nothing to change';
     /* One render's worth of arrival. Left on, every tap of a stepper would
@@ -822,9 +1029,40 @@
      * closing the panel leaves somebody looking at a menu that agrees with
      * what they just heard back, rather than one that looks untouched.
      */
+    /* The menu behind is lit when the order is actually taken, not when it is
+       proposed - see confirm(). */
+  }
+
+  /**
+   * Take the order that was read back, now that somebody has agreed to it.
+   *
+   * Everything up to here was a proposal on a screen. This is the moment the
+   * bill changes, and it happens because a person pressed a button that said
+   * how many items it would add - not because a recogniser returned a string.
+   */
+  async function confirm() {
+    if (!view.proposed) return;
+
+    const touched = await apply(view.proposed);
+    view.proposed = null;
+    view.stage = 'done';
+    view.cart = await cartNow();
+    view.fresh = true;
+    render();
+    view.fresh = false;
+
+    /*
+     * And on the menu behind the panel, the rows that changed.
+     *
+     * The panel is a summary; the menu is where the waiter's picture of the
+     * order lives. Lighting the rows there in the order they were said means
+     * closing the panel leaves somebody looking at a menu that agrees with
+     * what they just agreed to.
+     */
     if (touched.length && typeof MenuScreen !== 'undefined' && MenuScreen.heard) {
       MenuScreen.heard(touched);
     }
+    buzz(15);
   }
 
   async function apply(commands) {
@@ -906,90 +1144,320 @@
     return touched;
   }
 
+  /* ------------------------------------------------------------- review */
+
+  /** What the proposal would do, counted in the units a button speaks in. */
+  function proposedCount() {
+    let add = 0;
+    let off = 0;
+    let verbs = 0;
+    for (const command of view.proposed || []) {
+      if (!command.lines || !command.lines.length) {
+        if (command.verb === 'place' || command.verb === 'clear') verbs += 1;
+        continue;
+      }
+      for (const line of command.lines) {
+        if (!line.found) continue;
+        if (command.verb === 'remove') off += line.quantity;
+        else add += line.quantity;
+      }
+    }
+    return { add, off, verbs };
+  }
+
+  /**
+   * The words on the button that commits the proposal.
+   *
+   * It says what it will do in the units of the thing it does. "Confirm" and
+   * "OK" say nothing; "Add 3 items" is the sentence somebody is deciding
+   * about, so it belongs on the control that decides it.
+   */
+  function commitLabel() {
+    const { add, off, verbs } = proposedCount();
+    const items = (count) => `${count} ${count === 1 ? 'item' : 'items'}`;
+    if (add && off) return 'Update the order';
+    if (add) return `Add ${items(add)}`;
+    if (off) return `Take off ${items(off)}`;
+    if (verbs) return 'Do it';
+    return '';
+  }
+
+  /** A line of the proposal, reached by where it sits after a redraw. */
+  function proposedLine(ci, li) {
+    const command = (view.proposed || [])[Number(ci)];
+    if (!command || !command.lines) return null;
+    return command.lines[Number(li)] || null;
+  }
+
+  /**
+   * Change what was understood, BEFORE it is carried out.
+   *
+   * The one thing the old panel could not do. A quantity misheard by one had
+   * to be fixed on the bill afterwards, which meant the wrong number went onto
+   * the bill first - and on a busy night it stayed there.
+   */
+  function editProposed(ci, li, delta) {
+    const line = proposedLine(ci, li);
+    if (!line) return;
+    line.quantity = Math.max(0, (Number(line.quantity) || 0) + delta);
+    /* Stepped down to nothing is a line somebody has decided against. */
+    if (!line.quantity) return dropProposed(ci, li);
+    render();
+  }
+
+  function dropProposed(ci, li) {
+    const command = (view.proposed || [])[Number(ci)];
+    if (!command || !command.lines) return;
+    command.lines.splice(Number(li), 1);
+    /* The command itself is left in place even when empty: apply() walks an
+       empty line list to nothing, and removing it would shift the index every
+       other row on screen was drawn with. */
+    render();
+  }
+
+  /**
+   * What was understood, laid out to be CHECKED AND CHANGED rather than read
+   * after the fact.
+   *
+   * One row per line, sized for a thumb: the quantity as a stepper, the dish,
+   * what was asked for with it, and - where the match was a guess - the words
+   * actually said, so the one line that might be wrong is the one that looks
+   * different.
+   *
+   * While the microphone is still open the rows are read-only. They are
+   * rebuilt from the transcript several times a second at that point, and a
+   * stepper whose value is overwritten a moment after it is pressed is worse
+   * than no stepper at all.
+   */
+  function proposalHtml() {
+    const rows = [];
+    const live = view.stage === 'listening';
+
+    (view.proposed || []).forEach((command, ci) => {
+      if (command.verb === 'place' || command.verb === 'show' || command.verb === 'clear') {
+        rows.push(`
+          <div class="vp-prop" data-kind="verb">
+            <span class="vp-prop-what">${
+              command.verb === 'place'
+                ? '&#128228; Send it to the kitchen'
+                : command.verb === 'clear'
+                  ? '&#128465; Clear the order first'
+                  : '&#128065; Read the order back'
+            }</span>
+          </div>`);
+        return;
+      }
+
+      (command.lines || []).forEach((line, li) => {
+        if (!line.found) {
+          rows.push(`
+            <div class="vp-prop" data-kind="missing">
+              <span class="vp-prop-qty">?</span>
+              <span class="vp-prop-what">
+                <strong>${escapeHtml(line.term)}</strong>
+                <span class="vp-prop-why">not on this menu</span>
+              </span>
+              ${
+                live
+                  ? ''
+                  : `<button type="button" class="vp-btn vp-prop-act" data-act="search"
+                       data-term="${escapeHtml(line.term)}">Find</button>`
+              }
+            </div>`);
+          return;
+        }
+
+        const verb =
+          command.verb === 'remove' ? 'Take off' : command.verb === 'set' ? 'Make it' : '';
+
+        rows.push(`
+          <div class="vp-prop" data-kind="${escapeHtml(command.verb)}">
+            ${
+              live
+                ? `<span class="vp-prop-qty">${line.quantity}</span>`
+                : `<span class="vp-prop-stack">
+                     <button type="button" class="vp-step" data-act="prop-more"
+                       data-ci="${ci}" data-li="${li}" aria-label="One more">+</button>
+                     <span class="vp-prop-qty">${line.quantity}</span>
+                     <button type="button" class="vp-step" data-act="prop-less"
+                       data-ci="${ci}" data-li="${li}" aria-label="One fewer">&minus;</button>
+                   </span>`
+            }
+            <span class="vp-prop-what">
+              ${verb ? `<span class="vp-prop-verb">${verb}</span> ` : ''}
+              <strong>${escapeHtml(line.item.name)}</strong>
+              ${line.note ? `<span class="vp-prop-note">${escapeHtml(line.note)}</span>` : ''}
+              ${
+                line.exact
+                  ? ''
+                  : `<span class="vp-prop-why">heard "${escapeHtml(line.term)}" &ndash; check this one</span>`
+              }
+            </span>
+            ${
+              live
+                ? ''
+                : `<button type="button" class="vp-x" data-act="prop-drop"
+                     data-ci="${ci}" data-li="${li}" aria-label="Drop this line">&times;</button>`
+            }
+          </div>`);
+      });
+    });
+
+    if (!rows.length) {
+      return `<div class="vp-empty">${
+        live ? 'Nothing matched yet.' : 'Nothing on this menu matched what was said.'
+      }</div>`;
+    }
+    return `<div class="vp-group">${live ? 'Hearing' : 'To add'}</div>${rows.join('')}`;
+  }
+
+  /**
+   * What is already on the order.
+   *
+   * Owner: "existing addeded to cart also should be there. so captain can
+   * finalize and send it." The panel used to replace the order with the last
+   * thing said, so a waiter taking a table in three breaths could never see
+   * the whole thing without closing the panel and going to the bill.
+   */
+  function cartHtml(heading) {
+    const rows = [];
+    for (const row of view.cart) {
+      const delta = view.changed[row.id] || 0;
+      rows.push(`
+        <div class="vp-row" data-changed="${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">
+          <button type="button" class="vp-step" data-act="less" data-id="${escapeHtml(row.id)}" aria-label="One fewer">&minus;</button>
+          <span class="vp-qty">${row.quantity}</span>
+          <button type="button" class="vp-step" data-act="more" data-id="${escapeHtml(row.id)}" aria-label="One more">+</button>
+          <span class="vp-name">${escapeHtml(row.name)}${
+            delta ? ` <span class="vp-delta">${delta > 0 ? '+' : ''}${delta}</span>` : ''
+          }${
+            row.notes ? `<div class="vp-want">${escapeHtml(row.notes)}</div>` : ''
+          }${
+            view.rough[row.id]
+              ? `<div class="vp-rough">heard "${escapeHtml(view.rough[row.id])}" - check this one</div>`
+              : ''
+          }</span>
+          <button type="button" class="vp-x" data-act="strike" data-id="${escapeHtml(row.id)}" aria-label="Remove">&times;</button>
+        </div>`);
+    }
+    for (const miss of view.unplaced) {
+      rows.push(`
+        <div class="vp-row" data-unplaced="true">
+          <span class="vp-name"><strong>${escapeHtml(miss.term)}</strong>
+            <div style="font-size:var(--t-xs,12px)">not on this menu</div></span>
+          <button type="button" class="vp-btn" style="flex:0 0 auto;min-height:34px;padding:0 10px" data-act="search" data-term="${escapeHtml(miss.term)}">Search</button>
+          <button type="button" class="vp-x" data-act="unplaced-drop" data-term="${escapeHtml(miss.term)}" aria-label="Dismiss">&times;</button>
+        </div>`);
+    }
+
+    const title = heading ? `<div class="vp-group">${heading}</div>` : '';
+    return rows.length ? title + rows.join('') : `${title}<div class="vp-empty">Nothing on the order yet.</div>`;
+  }
+
   /* --------------------------------------------------------------- render */
+
+  /**
+   * The right-hand column: what was just heard, then what was already down.
+   *
+   * Both at once, because the question "is this right" is asked of the whole
+   * order and not of the last sentence.
+   */
+  function renderLines() {
+    const host = $(`${PANEL_ID}-lines`);
+    if (!host) return;
+
+    if (view.stage === 'done') {
+      host.innerHTML = cartHtml('');
+      return;
+    }
+    const parts = [proposalHtml()];
+    /* Only when there IS something already down. An empty section under a
+       heading that promises one is a screen apologising for itself. */
+    if (view.cart.length || view.unplaced.length) parts.push(cartHtml('Already on the order'));
+    host.innerHTML = parts.join('');
+  }
+
+  /**
+   * The one or two or three things to press, by stage.
+   *
+   * Owner: "below confirm button. so that user can confirm and send to
+   * kitchen." Sending is the end of the job, so it is the primary action once
+   * the order is on the bill - not only when somebody happened to say the
+   * words "send it to the kitchen".
+   */
+  function renderActions() {
+    const actions = $(`${PANEL_ID}-actions`);
+    if (!actions) return;
+
+    /* While it is listening there is exactly one thing to do. */
+    if (view.stage === 'listening') {
+      actions.innerHTML =
+        '<button type="button" class="vp-btn" data-primary="true" data-act="stop">Stop &amp; check the order</button>';
+      return;
+    }
+
+    if (view.stage === 'review') {
+      const label = commitLabel();
+      actions.innerHTML = `
+        <button type="button" class="vp-btn" data-act="again">&#127908; Say again</button>
+        <button type="button" class="vp-btn" data-primary="true" data-act="confirm" ${
+          label ? '' : 'disabled'
+        }>${label || 'Nothing to add'}</button>`;
+      return;
+    }
+
+    const count = view.cart.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+    const money = view.cart.reduce(
+      (sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.final_price || row.price) || 0),
+      0
+    );
+
+    /* Speaking again is the natural "more" after speaking, so it keeps its
+       place on the left - as a microphone, because the two buttons beside it
+       need their words more than it does. */
+    actions.innerHTML = `
+      <button type="button" class="vp-btn" data-icon="true" data-act="again"
+        aria-label="Say more" title="Say more">&#127908;</button>
+      <button type="button" class="vp-btn" data-act="bill" ${count ? '' : 'disabled'}>${
+        count ? '&#8377;' + money.toFixed(0) : 'Bill'
+      }</button>
+      <button type="button" class="vp-btn" data-primary="true" data-act="place" ${
+        count ? '' : 'disabled'
+      }>Send ${count ? count + ' ' : ''}to kitchen</button>`;
+  }
 
   function render() {
     showPanel();
     const panel = $(PANEL_ID);
-    if (panel) panel.setAttribute('data-fresh', view.fresh ? 'true' : 'false');
-    /* "Heard" says the words arrived. "On the order" says they landed, which
-       is the thing somebody is actually waiting to be told. */
-    setText('status', view.pendingPlace ? 'Ready to send' : 'On the order');
-    setText('said', view.said ? `"${view.said}"` : '');
-    setText('note', view.status);
-
-    const host = $(`${PANEL_ID}-lines`);
-    if (host) {
-      const rows = [];
-      for (const row of view.cart) {
-        const delta = view.changed[row.id] || 0;
-        rows.push(`
-          <div class="vp-row" data-changed="${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">
-            <button type="button" class="vp-step" data-act="less" data-id="${escapeHtml(row.id)}" aria-label="One fewer">&minus;</button>
-            <span class="vp-qty">${row.quantity}</span>
-            <button type="button" class="vp-step" data-act="more" data-id="${escapeHtml(row.id)}" aria-label="One more">+</button>
-            <span class="vp-name">${escapeHtml(row.name)}${
-              delta ? ` <span class="vp-delta">${delta > 0 ? '+' : ''}${delta}</span>` : ''
-            }${
-              row.notes
-                ? `<div class="vp-want">${escapeHtml(row.notes)}</div>`
-                : ''
-            }${
-              view.rough[row.id]
-                ? `<div class="vp-rough">heard "${escapeHtml(view.rough[row.id])}" - check this one</div>`
-                : ''
-            }</span>
-            <button type="button" class="vp-x" data-act="strike" data-id="${escapeHtml(row.id)}" aria-label="Remove">&times;</button>
-          </div>`);
-      }
-      for (const miss of view.unplaced) {
-        rows.push(`
-          <div class="vp-row" data-unplaced="true">
-            <span class="vp-name"><strong>${escapeHtml(miss.term)}</strong>
-              <div style="font-size:var(--t-xs,12px)">not on this menu</div></span>
-            <button type="button" class="vp-btn" style="flex:0 0 auto;min-height:34px;padding:0 10px" data-act="search" data-term="${escapeHtml(miss.term)}">Search</button>
-            <button type="button" class="vp-x" data-act="unplaced-drop" data-term="${escapeHtml(miss.term)}" aria-label="Dismiss">&times;</button>
-          </div>`);
-      }
-      host.innerHTML = rows.length ? rows.join('') : '<div class="vp-empty">The cart is empty.</div>';
+    if (panel) {
+      panel.setAttribute('data-fresh', view.fresh ? 'true' : 'false');
+      panel.setAttribute('data-stage', view.stage || 'done');
     }
 
-    const actions = $(`${PANEL_ID}-actions`);
-    if (actions) {
-      const count = view.cart.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
-
-      /*
-       * THERE IS ALWAYS A WAY FORWARD.
-       *
-       * Owner: "i saw text nicely converted but next what? need stop to get
-       * added to cart or something else need to do. i stuck in that."
-       *
-       * The dishes were already on the bill by this point - apply() puts them
-       * there before the panel is drawn - and the only button said "Add more".
-       * So the screen showed the right answer and offered no way to accept it,
-       * and the one thing it did offer opened a SEARCH BOX, which is the
-       * opposite of what somebody who just spoke wants.
-       *
-       * Three things now, in the order a person needs them: say another line,
-       * or go to the bill, or - when they actually asked to send it - send it.
-       * Speaking again is the natural "more" after speaking; the search box is
-       * still one tap away on the menu behind.
-       */
-      const money = view.cart.reduce(
-        (sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.final_price || row.price) || 0),
-        0
-      );
-
-      const sayMore = '<button type="button" class="vp-btn" data-act="again">&#127908; Say more</button>';
-
-      actions.innerHTML = view.pendingPlace
-        ? `${sayMore}
-           <button type="button" class="vp-btn" data-primary="true" data-act="place" ${count ? '' : 'disabled'}>
-             Send ${count ? count + (count === 1 ? ' item' : ' items') : ''} to kitchen</button>`
-        : `${sayMore}
-           <button type="button" class="vp-btn" data-primary="true" data-act="bill" ${count ? '' : 'disabled'}>
-             ${count ? 'View bill ₹' + money.toFixed(0) : 'Nothing yet'}</button>`;
-    }
+    /*
+     * ONE STATE AT A TIME, NAMED.
+     *
+     * listening - the microphone is open
+     * review    - this is what I understood; shall I?
+     * done      - it is on the order
+     *
+     * The panel used to say "Heard" through all three, which is why nobody
+     * could tell which one they were in.
+     */
+    setText(
+      'status',
+      view.stage === 'listening'
+        ? 'Listening'
+        : view.stage === 'review'
+          ? 'Is this right?'
+          : view.pendingPlace
+            ? 'Ready to send'
+            : 'On the order'
+    );
+    setText('said', view.said);
+    setText('note', view.stage === 'review' ? '' : view.status);
+    renderLines();
+    renderActions();
   }
 
   /* ------------------------------------------------------------ editing */
@@ -1075,6 +1543,9 @@
   window.POSNIC_VOICE_UI = {
     begin,
     finish,
+    /* The step between hearing and doing. Nothing reaches the cart without
+       it, which is why the tests have to call it too. */
+    confirm,
     abandon,
     absorb,
     render,
@@ -1084,6 +1555,11 @@
     onRelease,
     bump,
     strike,
+    /* Changing what was heard BEFORE it is carried out. Public because the
+       panel's buttons are drawn into HTML and cannot be pressed in a test. */
+    editProposed,
+    dropProposed,
+    commitLabel,
     confirmPlace,
     hidePanel,
     describe,
