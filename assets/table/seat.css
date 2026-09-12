@@ -404,3 +404,101 @@ body.seat-screen {
     transition: none;
   }
 }
+
+/* ============================================ what the old sheet still does */
+
+/*
+ * THE PAGE IS A COLUMN, not a row.
+ *
+ * .discount-page is `display:flex; align-items:stretch; justify-content:center`
+ * in style.css, so the header added above the container became a flex ITEM
+ * BESIDE it - "New order" ran down the left of the screen, vertically centred,
+ * next to everything else.
+ */
+.discount-page {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0;
+  background: var(--ground);
+}
+
+.discount-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 var(--s4);
+  padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+}
+
+/*
+ * THE LABEL SITS ABOVE THE SLIDER.
+ *
+ * Both carried z-index 1 - the label from this file, the indicator from
+ * style.css - and the indicator comes later in the DOM, so it painted on top
+ * and "Dine-in" vanished behind a solid purple pill. The other half still read
+ * "Take away" because nothing was covering it, which is what made it look like
+ * a missing label rather than a stacking order.
+ */
+.dine-option {
+  z-index: 3;
+}
+.dine-toggle-indicator {
+  z-index: 1;
+  /* style.css sets this 8px narrower, which left a gap the label overhung. */
+  width: calc(50% - 4px) !important;
+  box-shadow: none !important;
+  background: var(--accent) !important;
+}
+#order_type_dinein:not(:checked) + label,
+#order_type_takeaway:not(:checked) + label {
+  color: var(--ink-soft) !important;
+}
+#order_type_dinein:checked + label,
+#order_type_takeaway:checked + label {
+  color: var(--accent-ink) !important;
+}
+
+/*
+ * THE NOTE AND THE BOX ARE NOT TABLES.
+ *
+ * Both are written into .table-list, which is a grid of 78px columns - so a
+ * paragraph explaining that Restaurant is switched off was squeezed into one
+ * cell and came out a word per line, and "Enter Table Number" was cut to
+ * "Enter Tabl". They are full-width rows in that grid, not tiles in it.
+ */
+.table-list .table-note,
+.table-list .table-input-wrapper,
+.table-note,
+.table-input-wrapper {
+  grid-column: 1 / -1;
+}
+
+/* And when the grid holds only those, it should not reserve tile columns. */
+.table-list:not(:has(label)) {
+  display: block;
+}
+
+/*
+ * The last of the orange.
+ *
+ * style.css paints these from --primary, which is the old brand orange. They
+ * are the only two things left on the screen not in the design's own accent,
+ * and a single stray colour reads as an oversight rather than a choice.
+ */
+.discount-cart-summary .header-btn {
+  border: none !important;
+  background: none !important;
+  color: var(--ink-soft) !important;
+  box-shadow: none !important;
+}
+.person-icon-btn:focus,
+.person-icon-btn:focus-visible,
+#manual_table_input:focus {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+.person-icon-btn.active {
+  box-shadow: none !important;
+}
