@@ -128,6 +128,31 @@ function isServerConnectionError(error) {
         /Failed to fetch|NetworkError|timeout|Load failed/i.test(message);
 }
 
+/*
+ * Text that cannot become markup.
+ *
+ * A table number is typed by hand on the screen before this one, so it is
+ * whatever somebody's thumb produced - and it used to go into an href, a data
+ * attribute AND an onclick argument, raw, three times per card.
+ */
+function escapeFloor(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/* Delegated, so a card carries no code of its own - which is what let the
+   table name end an onclick early when somebody typed an apostrophe. */
+document.addEventListener('click', function (event) {
+    const card = event.target.closest && event.target.closest('.floor-card');
+    if (!card) return;
+    event.preventDefault();
+    selectTable(card.getAttribute('data-table-number'));
+});
+
 async function loadTables() {
     const container = document.getElementById('tables-list');
     const noOrdersMsg = document.getElementById('no-orders-message');
@@ -145,7 +170,7 @@ async function loadTables() {
         });
         
         if (data.type !== 'success' || !data.data) {
-            if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
+            if (noOrdersMsg) noOrdersMsg.style.display = 'block';
             container.innerHTML = '';
             return;
         }
@@ -155,35 +180,74 @@ async function loadTables() {
         
         // Check if there are any orders (tables or takeaway)
         if (tables.length === 0 && !hasTakeaway) {
-            if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
+            if (noOrdersMsg) noOrdersMsg.style.display = 'block';
             container.innerHTML = '';
+            /* And the count with it, or "3 tables open" hangs above a screen
+               that has just said nothing is. */
+            const empty = document.getElementById('floor-count');
+            if (empty) empty.textContent = '';
             return;
         }
 
         if (noOrdersMsg) noOrdersMsg.style.display = 'none';
 
+        /*
+         * OLDEST FIRST, and how long each has been waiting.
+         *
+         * This drew identical boxes in alphabetical order, so table 1 came
+         * first whether it had been waiting a minute or an hour - which is the
+         * same as no order at all. The two questions somebody walking back
+         * onto the floor actually has are which table has waited longest and
+         * which is nearly done, and neither could be answered from here.
+         *
+         * The server was already grouping the open tickets by table and
+         * throwing everything but the name away; it sends the count, the age
+         * and the total now. A till that has NOT been updated sends only the
+         * names, and every card below degrades to exactly what it used to be
+         * rather than to nothing.
+         */
+        const detailed = (data.data.table_details || []).length
+            ? FloorView.order(data.data.table_details)
+            : tables.map((name) => ({ table_number: name, minutes: null }));
+
+        const card = (name, detail, extraClass) => {
+            const minutes = detail ? detail.minutes : null;
+            const age = FloorView.age(minutes);
+            const said = FloorView.saidAs(minutes);
+            const meta = FloorView.summary(detail);
+            const safe = escapeFloor(name);
+
+            return '<a href="#/kot/' + encodeURIComponent(name) + '"' +
+                ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
+                (age ? ' data-age="' + age + '"' : '') +
+                ' data-table-number="' + safe + '">' +
+                '<div class="floor-name">' + safe + '</div>' +
+                (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
+                (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
+                '</a>';
+        };
+
         let html = '';
-        
-        // Add table cards first
-        tables.forEach(tableName => {
-            html += `
-                <a href="#/kot/${tableName}" class="kot-table-box" data-table-number="${tableName}" onclick="selectTable('${tableName}'); return false;">
-                    <h2 class="mb-0">${tableName}</h2>
-                </a>
-            `;
+        detailed.forEach((detail) => {
+            html += card(detail.table_number, detail);
         });
-        
-        // Add takeaway card at the end if there are takeaway orders
+
         if (hasTakeaway) {
-            html += `
-                <a href="#/kot/takeaway" class="kot-table-box kot-takeaway-box" data-table-number="Takeaway" onclick="selectTable('Takeaway'); return false;">
-                    <h2 class="mb-0">TA</h2>
-                    <span class="takeaway-label">Take Away</span>
-                </a>
-            `;
+            const takeaway = data.data.takeaway_detail || null;
+            const withMinutes = takeaway
+                ? { ...takeaway, minutes: FloorView.minutesSince(takeaway.since) }
+                : null;
+            html += card('Take away', withMinutes, 'is-takeaway');
         }
 
         container.innerHTML = html;
+
+        /* One count, said once, so a glance answers "how busy is it". */
+        const count = document.getElementById('floor-count');
+        if (count) {
+            const open = detailed.length + (hasTakeaway ? 1 : 0);
+            count.textContent = open === 1 ? '1 table open' : open + ' tables open';
+        }
     } catch (error) {
         console.error('Error loading tables:', error);
         /* Gated on IS_LOCAL before, so a cloud shop whose connection dropped
@@ -197,7 +261,7 @@ async function loadTables() {
             window.location.href = 'index.html';
             return;
         }
-        if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
+        if (noOrdersMsg) noOrdersMsg.style.display = 'block';
         container.innerHTML = '';
     } finally {
         hideSectionLoader('tables-list');

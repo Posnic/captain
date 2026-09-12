@@ -18,7 +18,11 @@
     <script src="assets/common/item-search.js"></script>
     <script src="assets/products/script.js?v=5"></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
+    <!-- The decisions every screen shares, made once. -->
+    <link href="assets/common/design.css" rel="stylesheet">
     <link href="assets/table/style.css" rel="stylesheet">
+    <!-- After style.css, which it replaces for this screen. -->
+    <link href="assets/table/seat.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <style>
     /*
@@ -47,8 +51,12 @@
     </style>
 </head>
 
-<body>
+<body class="seat-screen">
     <div class="discount-page">
+        <div class="seat-head">
+            <span class="seat-head-title">New order</span>
+        </div>
+
         <div class="discount-container">
 
             <div class="dine-toggle-wrapper">
@@ -101,6 +109,27 @@
             <!-- Person Count -->
             <div class="person-count-section">
                 <div class="section-title">Pax</div>
+
+                <!--
+                    TWO TAPS, AND NO KEYBOARD.
+
+                    Pax was a row of icons for 1 to 6 and a text box for
+                    anything above, so a table of eight meant tapping the box,
+                    raising a numeric keyboard and typing - while standing at
+                    the table. Both old controls are still in the page and
+                    still driven by setPersonCount; the box is hidden by CSS
+                    rather than removed, because handlePersonInput and the
+                    restore-after-poll path both read it.
+                -->
+                <div class="pax-stepper">
+                    <button type="button" id="pax_less" aria-label="One fewer">&minus;</button>
+                    <span class="pax-now">
+                        <span class="pax-number" id="pax_number">1</span>
+                        <span class="pax-word" id="pax_word">person</span>
+                    </span>
+                    <button type="button" id="pax_more" aria-label="One more">+</button>
+                </div>
+
                 <div class="person-hero" id="person_hero">
                     <i class="fas fa-user-alt person-hero-icon"></i>
                 </div>
@@ -231,6 +260,15 @@
             // finally go to products
             window.location.href = 'products.html';
         }
+        /* Delegated once, after the page is up: these two buttons exist for the
+           whole life of the screen, and setPersonCount already clamps 1..99. */
+        document.addEventListener('click', function (event) {
+            const target = event.target.closest && event.target.closest('#pax_less, #pax_more');
+            if (!target) return;
+            const now = parseInt(document.getElementById('person_count').value || '1', 10) || 1;
+            setPersonCount(target.id === 'pax_more' ? now + 1 : now - 1);
+        });
+
         function handlePersonInput(inputEl) {
             if (!inputEl) return;
 
@@ -754,6 +792,17 @@
                     input.classList.remove('active');
                 }
             }
+
+            /* The stepper reads from the same call every other control does,
+               so nothing can disagree about how many people are at the table. */
+            const shown = document.getElementById('pax_number');
+            if (shown) shown.textContent = val.toString();
+            const word = document.getElementById('pax_word');
+            if (word) word.textContent = val === 1 ? 'person' : 'people';
+            const less = document.getElementById('pax_less');
+            if (less) less.disabled = val <= 1;
+            const more = document.getElementById('pax_more');
+            if (more) more.disabled = val >= 99;
 
             // highlight small buttons (1..6 only)
             const container = document.getElementById('person_icon_container');

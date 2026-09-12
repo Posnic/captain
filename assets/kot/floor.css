@@ -1,0 +1,221 @@
+/*
+ * The floor, as a waiter reads it.
+ *
+ * WHAT THIS SCREEN WAS. A grid of identical boxes, each with a table number
+ * in it and nothing else. It is the first screen after signing in and the one
+ * somebody comes back to between every order, and the two questions they
+ * actually arrive with - which table has been waiting longest, and which is
+ * nearly done - were both unanswerable from it.
+ *
+ * The server was throwing the answers away (Posnic/POS: the aggregation
+ * grouped the open tickets by table and kept only the name). It sends the
+ * count, the age and the total now, and this draws them.
+ *
+ * WAITING TIME IS THE WHOLE SIGNAL. A table with one ticket from four minutes
+ * ago and a table with one from forty are the same box on the old screen and
+ * completely different problems on a floor. So the age is the thing that
+ * changes colour, and it is the only thing on the card that does.
+ */
+
+body.floor-screen {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+}
+
+/* --------------------------------------------------------------- header */
+
+.floor-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  padding-top: calc(var(--s3) + env(safe-area-inset-top, 0px));
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.floor-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--t-xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/*
+ * The quiet buttons, and the one that is not.
+ *
+ * There were four here, all the same size and weight: Change Branch, Refresh,
+ * KOT History, Add KOT. Only one of them is what somebody came to do. The
+ * other three are icons now, and the one that starts an order is the accent.
+ */
+.floor-icon {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 16px;
+  cursor: pointer;
+}
+.floor-icon:active {
+  background: var(--surface-sunk);
+}
+
+.floor-new {
+  position: fixed;
+  right: var(--s4);
+  bottom: calc(var(--s4) + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 52px;
+  padding: 0 var(--s5);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font);
+  font-size: var(--t-base);
+  font-weight: 700;
+  box-shadow: var(--lift-high);
+  cursor: pointer;
+}
+.floor-new:active {
+  transform: scale(0.97);
+}
+
+/* ---------------------------------------------------------------- cards */
+
+.floor-count {
+  padding: var(--s4) var(--s4) var(--s2);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.floor-grid {
+  display: grid;
+  /* Two up on a phone, more as the screen allows. auto-fill rather than a
+     fixed count, so a tablet on the pass uses the width it has. */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--s3);
+  padding: 0 var(--s4);
+  /* Clear of the floating New order button. */
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  list-style: none;
+  margin: 0;
+}
+
+.floor-card {
+  display: block;
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--lift);
+  color: var(--ink);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+.floor-card:active {
+  transform: scale(0.985);
+}
+
+/*
+ * The age stripe down the edge.
+ *
+ * Colour on a card a waiter is scanning at arm's length beats a number they
+ * have to read. Green is fine, amber is getting on, red has been too long -
+ * and the thresholds are deliberately generous, because a restaurant that
+ * turns everything red by eight o'clock has a screen nobody looks at.
+ */
+.floor-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--age, var(--line-strong));
+}
+.floor-card[data-age='fresh'] { --age: #16a34a; }
+.floor-card[data-age='waiting'] { --age: #d97706; }
+.floor-card[data-age='late'] { --age: #dc2626; }
+
+.floor-name {
+  font-size: var(--t-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  /* A table name is typed by hand and can be anything. */
+  overflow-wrap: anywhere;
+}
+
+.floor-since {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  color: var(--age, var(--ink-soft));
+  font-variant-numeric: tabular-nums;
+}
+
+.floor-meta {
+  margin-top: var(--s1);
+  font-size: var(--t-sm);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.floor-card.is-takeaway .floor-name {
+  font-size: var(--t-lg);
+}
+
+/* ---------------------------------------------------------------- empty */
+
+/*
+ * Nothing open, which is good news and should read as good news.
+ *
+ * The old empty state was a grey clipboard and "No active orders", which on
+ * the screen somebody opens first reads like a failure to load.
+ */
+.floor-empty {
+  padding: var(--s6) var(--s5);
+  text-align: center;
+}
+.floor-empty-face {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: var(--s3);
+}
+.floor-empty-said {
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+.floor-empty-why {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-card:active,
+  .floor-new:active {
+    transform: none;
+  }
+}
