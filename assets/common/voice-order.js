@@ -53,20 +53,26 @@
      * plates does it in Tamil whatever language the rest of the sentence is
      * in. "rendu chicken biryani" is two, and it is what gets said.
      *
-     * Spelled the way a recogniser set to English transcribes the sound,
-     * which is the only spelling that will ever arrive here - and several
-     * ways each, because it guesses differently every time.
+     * Spelled the way a recogniser set to English transcribes the sound, and
+     * several ways each, because it guesses differently every time.
+     *
+     * A FEW OF THESE ARE NOT GUESSES. `rentu`, `eezhu`, `onpathu`, `paththu`
+     * are what the Tamil script for those numbers romanises to in
+     * sounds-like.js - so a shop whose voice language is ta-IN, whose
+     * recogniser hands back Tamil letters, counts too. They look like
+     * misspellings and they are the exact output of a deterministic table;
+     * change that table and these have to move with it.
      */
-    onnu: 1, ondru: 1, onru: 1, onnum: 1,
-    rendu: 2, irandu: 2, rendo: 2,
+    onnu: 1, ondru: 1, onru: 1, onnum: 1, oru: 1,
+    rendu: 2, irandu: 2, rendo: 2, rentu: 2,
     moonu: 3, moondru: 3, munu: 3,
     naalu: 4, naangu: 4, nalu: 4,
     anju: 5, ainthu: 5, anchu: 5,
     aaru: 6, aru: 6,
-    ezhu: 7, elu: 7,
+    ezhu: 7, elu: 7, eezhu: 7,
     ettu: 8,
-    onbathu: 9, onbadhu: 9,
-    pathu: 10, patthu: 10,
+    onbathu: 9, onbadhu: 9, onpathu: 9,
+    pathu: 10, patthu: 10, paththu: 10,
 
     /*
      * HINDI, for the same reason one town over.
@@ -79,6 +85,21 @@
      */
     ek: 1, teen: 3, chaar: 4, paanch: 5, saat: 7, aath: 8, nau: 9, das: 10,
   };
+
+  /*
+   * NUMBERS THAT ONLY SURVIVE IN THEIR OWN SCRIPT.
+   *
+   * "do" is left out of the table above on purpose: it is Hindi for two and
+   * also the commonest English auxiliary there is, so "do you have chicken
+   * biryani" would come through as two of something. That ambiguity is a fact
+   * about LATIN LETTERS and nothing else. \u0926\u094B is two and cannot be anything
+   * else, so it is read as two before it is ever romanised into the word that
+   * would have to be thrown away.
+   *
+   * Anything else a shop counts in reaches the table above intact, which is
+   * why this holds exactly one entry rather than a second copy of the list.
+   */
+  const SCRIPT_WORDS = { '\u0926\u094B': '2' };
 
   /*
    * HOW A DISH IS WANTED, as opposed to which dish it is.
@@ -473,13 +494,48 @@
    * one of them a kitchen. Two tests caught it before a waiter did.
    */
   function wordsOf(text) {
-    return String(text || '')
+    /*
+     * Into Latin letters first, if the page has the module that can.
+     *
+     * Everything below this line - and every table in this file - is written
+     * in a-z, so a transcript in Tamil or Devanagari was reduced to spaces by
+     * the filter two lines down and the sentence arrived here empty. Romanised
+     * first, "\u0BB0\u0BC6\u0BA3\u0BCD\u0B9F\u0BC1 \u0B9A\u0BBF\u0B95\u0BCD\u0B95\u0BA9\u0BCD" is "rentu chikkan", which the number table and
+     * the phonetic matcher both understand.
+     *
+     * Optional, like everywhere else this module is reached: a page that did
+     * not load it keeps the behaviour it had.
+     */
+    let said = String(text || '');
+    for (const [written, digits] of Object.entries(SCRIPT_WORDS)) {
+      if (said.includes(written)) said = said.split(written).join(` ${digits} `);
+    }
+    const phonetics = sounds();
+    return String((phonetics && phonetics.roman(said)) || said)
       .toLowerCase()
       .replace(/[.!?;]+/g, ' , ')
       .replace(/,/g, ' , ')
       .replace(/[^a-z0-9,'\s-]/g, ' ')
       .split(/\s+/)
       .filter(Boolean);
+  }
+
+  /**
+   * The phonetic module, if the page loaded it.
+   *
+   * Read through globalThis, never the UMD wrapper's own parameter - that
+   * throws inside this factory, and it has cost a round before.
+   */
+  function sounds() {
+    if (globalThis.SoundsLike) return globalThis.SoundsLike;
+    if (typeof require === 'function') {
+      try {
+        return require('./sounds-like.js');
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   /** The verb phrase that starts at this position, if any. */

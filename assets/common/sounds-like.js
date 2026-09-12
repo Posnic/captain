@@ -98,8 +98,181 @@
    * as "no opinion" rather than as a match - otherwise every vowel-only noise
    * a recogniser emits would match every other one.
    */
+  /*
+   * A MENU SAID IN THE SCRIPT IT IS SAID IN.
+   *
+   * Owner: "multi language possible or not? i know chatgpt supports".
+   *
+   * Set a shop's voice language to ta-IN and the recogniser stops handing back
+   * "rendu chicken biryani" and starts handing back the Tamil for it. Every
+   * normaliser downstream of here throws away anything outside a-z, so the key
+   * came out empty, the search found nothing, and not one item reached the
+   * cart - while the microphone, the waveform and the transcript on screen all
+   * went on looking perfectly healthy. The settings screen RECOMMENDED that
+   * language, which made it a trap rather than a limitation.
+   *
+   * WHY A TRANSLITERATION AND NOT A SECOND MATCHER. Everything below drops
+   * vowels and folds aspiration and voicing, so the only thing a romanisation
+   * has to get right is roughly which CONSONANTS were said. That is a table,
+   * not an algorithm, and the tolerance already built into key() absorbs the
+   * rest: "சிக்கன் பிரியாணி" romanises to "chikkan piriyaani", which is not how
+   * anybody spells it and lands on SKNBRN all the same - the same key as
+   * "Chicken Biryani".
+   *
+   * It is deliberately NOT a correct transliteration. Where being accurate and
+   * being CONSISTENT WITH HOW THE MENU IS SPELLED disagree, spelling wins: ழ
+   * becomes "zh" rather than the l-ish sound it really is, because a shop that
+   * writes "Kuzhambu" in Latin needs both sides to fold the same way.
+   *
+   * Two scripts, because they are the two the estate speaks. Adding a third is
+   * a table and nothing else.
+   */
+  const INDIC = /[\u0900-\u097F\u0B80-\u0BFF]/;
+
+  /* Consonants. The value is what it contributes BEFORE its vowel. */
+  const CONSONANTS = {
+    /* Tamil */
+    '\u0B95': 'k', '\u0B99': 'ng', '\u0B9A': 'ch', '\u0B9E': 'n',
+    '\u0B9F': 't', '\u0BA3': 'n', '\u0BA4': 'th', '\u0BA8': 'n',
+    '\u0BA9': 'n', '\u0BAA': 'p', '\u0BAE': 'm', '\u0BAF': 'y',
+    '\u0BB0': 'r', '\u0BB1': 'r', '\u0BB2': 'l', '\u0BB3': 'l',
+    '\u0BB4': 'zh', '\u0BB5': 'v', '\u0BB6': 'sh', '\u0BB7': 'sh',
+    '\u0BB8': 's', '\u0BB9': 'h', '\u0B9C': 'j',
+    /* Devanagari */
+    '\u0915': 'k', '\u0916': 'kh', '\u0917': 'g', '\u0918': 'gh',
+    '\u0919': 'ng', '\u091A': 'ch', '\u091B': 'chh', '\u091C': 'j',
+    '\u091D': 'jh', '\u091E': 'n', '\u091F': 't', '\u0920': 'th',
+    '\u0921': 'd', '\u0922': 'dh', '\u0923': 'n', '\u0924': 't',
+    '\u0925': 'th', '\u0926': 'd', '\u0927': 'dh', '\u0928': 'n',
+    '\u092A': 'p', '\u092B': 'ph', '\u092C': 'b', '\u092D': 'bh',
+    '\u092E': 'm', '\u092F': 'y', '\u0930': 'r', '\u0932': 'l',
+    '\u0933': 'l', '\u0935': 'v', '\u0936': 'sh', '\u0937': 'sh',
+    '\u0938': 's', '\u0939': 'h',
+  };
+
+  /*
+   * Vowel signs, and the vowels they are spelled as HERE.
+   *
+   * Long i is "ee" and long u is "oo" rather than "ii" and "uu", which is not
+   * the scholarly choice and is the one that works: the numbers a waiter says
+   * are matched as WORDS, and the table they are matched against holds "teen"
+   * and "moonu" because that is how people write them down.
+   */
+  const SIGNS = {
+    /* Tamil */
+    '\u0BBE': 'aa', '\u0BBF': 'i', '\u0BC0': 'ee', '\u0BC1': 'u',
+    '\u0BC2': 'oo', '\u0BC6': 'e', '\u0BC7': 'ee', '\u0BC8': 'ai',
+    '\u0BCA': 'o', '\u0BCB': 'oo', '\u0BCC': 'au',
+    /* Devanagari */
+    '\u093E': 'aa', '\u093F': 'i', '\u0940': 'ee', '\u0941': 'u',
+    '\u0942': 'oo', '\u0943': 'ri', '\u0947': 'e', '\u0948': 'ai',
+    '\u094B': 'o', '\u094C': 'au',
+  };
+
+  /* Vowels standing on their own, at the start of a word. */
+  const LONE_VOWELS = {
+    /* Tamil */
+    '\u0B85': 'a', '\u0B86': 'aa', '\u0B87': 'i', '\u0B88': 'ee',
+    '\u0B89': 'u', '\u0B8A': 'oo', '\u0B8E': 'e', '\u0B8F': 'ee',
+    '\u0B90': 'ai', '\u0B92': 'o', '\u0B93': 'oo', '\u0B94': 'au',
+    /* Devanagari */
+    '\u0905': 'a', '\u0906': 'aa', '\u0907': 'i', '\u0908': 'ee',
+    '\u0909': 'u', '\u090A': 'oo', '\u090B': 'ri', '\u090F': 'e',
+    '\u0910': 'ai', '\u0913': 'o', '\u0914': 'au',
+  };
+
+  /* The vowel-killer. A consonant followed by one of these is bare. */
+  const VIRAMA = { '\u0BCD': 1, '\u094D': 1 };
+
+  /* Marks that add a sound of their own, or none. The nukta changes which
+     letter it sits on, and every letter it makes folds into the same class as
+     the letter it sat on, so it is dropped rather than tabulated. */
+  const MARKS = {
+    '\u0B82': 'n', '\u0902': 'n', '\u0901': 'n', '\u0903': 'h',
+    '\u0BB0\u0BCD': 'r', '\u093C': '', '\u0BC3': 'r',
+  };
+
+  const DIGITS = {
+    '\u0BE6': '0', '\u0BE7': '1', '\u0BE8': '2', '\u0BE9': '3',
+    '\u0BEA': '4', '\u0BEB': '5', '\u0BEC': '6', '\u0BED': '7',
+    '\u0BEE': '8', '\u0BEF': '9',
+    '\u0966': '0', '\u0967': '1', '\u0968': '2', '\u0969': '3',
+    '\u096A': '4', '\u096B': '5', '\u096C': '6', '\u096D': '7',
+    '\u096E': '8', '\u096F': '9',
+  };
+
+  /**
+   * The same words, in letters the rest of this file can read.
+   *
+   * A no-op for anything already in Latin, which is almost every call, so the
+   * cost of supporting two more scripts is one regex test per word.
+   *
+   * @param {string} text
+   * @returns {string}
+   */
+  function roman(text) {
+    const said = String(text == null ? '' : text);
+    if (!INDIC.test(said)) return said;
+
+    const letters = Array.from(said);
+    let out = '';
+
+    for (let i = 0; i < letters.length; i++) {
+      const letter = letters[i];
+
+      if (DIGITS[letter]) {
+        out += DIGITS[letter];
+        continue;
+      }
+      if (VIRAMA[letter] || MARKS[letter] !== undefined) {
+        out += MARKS[letter] || '';
+        continue;
+      }
+      if (SIGNS[letter] !== undefined) {
+        out += SIGNS[letter];
+        continue;
+      }
+      if (LONE_VOWELS[letter] !== undefined) {
+        out += LONE_VOWELS[letter];
+        continue;
+      }
+
+      const sound = CONSONANTS[letter];
+      if (sound === undefined) {
+        out += letter;
+        continue;
+      }
+
+      const next = letters[i + 1];
+      if (next !== undefined && VIRAMA[next]) {
+        /* Spelled with no vowel after it, and that is the end of it. */
+        out += sound;
+        i += 1;
+        continue;
+      }
+      if (next !== undefined && SIGNS[next] !== undefined) {
+        out += sound + SIGNS[next];
+        i += 1;
+        continue;
+      }
+
+      /*
+       * THE INHERENT VOWEL, AND WHERE IT GOES SILENT.
+       *
+       * A bare consonant carries an "a" - except at the end of a word, where
+       * Hindi simply does not say it. Spell it there anyway and "\u0924\u0940\u0928" comes
+       * out "teena", which is not a word in the table of numbers a waiter is
+       * matched against, and three stops being a quantity.
+       */
+      const ends = next === undefined || !INDIC.test(next);
+      out += ends ? sound : sound + 'a';
+    }
+
+    return out;
+  }
+
   function key(word) {
-    const letters = String(word || '')
+    const letters = roman(String(word || ''))
       .toLowerCase()
       .normalize('NFD')
       /* Accents off: a transcript may or may not carry them and they never
@@ -225,11 +398,11 @@
      * be matched at ALL is a separate question, and the caller asks it with
      * ENOUGH.
      */
-    return String(text || '')
+    return roman(String(text || ''))
       .split(/[^A-Za-z0-9]+/)
       .map(key)
       .filter(Boolean);
   }
 
-  return { key, alike, score, words, ENOUGH };
+  return { key, alike, score, words, roman, ENOUGH };
 });
