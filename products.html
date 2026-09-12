@@ -149,11 +149,18 @@
     <div id="product-notes-modal" class="notes-modal" style="display:none;">
         <div class="notes-modal-content">
             <h4 id="notes-product-name" class="notes-title">Product Notes</h4>
+            <!-- What is in the dish, which is the thing a table asks about.
+                 It used to be typed INTO the box below, where it read as
+                 something the waiter had written and went to the kitchen as
+                 an instruction. -->
+            <p id="notes-about" class="notes-about" style="display:none;"></p>
 
             <div class="notes-body">
-                <label for="product-notes-text" class="notes-label">Notes</label>
+                <label for="product-notes-text" class="notes-label">How does the table want it?</label>
                 <textarea id="product-notes-text" rows="3" class="notes-textarea"
-                    placeholder="Eg: Non sugar, half milk, extra hot..."></textarea>
+                    placeholder="Eg: no onion, less spicy, half plate"></textarea>
+                <!-- One tap each, in the same words the microphone understands. -->
+                <div id="notes-chips" class="notes-chips"></div>
             </div>
 
             <div class="notes-footer">
