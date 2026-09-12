@@ -72,6 +72,51 @@
             <i class="fas fa-plus"></i> New order
         </button>
 
+        <!--
+            WHICH SHOP THIS PHONE IS POINTED AT.
+
+            The server icon used to navigate straight back to the sign-in
+            screen, which read as the app reloading itself for no reason.
+
+            Most of the time the question is "which shop am I on", and that
+            costs nothing to answer here. Actually CHANGING it is a different
+            thing: the cached branch, menu, tables and cart all belong to the
+            shop being left, so it does have to go back - and now that is a
+            button somebody presses, with the consequence written beside it,
+            rather than something that happens to them.
+        -->
+        <div class="ui-scrim" id="server-sheet" hidden>
+            <div id="server-scrim" style="position:absolute;inset:0;"></div>
+            <div class="ui-sheet" style="position:relative;">
+                <div class="ui-sheet-head">
+                    <h2 class="ui-sheet-title">This shop</h2>
+                    <p class="ui-sheet-sub" id="server-where">&nbsp;</p>
+                </div>
+                <div class="ui-sheet-body">
+                    <!--
+                        Straight to the Wi-Fi search, because that is the
+                        common reason for opening this: the till moved, or the
+                        phone is on a different network, and the address in the
+                        line above is stale. Three taps otherwise - change,
+                        then find, then wait.
+                    -->
+                    <button type="button" class="ui-btn" id="server-find">Find the till on this Wi-Fi</button>
+                    <div style="height:var(--s2)"></div>
+                    <button type="button" class="ui-btn" id="server-change"
+                        style="background:var(--surface);color:var(--ink);border:1px solid var(--line-strong)">
+                        Choose another way
+                    </button>
+                    <div class="ui-note">
+                        Changing shop signs you out and clears the menu and tables
+                        cached for this one.
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
+                        <button type="button" class="ui-btn-quiet" id="server-close">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <div class="kot-container">
             <!-- Tables Section - Full Width -->

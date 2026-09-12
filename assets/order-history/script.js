@@ -739,10 +739,10 @@ function renderOrders() {
             ${order.status === 'cancelled' || order.status === 'completed' ? '' : `
         <div class="order-actions">
             <button class="action-btn edit-btn" onclick="event.stopPropagation(); editOrder('${order._id}')">
-                <i class="fas fa-edit"></i> Edit
+                <i class="fas fa-edit"></i> Modify
             </button>
             <button class="action-btn cancel-btn" onclick="event.stopPropagation(); cancelOrder('${order._id}')">
-                <i class="fas fa-times"></i> Cancel Order
+                <i class="fas fa-times"></i> Cancel order
             </button>
         </div>
         `}

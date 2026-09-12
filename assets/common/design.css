@@ -257,6 +257,11 @@
   display: block;
   margin-top: 1px;
   font-size: var(--t-sm);
+  /* Stated, not inherited. A button takes its weight from whatever the page
+     gives it, so the same component read as two different things depending on
+     which screen it was dropped into - and secondary text competing with its
+     own title is the one thing it must not do. */
+  font-weight: 400;
   color: var(--ink-soft);
   line-height: 1.4;
 }
