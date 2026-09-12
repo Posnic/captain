@@ -433,6 +433,7 @@ $(document).on("click", ".dish", function (e) {
     currentNotesProductName = productName;
     loadExistingNotesForProduct(productId);
 
+    buildNoteChips();
     $("#notes-product-name").text(productName);
     $("#product-notes-modal").css("display", "flex");
 });
@@ -456,6 +457,7 @@ $(document).on("click", ".frequent-card", function (e) {
 
     loadExistingNotesForProduct(productId);
 
+    buildNoteChips();
     $("#notes-product-name").text(productName);
     $("#product-notes-modal").css("display", "flex");
 });
@@ -566,47 +568,136 @@ async function getDefaultNotesForProduct(id) {
 
     return desc;
 }
+/*
+ * THE NOTE IS THE WAITER'S, NOT THE MENU'S.
+ *
+ * Owner: "why notes already filled with some text. it supposed enter by waiter
+ * right?"
+ *
+ * This used to fall back to the dish's own description when the cart had no
+ * note - so opening the box on a Chicken Biryani typed "Long grain rice, slow
+ * cooked" into it, and a waiter who then pressed Apply sent the shop's own
+ * marketing copy to the kitchen as an instruction. To write a real note you
+ * first had to notice that and delete it.
+ *
+ * The description is worth SHOWING - it is what is in the dish, which is the
+ * question a table actually asks - so it is still read, and put above the box
+ * where it cannot be mistaken for something somebody typed.
+ */
+function dishDescription(id) {
+    let desc = "";
+    if (typeof products !== "undefined" && products) {
+        // products = { categoryId: [ items... ], ... }
+        for (const itemsArr of Object.values(products)) {
+            const p = itemsArr.find(p => p.id === id);
+            if (p) {
+                desc = p.item_description || p.description || "";
+                break;
+            }
+        }
+    }
+    if (!desc) return "";
+    // HTML entities (&lt; &gt;) decode + basic tag strip
+    const tmp = document.createElement("textarea");
+    tmp.innerHTML = desc;            // "&lt;p&gt;hi&lt;/p&gt;" → "<p>hi</p>"
+    return tmp.value
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/?[^>]+>/g, "")
+        .trim();
+}
+
 async function loadExistingNotesForProduct(id) {
+    const about = $("#notes-about");
+    const desc = dishDescription(id);
+    if (about.length) {
+        about.text(desc);
+        about.toggle(!!desc);
+    }
+    /* A chip is only "on" for as long as the box it wrote into is open. */
+    $(".notes-chip").removeClass("is-on");
+
     try {
         const cartData = await getCartData();
         const item = cartData.find(i => i.id === id);
-
-        // 1) Cartல notes இருந்தா → அதையே show பண்ணு
-        if (item && item.notes) {
-            $("#product-notes-text").val(item.notes);
-            return;
-        }
-
-        // 2) notes இல்லனா → accessQrkModelல இருந்து வந்த description use பண்ணு
-        let desc = "";
-
-        if (typeof products !== "undefined" && products) {
-            // products = { categoryId: [ items... ], ... }
-            for (const itemsArr of Object.values(products)) {
-                const p = itemsArr.find(p => p.id === id);
-                if (p) {
-                    desc = p.item_description || p.description || "";
-                    break;
-                }
-            }
-        }
-        if (desc) {
-            // HTML entities (&lt; &gt;) decode + basic tag strip
-            const tmp = document.createElement("textarea");
-            tmp.innerHTML = desc;            // "&lt;p&gt;hi&lt;/p&gt;" → "<p>hi</p>"
-            desc = tmp.value
-                .replace(/<br\s*\/?>/gi, "\n")   // <br> → new line
-                .replace(/<\/?[^>]+>/g, "")      // மற்ற HTML tags remove
-                .trim();
-            $("#product-notes-text").val(desc);
-        } else {
-            $("#product-notes-text").val("");
-        }
+        /* What is already on the line, and nothing else. An empty box is the
+           honest state for a dish nobody has asked anything about. */
+        $("#product-notes-text").val((item && item.notes) || "");
+        markChips();
     } catch (e) {
         console.error("Error loading notes:", e);
         $("#product-notes-text").val("");
     }
 }
+
+/*
+ * THE THINGS PEOPLE ACTUALLY ASK FOR.
+ *
+ * Owner: "when focus show some common template text like less medium, less
+ * sweet and etc."
+ *
+ * Typing "less spicy" on a phone keyboard between two tables is the reason
+ * notes go unwritten. These are one tap each, and they are deliberately the
+ * SAME WORDS voice-order.js already understands - its MARKERS crossed with its
+ * TASTE set, plus its PORTIONS - so a note tapped here and the same note
+ * spoken into the microphone arrive at the kitchen worded identically. A
+ * printed ticket should not reveal which way the waiter's hands were full.
+ */
+const NOTE_SUGGESTIONS = [
+    "Less spicy", "Medium spicy", "Extra spicy",
+    "Less salt", "Less sweet", "Less oil",
+    "No onion", "No garlic", "No ice",
+    "Extra gravy", "Half plate", "One by two",
+];
+
+/** Draw them once, the first time the modal is opened. */
+function buildNoteChips() {
+    const host = $("#notes-chips");
+    if (!host.length || host.children().length) return;
+    host.html(
+        NOTE_SUGGESTIONS.map(
+            (say) =>
+                '<button type="button" class="notes-chip" data-say="' +
+                say.replace(/"/g, "&quot;") +
+                '">' +
+                say +
+                "</button>"
+        ).join("")
+    );
+}
+
+/** The note as a list of parts, so a chip can be taken back off. */
+function notePieces() {
+    return String($("#product-notes-text").val() || "")
+        .split(",")
+        .map((piece) => piece.trim())
+        .filter(Boolean);
+}
+
+/** Light the chips that are already in the box, however they got there. */
+function markChips() {
+    const said = notePieces().map((piece) => piece.toLowerCase());
+    $(".notes-chip").each(function () {
+        const say = String($(this).data("say") || "").toLowerCase();
+        $(this).toggleClass("is-on", said.indexOf(say) !== -1);
+    });
+}
+
+/* A chip adds its words, and takes them away again if it is already on. Both
+   directions matter: the commonest correction to a tap is the same tap. */
+$(document).on("click", ".notes-chip", function () {
+    const say = String($(this).data("say") || "");
+    if (!say) return;
+    const pieces = notePieces();
+    const at = pieces.findIndex((piece) => piece.toLowerCase() === say.toLowerCase());
+    if (at === -1) pieces.push(say);
+    else pieces.splice(at, 1);
+    $("#product-notes-text").val(pieces.join(", "));
+    markChips();
+});
+
+/* Typed by hand, or edited after a tap: the chips still have to agree with
+   the box, or one of them is lying. */
+$(document).on("input", "#product-notes-text", markChips);
 // ADD button → behaves like first + click
 /**
  * Show how many the next tap will add, when it is more than one.

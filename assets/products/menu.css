@@ -377,8 +377,28 @@
 }
 
 /* Already on the bill, so the row says so at a glance while scrolling past. */
+/*
+ * ALREADY ON THE ORDER.
+ *
+ * Owner: "if some items already added to that cart that menu need little
+ * highlight."
+ *
+ * It had one: a background of --accent-soft, which is #eef2ff. Against the
+ * #ffffff of every other row that is a difference of about seven points of
+ * blue, and on a phone held at arm's length in a bright dining room it is not
+ * a difference at all. The stepper on the right says the same thing, but only
+ * once your eye is on that row - the question being asked here is "what have I
+ * already got", which is asked of the whole list at once.
+ *
+ * So: the tint stays, and a solid bar goes down the leading edge. Drawn with
+ * an inset shadow rather than a border, because a border would add 3px to the
+ * row and the row is pinned to one height on purpose - a list that reflows as
+ * you add to it loses your place, which is the bug the whole screen was
+ * rebuilt around.
+ */
 .dish.is-in {
   background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 /* ---------------------------------------------------------- the chip index */
