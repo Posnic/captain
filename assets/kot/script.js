@@ -475,16 +475,31 @@ async function selectTable(tableName, takeaway) {
         showSectionLoader('sliding-panel-content');
         let filters = {};
         const branchId = localStorage.getItem('branch_id') || null;
+        /*
+         * STILL OPEN. The floor already means this and this did not say it.
+         *
+         * Owner: "how come 3 orders in same table. need to check and fix."
+         *
+         * getTablesWithActiveOrders draws the floor from
+         * `{ sale_process: KOT, payment_status: 'Unpaid' }`, so a table appears
+         * because it has ONE open ticket. Tapping it asked only for the table
+         * number - no status at all - so the panel answered with every KOT ever
+         * written against that table name, including the ones settled and paid
+         * at earlier sittings, under a badge that says "Active KOTs".
+         *
+         * Three tickets on a table is also a perfectly ordinary thing: a table
+         * that orders three times has three tickets, and each is printed and
+         * cooked separately. The times on the cards tell those apart from these.
+         * What was wrong was the word ACTIVE, applied to closed ones.
+         *
+         * The same shape as the takeaway card: two queries about the same
+         * orders, agreeing on one clause and not the other.
+         */
+        const stillOpen = { sale_process: 'KOT', payment_status: 'Unpaid' };
         if (isTakeaway) {
-            filters = {
-                sale_process: 'KOT',
-                dine_type: 'Take away'
-            };
+            filters = { ...stillOpen, dine_type: 'Take away' };
         } else {
-            filters = {
-                sale_process: 'KOT',
-                table_number: tableName
-            };
+            filters = { ...stillOpen, table_number: tableName };
         }
         const data = await POSNIC.api.get(
             `/sales/getListKot?page=1&limit=100` +
@@ -639,7 +654,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!cancelKotId) return;
             
             try {
-                showLoader();
+                /*
+                 * The button says what it is doing, and the panel behind it
+                 * stays readable.
+                 *
+                 * Cancelling used to white out the whole app while one request
+                 * went to the till. The waiter is looking at the order they
+                 * have just decided to cancel; taking it off the screen to say
+                 * something is happening removes the only thing that would let
+                 * them check they picked the right one.
+                 */
+                confirmBtn.disabled = true;
+                confirmBtn.dataset.said = confirmBtn.textContent;
+                confirmBtn.textContent = 'Cancelling...';
+                showSectionLoader('sliding-panel-content');
                 
                 // Find the order from stored currentKotOrders
                 const order = currentKotOrders.find(o => o._id === cancelKotId);
@@ -687,7 +715,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error cancelling order:', error);
                 showToast('Could not cancel the order', 'error');
             } finally {
-                hideLoader();
+                /* Whatever happened, the button goes back to being a button.
+                   A confirm dialog left saying "Cancelling..." for ever is a
+                   waiter who cannot try again and cannot tell why. */
+                hideSectionLoader('sliding-panel-content');
+                confirmBtn.disabled = false;
+                if (confirmBtn.dataset.said) confirmBtn.textContent = confirmBtn.dataset.said;
                 cancelKotId = null;
             }
         });
@@ -818,9 +851,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check branch count and update button
     await checkBranchCount();
 
-    showLoader();
+    /*
+     * THE TABLES LOAD WHERE THE TABLES ARE.
+     *
+     * Owner: "when table loads or when canceling after clicking yes something
+     * waiting for api then show some progress bar. or loading as that
+     * component. instead of hiding whole app."
+     *
+     * showLoader() paints a white sheet over the entire screen, so waiting for
+     * one list took the header, the buttons and everything else with it - and
+     * on a slow shop Wi-Fi that reads as an app that has crashed rather than
+     * one that is fetching a list.
+     *
+     * loadTables already draws a loader inside #tables-list. This was putting
+     * a second one over the top of it.
+     */
     await loadTables();
-    hideLoader();
 
     startKotTablePolling();
 });

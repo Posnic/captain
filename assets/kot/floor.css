@@ -247,3 +247,120 @@ body.floor-screen {
   opacity: 0.6;
   cursor: default;
 }
+
+/* ==================================================== the order panel */
+
+/*
+ * THE PANEL THAT OPENS WHEN A TABLE IS TAPPED.
+ *
+ * Owner: "avoid usual design of claude blue gradient. match with app and
+ * professional design required."
+ *
+ * It was wearing the gradients a bootstrap template ships with - a purple-blue
+ * header (#667eea to #764ba2), green badges, a blue Modify button and a red
+ * Cancel one, each a different hue with its own light source. Four gradients on
+ * one panel is four things shouting, and none of them is the order.
+ *
+ * The menu, the bill, the floor and the table screen were rebuilt on
+ * design.css: ink on paper, one line weight, and ONE accent reserved for the
+ * single thing worth pressing. This brings the last screen into that, so the
+ * app stops changing its mind about what it looks like halfway through a
+ * shift.
+ *
+ * Cancel keeps a colour of its own. It is the one control here that destroys a
+ * customer's food, and it is the one place a second colour earns its keep.
+ *
+ * These override assets/kot/style.css, which loads before this file.
+ */
+.sliding-panel-header {
+  background: var(--surface);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.sliding-panel-header h3,
+.sliding-panel-header .panel-title,
+.sliding-panel-header #panel-title {
+  color: var(--ink);
+  font-weight: 700;
+}
+/* The close control was white-on-gradient and is now ink on paper. */
+.sliding-panel-header button,
+.sliding-panel-header .close-panel-btn,
+.sliding-panel-header i {
+  color: var(--ink-soft);
+}
+
+/*
+ * How many tickets are open. A count, not a trophy: soft accent, so it reads
+ * as information beside the heading rather than competing with it.
+ */
+.active-badge,
+.active-kot-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid transparent;
+  font-weight: 700;
+  text-shadow: none;
+  box-shadow: none;
+}
+
+/* The money. Sunk rather than raised - it is a total to read, not a button. */
+.kot-total {
+  background: var(--surface-sunk);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+/*
+ * The one thing worth pressing on this panel, in the app's accent.
+ */
+.btn-modify {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.btn-modify:hover {
+  background: var(--accent);
+  filter: brightness(0.94);
+}
+
+/*
+ * And the one that destroys somebody's food. Outlined rather than filled: it
+ * has to be findable and must never be the thing a thumb lands on by habit.
+ */
+.btn-cancel {
+  background: var(--surface);
+  color: var(--bad);
+  border: 1px solid var(--bad);
+  box-shadow: none;
+}
+.btn-cancel:hover {
+  background: var(--bad);
+  color: #fff;
+}
+
+/* The page itself: flat ground, like every other screen in the app. */
+body {
+  background: var(--ground);
+}
+
+/*
+ * WAITING FOR THE TILL, WHERE THE WAIT IS.
+ *
+ * Owner: "instead of hiding whole app." The section loader covered its element
+ * with a near-opaque white sheet and a Bootstrap-blue spinner, which is both
+ * the wrong colour and more sheet than a wait needs. Lighter, so the list
+ * underneath still reads as a list, and in the app's own accent.
+ */
+.section-loader {
+  background: rgba(255, 255, 255, 0.62) !important;
+  backdrop-filter: blur(1px);
+}
+.section-loader .spinner-border {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+  color: var(--accent) !important;
+}
