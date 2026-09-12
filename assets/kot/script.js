@@ -219,7 +219,7 @@ document.addEventListener('click', function (event) {
     const card = event.target.closest && event.target.closest('.floor-card');
     if (!card) return;
     event.preventDefault();
-    selectTable(card.getAttribute('data-table-number'));
+    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
 });
 
 async function loadTables() {
@@ -289,6 +289,10 @@ async function loadTables() {
             return '<a href="#/kot/' + encodeURIComponent(name) + '"' +
                 ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
                 (age ? ' data-age="' + age + '"' : '') +
+                /* WHAT IT IS, NOT WHAT IT SAYS. The takeaway card used to be
+                   recognised by its own label, and the label here is "Take
+                   away" while the code looking for it asked for "Takeaway". */
+                (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
                 ' data-table-number="' + safe + '">' +
                 '<div class="floor-name">' + safe + '</div>' +
                 (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
@@ -360,7 +364,30 @@ function closeSlidingPanel() {
     });
 }
 
-async function selectTable(tableName) {
+/*
+ * IS THIS THE TAKEAWAY QUEUE?
+ *
+ * Owner: "one order show as take away, when tap, inside shows no active
+ * orders."
+ *
+ * The floor drew that card with the words "Take away" and this screen asked
+ * whether the name was "Takeaway" - one space apart, and nothing anywhere said
+ * so. The check failed, the else branch ran, and it went looking for a table
+ * literally called "Take away". No sale has one: a takeaway carries dine_type,
+ * not a table number. So the card was right, the queue was real, and tapping
+ * it reported nothing there.
+ *
+ * The card now says what it IS and this is told directly. The spellings are
+ * still accepted as a fallback, because order-history.js has always had to
+ * take both - the data uses both - and a caller that has only a name should
+ * not be the thing that breaks next.
+ */
+function isTakeawayName(name) {
+    return String(name || '').replace(/\s+/g, '').toLowerCase() === 'takeaway';
+}
+
+async function selectTable(tableName, takeaway) {
+    const isTakeaway = takeaway === true || isTakeawayName(tableName);
     const panelContent = document.getElementById('sliding-panel-content');
     const panelTitle = document.getElementById('panel-title');
     
@@ -378,7 +405,7 @@ async function selectTable(tableName) {
     }
 
     // Update panel title
-    panelTitle.textContent = tableName === 'Takeaway' ? 'Takeaway Orders' : `Table ${tableName}`;
+    panelTitle.textContent = isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
     
     // Open the sliding panel
     openSlidingPanel();
@@ -390,7 +417,7 @@ async function selectTable(tableName) {
         showSectionLoader('sliding-panel-content');
         let filters = {};
         const branchId = localStorage.getItem('branch_id') || null;
-        if (tableName === 'Takeaway') {
+        if (isTakeaway) {
             filters = {
                 sale_process: 'KOT',
                 dine_type: 'Take away'
@@ -406,7 +433,9 @@ async function selectTable(tableName) {
             `&filters=${encodeURIComponent(JSON.stringify(filters))}&branchId=${branchId}`);
         
         if (data.type !== 'success' || !data.data || !data.data.list || data.data.list.length === 0) {
-            panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-clipboard-list"></i><p>No active orders for this table</p></div>';
+            panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-clipboard-list"></i><p>' +
+                (isTakeaway ? 'No active takeaway orders' : 'No active orders for this table') +
+                '</p></div>';
             currentKotOrders = []; // Clear orders
             return;
         }
