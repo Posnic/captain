@@ -134,9 +134,14 @@ test('a finger can scroll a long bill', async ({ page }) => {
   await onTheMenu(page, 'nothing', { menu: LONG });
 
   /* Enough lines to overflow. */
-  for (const id of ['p-0-0', 'p-0-1', 'p-0-2', 'p-1-0', 'p-1-1', 'p-2-0', 'p-2-1', 'p-3-0']) {
+  const ids = ['p-0-0', 'p-0-1', 'p-0-2', 'p-1-0', 'p-1-1', 'p-2-0', 'p-2-1', 'p-3-0'];
+  for (const id of ids) {
     await page.locator(`.btn-add[data-id="${id}"]`).click();
   }
+  /* Every line written, not merely every button pressed - the write to
+     IndexedDB lands after the row turns into a stepper. */
+  await expect(page.locator('#cart-qty')).toHaveText(String(ids.length));
+
   await page.goto('/cart.html');
   await expect(page.locator('.bill-line').first()).toBeVisible();
 

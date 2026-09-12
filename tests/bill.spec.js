@@ -215,6 +215,16 @@ test('the bill screen says it is working, rather than going blank', async ({ pag
 
   await onTheMenu(page, 'two chicken biryani', { menu: MENU });
   await page.locator('.btn-add[data-id="p-1"]').click();
+  /*
+   * WAIT FOR THE CART, NOT FOR THE TAP.
+   *
+   * The row becomes a stepper the moment it is pressed; the line is written to
+   * IndexedDB after that. Leaving for the bill on the tap alone is a race that
+   * is won on a desk and lost on a CI runner, which is exactly how it
+   * behaved - green here, red in Actions. The bill bar showing the count is
+   * proof the write path ran.
+   */
+  await expect(page.locator('#cart-qty')).toHaveText('1');
 
   await page.goto('/cart.html');
   await expect(page.locator('.bill-line').first()).toBeVisible();
@@ -244,6 +254,7 @@ test('tapping View bill covers the gap before the bill page loads', async ({ pag
      navigation. */
   await onTheMenu(page, 'two chicken biryani', { menu: MENU });
   await page.locator('.btn-add[data-id="p-1"]').click();
+  await expect(page.locator('#cart-qty')).toHaveText('1');
 
   const shown = await page.evaluate(() => {
     goToBill();
