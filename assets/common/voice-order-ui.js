@@ -79,6 +79,11 @@
     said: '',
     status: '',
     pendingPlace: false,
+    /* From the server's understanding, when it has one: what goes with the
+       order, one sentence to read back, and the table named. */
+    suggestions: [],
+    summary: '',
+    table: null,
   };
 
   /* ------------------------------------------------------------- helpers */
@@ -378,6 +383,8 @@
       else if (act === 'place') confirmPlace();
       else if (act === 'search') searchFor(control.getAttribute('data-term'));
       else if (act === 'unplaced-drop') dropUnplaced(control.getAttribute('data-term'));
+      else if (act === 'pick') pickCandidate(control.getAttribute('data-id'), Number(control.getAttribute('data-qty')) || 1, control.getAttribute('data-term'));
+      else if (act === 'suggest') takeSuggestion(control.getAttribute('data-id'));
     });
     return element;
   }
@@ -742,6 +749,12 @@
     const answer = await Promise.race([call.catch(() => null), timeout]);
     const commands = answer && answer.data && Array.isArray(answer.data.commands) ? answer.data.commands : null;
     if (!commands) return null;
+    const extra = answer.data;
+    view.summary = String(extra.summary || '').slice(0, 160);
+    view.table = extra.table ? String(extra.table) : null;
+    view.suggestions = (Array.isArray(extra.suggestions) ? extra.suggestions : [])
+      .map((sug) => ({ item: byId.get(String(sug.item_id)) || null, why: String(sug.why || '') }))
+      .filter((sug) => sug.item);
 
     /* Into the shape the local parser produces, so one path carries it out. */
     const out = [];
@@ -753,7 +766,19 @@
       const item = c.item_id != null ? byId.get(String(c.item_id)) || null : null;
       out.push({
         verb: c.verb,
-        lines: [{ quantity: c.quantity || 1, term: c.said || '', item, found: !!item, exact: !!item }],
+        lines: [{
+          quantity: c.quantity || 1,
+          term: c.said || '',
+          item,
+          found: !!item,
+          exact: !!item,
+          /* "no onion" stays with the dish it was said for */
+          note: String(c.note || '').trim(),
+          /* for a dish that did not match: the dishes it might have been */
+          candidates: (Array.isArray(c.candidates) ? c.candidates : [])
+            .map((cid) => byId.get(String(cid)) || null)
+            .filter(Boolean),
+        }],
       });
     }
     return out;
@@ -781,6 +806,9 @@
     view.changed = {};
     view.unplaced = [];
     view.pendingPlace = false;
+    view.suggestions = [];
+    view.summary = '';
+    view.table = null;
 
     const { commands } = await resolve(heard);
     const touched = await apply(commands);
@@ -838,7 +866,7 @@
 
       for (const line of command.lines) {
         if (!line.found) {
-          view.unplaced.push({ term: line.term, quantity: line.quantity, verb: command.verb });
+          view.unplaced.push({ term: line.term, quantity: line.quantity, verb: command.verb, candidates: line.candidates || [] });
           continue;
         }
         const id = line.item.id;
@@ -892,7 +920,8 @@
     if (panel) panel.setAttribute('data-fresh', view.fresh ? 'true' : 'false');
     setText('status', view.pendingPlace ? 'Ready to send' : 'Heard');
     setText('said', view.said ? `"${view.said}"` : '');
-    setText('note', view.status);
+    /* The server's read-back, when it gave one; the panel's own account otherwise. */
+    setText('note', view.summary || view.status);
 
     const host = $(`${PANEL_ID}-lines`);
     if (host) {
@@ -923,8 +952,18 @@
           <div class="vp-row" data-unplaced="true">
             <span class="vp-name"><strong>${escapeHtml(miss.term)}</strong>
               <div style="font-size:var(--t-xs,12px)">not on this menu</div></span>
+            ${(miss.candidates || []).length ? `<div class="vp-maybe" style="flex:1 1 100%;font-size:var(--t-xs,12px)">Did you mean: ${miss.candidates.map((c) => `<button type="button" class="vp-btn vp-chip" style="flex:0 0 auto;min-height:30px;padding:0 10px;margin:2px 4px 2px 0" data-act="pick" data-id="${escapeHtml(c.id)}" data-qty="${miss.quantity || 1}" data-term="${escapeHtml(miss.term)}">${escapeHtml(c.name)}</button>`).join('')}</div>` : ''}
             <button type="button" class="vp-btn" style="flex:0 0 auto;min-height:34px;padding:0 10px" data-act="search" data-term="${escapeHtml(miss.term)}">Search</button>
             <button type="button" class="vp-x" data-act="unplaced-drop" data-term="${escapeHtml(miss.term)}" aria-label="Dismiss">&times;</button>
+          </div>`);
+      }
+      if (view.suggestions.length) {
+        /* What goes with what was ordered, one tap each. From the shop's
+           own menu, never a dish already in the cart - the server checks. */
+        rows.push(`
+          <div class="vp-row vp-suggest" data-suggest="true" style="flex-wrap:wrap">
+            <span class="vp-name" style="flex:1 1 100%;font-size:var(--t-xs,12px)">Goes well:</span>
+            ${view.suggestions.map((sug) => `<button type="button" class="vp-btn vp-chip" style="flex:0 0 auto;min-height:30px;padding:0 10px;margin:2px 4px 2px 0" data-act="suggest" data-id="${escapeHtml(sug.item.id)}" title="${escapeHtml(sug.why)}">+ ${escapeHtml(sug.item.name)}</button>`).join('')}
           </div>`);
       }
       host.innerHTML = rows.length ? rows.join('') : '<div class="vp-empty">The cart is empty.</div>';
@@ -942,6 +981,18 @@
   }
 
   /* ------------------------------------------------------------ editing */
+
+  /* "Did you mean" - the dish that did not match, resolved by a tap. */
+  async function pickCandidate(id, quantity, term) {
+    view.unplaced = view.unplaced.filter((miss) => miss.term !== term);
+    await bump(id, quantity || 1);
+  }
+
+  /* "Goes well" - taken, so it leaves the suggestions and joins the cart. */
+  async function takeSuggestion(id) {
+    view.suggestions = view.suggestions.filter((sug) => sug.item.id !== id);
+    await bump(id, 1);
+  }
 
   async function bump(id, delta) {
     if (typeof updateQuantity !== 'function') return;
@@ -1036,6 +1087,17 @@
     confirmPlace,
     hidePanel,
     describe,
+    pickCandidate,
+    takeSuggestion,
+    /* What the panel currently holds, for tests: the fake DOM they run in
+       never registers markup the panel builds, so state is the truth. */
+    snapshot: () => ({
+      unplaced: view.unplaced.map((m) => ({ term: m.term, quantity: m.quantity, candidates: (m.candidates || []).map((c) => c.id) })),
+      suggestions: view.suggestions.map((sug) => ({ id: sug.item.id, name: sug.item.name, why: sug.why })),
+      summary: view.summary,
+      status: view.status,
+      table: view.table,
+    }),
     get view() {
       return view;
     },
