@@ -151,8 +151,13 @@ test('a spoken requirement is on the bill, where the kitchen reads it', async ({
   await page.mouse.up();
   await expect(page.locator('#posnic-voice-panel')).toBeVisible();
 
-  /* Agreed to, first. Nothing reaches the cart until somebody presses the
-     button that says how many items it will add. */
+  /*
+   * AGREED TO FIRST. Nothing reaches the cart until somebody presses the
+   * button saying how many items it will add - so the requirement cannot be
+   * on a cart row before this, and the wait below has to come after it. The
+   * merge that brought these two changes together briefly had the wait first,
+   * where it could never have been satisfied.
+   */
   await page.locator('#posnic-voice-panel [data-act="confirm"]').click();
 
   /*
