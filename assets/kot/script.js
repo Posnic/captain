@@ -213,6 +213,64 @@ function escapeFloor(value) {
         .replace(/'/g, '&#39;');
 }
 
+/*
+ * "THE GUEST ON TABLE FOUR WOULD LIKE THE BILL."
+ *
+ * The one half of billing the floor is trusted with. The waiter is standing at
+ * the table when the guest asks, and walking to the counter to have somebody
+ * else press a button is the errand a handset exists to remove. Every
+ * restaurant POS worth the name lets the floor fire this - Toast, Square,
+ * Lightspeed, MICROS, Petpooja.
+ *
+ * WHAT IT DOES NOT DO IS SETTLE. The person who takes the order must not be
+ * the person who declares the money received, or a cash bill can be closed and
+ * pocketed with nothing in the system to disagree. So this asks, and the
+ * cashier settles. Owner: "usually cashier / desktop person only responsible
+ * and confirm the settlement not waiter i thought" - which is the standard.
+ *
+ * AND IT PRINTS AT THE COUNTER, not here and not in the kitchen. The phone
+ * never owns a printer: it marks the ticket and the till, which owns the
+ * hardware, picks it up and prints on the receipt roll. A till that was
+ * switched off catches up when it comes back rather than losing the bill.
+ */
+document.addEventListener('click', async function (event) {
+    const button = event.target.closest && event.target.closest('#ask-for-bill');
+    if (!button) return;
+
+    const table = button.getAttribute('data-table') || '';
+    if (!table) return;
+
+    button.disabled = true;
+    const said = button.textContent;
+    button.textContent = 'Asking...';
+    try {
+        const branchId = localStorage.getItem('branch_id') || null;
+        const who = (() => {
+            try {
+                return JSON.parse(localStorage.getItem('posnic.session') || '{}').name || '';
+            } catch (e) {
+                return '';
+            }
+        })();
+
+        const answer = await POSNIC.api.post('/sales/requestBillPrint', {
+            branchId,
+            table_number: table,
+            asked_by: who,
+        });
+
+        /* The server answers "on its way" or "nothing is open on that table",
+           and those send a waiter to two different places - so its words are
+           shown rather than a cheerful noise of our own. */
+        showToast((answer && answer.message) || 'The bill is on its way to the counter');
+        button.textContent = 'Bill asked for';
+    } catch (error) {
+        button.disabled = false;
+        button.textContent = said;
+        showToast((error && error.message) || 'Could not ask for the bill', 'error');
+    }
+});
+
 /* Delegated, so a card carries no code of its own - which is what let the
    table name end an onclick early when somebody typed an apostrophe. */
 document.addEventListener('click', function (event) {
@@ -448,6 +506,12 @@ async function selectTable(tableName, takeaway) {
         let headerHtml = `
             <div class="kot-details-header">
                 <span class="active-kot-badge">${kotCount} Active KOT${kotCount > 1 ? 's' : ''}</span>
+                ${
+                  isTakeaway
+                    ? ''
+                    : `<button type="button" class="floor-bill-btn" id="ask-for-bill"
+                         data-table="${escapeFloor(tableName)}">Print the bill</button>`
+                }
             </div>
         `;
 

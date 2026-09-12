@@ -219,3 +219,31 @@ body.floor-screen {
     transform: none;
   }
 }
+
+/*
+ * "PRINT THE BILL", on the panel for a table.
+ *
+ * Quiet rather than primary. The thing a waiter comes to this panel to do is
+ * READ the table - what is on it, how long it has waited - and asking for the
+ * bill is the one thing they occasionally do next. A filled accent button here
+ * would compete with that every time the panel opens, and this is a button
+ * that should never be pressed by accident: a bill printing at the counter for
+ * a table still eating sends somebody on a walk for nothing.
+ */
+.floor-bill-btn {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 var(--s3, 12px);
+  border: 1px solid var(--line-strong, #cbd5e1);
+  border-radius: var(--radius, 12px);
+  background: var(--surface, #fff);
+  color: var(--ink, #0f172a);
+  font: inherit;
+  font-size: var(--t-sm, 13px);
+  font-weight: 700;
+  cursor: pointer;
+}
+.floor-bill-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
