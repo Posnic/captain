@@ -22,14 +22,36 @@ import { onTheMenu } from './support/shop.js';
 const panel = (page) => page.locator('#posnic-voice-panel');
 const count = (page) => page.locator('#mobile-cart-count');
 
-/** Press the microphone, speak, and let go. What a waiter does. */
+/**
+ * Press the microphone, speak, let go, and agree to what comes back.
+ *
+ * The last step is new and it is not a detail: nothing reaches the cart until
+ * somebody presses a button that says how many items it will add. Owner:
+ * "what you understood just show properly. or confirm button to add to cart."
+ * Every test below that cares about the CART has to walk through it, the same
+ * as a waiter does.
+ */
 async function holdAndSpeak(page, ms = 700) {
+  await holdOnly(page, ms);
+  await confirmHeard(page);
+}
+
+/** Everything up to the read-back, for a test about the read-back itself. */
+async function holdOnly(page, ms = 700) {
   const mic = page.locator('#posnic-voice-mic');
   await mic.hover();
   await page.mouse.down();
   await expect(panel(page)).toBeVisible();
   await page.waitForTimeout(ms);
   await page.mouse.up();
+}
+
+/** Agree to the order that was read back. */
+async function confirmHeard(page) {
+  const button = panel(page).locator('[data-act="confirm"]');
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(button).toHaveCount(0);
 }
 
 test('the mic button is there when the device can listen', async ({ page }) => {
@@ -190,6 +212,7 @@ test('a TAP starts it, and a second tap stops it', async ({ page }) => {
   await expect(panel(page)).toContainText('Tap the mic again');
 
   await page.locator('#posnic-voice-mic').click();
+  await confirmHeard(page);
   await expect(count(page)).toHaveText('5');
 });
 
@@ -234,6 +257,7 @@ test('sliding up locks it, so letting go does not end the order', async ({ page 
   /* Still going; the mic is the stop. */
   await expect(page.locator('#posnic-voice-mic')).toHaveAttribute('data-recording', 'true');
   await page.locator('#posnic-voice-mic').click();
+  await confirmHeard(page);
   await expect(count(page)).toHaveText('5');
 });
 
@@ -363,4 +387,164 @@ test('a dish heard by ear is flagged for a second look', async ({ page }) => {
 
   await expect(panel(page)).toContainText('Chicken Biryani');
   await expect(panel(page).locator('.vp-rough')).toContainText('check this one');
+});
+
+/* ------------------------------------------------ and then what happens */
+
+test('after speaking there is always a way forward', async ({ page }) => {
+  /*
+   * Owner: "i saw text nicely converted but next what? need stop to get added
+   * to cart or something else need to do. i stuck in that."
+   *
+   * The dishes were already on the bill by the time the panel drew - apply()
+   * puts them there first - and the only button said "Add more", which opened
+   * a SEARCH BOX. So the screen showed the right answer, offered no way to
+   * accept it, and the one thing it did offer was the opposite of what
+   * somebody who has just spoken wants.
+   */
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+
+  await expect(panel(page)).toBeVisible();
+  /* Said in the past tense, because it has already happened. */
+  await expect(panel(page)).toContainText('On the order');
+  await expect(panel(page)).toContainText('Added');
+
+  /* Speaking again is the natural "more" after speaking. */
+  await expect(panel(page).locator('[data-act="again"]')).toBeVisible();
+
+  /* And the way to the bill, carrying what it comes to. */
+  const bill = panel(page).locator('[data-act="bill"]');
+  await expect(bill).toBeVisible();
+  await expect(bill).toContainText('\u20b9');
+  await expect(bill).toBeEnabled();
+
+  /*
+   * And the end of the job. Owner: "below confirm button. so that user can
+   * confirm and send to kitchen ... so captain can finalize and send it."
+   * Sending is offered because the order is on the bill, not because the
+   * phrase happened to be in the sentence.
+   */
+  const send = panel(page).locator('[data-act="place"]');
+  await expect(send).toContainText('to kitchen');
+  await expect(send).toBeEnabled();
+});
+
+test('the way forward goes to the bill', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+  await panel(page).locator('[data-act="bill"]').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+  await expect(page.locator('.bill-line')).toHaveCount(1);
+});
+
+test('saying send to kitchen says so at the top, and still waits', async ({ page }) => {
+  /* The button is there either way now. What saying the words changes is the
+     line at the top, which tells a waiter the app understood them. */
+  await onTheMenu(page, 'two chicken biryani, send to kitchen');
+  await holdAndSpeak(page);
+  await expect(panel(page)).toContainText('Ready to send');
+  await expect(panel(page).locator('[data-act="place"]')).toContainText('to kitchen');
+  /* And it has still not gone anywhere. */
+  await expect(page).toHaveURL(/products\.html/);
+});
+
+/* ---------------------------------------- what was said, and what it became */
+
+test('the words appear while the microphone is still open', async ({ page }) => {
+  /*
+   * Owner: "mic first listerning and after if i talk not transcribing. may be
+   * hanging."
+   *
+   * It was not hanging. The transcript was one italic line, nowrap, with an
+   * ellipsis, under an orb that filled the panel - so a sentence being
+   * recognised perfectly looked like nothing at all happening.
+   */
+  await onTheMenu(page, 'two chicken biryani and three coffee');
+  const mic = page.locator('#posnic-voice-mic');
+  await mic.hover();
+  await page.mouse.down();
+
+  await expect(page.locator('#posnic-voice-panel-said')).toContainText('chicken biryani');
+  /* And the other column is already filling in, which is the point of it. */
+  await expect(panel(page).locator('#posnic-voice-panel-lines')).toContainText('Chicken Biryani');
+
+  /* Long enough to be a hold. Anything shorter is a TAP, which keeps
+     listening until the next tap - a different gesture, tested elsewhere. */
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await confirmHeard(page);
+});
+
+test('what was said and what it became are side by side', async ({ page }) => {
+  /* Owner: "lets say you split left and right. left what you talked in text.
+     right what you extracted and modifieble." */
+  await onTheMenu(page, 'two chicken biryani');
+  await holdOnly(page);
+
+  const said = page.locator('#posnic-voice-panel-said');
+  const got = page.locator('#posnic-voice-panel-lines');
+  await expect(said).toContainText('two chicken biryani');
+  await expect(got).toContainText('Chicken Biryani');
+
+  const left = await said.boundingBox();
+  const right = await got.boundingBox();
+  /* Beside, not below: the only question here is whether the right column
+     matches the left, and two things you scroll between cannot be compared. */
+  expect(right.x).toBeGreaterThan(left.x + left.width - 2);
+  await confirmHeard(page);
+});
+
+test('a quantity is fixed BEFORE it reaches the bill', async ({ page }) => {
+  /* Owner: "right what you extracted and modifieble. basically items
+     quantity. below confirm button." */
+  await onTheMenu(page, 'two chicken biryani');
+  await holdOnly(page);
+  await expect(count(page)).toHaveText('0');
+
+  await panel(page).locator('[data-act="prop-more"]').first().click();
+  const confirm = panel(page).locator('[data-act="confirm"]');
+  await expect(confirm).toContainText('Add 3 items');
+  await confirm.click();
+  await expect(count(page)).toHaveText('3');
+});
+
+test('a line thrown away never reaches the bill at all', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani and one coffee');
+  await holdOnly(page);
+
+  await panel(page).locator('[data-act="prop-drop"]').last().click();
+  await panel(page).locator('[data-act="confirm"]').click();
+  await expect(count(page)).toHaveText('2');
+  await expect(panel(page).locator('#posnic-voice-panel-lines')).not.toContainText('Coffee');
+});
+
+test('what is already on the order stays in view while more is said', async ({ page }) => {
+  /* Owner: "existing addeded to cart also should be there. so captain can
+     finalize and send it." */
+  await onTheMenu(page, 'two chicken biryani');
+  await page.locator('.btn-add[data-id="p-coffee"]').click();
+  await expect(count(page)).toHaveText('1');
+
+  await holdOnly(page);
+  const got = panel(page).locator('#posnic-voice-panel-lines');
+  await expect(got).toContainText('Chicken Biryani');
+  await expect(got).toContainText('Already on the order');
+  await expect(got).toContainText('Coffee');
+  await confirmHeard(page);
+});
+
+test('nothing reaches the bill until somebody agrees to it', async ({ page }) => {
+  /*
+   * THE RULE THE WHOLE STAGE EXISTS FOR. The panel used to apply the order
+   * before it had drawn a word of what it thought it heard, so a waiter read
+   * the screen to find out what had ALREADY happened to their table.
+   */
+  await onTheMenu(page, 'two chicken biryani and three coffee');
+  await holdOnly(page);
+  await expect(panel(page)).toContainText('Is this right?');
+  await expect(count(page)).toHaveText('0');
+
+  await confirmHeard(page);
+  await expect(count(page)).toHaveText('5');
 });

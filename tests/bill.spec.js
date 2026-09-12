@@ -150,10 +150,28 @@ test('a spoken requirement is on the bill, where the kitchen reads it', async ({
   await page.waitForTimeout(700);
   await page.mouse.up();
   await expect(page.locator('#posnic-voice-panel')).toBeVisible();
-  /* The panel is visible before the order is understood and the note is
-     written; on a slow runner, leaving for the bill at that moment loses the
-     note that was still on its way to the line. Wait for the panel to show
-     it, which is when it is on the row. */
+
+  /*
+   * AGREED TO FIRST. Nothing reaches the cart until somebody presses the
+   * button saying how many items it will add - so the requirement cannot be
+   * on a cart row before this, and the wait below has to come after it. The
+   * merge that brought these two changes together briefly had the wait first,
+   * where it could never have been satisfied.
+   */
+  await page.locator('#posnic-voice-panel [data-act="confirm"]').click();
+
+  /*
+   * WAIT FOR THE NOTE, NOT FOR THE PANEL.
+   *
+   * The panel appears as soon as the words are understood; the requirement is
+   * written to the cart AFTER that, through an IndexedDB write nothing here
+   * was waiting on. Navigating on the panel alone is a race the test wins on a
+   * fast desk and loses on a CI runner - which is exactly how it behaved: 115
+   * green locally, this one red in Actions.
+   *
+   * The note showing in the panel is proof the write path ran, so there is
+   * something real to wait for rather than a sleep to lengthen.
+   */
   await expect(page.locator('#posnic-voice-panel .vp-want')).toHaveText('Without onion');
 
   await page.goto('/cart.html');
