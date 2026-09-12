@@ -927,3 +927,146 @@ test('a shop that is already set up starts on the menu, not on a search', async 
   await expect(page.locator('#connectChoices')).toBeVisible();
   await expect(page.locator('#connectAuto')).toBeHidden();
 });
+
+/* ------------------------------------ changing it, without being argued with */
+
+/*
+ * Owner, from a handset: "still change server not working. still looking for
+ * same not working old config and after two try its showing option to edit."
+ *
+ * Tapping Change shop server sets a flag and comes to this page. config.js's
+ * own DOMContentLoaded listener then started a health check against the very
+ * address the person had just said was wrong - and a dead address does not
+ * fail quickly, it spends its whole timeout, fails, schedules a retry and goes
+ * round again. The editor was open underneath all of it.
+ *
+ * settingsOpen() already guards the outage overlay and misses this completely:
+ * net.start() runs ON DOMContentLoaded and the modal opens sixty milliseconds
+ * after it, so the probe is away before there is a modal to see.
+ */
+
+test('coming here to change the server does not dial the old one', async ({ page }) => {
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+
+  /* Long enough that a health check would have gone out. */
+  await page.waitForTimeout(1500);
+  expect(tried, `the app probed the address it was asked to replace: ${tried.join(', ')}`).toEqual([]);
+});
+
+test('and the address it is on is there to edit, already selected', async ({ page }) => {
+  /* The commonest edit is a small one - a digit of an IP, a letter of a shop
+     code - so it is shown. The second commonest is replacing it outright, so
+     it is selected rather than left to be cleared one backspace at a time. */
+  await refuse(page, LAN_ORIGIN);
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
+
+  await page.waitForTimeout(400);
+  const selected = await page.evaluate(() => {
+    const field = document.getElementById('serverUrlInput');
+    return field.selectionEnd - field.selectionStart;
+  });
+  expect(selected).toBeGreaterThan(0);
+});
+
+test('closing the editor starts the health checks it had been holding off', async ({ page }) => {
+  /* Held off, not cancelled. Without the schedule coming back the app would
+     sit there never noticing the server had returned. */
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+  expect(tried).toEqual([]);
+
+  await page.locator('#serverModal').evaluate(() => closeServerModal());
+  await page.waitForTimeout(1200);
+  expect(tried.length, 'nothing resumed after the editor closed').toBeGreaterThan(0);
+});
+
+/* ------------------------------------- a body the bridge could not read */
+
+test('a server whose answer the first road cannot read is still found', async ({ page }) => {
+  /*
+   * From the emulator, against a live cloud server that answers curl with two
+   * hundred bytes of perfectly good JSON:
+   *
+   *   {"ok":false,"road":"first",
+   *    "why":{"reason":"UNREADABLE","message":"It answered with something
+   *           this app could not read."}}
+   *
+   * `road: "first"` is the whole story - it never tried a second. probe() gave
+   * up the moment response.json() threw, so the ONE failure the fallback roads
+   * exist for was the one failure that never reached them.
+   *
+   * Capacitor's patched fetch is the thing in the middle and is already known
+   * to mishandle this call in other ways: it ignores an AbortSignal and can
+   * simply never come back. A response whose body will not parse is the same
+   * class of fault, so it now takes the same road out.
+   */
+  let served = 0;
+  await page.route(`${LAN_ORIGIN}/**`, async (route) => {
+    served += 1;
+    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
+    if (path !== '/runtime-info') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+    /* The first ask gets something no parser can read; the road after it gets
+       the truth, which is what a bridge fault actually looks like. */
+    if (served === 1) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(RUNTIME_INFO),
+    });
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const found = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 8000).then((hit) => !!hit),
+    LAN
+  );
+  expect(found, 'the probe gave up on the first unreadable answer').toBe(true);
+});
+
+test('and when no road can read it, it says so rather than blaming the address', async ({ page }) => {
+  /* "Could not reach it" sends somebody to check the address and the Wi-Fi.
+     "It answered with something this app could not read" says the address is
+     fine, which is two different places to go and look. */
+  await page.route(`${LAN_ORIGIN}/**`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' })
+  );
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const why = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 6000).then(() => POSNIC.discovery.probe.lastFailure),
+    LAN
+  );
+  expect(why && why.reason).toBe('UNREADABLE');
+});

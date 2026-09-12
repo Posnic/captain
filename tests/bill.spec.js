@@ -193,3 +193,72 @@ test('a name that looks like markup is text, not markup', async ({ page }) => {
   await expect(page.locator('.bill-name')).toHaveText('<img src=x onerror=alert(1)>');
   await expect(page.locator('.bill-name img')).toHaveCount(0);
 });
+
+/* ----------------------------------------------- saying it is working on it */
+
+/*
+ * Owner: "view bill took few seconds. if its api call and waiting show some
+ * anitmation or progress bar. dont confuse user few seconds."
+ *
+ * renderCart reads the cart, prices every line, applies the discount and lays
+ * the bill out - and cart/style.css started #page-loader HIDDEN while only
+ * ever hiding it again afterwards. So on the one screen where the wait is
+ * longest there was nothing on screen for the length of it: the menu goes, and
+ * a blank white page sits there.
+ *
+ * The menu screen has had it the right way round all along, which is why the
+ * same wait there has never been reported.
+ */
+
+test('the bill screen says it is working, rather than going blank', async ({ page }) => {
+  const loader = page.locator('#page-loader');
+
+  await onTheMenu(page, 'two chicken biryani', { menu: MENU });
+  await page.locator('.btn-add[data-id="p-1"]').click();
+  /*
+   * WAIT FOR THE CART, NOT FOR THE TAP.
+   *
+   * The row becomes a stepper the moment it is pressed; the line is written to
+   * IndexedDB after that. Leaving for the bill on the tap alone is a race that
+   * is won on a desk and lost on a CI runner, which is exactly how it
+   * behaved - green here, red in Actions. The bill bar showing the count is
+   * proof the write path ran.
+   */
+  await expect(page.locator('#cart-qty')).toHaveText('1');
+
+  await page.goto('/cart.html');
+  await expect(page.locator('.bill-line').first()).toBeVisible();
+
+  /* And it gets out of the way once there is a bill to read. */
+  await expect(loader).toBeHidden();
+});
+
+test('the loader starts up, so nothing has to race to show it', async ({ page }) => {
+  /*
+   * The property that matters and the one that was wrong. A loader summoned by
+   * script is only ever as early as the script; one that starts visible is
+   * there from the first paint, which is where the blank was.
+   */
+  await onTheMenu(page, 'two chicken biryani', { menu: MENU });
+  const starts = await page.evaluate(async () => {
+    const css = await fetch('/assets/cart/style.css').then((r) => r.text());
+    const block = css.slice(css.indexOf('#page-loader'), css.indexOf('#page-loader') + 300);
+    return /display:\s*flex/.test(block);
+  });
+  expect(starts, 'the bill loader is hidden until something shows it').toBe(true);
+});
+
+test('tapping View bill covers the gap before the bill page loads', async ({ page }) => {
+  /* A bare location.href leaves the menu on screen and apparently
+     unresponsive, so the first thing a second tap earns is a second
+     navigation. */
+  await onTheMenu(page, 'two chicken biryani', { menu: MENU });
+  await page.locator('.btn-add[data-id="p-1"]').click();
+  await expect(page.locator('#cart-qty')).toHaveText('1');
+
+  const shown = await page.evaluate(() => {
+    goToBill();
+    return document.getElementById('page-loader').style.display;
+  });
+  expect(shown).toBe('flex');
+});

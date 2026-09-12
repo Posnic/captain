@@ -667,7 +667,25 @@
       try {
         info = await response.json();
       } catch (e) {
-        return fail('UNREADABLE');
+        /*
+         * A BODY THE FIRST ROAD COULD NOT READ IS A TRANSPORT FAULT, NOT A
+         * VERDICT ABOUT THE SERVER.
+         *
+         * This used to give up here, which meant the one failure the fallback
+         * roads exist for was the one failure that never reached them. The
+         * emulator reported it exactly that way: ok:false, reason UNREADABLE,
+         * road "first" - it never tried a second - against a server that
+         * answers curl with two hundred bytes of perfectly good JSON.
+         *
+         * Capacitor's patched fetch is the thing in the middle, and it is
+         * already known to mishandle the rest of this call: it ignores an
+         * AbortSignal and can simply never come back. Handing back a response
+         * whose body will not parse is the same class of fault, so it takes
+         * the same road out.
+         */
+        const unreadable = new Error('unreadable body: ' + describe(e));
+        unreadable.unreadable = true;
+        throw unreadable;
       }
       if (!looksLikePosnic(info)) return fail('NOT_POSNIC');
 
@@ -687,7 +705,15 @@
        * that answers a browser on the same phone instantly. Falling back only
        * when fetch THREW meant never falling back at all.
        */
-      const notes = ['[' + transport() + ']', 'fetch: ' + (timedOut ? 'hung' : describe(e))];
+      /* Remembered, because it decides what to call this if every road
+         fails: a body nobody could read is a different problem from an
+         address nobody could reach, and they send somebody to look in two
+         different places. */
+      let unreadable = !!(e && e.unreadable);
+      const notes = [
+        '[' + transport() + ']',
+        'fetch: ' + (unreadable ? describe(e) : timedOut ? 'hung' : describe(e)),
+      ];
 
       /* The other roads, in the order most likely to work. An unpatched fetch
          from a fresh frame is the engine's own; XHR is patched separately from
@@ -717,7 +743,14 @@
             notes.push(name + ': ' + (response ? String(response.status) : 'no response'));
             continue;
           }
-          const info = await response.json();
+          let info;
+          try {
+            info = await response.json();
+          } catch (body) {
+            unreadable = true;
+            notes.push(name + ': unreadable body');
+            continue;
+          }
           if (!looksLikePosnic(info)) return fail('NOT_POSNIC', ' [' + name + ']');
           /* It worked by another road. The address is fine; the bridge is
              not, and the shopkeeper does not need to know that. */
@@ -729,6 +762,7 @@
         }
       }
 
+      if (unreadable) return fail('UNREADABLE', ' ' + notes.join(' / '));
       return fail(timedOut ? 'TIMED_OUT' : 'UNREACHABLE', ' ' + notes.join(' / '));
     } finally {
       clearTimeout(timer);
@@ -1266,6 +1300,41 @@
       return !!(modal && modal.style.display && modal.style.display !== 'none');
     }
 
+    /*
+     * SOMEBODY IS CHOOSING A SERVER. DO NOT FIGHT THEM.
+     *
+     * Owner: "still change server not working. still looking for same not
+     * working old config and after two try its showing option to edit."
+     *
+     * Tapping Change shop server sets a flag and comes here. This file's own
+     * DOMContentLoaded listener then started a health check against the
+     * address the person had just said was wrong - and because that address is
+     * dead, the check spends its full timeout, fails, schedules a retry and
+     * goes round again. The editor is open the whole time, underneath an app
+     * busy proving what everybody already knows.
+     *
+     * settingsOpen() covers the modal once it is UP, and misses this entirely:
+     * net.start() runs on DOMContentLoaded and the modal opens sixty
+     * milliseconds later, so the probe is already away before there is a modal
+     * to notice.
+     *
+     * Two flags because they mark two moments. `posnic_change_server` is set
+     * on the screen being left, before this page exists at all, which is the
+     * only thing early enough to be read here. `posnic_editing_server` lasts
+     * as long as the editor is open.
+     */
+    function choosingServer() {
+      try {
+        return (
+          sessionStorage.getItem('posnic_change_server') === '1' ||
+          sessionStorage.getItem('posnic_editing_server') === '1'
+        );
+      } catch (e) {
+        /* private mode: behave as though nobody is, which is the old way */
+        return false;
+      }
+    }
+
     function overlay() {
       let element = document.getElementById('posnic-offline');
       if (element) return element;
@@ -1388,6 +1457,9 @@
       },
 
       async check(manual = false) {
+        /* A scheduled tick that arrives mid-edit stands aside too; a manual
+           check is the editor itself asking, and always runs. */
+        if (!manual && choosingServer()) return false;
         const chosen = await resolve({ allowScan: manual });
         if (chosen) {
           net.setOnline();
@@ -1397,8 +1469,19 @@
         return false;
       },
 
+      /* Exposed because the sign-in page has a boot check of its own and it
+         has to make the same decision from the same facts. */
+      choosingServer,
+
       start() {
         if (!server.isConfigured) return;
+        /*
+         * Not while somebody is picking one. The editor calls start() again
+         * when it closes, so nothing is lost by waiting - and what is gained
+         * is that the address they are typing over is not simultaneously
+         * being dialled.
+         */
+        if (choosingServer()) return;
         net.check(false);
         const tick = () => {
           clearTimeout(timer);

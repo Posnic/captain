@@ -135,10 +135,32 @@
             <span class="bill-count" id="bill-count">0 items</span>
             <span class="bill-total" id="bill-total">₹0.00</span>
         </div>
-        <button type="button" class="bill-go" id="next-btn" onclick="window.location.href='cart.html'">
+        <!-- The spinner goes up before the navigation, because the gap between
+             tapping this and the bill page starting to load is part of the wait
+             too, and nothing else covers it. -->
+        <button type="button" class="bill-go" id="next-btn" onclick="goToBill()">
             View bill →
         </button>
     </div>
+
+    <script>
+        /*
+         * To the bill, saying so.
+         *
+         * Owner: "view bill took few seconds ... dont confuse user few
+         * seconds." A bare location.href leaves the menu on screen and
+         * apparently unresponsive until the next page paints, so the first
+         * thing a second tap earns is a second navigation.
+         *
+         * This screen's loader starts visible and is hidden once the menu is
+         * drawn, so it is already here, ready to be shown again.
+         */
+        function goToBill() {
+            const loader = document.getElementById('page-loader');
+            if (loader) loader.style.display = 'flex';
+            window.location.href = 'cart.html';
+        }
+    </script>
 
     <!-- Kept for the code that still reads them: updateCart writes the totals
          into these as well as into the bar above. -->

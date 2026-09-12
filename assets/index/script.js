@@ -381,11 +381,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     })();
 
-    POSNIC.net.check(true).then(function(ok) {
-        if (!ok && typeof openServerModal === 'function' && !POSNIC.server.isConfigured) {
-            openServerModal();
-        }
-    });
+    /*
+     * ARE WE ONLINE - unless somebody came here to say we are not.
+     *
+     * Owner: "still change server not working. still looking for same not
+     * working old config and after two try its showing option to edit."
+     *
+     * This is a MANUAL check, so it allows a full Wi-Fi sweep, and it runs on
+     * every load of this page. Arriving from Change shop server, it therefore
+     * dialled the address the person had just rejected and then swept the
+     * subnet looking for it - and only when all of that had run out did the
+     * editor stop being argued with. Two goes, on a handset, is exactly what
+     * that feels like.
+     *
+     * Nothing is lost by skipping it here: the editor is opening anyway, and
+     * closing the editor starts the checks again.
+     */
+    if (!POSNIC.net.choosingServer()) {
+        POSNIC.net.check(true).then(function(ok) {
+            if (!ok && typeof openServerModal === 'function' && !POSNIC.server.isConfigured) {
+                openServerModal();
+            }
+        });
+    }
 
     const serverFailure = sessionStorage.getItem('server_connection_failed');
     if (serverFailure) {
