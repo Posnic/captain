@@ -333,3 +333,35 @@ test('the search looks near the address this device was given', () => {
     'the neighbourhood is not counted into the first pass'
   );
 });
+
+test('a page that uses icon-font glyphs loads the icon font', () => {
+  /*
+   * NOTHING ERRORS WHEN AN ICON FONT IS MISSING. The glyph simply is not
+   * there, and an empty box is easy to read as "the image did not load" or
+   * "the local server is wrong" - which is exactly how this one was reported.
+   *
+   * The connect sheet used `fas fa-qrcode`, `fa-wifi` and `fa-keyboard`, and
+   * index.html has never loaded Font Awesome, so all three choices showed a
+   * blank square. They are inline SVG now: this is the first screen, often on
+   * a bad connection, and a whole icon font for three glyphs is a request that
+   * buys nothing.
+   */
+  const pages = [
+    'index.html', 'kot-management.html', 'discount.html',
+    'products.html', 'cart.html', 'thankyou.html', 'order-history.html',
+  ];
+
+  const missing = [];
+  for (const page of pages) {
+    const source = fs.readFileSync(path.join(root, page), 'utf8');
+    const usesFont = /class="fa[srb]? fa-/.test(source);
+    const loadsFont = /fontawesome/.test(source);
+    if (usesFont && !loadsFont) missing.push(page);
+  }
+
+  assert.deepEqual(
+    missing,
+    [],
+    'these pages draw Font Awesome glyphs without loading it: ' + missing.join(', ')
+  );
+});

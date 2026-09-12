@@ -6,6 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <!--
+        THE ICONS ON THIS PAGE ARE INLINE SVG, NOT A FONT.
+
+        The connect sheet used `fas fa-qrcode` and its kin, and this page has
+        never loaded Font Awesome - so all three choices showed an empty box
+        where their icon should be. Nothing errors when an icon font is
+        missing; the glyph simply is not there.
+
+        Inline rather than adding the stylesheet: this is the first screen,
+        often on a bad connection, and pulling a whole icon font for three
+        glyphs is a request that buys nothing. They take currentColor, so they
+        follow the theme like everything else.
+    -->
     <!-- The decisions every screen shares, made once. -->
     <link href="assets/common/design.css" rel="stylesheet">
     <script src="assets/jquery-3.6.0.min.js"></script>
@@ -65,30 +78,30 @@
                 <!-- The three ways in. -->
                 <div id="connectChoices">
                     <button class="ui-choice" onclick="chooseScan()">
-                        <span class="ui-choice-icon"><i class="fas fa-qrcode"></i></span>
+                        <span class="ui-choice-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h3v3h-3v-3zm5 0h3v3h-3v-3zm-5 5h3v3h-3v-3zm5 0h3v3h-3v-3z"/></svg></span>
                         <span class="ui-choice-text">
                             <span class="ui-choice-title">Scan the shop code</span>
                             <span class="ui-choice-note">Point at the code by the till. Nothing to type.</span>
                         </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                        <span class="ui-choice-chev">&rsaquo;</span>
                     </button>
 
                     <button class="ui-choice" onclick="chooseSearch()">
-                        <span class="ui-choice-icon"><i class="fas fa-wifi"></i></span>
+                        <span class="ui-choice-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 18.5a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zm0-4.9c1.6 0 3.1.6 4.2 1.7l-1.7 1.7A3.6 3.6 0 0012 16a3.6 3.6 0 00-2.5 1l-1.7-1.7a5.9 5.9 0 014.2-1.7zm0-4.8c2.9 0 5.6 1.1 7.6 3.1l-1.7 1.7A8.3 8.3 0 0012 11.2c-2.2 0-4.3.9-5.9 2.4l-1.7-1.7a10.7 10.7 0 017.6-3.1zm0-4.8c4.2 0 8.1 1.6 11 4.5l-1.7 1.7A13.1 13.1 0 0012 6.4c-3.4 0-6.7 1.3-9.3 3.8L1 8.5A15.5 15.5 0 0112 4z"/></svg></span>
                         <span class="ui-choice-text">
                             <span class="ui-choice-title">Find the till on this Wi-Fi</span>
                             <span class="ui-choice-note">For a phone already on the shop network.</span>
                         </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                        <span class="ui-choice-chev">&rsaquo;</span>
                     </button>
 
                     <button class="ui-choice" onclick="chooseManual()">
-                        <span class="ui-choice-icon"><i class="fas fa-keyboard"></i></span>
+                        <span class="ui-choice-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M3 6h18a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7a1 1 0 011-1zm1 2v8h16V8H4zm2 1h2v2H6V9zm3 0h2v2H9V9zm3 0h2v2h-2V9zm3 0h2v2h-2V9zM6 12h2v2H6v-2zm3 0h6v2H9v-2zm7 0h2v2h-2v-2z"/></svg></span>
                         <span class="ui-choice-text">
                             <span class="ui-choice-title">Type the address</span>
                             <span class="ui-choice-note">A shop code, a web address, or the till on this Wi-Fi.</span>
                         </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
+                        <span class="ui-choice-chev">&rsaquo;</span>
                     </button>
                 </div>
 
