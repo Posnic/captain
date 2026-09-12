@@ -377,6 +377,18 @@
       else if (act === 'strike') strike(id);
       else if (act === 'place') confirmPlace();
       else if (act === 'search') searchFor(control.getAttribute('data-term'));
+      /* Speaking again is the natural "more" after speaking. */
+      else if (act === 'again') {
+        hidePanel();
+        setTimeout(() => {
+          const mic = $(BUTTON_ID);
+          if (mic) mic.click();
+        }, 120);
+      }
+      else if (act === 'bill') {
+        /* The dishes are already on the bill; this is the way to look at it. */
+        window.location.href = 'cart.html';
+      }
       else if (act === 'unplaced-drop') dropUnplaced(control.getAttribute('data-term'));
     });
     return element;
@@ -697,19 +709,29 @@
 
   /** A short line saying what a list of commands will do. */
   function describe(commands) {
+    /*
+     * WHAT HAPPENED, IN THE PAST TENSE.
+     *
+     * This read "add 2 Chicken Biryani" - an instruction, as though it were
+     * still waiting to be carried out. It was already done by the time these
+     * words were drawn, and a screen describing a completed thing as a pending
+     * one is why somebody sits looking for the button that does it.
+     */
     const parts = [];
     for (const command of commands) {
-      if (command.verb === 'place') parts.push('then send to kitchen');
-      else if (command.verb === 'clear') parts.push('clear the cart');
-      else if (command.verb === 'show') parts.push('read it back');
+      if (command.verb === 'place') parts.push('ready to send');
+      else if (command.verb === 'clear') parts.push('cleared the order');
+      else if (command.verb === 'show') parts.push('here it is');
       else {
         const names = command.lines
           .map((l) => `${l.quantity} ${l.item ? l.item.name : l.term + '?'}`)
           .join(', ');
-        parts.push(`${command.verb === 'remove' ? 'take off' : command.verb === 'set' ? 'make it' : 'add'} ${names}`);
+        parts.push(
+          `${command.verb === 'remove' ? 'Took off' : command.verb === 'set' ? 'Made it' : 'Added'} ${names}`
+        );
       }
     }
-    return parts.join(' - ');
+    return parts.join(' · ');
   }
 
   /**
@@ -890,7 +912,9 @@
     showPanel();
     const panel = $(PANEL_ID);
     if (panel) panel.setAttribute('data-fresh', view.fresh ? 'true' : 'false');
-    setText('status', view.pendingPlace ? 'Ready to send' : 'Heard');
+    /* "Heard" says the words arrived. "On the order" says they landed, which
+       is the thing somebody is actually waiting to be told. */
+    setText('status', view.pendingPlace ? 'Ready to send' : 'On the order');
     setText('said', view.said ? `"${view.said}"` : '');
     setText('note', view.status);
 
@@ -933,11 +957,38 @@
     const actions = $(`${PANEL_ID}-actions`);
     if (actions) {
       const count = view.cart.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+
+      /*
+       * THERE IS ALWAYS A WAY FORWARD.
+       *
+       * Owner: "i saw text nicely converted but next what? need stop to get
+       * added to cart or something else need to do. i stuck in that."
+       *
+       * The dishes were already on the bill by this point - apply() puts them
+       * there before the panel is drawn - and the only button said "Add more".
+       * So the screen showed the right answer and offered no way to accept it,
+       * and the one thing it did offer opened a SEARCH BOX, which is the
+       * opposite of what somebody who just spoke wants.
+       *
+       * Three things now, in the order a person needs them: say another line,
+       * or go to the bill, or - when they actually asked to send it - send it.
+       * Speaking again is the natural "more" after speaking; the search box is
+       * still one tap away on the menu behind.
+       */
+      const money = view.cart.reduce(
+        (sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.final_price || row.price) || 0),
+        0
+      );
+
+      const sayMore = '<button type="button" class="vp-btn" data-act="again">&#127908; Say more</button>';
+
       actions.innerHTML = view.pendingPlace
-        ? `<button type="button" class="vp-btn" data-act="search" data-term="">Add more</button>
+        ? `${sayMore}
            <button type="button" class="vp-btn" data-primary="true" data-act="place" ${count ? '' : 'disabled'}>
              Send ${count ? count + (count === 1 ? ' item' : ' items') : ''} to kitchen</button>`
-        : `<button type="button" class="vp-btn" data-act="search" data-term="">Add more</button>`;
+        : `${sayMore}
+           <button type="button" class="vp-btn" data-primary="true" data-act="bill" ${count ? '' : 'disabled'}>
+             ${count ? 'View bill ₹' + money.toFixed(0) : 'Nothing yet'}</button>`;
     }
   }
 

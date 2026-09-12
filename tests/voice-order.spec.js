@@ -364,3 +364,52 @@ test('a dish heard by ear is flagged for a second look', async ({ page }) => {
   await expect(panel(page)).toContainText('Chicken Biryani');
   await expect(panel(page).locator('.vp-rough')).toContainText('check this one');
 });
+
+/* ------------------------------------------------ and then what happens */
+
+test('after speaking there is always a way forward', async ({ page }) => {
+  /*
+   * Owner: "i saw text nicely converted but next what? need stop to get added
+   * to cart or something else need to do. i stuck in that."
+   *
+   * The dishes were already on the bill by the time the panel drew - apply()
+   * puts them there first - and the only button said "Add more", which opened
+   * a SEARCH BOX. So the screen showed the right answer, offered no way to
+   * accept it, and the one thing it did offer was the opposite of what
+   * somebody who has just spoken wants.
+   */
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+
+  await expect(panel(page)).toBeVisible();
+  /* Said in the past tense, because it has already happened. */
+  await expect(panel(page)).toContainText('On the order');
+  await expect(panel(page)).toContainText('Added');
+
+  /* Speaking again is the natural "more" after speaking. */
+  await expect(panel(page).locator('[data-act="again"]')).toBeVisible();
+
+  /* And the way to the bill, carrying what it comes to. */
+  const bill = panel(page).locator('[data-act="bill"]');
+  await expect(bill).toBeVisible();
+  await expect(bill).toContainText('View bill');
+  await expect(bill).toBeEnabled();
+});
+
+test('the way forward goes to the bill', async ({ page }) => {
+  await onTheMenu(page, 'two chicken biryani');
+  await holdAndSpeak(page);
+  await panel(page).locator('[data-act="bill"]').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+  await expect(page.locator('.bill-line')).toHaveCount(1);
+});
+
+test('saying send to kitchen offers that instead', async ({ page }) => {
+  /* The one case where the forward action is not the bill: somebody has
+     already said what they want to happen. */
+  await onTheMenu(page, 'two chicken biryani, send to kitchen');
+  await holdAndSpeak(page);
+  await expect(panel(page)).toContainText('Ready to send');
+  await expect(panel(page).locator('[data-act="place"]')).toContainText('to kitchen');
+  await expect(panel(page).locator('[data-act="bill"]')).toHaveCount(0);
+});
