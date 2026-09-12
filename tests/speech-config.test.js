@@ -212,9 +212,12 @@ test('the phone recogniser is held open and answers with what was said', async (
   let emit = null;
   onAPhone(
     fakePlugin({
+      /* BY NAME. The session listens for two things now - the words, and the
+         moment Android gives up on its own - and a fake that kept only the
+         last handler silently delivered every partial to the wrong one. */
       addListener: async (name, fn) => {
         calls.push(`listen:${name}`);
-        emit = fn;
+        if (name === 'partialResults') emit = fn;
         return { remove: async () => calls.push('removed') };
       },
       start: async (options) => {
@@ -368,5 +371,121 @@ test('a key in the SHOP store is dropped too, not only one passed in', () => {
     assert.equal(config.secret, undefined);
   } finally {
     globalThis.localStorage.removeItem(Speech.SHOP_STORE);
+  }
+});
+
+/* ------------------------------ a pause in the middle is not the end */
+
+/*
+ * Owner, from a handset: "first time talk it worked. after gap i talked second
+ * time its not coverted. bottom stop button not worked."
+ *
+ * Android's SpeechRecognizer ENDS ITSELF after a pause in speech. That is its
+ * normal behaviour, not a fault - and this session carried on believing it was
+ * live, so a waiter who said a few dishes, thought, and carried on lost
+ * everything after the pause. Then Stop appeared to do nothing, because
+ * stopping an already-stopped recogniser is exactly the call that hangs and
+ * there was no timeout anywhere on this path.
+ */
+
+/** A plugin that keeps its listeners apart and can be told to give up. */
+function talkingPlugin(over = {}) {
+  const listeners = {};
+  const calls = [];
+  const plugin = {
+    calls,
+    listeners,
+    available: async () => ({ available: true }),
+    requestPermissions: async () => ({ speechRecognition: 'granted' }),
+    addListener: async (name, fn) => {
+      listeners[name] = fn;
+      return { remove: async () => calls.push(`removed:${name}`) };
+    },
+    start: async () => {
+      calls.push('start');
+    },
+    stop: async () => {
+      calls.push('stop');
+    },
+    ...over,
+  };
+  return plugin;
+}
+
+test('what was said before a pause is kept, and listening starts again', async () => {
+  const plugin = talkingPlugin();
+  onAPhone(plugin);
+  try {
+    globalThis.localStorage.removeItem(Speech.STORE);
+    const session = Speech.start({});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    plugin.listeners.partialResults({ matches: ['two chicken biryani'] });
+    /* Android gives up on the silence. */
+    plugin.listeners.listeningState({ status: 'stopped' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    /* It opened again rather than sitting there believing it was live. */
+    assert.equal(plugin.calls.filter((c) => c === 'start').length, 2, plugin.calls.join(' '));
+
+    /* And the second half appends rather than replacing the first, because
+       after a restart the partials begin again from nothing. */
+    plugin.listeners.partialResults({ matches: ['and three coffee'] });
+    assert.equal(await session.stop(), 'two chicken biryani and three coffee');
+  } finally {
+    delete globalThis.Capacitor;
+  }
+});
+
+test('stop answers even when the recogniser never does', async () => {
+  /*
+   * THE STOP BUTTON THAT DID NOTHING. stop() on a recogniser that has already
+   * ended itself can simply never come back, and this path had no timeout at
+   * all - the browser path has had one since it was written. A waiter pressed
+   * Stop and the screen sat there.
+   */
+  const plugin = talkingPlugin({
+    stop: () => new Promise(() => {}),
+  });
+  onAPhone(plugin);
+  try {
+    globalThis.localStorage.removeItem(Speech.STORE);
+    const session = Speech.start({});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    plugin.listeners.partialResults({ matches: ['two coffee'] });
+
+    const answered = await Promise.race([
+      session.stop(),
+      new Promise((resolve) => setTimeout(() => resolve('HUNG'), 4000)),
+    ]);
+    assert.equal(answered, 'two coffee', 'stop() hung on a plugin that never answers');
+  } finally {
+    delete globalThis.Capacitor;
+  }
+});
+
+test('a recogniser that will not reopen is not restarted for ever', async () => {
+  /* A restart loop on a handset is a flat battery and a hot phone. */
+  let started = 0;
+  const plugin = talkingPlugin({
+    start: async () => {
+      started += 1;
+      if (started > 1) throw new Error('no');
+    },
+  });
+  onAPhone(plugin);
+  try {
+    globalThis.localStorage.removeItem(Speech.STORE);
+    const session = Speech.start({});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    for (let i = 0; i < 30; i++) {
+      plugin.listeners.listeningState({ status: 'stopped' });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.ok(started <= 12, `it tried to reopen ${started} times`);
+    await session.stop();
+  } finally {
+    delete globalThis.Capacitor;
   }
 });

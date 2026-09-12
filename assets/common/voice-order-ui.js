@@ -519,7 +519,26 @@
     document.body.appendChild(element);
 
     const close = $(`${PANEL_ID}-close`);
-    if (close) close.addEventListener('click', hidePanel);
+    if (close) {
+      close.addEventListener('click', () => {
+        /*
+         * CLOSING THE PANEL CLOSES THE MICROPHONE.
+         *
+         * This was hidePanel alone, so tapping the cross while it was
+         * listening took the panel off the screen and left the recogniser
+         * running behind it - holding the microphone, still costing a paid
+         * provider money, and with no way back to it short of pressing the mic
+         * again. Owner: "top close button just closed. nothing happened."
+         *
+         * Nothing is applied on the way out. Anything already agreed to is on
+         * the order and stays there; anything merely heard is dropped, which
+         * is what closing something without confirming it means everywhere
+         * else.
+         */
+        if (session) abandon();
+        else hidePanel();
+      });
+    }
 
     /* One listener for every stepper and strike, because the rows are redrawn
        on every change and listeners on them would be redrawn too. */

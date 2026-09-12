@@ -303,12 +303,87 @@
    * should never be asked for one - and a prompt that arrives with no context
    * is the one people refuse.
    */
+  /**
+   * Never let a promise from the bridge hold the screen.
+   *
+   * Every call below goes through here. A plugin call that never settles is
+   * not a hypothetical: Android's recogniser ends itself on a silence, and
+   * stop() on an already-stopped recogniser is exactly the call that hangs.
+   * The browser path has had a settle timeout since it was written; this one
+   * had none, which is why the Stop button could do nothing at all.
+   */
+  function within(promise, ms, fallback) {
+    return Promise.race([
+      Promise.resolve(promise).catch(() => fallback),
+      new Promise((resolve) => setTimeout(() => resolve(fallback), ms)),
+    ]);
+  }
+
   function beginOnNative(plugin, { language, onPartial }) {
     const startedAt = Date.now();
-    let best = '';
+    /*
+     * WHAT HAS BEEN SAID, IN TWO PARTS.
+     *
+     * `settled` is every utterance the recogniser has already finished with;
+     * `partial` is the one it is in the middle of. Android hands back partials
+     * as a WHOLE SENTENCE replacing the last, so they cannot be appended - but
+     * across a restart they start again from nothing, and appending is then
+     * exactly what is needed. Keeping the two apart is what makes a pause
+     * survivable.
+     */
+    let settled = '';
+    let partial = '';
     let handle = null;
+    let stateHandle = null;
     let cancelled = false;
+    let stopping = false;
     let listening = false;
+    let restarts = 0;
+
+    /* A recogniser that ends the instant it starts would otherwise be
+       restarted for ever. Ten is far more than a long order needs. */
+    const MAX_RESTARTS = 10;
+
+    const heard = () => (settled + ' ' + partial).replace(/\s+/g, ' ').trim();
+
+    const open = () =>
+      plugin.start({
+        language: language || DEFAULTS.language,
+        partialResults: true,
+        popup: false,
+        maxResults: 1,
+      });
+
+    /*
+     * ANDROID STOPS LISTENING ON ITS OWN, AND NOBODY WAS TOLD.
+     *
+     * SpeechRecognizer ends after a pause in speech - that is its normal
+     * behaviour, not a fault - and this session simply carried on believing it
+     * was live. A waiter who said a few dishes, thought, and carried on found
+     * the second half was never heard, and the panel showed the first half as
+     * though nothing had happened.
+     *
+     * So the end of an utterance is the end of an UTTERANCE, not of the order.
+     * What was heard is banked and the recogniser is opened again, until the
+     * person says they are finished.
+     */
+    const resume = async () => {
+      if (cancelled || stopping || !listening) return;
+      if (restarts >= MAX_RESTARTS) return;
+      if ((Date.now() - startedAt) / 1000 >= MAX_SECONDS) return;
+
+      if (partial) {
+        settled = (settled + ' ' + partial).trim();
+        partial = '';
+      }
+      restarts += 1;
+      try {
+        await open();
+      } catch (e) {
+        /* It will not reopen. What was already said still counts. */
+        listening = false;
+      }
+    };
 
     /*
      * Opening is asynchronous and the button is already down. The promise is
@@ -329,34 +404,42 @@
            rather than as words to append. Appending them would give
            "two two chicken two chicken biryani". */
         if (said) {
-          best = said;
-          if (onPartial) onPartial(best);
+          partial = said;
+          if (onPartial) onPartial(heard());
         }
       });
+
+      /* And the moment it gives up, so the pause in the middle of an order is
+         a pause and not the end of it. Optional: a plugin that does not report
+         its state leaves this null and behaves exactly as it did before. */
+      try {
+        stateHandle = await plugin.addListener('listeningState', (data) => {
+          const state = (data && data.status) || '';
+          if (state === 'stopped') resume();
+        });
+      } catch (e) {
+        /* no state events on this plugin version */
+      }
 
       /* popup:false because the order is read back on our own sheet. Android's
          own dialogue would cover the menu, take the gesture over, and give a
          waiter two different confirmations to read. */
-      await plugin.start({
-        language: language || DEFAULTS.language,
-        partialResults: true,
-        popup: false,
-        maxResults: 1,
-      });
+      await open();
       listening = true;
     })();
 
     const release = async () => {
-      try {
-        if (listening) await plugin.stop();
-      } catch (e) {
-        /* already stopped, or stopped itself on a silence */
+      stopping = true;
+      /* Each of these is given its own budget rather than the caller's, so one
+         that never comes back cannot take the others - or the screen - with
+         it. */
+      if (listening) await within(plugin.stop().catch(() => null), 1500, null);
+      listening = false;
+      for (const h of [handle, stateHandle]) {
+        if (h && h.remove) await within(h.remove().catch(() => null), 800, null);
       }
-      try {
-        if (handle && handle.remove) await handle.remove();
-      } catch (e) {
-        /* the listener goes with the page anyway */
-      }
+      handle = null;
+      stateHandle = null;
     };
 
     return {
@@ -366,9 +449,26 @@
         release();
       },
       async stop() {
-        await opening;
+        /*
+         * Opening is waited for, but not for ever: a bridge that never answers
+         * must not leave a waiter holding a dead screen.
+         *
+         * A REAL REFUSAL STILL HAS TO GET OUT. "The microphone is blocked for
+         * this app" is the one message here that tells somebody what to go and
+         * do, so it is caught, the recogniser is released either way, and then
+         * it is re-thrown. Racing it away would turn a fixable permission into
+         * a silent empty order.
+         */
+        let refused = null;
+        await Promise.race([
+          Promise.resolve(opening).catch((e) => {
+            refused = e;
+          }),
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
         await release();
-        return cancelled ? '' : best;
+        if (refused) throw refused;
+        return cancelled ? '' : heard();
       },
     };
   }

@@ -548,3 +548,28 @@ test('nothing reaches the bill until somebody agrees to it', async ({ page }) =>
   await confirmHeard(page);
   await expect(count(page)).toHaveText('5');
 });
+
+test('closing the panel while it listens stops the microphone', async ({ page }) => {
+  /*
+   * Owner: "top close button just closed. nothing happened."
+   *
+   * It was hidePanel alone, so the cross took the panel off the screen and
+   * left the recogniser running behind it - holding the microphone, still
+   * costing a paid provider money, and with no way back to it short of
+   * pressing the mic again.
+   */
+  await onTheMenu(page, 'two chicken biryani');
+
+  await page.locator('#posnic-voice-mic').click();
+  await expect(panel(page)).toBeVisible();
+  await expect(page.locator('#posnic-voice-mic')).toHaveAttribute('data-recording', 'true');
+
+  await page.locator('#posnic-voice-panel-close').click();
+
+  await expect(panel(page)).toBeHidden();
+  /* The mic button is the app's own statement about whether it is listening,
+     and it has to agree with the panel. */
+  await expect(page.locator('#posnic-voice-mic')).toHaveAttribute('data-recording', 'false');
+  /* Nothing was applied on the way out: heard is not agreed to. */
+  await expect(count(page)).toHaveText('0');
+});
