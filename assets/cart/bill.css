@@ -26,6 +26,27 @@
 
 /* ------------------------------------------------------------ the screen */
 
+/*
+ * AND THE DOCUMENT ITSELF, WHICH cart/style.css LOCKS.
+ *
+ * That sheet opens with `html { height: 100%; overflow: hidden }` and the
+ * comment "prevent whole page scroll", which was right for the layout it was
+ * written for and is wrong for this one: the head below is `position: sticky`
+ * and the body carries padding-bottom for the action bar, which are both ways
+ * of saying THE PAGE SCROLLS.
+ *
+ * Left as it was, a bill longer than the screen had lines nobody could reach -
+ * and it would not have looked broken, because `overflow: hidden` still allows
+ * programmatic scrolling, so every automated check passed over it. The menu and
+ * the table screen had the identical omission and it was reported from a
+ * handset as "items not able to scroll".
+ */
+html,
+body.bill-screen {
+  height: auto;
+  overflow: visible;
+}
+
 body.bill-screen {
   margin: 0;
   background: var(--ground);

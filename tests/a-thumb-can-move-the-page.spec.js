@@ -122,3 +122,26 @@ test('a finger can scroll the table screen too', async ({ page }) => {
   );
   expect(overflow).not.toBe('hidden');
 });
+
+test('a finger can scroll a long bill', async ({ page }) => {
+  /*
+   * Found by the static guard rather than reported: cart/style.css locks the
+   * document with "prevent whole page scroll", and bill.css - which gave that
+   * screen a sticky head and padding-bottom for the action bar, both of which
+   * mean THE PAGE SCROLLS - never released it. A bill longer than the screen
+   * had lines nobody could reach, and it would not have looked broken.
+   */
+  await onTheMenu(page, 'nothing', { menu: LONG });
+
+  /* Enough lines to overflow. */
+  for (const id of ['p-0-0', 'p-0-1', 'p-0-2', 'p-1-0', 'p-1-1', 'p-2-0', 'p-2-1', 'p-3-0']) {
+    await page.locator(`.btn-add[data-id="${id}"]`).click();
+  }
+  await page.goto('/cart.html');
+  await expect(page.locator('.bill-line').first()).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => getComputedStyle(document.documentElement).overflow
+  );
+  expect(overflow).not.toBe('hidden');
+});
