@@ -422,3 +422,98 @@ test('the mic is absent where the phone cannot listen', async () => {
   context.Speech.available = () => false;
   assert.equal(await api.refreshAvailability(), false);
 });
+
+/* ------------------------------------------- the smart half, from the till */
+
+/*
+ * When the till's own AI reads the order, the answer carries more than the
+ * commands: the note said for a dish, the dishes a miss might have been, what
+ * goes with the order, and one sentence to read back. Each of those has to
+ * land somewhere a waiter can act on it, and none of them may break a handset
+ * talking to an older till that sends none of them.
+ */
+function tillAnswers(res, data) {
+  res.api.serverReads = true;
+  res.context.POSNIC = { api: { post: async () => ({ data }) } };
+}
+
+test('a note said for a dish is written on that line, after the line exists', async () => {
+  const res = load();
+  res.api.begin();
+  const notes = [];
+  res.context.setCartItemNotes = async (id, text) => { notes.push({ id, text }); };
+  tillAnswers(res, {
+    commands: [{ verb: 'add', quantity: 2, item_id: '2', said: 'masala dosa', note: 'no onion' }],
+  });
+  await res.api.absorb('two masala dosa no onion');
+  assert.deepEqual(res.calls.quantity.at(-1), { id: '2', change: 2 }, 'the dish was not added');
+  assert.deepEqual(notes, [{ id: '2', text: 'no onion' }], 'the note did not reach the line');
+});
+
+test('a note already on the line is kept, and the same words are not added twice', async () => {
+  const res = load();
+  res.api.begin();
+  const notes = [];
+  res.context.setCartItemNotes = async (id, text) => { notes.push({ id, text }); };
+  res.context.getCartData = async () => [{ id: '2', name: 'Masala Dosa', quantity: 1, notes: 'extra sambar' }];
+  tillAnswers(res, { commands: [{ verb: 'add', quantity: 1, item_id: '2', note: 'no onion' }] });
+  await res.api.absorb('one more dosa no onion');
+  assert.deepEqual(notes, [{ id: '2', text: 'extra sambar, no onion' }]);
+
+  notes.length = 0;
+  res.context.getCartData = async () => [{ id: '2', name: 'Masala Dosa', quantity: 2, notes: 'extra sambar; no onion' }];
+  tillAnswers(res, { commands: [{ verb: 'add', quantity: 1, item_id: '2', note: 'No Onion' }] });
+  await res.api.absorb('another dosa no onion');
+  /* the line is rewritten with what it already had; the words appear once */
+  assert.ok(notes.every((n) => n.text === 'extra sambar; no onion'), 'the same note was added a second time');
+});
+
+test('a dish that did not match offers the dishes it might have been, one tap each', async () => {
+  const res = load();
+  res.api.begin();
+  tillAnswers(res, {
+    commands: [{ verb: 'add', quantity: 2, item_id: null, said: 'dosa', candidates: ['2', '0'] }],
+  });
+  await res.api.absorb('two dosa');
+  const miss = res.api.snapshot().unplaced;
+  assert.deepEqual(miss, [{ term: 'dosa', quantity: 2, candidates: ['2', '0'] }],
+    'the miss does not carry the candidates the till named, with the quantity said');
+
+  await res.api.pickCandidate('2', 2, 'dosa');
+  assert.deepEqual(res.calls.quantity.at(-1), { id: '2', change: 2 }, 'the tap did not add the dish');
+  assert.deepEqual(res.api.snapshot().unplaced, [], 'the miss is still listed after it was resolved');
+});
+
+test('what goes with the order is offered, and taking one adds it and removes the offer', async () => {
+  const res = load();
+  res.api.begin();
+  tillAnswers(res, {
+    commands: [{ verb: 'add', quantity: 1, item_id: '2', said: 'masala dosa' }],
+    suggestions: [{ item_id: '1', why: 'goes with dosa' }],
+  });
+  await res.api.absorb('one masala dosa');
+  assert.deepEqual(res.api.snapshot().suggestions, [{ id: '1', name: 'Coffee', why: 'goes with dosa' }],
+    'the suggestion the till made is not held');
+
+  await res.api.takeSuggestion('1');
+  assert.deepEqual(res.calls.quantity.at(-1), { id: '1', change: 1 });
+  assert.deepEqual(res.api.snapshot().suggestions, [], 'a suggestion already taken is still offered');
+});
+
+test('the read-back is shown when the till gives one, and the panel\'s own words otherwise', async () => {
+  const res = load();
+  res.api.begin();
+  tillAnswers(res, {
+    commands: [{ verb: 'add', quantity: 1, item_id: '2' }],
+    summary: 'One masala dosa, no onion.',
+  });
+  await res.api.absorb('one masala dosa no onion');
+  assert.equal(res.api.snapshot().summary, 'One masala dosa, no onion.');
+
+  /* an older till: commands only, nothing else in the answer */
+  tillAnswers(res, { commands: [{ verb: 'add', quantity: 1, item_id: '1' }] });
+  await res.api.absorb('a coffee');
+  const snap = res.api.snapshot();
+  assert.equal(snap.summary, '', 'a summary from an earlier answer survived');
+  assert.ok(snap.status && !snap.status.includes('undefined'), 'an answer without a summary broke the fallback wording');
+});
