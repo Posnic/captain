@@ -61,7 +61,14 @@
    * are findable by "65".
    */
   function fold(value) {
-    return String(value || '')
+    /*
+     * Romanised first, so a shop whose own dish names are stored in Tamil or
+     * Devanagari is searchable - by a thumb typing Latin, and by a recogniser
+     * handing back either. Both sides of every comparison go through here, so
+     * they meet whichever script each of them started in.
+     */
+    const phonetics = sounds();
+    return String((phonetics && phonetics.roman(value)) || value || '')
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
