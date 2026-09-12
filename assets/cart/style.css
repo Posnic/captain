@@ -89,6 +89,23 @@ html {
 }
 
 /* Page Loader Styles */
+/*
+ * SHOWN WHILE THE BILL IS BEING MADE.
+ *
+ * Owner: "view bill took few seconds. if its api call and waiting show some
+ * anitmation or progress bar. dont confuse user few seconds."
+ *
+ * This started HIDDEN, and renderCart - which reads the cart, prices every
+ * line, applies the discount and lays the bill out - only ever hides it. So on
+ * the one screen where the wait is longest there was nothing on screen at all
+ * for the length of it: a waiter taps View bill, the menu goes, and a blank
+ * page sits there.
+ *
+ * The menu screen has had it the right way round all along (products/style.css
+ * starts it as flex), which is why the same wait there has never been
+ * reported. renderCart already hides this on both of its paths - the empty
+ * cart and the full one - so starting it visible needs nothing else.
+ */
 #page-loader {
     position: fixed;
     top: 0;
@@ -97,8 +114,7 @@ html {
     height: 100%;
     background: white;
     z-index: 9999;
-    display: none;
-    /* hidden initially */
+    display: flex;
     align-items: center;
     justify-content: center;
 }
