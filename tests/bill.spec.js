@@ -151,6 +151,20 @@ test('a spoken requirement is on the bill, where the kitchen reads it', async ({
   await page.mouse.up();
   await expect(page.locator('#posnic-voice-panel')).toBeVisible();
 
+  /*
+   * WAIT FOR THE NOTE, NOT FOR THE PANEL.
+   *
+   * The panel appears as soon as the words are understood; the requirement is
+   * written to the cart AFTER that, through an IndexedDB write nothing here
+   * was waiting on. Navigating on the panel alone is a race the test wins on a
+   * fast desk and loses on a CI runner - which is exactly how it behaved: 115
+   * green locally, this one red in Actions.
+   *
+   * The note showing in the panel is proof the write path ran, so there is
+   * something real to wait for rather than a sleep to lengthen.
+   */
+  await expect(page.locator('#posnic-voice-panel .vp-want')).toHaveText('Without onion');
+
   await page.goto('/cart.html');
   await expect(page.locator('.bill-note')).toHaveText('Without onion');
 });
