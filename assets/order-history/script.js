@@ -332,7 +332,7 @@ async function loadOrderHistory() {
         // Fallback to empty array if API fails
         allOrders = [];
         filterOrders();
-        showToast('Failed to load order history: ' + error.message, 'error');
+        showToast('Could not load the order history: ' + error.message, 'error');
     } finally {
         hideLoader();
     }
@@ -488,7 +488,7 @@ async function saveOrderChanges() {
         // Only validate table selection for Dine-in mode
         if (dineType === 'Dine-in' && !newTableNo) {
             hideLoader();
-            showToast('Please select a table.', 'error');
+            showToast('Choose a table first.', 'error');
             return;
         }
         // For Takeaway, clear table values if not selected
@@ -519,7 +519,7 @@ async function saveOrderChanges() {
         });
 
         if (data.type === 'success') {
-            showToast(data.message || 'Order updated successfully!', 'success');
+            showToast(data.message || 'Order updated', 'success');
             
             // Close modal
             const modalElement = document.getElementById('editOrderModal');
@@ -560,7 +560,7 @@ async function saveOrderChanges() {
         }
     } catch (error) {
         console.error('Error saving order changes:', error);
-        showToast('Failed to update order: ' + error.message, 'error');
+        showToast('Could not update the order: ' + error.message, 'error');
     } finally {
         hideLoader();
     }
@@ -1135,7 +1135,7 @@ function openEditOrderModal() {
     if (!order) return;
 
     if (order.status === 'cancelled') {
-        showToast('Cancelled order cannot be edited.', 'error');
+        showToast('This order was cancelled, so it cannot be changed.', 'error');
         return;
     }
 
@@ -1269,11 +1269,11 @@ function cancelOrder(orderId) {
     if (!order) return;
 
     if (order.status === 'cancelled') {
-        showToast('Order already cancelled.', 'error');
+        showToast('This order was already cancelled.', 'error');
         return;
     }
     if (order.status === 'completed') {
-        showToast('Completed order cannot be cancelled.', 'error');
+        showToast('This order is already done, so it cannot be cancelled.', 'error');
         return;
     }
 
@@ -1313,13 +1313,13 @@ async function performCancelOrder(orderId) {
                 viewOrderDetails(orderId);
             }
 
-            showToast(data.message || 'Order cancelled successfully.', 'success');
+            showToast(data.message || 'Order cancelled', 'success');
         } else {
-            showToast(data.message || 'Failed to cancel order', 'error');
+            showToast(data.message || 'Could not cancel the order', 'error');
         }
     } catch (e) {
         console.error('Error cancelling order:', e);
-        showToast('Failed to cancel order: ' + e.message, 'error');
+        showToast('Could not cancel the order: ' + e.message, 'error');
     } finally {
         hideLoader();
     }

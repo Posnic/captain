@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Cancel response:', result);
 
                 if (result.type !== 'success') {
-                    throw new Error(result.message || 'Failed to cancel order');
+                    throw new Error(result.message || 'Could not cancel the order');
                 }
                 
                 // Close modal
@@ -612,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearKotSelection();
                 
                 // Show success message
-                showToast('Order cancelled successfully', 'success');
+                showToast('Order cancelled', 'success');
                 
                 // Refresh only the tables list
                 setTimeout(async () => {
@@ -621,7 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } catch (error) {
                 console.error('Error cancelling order:', error);
-                showToast('Failed to cancel order', 'error');
+                showToast('Could not cancel the order', 'error');
             } finally {
                 hideLoader();
                 cancelKotId = null;
