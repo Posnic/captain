@@ -41,20 +41,73 @@ function showChangeBranchIfUseful() {
 document.addEventListener('DOMContentLoaded', showChangeBranchIfUseful);
 
 /*
- * Back to the connect sheet, from a screen that has one.
+ * WHICH SHOP THIS PHONE IS POINTED AT - and only then, changing it.
  *
- * The sheet is on index.html and nowhere else. Rather than build a second one
- * here - two copies of a screen always drift - this asks that page to open it
- * on arrival. The server itself is left alone: somebody may only be looking.
+ * This used to navigate straight to the sign-in screen, which read as the app
+ * reloading itself for no reason. Most of the time the question is just "which
+ * shop am I on", and that costs nothing to answer here.
+ *
+ * Changing it genuinely does have to leave: the cached branch, menu, tables
+ * and cart all belong to the shop being left, and a Tables screen showing one
+ * shop while the app talks to another is worse than a reload. So the trip back
+ * is a button somebody presses, with the consequence written beside it.
  */
 function changeServer() {
-    try {
-        sessionStorage.setItem('posnic_change_server', '1');
-    } catch (e) {
-        /* private mode: the page still opens, just without the sheet */
+    const sheet = document.getElementById('server-sheet');
+    if (!sheet) return;
+
+    const where = document.getElementById('server-where');
+    if (where) {
+        let address = '';
+        try {
+            address = POSNIC.server.baseUrl || '';
+        } catch (e) {
+            address = '';
+        }
+        where.textContent = address || 'Not connected to a shop yet';
     }
-    window.location.href = 'index.html';
+    sheet.hidden = false;
 }
+
+/* Delegated, because the sheet is in the page from the start and these three
+   controls outlive every redraw of the floor. */
+document.addEventListener('click', function (event) {
+    if (!event.target.closest) return;
+
+    if (event.target.closest('#server-close') || event.target.id === 'server-scrim') {
+        const sheet = document.getElementById('server-sheet');
+        if (sheet) sheet.hidden = true;
+        return;
+    }
+
+    if (event.target.closest('#server-find')) {
+        /* The same trip, with a second flag so the sign-in screen starts the
+           sweep rather than waiting to be asked. */
+        try {
+            sessionStorage.setItem('posnic_change_server', '1');
+            sessionStorage.setItem('posnic_find_on_wifi', '1');
+        } catch (e) {
+            /* private mode: the sheet still opens, just on the menu */
+        }
+        window.location.href = 'index.html';
+        return;
+    }
+
+    if (event.target.closest('#server-change')) {
+        /*
+         * NOW it leaves, because now somebody asked it to. The connect sheet
+         * stays on index.html: it is three hundred lines of scanning, sweeping
+         * and pairing, and a second copy would drift from the first the week
+         * after it was made.
+         */
+        try {
+            sessionStorage.setItem('posnic_change_server', '1');
+        } catch (e) {
+            /* private mode: the page still opens, just without the sheet */
+        }
+        window.location.href = 'index.html';
+    }
+});
 
 async function changeBranch() {
     try {
@@ -429,7 +482,7 @@ async function selectTable(tableName) {
                     </div>
                     <div class="kot-actions">
                         <button class="kot-action-btn btn-modify" onclick="modifyKot('${kot._id}')">
-                            <i class="fas fa-edit"></i> Edit
+                            <i class="fas fa-edit"></i> Modify
                         </button>
                         <button class="kot-action-btn btn-cancel" onclick="cancelKot('${kot._id}')">
                             <i class="fas fa-times"></i> Cancel
@@ -471,7 +524,7 @@ function clearKotSelection() {
 
 // Note: modifyKot function is now provided by order-history/script.js
 // which is loaded after this script, so it will override this function
-// and provide the Edit Order modal functionality
+// and provide the Modify order panel
 
 let cancelKotId = null;
 let currentKotOrders = []; // Store current KOT orders
