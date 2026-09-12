@@ -1003,3 +1003,70 @@ test('closing the editor starts the health checks it had been holding off', asyn
   await page.waitForTimeout(1200);
   expect(tried.length, 'nothing resumed after the editor closed').toBeGreaterThan(0);
 });
+
+/* ------------------------------------- a body the bridge could not read */
+
+test('a server whose answer the first road cannot read is still found', async ({ page }) => {
+  /*
+   * From the emulator, against a live cloud server that answers curl with two
+   * hundred bytes of perfectly good JSON:
+   *
+   *   {"ok":false,"road":"first",
+   *    "why":{"reason":"UNREADABLE","message":"It answered with something
+   *           this app could not read."}}
+   *
+   * `road: "first"` is the whole story - it never tried a second. probe() gave
+   * up the moment response.json() threw, so the ONE failure the fallback roads
+   * exist for was the one failure that never reached them.
+   *
+   * Capacitor's patched fetch is the thing in the middle and is already known
+   * to mishandle this call in other ways: it ignores an AbortSignal and can
+   * simply never come back. A response whose body will not parse is the same
+   * class of fault, so it now takes the same road out.
+   */
+  let served = 0;
+  await page.route(`${LAN_ORIGIN}/**`, async (route) => {
+    served += 1;
+    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
+    if (path !== '/runtime-info') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+    /* The first ask gets something no parser can read; the road after it gets
+       the truth, which is what a bridge fault actually looks like. */
+    if (served === 1) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(RUNTIME_INFO),
+    });
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const found = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 8000).then((hit) => !!hit),
+    LAN
+  );
+  expect(found, 'the probe gave up on the first unreadable answer').toBe(true);
+});
+
+test('and when no road can read it, it says so rather than blaming the address', async ({ page }) => {
+  /* "Could not reach it" sends somebody to check the address and the Wi-Fi.
+     "It answered with something this app could not read" says the address is
+     fine, which is two different places to go and look. */
+  await page.route(`${LAN_ORIGIN}/**`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' })
+  );
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const why = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 6000).then(() => POSNIC.discovery.probe.lastFailure),
+    LAN
+  );
+  expect(why && why.reason).toBe('UNREADABLE');
+});

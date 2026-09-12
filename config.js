@@ -667,7 +667,25 @@
       try {
         info = await response.json();
       } catch (e) {
-        return fail('UNREADABLE');
+        /*
+         * A BODY THE FIRST ROAD COULD NOT READ IS A TRANSPORT FAULT, NOT A
+         * VERDICT ABOUT THE SERVER.
+         *
+         * This used to give up here, which meant the one failure the fallback
+         * roads exist for was the one failure that never reached them. The
+         * emulator reported it exactly that way: ok:false, reason UNREADABLE,
+         * road "first" - it never tried a second - against a server that
+         * answers curl with two hundred bytes of perfectly good JSON.
+         *
+         * Capacitor's patched fetch is the thing in the middle, and it is
+         * already known to mishandle the rest of this call: it ignores an
+         * AbortSignal and can simply never come back. Handing back a response
+         * whose body will not parse is the same class of fault, so it takes
+         * the same road out.
+         */
+        const unreadable = new Error('unreadable body: ' + describe(e));
+        unreadable.unreadable = true;
+        throw unreadable;
       }
       if (!looksLikePosnic(info)) return fail('NOT_POSNIC');
 
@@ -687,7 +705,15 @@
        * that answers a browser on the same phone instantly. Falling back only
        * when fetch THREW meant never falling back at all.
        */
-      const notes = ['[' + transport() + ']', 'fetch: ' + (timedOut ? 'hung' : describe(e))];
+      /* Remembered, because it decides what to call this if every road
+         fails: a body nobody could read is a different problem from an
+         address nobody could reach, and they send somebody to look in two
+         different places. */
+      let unreadable = !!(e && e.unreadable);
+      const notes = [
+        '[' + transport() + ']',
+        'fetch: ' + (unreadable ? describe(e) : timedOut ? 'hung' : describe(e)),
+      ];
 
       /* The other roads, in the order most likely to work. An unpatched fetch
          from a fresh frame is the engine's own; XHR is patched separately from
@@ -717,7 +743,14 @@
             notes.push(name + ': ' + (response ? String(response.status) : 'no response'));
             continue;
           }
-          const info = await response.json();
+          let info;
+          try {
+            info = await response.json();
+          } catch (body) {
+            unreadable = true;
+            notes.push(name + ': unreadable body');
+            continue;
+          }
           if (!looksLikePosnic(info)) return fail('NOT_POSNIC', ' [' + name + ']');
           /* It worked by another road. The address is fine; the bridge is
              not, and the shopkeeper does not need to know that. */
@@ -729,6 +762,7 @@
         }
       }
 
+      if (unreadable) return fail('UNREADABLE', ' ' + notes.join(' / '));
       return fail(timedOut ? 'TIMED_OUT' : 'UNREACHABLE', ' ' + notes.join(' / '));
     } finally {
       clearTimeout(timer);

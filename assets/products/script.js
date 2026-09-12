@@ -606,7 +606,24 @@ function dishDescription(id) {
         .trim();
 }
 
+/*
+ * WHICH OPENING THIS IS.
+ *
+ * loadExistingNotesForProduct reads the cart, which is a round trip to
+ * IndexedDB, and then writes the answer into the box. The box is on screen the
+ * whole time - so a waiter who opens the notes and starts typing straight away
+ * had their words replaced by the answer to a question asked before they
+ * started. On a desk the read finishes first and nobody sees it; on a busy
+ * handset it does not.
+ *
+ * A CI runner is slow in the same way, which is how this surfaced: a test that
+ * typed into the box and checked the chips lit went red in Actions and stayed
+ * green locally.
+ */
+let notesOpening = 0;
+
 async function loadExistingNotesForProduct(id) {
+    const mine = ++notesOpening;
     const about = $("#notes-about");
     const desc = dishDescription(id);
     if (about.length) {
@@ -618,14 +635,25 @@ async function loadExistingNotesForProduct(id) {
 
     try {
         const cartData = await getCartData();
+        /* Opened again, or typed into, while this was reading. Either way the
+           answer is stale and writing it would take away something a person
+           put there. */
+        if (mine !== notesOpening) return;
+        const box = $("#product-notes-text");
+        if (box.val()) {
+            markChips();
+            return;
+        }
         const item = cartData.find(i => i.id === id);
         /* What is already on the line, and nothing else. An empty box is the
            honest state for a dish nobody has asked anything about. */
-        $("#product-notes-text").val((item && item.notes) || "");
+        box.val((item && item.notes) || "");
         markChips();
     } catch (e) {
         console.error("Error loading notes:", e);
-        $("#product-notes-text").val("");
+        if (mine === notesOpening && !$("#product-notes-text").val()) {
+            $("#product-notes-text").val("");
+        }
     }
 }
 
