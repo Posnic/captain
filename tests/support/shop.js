@@ -150,7 +150,10 @@ export async function onTheMenu(page, heard, options = {}) {
   await expect(page).toHaveURL(/kot-management\.html$/);
 
   await page.waitForFunction(() => typeof window.goToAddKot === 'function');
-  await page.locator('.kot-btn-add').click();
+  /* The floor screen's one named action. It was .kot-btn-add, one of four
+     buttons of equal weight; only one of them was ever what somebody came
+     here to do. */
+  await page.locator('.floor-new').click();
   await expect(page).toHaveURL(/discount\.html$/);
   await page.locator('#manual_table_input').fill('T1');
   await page.getByRole('button', { name: /Next/ }).click();
