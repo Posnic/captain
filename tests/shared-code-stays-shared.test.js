@@ -235,3 +235,79 @@ test('every screen in the journey loads the design system', () => {
     assert.match(source, /assets\/common\/design\.css/, page + ' does not load design.css');
   }
 });
+
+/*
+ * FINDING THE TILL ON THE WI-FI, without looking like a hang.
+ *
+ * The sweep fired 2..254 on every subnet at once. A Windows machine offers
+ * four of them, so that is a thousand requests in flight - and the 500ms probe
+ * timeout starts when fetch is CALLED, not when the socket opens. The later
+ * batches therefore timed out having never left the queue, the search took
+ * tens of seconds, and it was reported as a hang. It was not hanging; it was
+ * queueing.
+ */
+
+test('the likely addresses are tried before the other two hundred', () => {
+  /* A till is nearly always low on its subnet or on a round static number.
+     About thirty probes instead of a thousand, and it answers in a second. */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /const LIKELY_HOSTS = \[/, 'there is no fast first pass');
+
+  const list = /const LIKELY_HOSTS = \[([\s\S]*?)\]/.exec(config)[1];
+  const hosts = list.split(',').map((n) => Number(n.trim())).filter((n) => Number.isFinite(n));
+
+  /* The range a router hands out from. The owner's own observation: "most of
+     the time within 10 or 15 ip it will get". */
+  for (const host of [2, 5, 10, 15, 20]) {
+    assert.ok(hosts.includes(host), 'the first pass skips .' + host);
+  }
+  /* And the round numbers a static address gets given. */
+  assert.ok(hosts.includes(100), 'the first pass skips .100');
+  assert.ok(hosts.includes(200), 'the first pass skips .200');
+
+  /* Small enough to actually run rather than queue. */
+  assert.ok(hosts.length <= 40, 'the first pass is too big to be a first pass');
+});
+
+test('the search cannot outlive a deadline', () => {
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /SEARCH_DEADLINE_MS/, 'the sweep has no hard stop');
+  assert.match(
+    config,
+    /Date\.now\(\) > deadline/,
+    'the deadline is declared but never checked'
+  );
+});
+
+test('many networks do not mean many times the requests', () => {
+  /*
+   * The concurrency is divided across the subnets rather than applied to each.
+   * Four networks at 64 apiece is 256 in flight, which is the state that made
+   * every later batch time out in the queue instead of on the wire.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(
+    config,
+    /SCAN_CONCURRENCY \/ Math\.max\(1, subnets\.length\)/,
+    'the sweep still fires full concurrency per subnet'
+  );
+});
+
+test('a wrong password does not blame the shop server', () => {
+  /*
+   * A tokenless 401 really does mean an old server everywhere else - one from
+   * before the bearer-token work, refusing the route to everybody. But
+   * kioskMobileLogin answers 401 for a bad credential, which is correct and
+   * ordinary, and this turned it into "update POSNIC on the till": a confident
+   * wrong diagnosis that sends somebody to upgrade a server because they
+   * mistyped a password.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  const branch = /if \(error\.status === 401 && !session\.token[^)]*\)/.exec(config);
+  assert.ok(branch, 'the SERVER_TOO_OLD branch has moved');
+  assert.match(
+    branch[0],
+    /!path\.includes\('kioskMobileLogin'\)/,
+    'a failed sign-in is still reported as an out-of-date server'
+  );
+});
