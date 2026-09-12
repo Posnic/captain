@@ -402,6 +402,13 @@
          */
         document.addEventListener('DOMContentLoaded', function () {
             if (sessionStorage.getItem('posnic_change_server') !== '1') return;
+            /*
+             * Hand over before letting go. The editor's own flag is normally
+             * set by openServerModal(), which is sixty milliseconds away, and
+             * anything that asks in between would be told nobody is choosing a
+             * server - which is the whole thing being fixed here.
+             */
+            sessionStorage.setItem('posnic_editing_server', '1');
             sessionStorage.removeItem('posnic_change_server');
 
             /* Asked for the Wi-Fi search by name, rather than the menu. */
@@ -425,8 +432,28 @@
             if (overlay) overlay.hidden = true;
             document.documentElement.classList.remove('posnic-offline-active');
 
-            document.getElementById('serverUrlInput').value =
-                POSNIC.server.pinned || POSNIC.server.shopCode || '';
+            /*
+             * The address it is on now, SELECTED.
+             *
+             * Shown because the commonest edit is a small one - a digit of an
+             * IP, a letter of a shop code - and starting from blank makes
+             * somebody read it off another screen. Selected because the second
+             * commonest is replacing it outright, and a waiter who came here
+             * to get off a dead address should not have to clear it one
+             * backspace at a time on a phone keyboard.
+             */
+            const field = document.getElementById('serverUrlInput');
+            field.value = POSNIC.server.pinned || POSNIC.server.shopCode || '';
+            if (field.value) {
+                setTimeout(function () {
+                    try {
+                        field.focus();
+                        field.select();
+                    } catch (e) {
+                        /* a keyboard that refuses focus is not a failure */
+                    }
+                }, 120);
+            }
             serverMsg('');
             renderServerMode();
 
@@ -470,7 +497,14 @@
             stopAutoDetectServer(false);
             sessionStorage.removeItem('posnic_editing_server');
             document.getElementById('serverModal').style.display = 'none';
+            /*
+             * And the health checks start again, which they have not been
+             * doing while this was open. check() alone is one probe; start()
+             * is the probe AND the schedule, and without the schedule the app
+             * would sit there never noticing the server had come back.
+             */
             POSNIC.net.check(true);
+            POSNIC.net.start();
         }
 
         function handleServerUrlInput() {

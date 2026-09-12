@@ -927,3 +927,79 @@ test('a shop that is already set up starts on the menu, not on a search', async 
   await expect(page.locator('#connectChoices')).toBeVisible();
   await expect(page.locator('#connectAuto')).toBeHidden();
 });
+
+/* ------------------------------------ changing it, without being argued with */
+
+/*
+ * Owner, from a handset: "still change server not working. still looking for
+ * same not working old config and after two try its showing option to edit."
+ *
+ * Tapping Change shop server sets a flag and comes to this page. config.js's
+ * own DOMContentLoaded listener then started a health check against the very
+ * address the person had just said was wrong - and a dead address does not
+ * fail quickly, it spends its whole timeout, fails, schedules a retry and goes
+ * round again. The editor was open underneath all of it.
+ *
+ * settingsOpen() already guards the outage overlay and misses this completely:
+ * net.start() runs ON DOMContentLoaded and the modal opens sixty milliseconds
+ * after it, so the probe is away before there is a modal to see.
+ */
+
+test('coming here to change the server does not dial the old one', async ({ page }) => {
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+
+  /* Long enough that a health check would have gone out. */
+  await page.waitForTimeout(1500);
+  expect(tried, `the app probed the address it was asked to replace: ${tried.join(', ')}`).toEqual([]);
+});
+
+test('and the address it is on is there to edit, already selected', async ({ page }) => {
+  /* The commonest edit is a small one - a digit of an IP, a letter of a shop
+     code - so it is shown. The second commonest is replacing it outright, so
+     it is selected rather than left to be cleared one backspace at a time. */
+  await refuse(page, LAN_ORIGIN);
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
+
+  await page.waitForTimeout(400);
+  const selected = await page.evaluate(() => {
+    const field = document.getElementById('serverUrlInput');
+    return field.selectionEnd - field.selectionStart;
+  });
+  expect(selected).toBeGreaterThan(0);
+});
+
+test('closing the editor starts the health checks it had been holding off', async ({ page }) => {
+  /* Held off, not cancelled. Without the schedule coming back the app would
+     sit there never noticing the server had returned. */
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#serverModal')).toBeVisible();
+  expect(tried).toEqual([]);
+
+  await page.locator('#serverModal').evaluate(() => closeServerModal());
+  await page.waitForTimeout(1200);
+  expect(tried.length, 'nothing resumed after the editor closed').toBeGreaterThan(0);
+});

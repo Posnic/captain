@@ -1266,6 +1266,41 @@
       return !!(modal && modal.style.display && modal.style.display !== 'none');
     }
 
+    /*
+     * SOMEBODY IS CHOOSING A SERVER. DO NOT FIGHT THEM.
+     *
+     * Owner: "still change server not working. still looking for same not
+     * working old config and after two try its showing option to edit."
+     *
+     * Tapping Change shop server sets a flag and comes here. This file's own
+     * DOMContentLoaded listener then started a health check against the
+     * address the person had just said was wrong - and because that address is
+     * dead, the check spends its full timeout, fails, schedules a retry and
+     * goes round again. The editor is open the whole time, underneath an app
+     * busy proving what everybody already knows.
+     *
+     * settingsOpen() covers the modal once it is UP, and misses this entirely:
+     * net.start() runs on DOMContentLoaded and the modal opens sixty
+     * milliseconds later, so the probe is already away before there is a modal
+     * to notice.
+     *
+     * Two flags because they mark two moments. `posnic_change_server` is set
+     * on the screen being left, before this page exists at all, which is the
+     * only thing early enough to be read here. `posnic_editing_server` lasts
+     * as long as the editor is open.
+     */
+    function choosingServer() {
+      try {
+        return (
+          sessionStorage.getItem('posnic_change_server') === '1' ||
+          sessionStorage.getItem('posnic_editing_server') === '1'
+        );
+      } catch (e) {
+        /* private mode: behave as though nobody is, which is the old way */
+        return false;
+      }
+    }
+
     function overlay() {
       let element = document.getElementById('posnic-offline');
       if (element) return element;
@@ -1388,6 +1423,9 @@
       },
 
       async check(manual = false) {
+        /* A scheduled tick that arrives mid-edit stands aside too; a manual
+           check is the editor itself asking, and always runs. */
+        if (!manual && choosingServer()) return false;
         const chosen = await resolve({ allowScan: manual });
         if (chosen) {
           net.setOnline();
@@ -1397,8 +1435,19 @@
         return false;
       },
 
+      /* Exposed because the sign-in page has a boot check of its own and it
+         has to make the same decision from the same facts. */
+      choosingServer,
+
       start() {
         if (!server.isConfigured) return;
+        /*
+         * Not while somebody is picking one. The editor calls start() again
+         * when it closes, so nothing is lost by waiting - and what is gained
+         * is that the address they are typing over is not simultaneously
+         * being dialled.
+         */
+        if (choosingServer()) return;
         net.check(false);
         const tick = () => {
           clearTimeout(timer);
