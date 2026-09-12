@@ -407,7 +407,16 @@ test('the connect screen offers all three ways, and asks nothing first', async (
 
   await expect(page.getByText('Scan the shop code')).toBeVisible();
   await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
-  await expect(page.getByText('Type the shop code')).toBeVisible();
+  /*
+   * "Type the address", not "Type the shop code".
+   *
+   * The box takes three different things - a shop code, a web address, or the
+   * till on this Wi-Fi - and the app completes each: "demo" becomes
+   * https://demo.posnic.io/api, a web address gains /api, and a private
+   * address gains the till's port. Calling all of that "the shop code" told
+   * somebody typing a URL they were in the wrong place.
+   */
+  await expect(page.getByText('Type the address')).toBeVisible();
 
   /* The text box is not the front door any more. Opening the sheet also must
      not start a network sweep: that held the screen for seconds against a
@@ -419,7 +428,7 @@ test('the connect screen offers all three ways, and asks nothing first', async (
 test('typing is one of the three, reached deliberately', async ({ page }) => {
   await page.goto('/index.html');
   await page.getByTitle('Server Settings').click();
-  await page.getByText('Type the shop code').click();
+  await page.getByText('Type the address').click();
 
   await expect(page.locator('#connectManual')).toBeVisible();
   await expect(page.locator('#serverUrlInput')).toBeVisible();
@@ -885,7 +894,7 @@ test('and does not take the screen while it looks', async ({ page }) => {
 
   await expect(page.locator('#connectAuto')).toBeVisible();
   await expect(page.locator('#connectChoices')).toBeVisible();
-  await expect(page.getByText('Type the shop code')).toBeVisible();
+  await expect(page.getByText('Type the address')).toBeVisible();
   await expect(page.getByText('Scan the shop code')).toBeVisible();
 });
 
@@ -896,7 +905,7 @@ test('choosing by hand ends the search nobody asked for', async ({ page }) => {
   await page.locator('#login-btn').click();
 
   await expect(page.locator('#connectAuto')).toBeVisible();
-  await page.getByText('Type the shop code').click();
+  await page.getByText('Type the address').click();
 
   await expect(page.locator('#connectAuto')).toBeHidden();
   await expect(page.locator('#serverUrlInput')).toBeVisible();

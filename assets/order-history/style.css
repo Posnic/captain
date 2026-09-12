@@ -514,11 +514,51 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 16px;
     background: #f8f9fa;
     border-radius: 12px;
     margin-bottom: 12px;
     border: 1px solid #e9ecef;
+}
+
+/*
+ * THE TEXT TAKES THE ROOM, THE BUTTONS TAKE WHAT THEY NEED.
+ *
+ * Neither side was told what to do with the space, so the flex default left
+ * the name in a column narrow enough to break "Chicken Tikka 1 plate" over
+ * three lines and the catalogue description over eight - one item filling the
+ * panel - while the quantity buttons were squeezed until the row scrolled
+ * sideways.
+ *
+ * min-width: 0 is the half that is easy to miss: a flex item will not shrink
+ * below its longest word without it, which is what pushed the controls out.
+ */
+.item-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.item-controls {
+    flex: 0 0 auto;
+}
+
+/*
+ * The description, clamped.
+ *
+ * This is the dish's catalogue text - "Chicken Tikka sold as 1 plate,
+ * configured for a INR Restaurant Demo Dataset POS demo" - which is written
+ * for a menu, not for somebody changing a quantity. Two lines is enough to
+ * recognise a note somebody added; the rest is noise on this screen.
+ */
+.item-info .item-notes {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
 }
 
 .item-info h6 {

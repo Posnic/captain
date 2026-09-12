@@ -343,16 +343,32 @@ async function searchProducts(query) {
     const container = document.getElementById('product-suggestions');
     if (!container) return;
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
         container.innerHTML = '';
         return;
     }
 
     try {
         const allProducts = await getData(STORE_NAME);
-        const q = query.toLowerCase();
-        const matched = allProducts
-            .filter(p => p.name && p.name.toLowerCase().includes(q))
+
+        /*
+         * THE SAME SEARCH THE MENU USES, not a second one.
+         *
+         * This was `name.toLowerCase().includes(q)` with a two-character
+         * minimum - the exact substring test the menu screen was rebuilt to
+         * get away from. It finds Chicken Biryani from "biry" and from nothing
+         * else: not from "cb", which is what somebody selling two hundred a
+         * day types, and not from "chick biry", because two words are never
+         * one substring.
+         *
+         * So a waiter who had learned to type "cb" on the menu got nothing
+         * here, on the screen where they are already in a hurry because a
+         * table is waiting on a correction. Two searches in one app that
+         * answer differently is worse than one that is merely blunt.
+         */
+        const matched = (typeof ItemSearch !== 'undefined'
+            ? ItemSearch.search(ItemSearch.index(allProducts), query, { numbers: true })
+            : allProducts.filter(p => p.name && p.name.toLowerCase().includes(query.toLowerCase())))
             .slice(0, 10)
             .map(p => ({
                 _id: p.id,

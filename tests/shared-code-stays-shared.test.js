@@ -154,3 +154,182 @@ test('the flag is forgotten when the shop is', () => {
   const cleared = source.slice(source.indexOf('"kiosk_selected_branch"'), source.indexOf('].forEach'));
   assert.match(cleared, /kiosk_table_service/, 'the flag survives clearing the shop');
 });
+
+/*
+ * THE SELECTORS THE BROWSER TESTS WALK THROUGH.
+ *
+ * A renamed class does not break a Playwright test loudly - it makes it HANG,
+ * for the full timeout, on a click for an element that will never exist. That
+ * is a ten minute wait to learn one thing, and it has happened twice in this
+ * codebase already: once when the bill markup was rebuilt and the notes modal
+ * kept binding to .item-name, and once when the floor screen replaced
+ * .kot-btn-add with .floor-new and the harness kept clicking the old one.
+ *
+ * Node finds it in milliseconds instead.
+ */
+
+test('every selector the browser harness clicks still exists', () => {
+  const pages = {};
+  for (const page of ['index.html', 'kot-management.html', 'discount.html', 'products.html', 'cart.html']) {
+    pages[page] = fs.readFileSync(path.join(root, page), 'utf8');
+  }
+  const everywhere = Object.values(pages).join('\n');
+
+  /* The route tests/support/shop.js walks to reach the menu. */
+  const walked = [
+    { what: '.floor-new', why: 'the floor screen has no New order button' },
+    { what: '#manual_table_input', why: 'a table cannot be typed in' },
+    { what: '#username', why: 'the sign-in form has no username field' },
+    { what: '#password', why: 'the sign-in form has no password field' },
+    { what: '#login-btn', why: 'there is no sign-in button' },
+  ];
+
+  for (const step of walked) {
+    const bare = step.what.replace(/^[.#]/, '');
+    /*
+     * Plain string matching, not a built regex.
+     *
+     * The first version assembled one from the selector name and lost a
+     * backslash on the way into the file, so `\\b` became `\b` - a backspace
+     * character - and the check reported every selector missing. A test that
+     * cries wolf is worse than no test, and this one is checking for exactly
+     * the class of mistake it made itself.
+     */
+    const found = step.what.startsWith('#')
+      ? everywhere.includes('id="' + bare + '"') || everywhere.includes("id='" + bare + "'")
+      : everywhere.includes('class="' + bare + '"') ||
+        everywhere.includes('class="' + bare + ' ') ||
+        everywhere.includes(' ' + bare + '"') ||
+        everywhere.includes(' ' + bare + ' ');
+    assert.ok(found, step.what + ' is gone: ' + step.why);
+  }
+});
+
+test('the pax stepper drives the same field everything else reads', () => {
+  /*
+   * The old icon row and the old text box are still in the page and still
+   * driven by setPersonCount; the box is hidden by CSS rather than removed,
+   * because handlePersonInput and the restore-after-poll path both read it.
+   * One function stays the source of truth for how many people are at the
+   * table, so nothing can disagree about it.
+   */
+  const page = fs.readFileSync(path.join(root, 'discount.html'), 'utf8');
+  assert.match(page, /id="pax_less"/, 'there is no way to take a person off');
+  assert.match(page, /id="pax_more"/, 'there is no way to add a person');
+  assert.match(page, /id="person_count"/, 'the field the backend reads is gone');
+  assert.match(page, /id="person_input"/, 'handlePersonInput has nothing to read');
+
+  /* The buttons go through setPersonCount, never straight to the field. */
+  assert.match(page, /setPersonCount\(target\.id === 'pax_more'/, 'the stepper bypasses setPersonCount');
+});
+
+test('every screen in the journey loads the design system', () => {
+  /* Six screens, one design. A screen that misses this is the one that looks
+     like it came from a different app - which is the whole reason for the
+     rebuild. */
+  for (const page of [
+    'index.html', 'kot-management.html', 'discount.html',
+    'products.html', 'cart.html', 'thankyou.html',
+  ]) {
+    const source = fs.readFileSync(path.join(root, page), 'utf8');
+    assert.match(source, /assets\/common\/design\.css/, page + ' does not load design.css');
+  }
+});
+
+/*
+ * FINDING THE TILL ON THE WI-FI, without looking like a hang.
+ *
+ * The sweep fired 2..254 on every subnet at once. A Windows machine offers
+ * four of them, so that is a thousand requests in flight - and the 500ms probe
+ * timeout starts when fetch is CALLED, not when the socket opens. The later
+ * batches therefore timed out having never left the queue, the search took
+ * tens of seconds, and it was reported as a hang. It was not hanging; it was
+ * queueing.
+ */
+
+test('the likely addresses are tried before the other two hundred', () => {
+  /* A till is nearly always low on its subnet or on a round static number.
+     About thirty probes instead of a thousand, and it answers in a second. */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /const LIKELY_HOSTS = \[/, 'there is no fast first pass');
+
+  const list = /const LIKELY_HOSTS = \[([\s\S]*?)\]/.exec(config)[1];
+  const hosts = list.split(',').map((n) => Number(n.trim())).filter((n) => Number.isFinite(n));
+
+  /* The range a router hands out from. The owner's own observation: "most of
+     the time within 10 or 15 ip it will get". */
+  for (const host of [2, 5, 10, 15, 20]) {
+    assert.ok(hosts.includes(host), 'the first pass skips .' + host);
+  }
+  /* And the round numbers a static address gets given. */
+  assert.ok(hosts.includes(100), 'the first pass skips .100');
+  assert.ok(hosts.includes(200), 'the first pass skips .200');
+
+  /* Small enough to actually run rather than queue. */
+  assert.ok(hosts.length <= 40, 'the first pass is too big to be a first pass');
+});
+
+test('the search cannot outlive a deadline', () => {
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /SEARCH_DEADLINE_MS/, 'the sweep has no hard stop');
+  assert.match(
+    config,
+    /Date\.now\(\) > deadline/,
+    'the deadline is declared but never checked'
+  );
+});
+
+test('many networks do not mean many times the requests', () => {
+  /*
+   * The concurrency is divided across the subnets rather than applied to each.
+   * Four networks at 64 apiece is 256 in flight, which is the state that made
+   * every later batch time out in the queue instead of on the wire.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(
+    config,
+    /SCAN_CONCURRENCY \/ Math\.max\(1, subnets\.length\)/,
+    'the sweep still fires full concurrency per subnet'
+  );
+});
+
+test('a wrong password does not blame the shop server', () => {
+  /*
+   * A tokenless 401 really does mean an old server everywhere else - one from
+   * before the bearer-token work, refusing the route to everybody. But
+   * kioskMobileLogin answers 401 for a bad credential, which is correct and
+   * ordinary, and this turned it into "update POSNIC on the till": a confident
+   * wrong diagnosis that sends somebody to upgrade a server because they
+   * mistyped a password.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  const branch = /if \(error\.status === 401 && !session\.token[^)]*\)/.exec(config);
+  assert.ok(branch, 'the SERVER_TOO_OLD branch has moved');
+  assert.match(
+    branch[0],
+    /!path\.includes\('kioskMobileLogin'\)/,
+    'a failed sign-in is still reported as an out-of-date server'
+  );
+});
+
+test('the search looks near the address this device was given', () => {
+  /*
+   * THE STRONGEST HINT THERE IS, and a guessed list is not it.
+   *
+   * A router hands out its pool in order, so whatever address the phone got,
+   * the till is usually within a dozen of it. A real shop's till came back on
+   * .170 - not low, not round, and on no list anybody would have written. Its
+   * phone would have been in the same part of the pool.
+   */
+  const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
+  assert.match(config, /ownHosts/, 'the device does not remember its own host number');
+  assert.match(config, /add\(own - step\)/, 'the search does not look below its own address');
+  assert.match(config, /add\(own \+ step\)/, 'the search does not look above its own address');
+
+  /* And that neighbourhood is part of the FAST pass, not the slow one. */
+  assert.match(
+    config,
+    /likelyCount = \(\) =>[\s\S]{0,160}ownHosts\.length/,
+    'the neighbourhood is not counted into the first pass'
+  );
+});

@@ -119,7 +119,7 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page).toHaveURL(/kot-management\.html$/);
 
   await page.waitForFunction(() => typeof window.goToAddKot === 'function');
-  await page.locator('.kot-btn-add').click();
+  await page.locator('.floor-new').click();
   await expect(page).toHaveURL(/discount\.html$/);
   await expect(page.locator('#manual_table_input')).toBeVisible();
   await page.locator('#manual_table_input').fill('T1');
@@ -136,7 +136,14 @@ test('login to order history basic flow', async ({ page }) => {
   await page.locator('#next-btn').click();
 
   await expect(page).toHaveURL(/thankyou\.html\?token=A101$/);
-  await expect(page.getByText('Order Placed!')).toBeVisible();
+  /*
+   * "Sent to the kitchen", not "Order Placed! We're preparing your delicious
+   * food" - that was written at a CUSTOMER, and the person holding this phone
+   * is the waiter who just sent it.
+   */
+  await expect(page.getByText('Sent to the kitchen')).toBeVisible();
+  /* The token, which is what somebody gets asked for afterwards. */
+  await expect(page.locator('#orderId')).toHaveText('A101');
 
   await page.goto('/order-history.html');
   await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();

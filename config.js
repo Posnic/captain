@@ -54,6 +54,38 @@
   const SCAN_TIMEOUT_MS = 500;
   const SCAN_CONCURRENCY = 64;
 
+  /*
+   * THE ADDRESSES A TILL IS ACTUALLY AT, tried before the other two hundred.
+   *
+   * A sweep of 2..254 already starts low, but it starts low on ONE subnet at a
+   * time while every other subnet is doing the same - and a Windows machine
+   * offers four of them. Two hundred and fifty requests per network, fired
+   * together, saturate the connection pool: the 500ms timeout starts when
+   * fetch is CALLED, not when the socket opens, so the later batches time out
+   * having never left the queue. The search then takes tens of seconds and
+   * looks like a hang, which is what it was reported as.
+   *
+   * So the likely addresses go first, across every subnet, as one small
+   * bounded pass. A router hands out .2 upwards and a till given a static
+   * address gets a round number, so this is where it nearly always is - and it
+   * is 30 probes rather than 1,016.
+   */
+  const LIKELY_HOSTS = [
+    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    100, 101, 102, 150, 200, 201, 250, 254,
+  ];
+
+  /*
+   * And a hard stop on the whole thing.
+   *
+   * Without one the sweep is bounded only by how long the slowest of a
+   * thousand queued requests takes to give up, which on a busy network is not
+   * bounded in any way a person would call bounded. Twenty seconds is longer
+   * than a real find ever takes and short enough that somebody still believes
+   * the screen.
+   */
+  const SEARCH_DEADLINE_MS = 20000;
+
   /* Ask whether the active server is still there: rarely while it answers,
      often while it does not, because that is the only time it can change. */
   const HEALTH_OK_MS = 20000;
@@ -709,13 +741,32 @@
   probe.usedRoad = null;
 
   /** The /24 networks this device is on, most reliable source first. */
+  /* Host numbers this device holds, filled in by localSubnets(). See the
+     comment in `add` for why they matter more than any guessed list. */
+  let ownHosts = [];
+
   async function localSubnets() {
     const found = [];
+    ownHosts = [];
     const add = (value) => {
       const match = String(value || '').match(/(?:\d{1,3}\.){3}\d{1,3}/);
       if (!match) return;
-      const subnet = match[0].split('.').slice(0, 3).join('.');
+      const parts = match[0].split('.');
+      const subnet = parts.slice(0, 3).join('.');
       if (!found.includes(subnet)) found.push(subnet);
+      /*
+       * AND THE HOST NUMBER THIS DEVICE ITSELF WAS GIVEN.
+       *
+       * The strongest hint there is about where the till sits. A router hands
+       * out its pool in order, so the phone and the till are usually near each
+       * other in it - and the pool is not always low: a real shop's till came
+       * back on .170, which no list of "likely" numbers would have guessed.
+       *
+       * Knowing one address in the pool is worth more than guessing at the
+       * shape of every router's defaults.
+       */
+      const host = Number(parts[3]);
+      if (host >= 2 && host <= 254 && !ownHosts.includes(host)) ownHosts.push(host);
     };
 
     /* The native plugin reads the Wi-Fi interface outright. It is the only
@@ -778,24 +829,59 @@
     return found;
   }
 
-  async function scanSubnet(subnet, { onProgress, onBatch, shouldStop } = {}) {
-    /* Start from the host that worked last, so a re-scan on the same network
-       usually finishes on the first batch rather than the tenth. */
+  /** The host numbers of one subnet, likeliest first. */
+  function hostOrder() {
+    /* The host that worked last, so a re-scan on the same network finishes on
+       the first probe rather than the tenth batch. */
     const previous = String(server.lan || '').match(/(?:\d{1,3}\.){3}(\d{1,3})/);
     const first = previous ? Number(previous[1]) : null;
 
+    const seen = new Set();
     const hosts = [];
-    if (first >= 2 && first <= 254) hosts.push(first);
-    for (let host = 2; host <= 254; host++) if (host !== first) hosts.push(host);
+    const add = (host) => {
+      if (host < 2 || host > 254 || seen.has(host)) return;
+      seen.add(host);
+      hosts.push(host);
+    };
 
-    for (let start = 0; start < hosts.length; start += SCAN_CONCURRENCY) {
+    if (first) add(first);
+
+    /*
+     * THIS DEVICE'S OWN NEIGHBOURHOOD, before any general guess.
+     *
+     * A router hands out its pool in order, so whatever address the phone was
+     * given, the till is usually within a dozen of it. A real shop's till came
+     * back on .170 - not low, not round, and not on any list anybody would
+     * have written. Its phone would have been in the same part of the pool.
+     */
+    for (const own of ownHosts) {
+      for (let step = 0; step <= 12; step += 1) {
+        add(own - step);
+        add(own + step);
+      }
+    }
+
+    LIKELY_HOSTS.forEach(add);
+    for (let host = 2; host <= 254; host++) add(host);
+    return hosts;
+  }
+
+  /** How many of those are the fast first pass: the known host, this device's
+      neighbourhood, and the general guesses. Still under sixty probes. */
+  const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1 + ownHosts.length * 25;
+
+  async function scanSubnet(subnet, { hosts, onProgress, onBatch, shouldStop, concurrency } = {}) {
+    const list = hosts || hostOrder();
+    const width = concurrency || SCAN_CONCURRENCY;
+
+    for (let start = 0; start < list.length; start += width) {
       if (shouldStop && shouldStop()) return null;
-      const batch = hosts.slice(start, start + SCAN_CONCURRENCY);
+      const batch = list.slice(start, start + width);
       const results = await Promise.all(
         batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS))
       );
       if (onBatch) onBatch(batch.length);
-      if (onProgress) onProgress(Math.min(start + SCAN_CONCURRENCY, hosts.length), hosts.length);
+      if (onProgress) onProgress(Math.min(start + width, list.length), list.length);
       const hit = results.find(Boolean);
       if (hit) return hit;
     }
@@ -834,34 +920,75 @@
      * server answers and the first one that does wins.
      */
     let stopped = false;
-    const stop = () => stopped || (shouldStop ? shouldStop() : false);
+    /*
+     * A deadline that nothing can outlive.
+     *
+     * The sweep used to be bounded only by how long the slowest of a thousand
+     * queued requests took to give up, which on a busy network is not bounded
+     * in any way a person would call bounded.
+     */
+    const deadline = Date.now() + SEARCH_DEADLINE_MS;
+    const stop = () =>
+      stopped || Date.now() > deadline || (shouldStop ? shouldStop() : false);
 
     /* Progress is reported as one number across the whole search rather than
        per subnet, because "3 of 4 networks" means nothing to the person
        holding the phone. */
     let done = 0;
-    const total = subnets.length * 254;
+    const total = subnets.length * 253;
     const report = (delta) => {
       done += delta;
       if (onProgress) onProgress(Math.min(done, total), total, 'this Wi-Fi');
     };
 
-    const hits = await Promise.all(
-      subnets.map((subnet) =>
-        scanSubnet(subnet, {
-          shouldStop: stop,
-          onProgress: (batchDone, batchTotal, previous = 0) => report(0),
-          onBatch: (size) => report(size),
-        }).then((hit) => {
-          /* The first answer ends the others: there is one till, and the
-             remaining sweeps are only spending the phone's radio. */
-          if (hit) stopped = true;
-          return hit;
-        })
-      )
-    );
+    /*
+     * THE LIKELY ADDRESSES FIRST, everywhere, as one small pass.
+     *
+     * A till is nearly always low on its subnet or on a round static number,
+     * so this is about thirty probes instead of a thousand and it answers in
+     * about a second. Only when it finds nothing does the full sweep run.
+     *
+     * Doing it this way round is what stopped the search LOOKING like a hang:
+     * the 500ms probe timeout starts when fetch is called, not when the socket
+     * opens, so firing a thousand at once means the later ones time out having
+     * never left the queue. A small pass actually runs.
+     */
+    const sweep = (hosts, concurrency) =>
+      Promise.all(
+        subnets.map((subnet) =>
+          scanSubnet(subnet, {
+            hosts,
+            concurrency,
+            shouldStop: stop,
+            onProgress: () => report(0),
+            onBatch: (size) => report(size),
+          }).then((hit) => {
+            /* The first answer ends the others: there is one till, and the
+               remaining sweeps are only spending the phone's radio. */
+            if (hit) stopped = true;
+            return hit;
+          })
+        )
+      );
 
-    return hits.find(Boolean) || null;
+    const order = hostOrder();
+    const likely = order.slice(0, likelyCount());
+
+    const quick = (await sweep(likely, likely.length)).find(Boolean);
+    if (quick) return quick;
+    if (stop()) return null;
+
+    /*
+     * And then the rest, narrower.
+     *
+     * The concurrency is divided across the subnets rather than applied to
+     * each, so four networks do not put 256 requests in flight at once - which
+     * is the state that made every later batch time out in the queue instead
+     * of on the wire.
+     */
+    const rest = order.slice(likely.length);
+    const width = Math.max(8, Math.floor(SCAN_CONCURRENCY / Math.max(1, subnets.length)));
+    return (await sweep(rest, width)).find(Boolean) || null;
   }
 
   /* ------------------------------------------------------------ resolution */
@@ -1069,7 +1196,20 @@
       if (error.status === 401 && session.token && !path.includes('kioskMobileLogin')) {
         session.end();
       }
-      if (error.status === 401 && !session.token) {
+      /*
+       * A 401 on the SIGN-IN route means the password was wrong.
+       *
+       * Everywhere else a tokenless 401 really does mean an old server - one
+       * from before the bearer-token work, refusing the route to everybody.
+       * But kioskMobileLogin answers 401 for a bad credential, which is
+       * correct and ordinary, and this turned that into "update POSNIC on the
+       * till": a confident wrong diagnosis that sends somebody to upgrade
+       * their server because they mistyped a password.
+       *
+       * The route is already excluded from the session-clearing branch above,
+       * for the same reason. It was missed here.
+       */
+      if (error.status === 401 && !session.token && !path.includes('kioskMobileLogin')) {
         error.code = 'SERVER_TOO_OLD';
         error.message =
           'This shop’s server is too old for this screen. Update POSNIC on the till.';
