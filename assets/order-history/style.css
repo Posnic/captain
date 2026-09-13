@@ -1321,3 +1321,12 @@ tr.is-cancelled .line-name {
 tr.is-cancelled {
     opacity: 0.72;
 }
+
+/* The word for what happened, where the counter used to be. */
+.item-cancelled-mark {
+    font-size: var(--t-xs, 12px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--danger, #dc2626);
+}

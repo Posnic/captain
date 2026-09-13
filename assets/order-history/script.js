@@ -1213,7 +1213,7 @@ function openEditOrderModal() {
         }
     }
 
-    editingOrder = JSON.parse(JSON.stringify(order)); // Deep copy  
+    setOrderBeingModified(JSON.parse(JSON.stringify(order))); // Deep copy
     editingOrder.person_count = currentPersons || 1;
     if (!Array.isArray(editingOrder.items)) editingOrder.items = [];
     initEditPersonControls(editingOrder.person_count);
@@ -1350,14 +1350,26 @@ function renderCurrentOrderItems() {
                 ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ₹${totalSellingPrice.toFixed(2)}</strong></p>` : ''}
                 ${item.item_description ? `<p class="item-notes small text-muted">${item.item_description}</p>` : ""}
             </div>
-            <div class="item-controls">
+            ${lineIsCancelled(item, editingOrder)
+        /*
+         * A cancelled line keeps no controls.
+         *
+         * Its quantity is zero and it is not going back on the bill from
+         * here, so a minus that cannot go lower and a plus that would quietly
+         * un-cancel it are two ways to be confusing. What is left is the word
+         * for what happened, beside a name with a rule through it.
+         */
+        ? `<div class="item-controls">
+                <span class="item-cancelled-mark">Cancelled</span>
+            </div>`
+        : `<div class="item-controls">
                 <button class="qty-btn" onclick="updateItemQuantity(${index}, -1)">-</button>
                 <span class="qty-display">${item.quantity}</span>
                 <button class="qty-btn" onclick="updateItemQuantity(${index}, 1)">+</button>
                 <button class="remove-btn" onclick="removeItem(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
-            </div>
+            </div>`}
         </div>
         `;
     }).join('');
@@ -1461,7 +1473,35 @@ function removeItem(index) {
 function confirmRemoveItem() {
     if (!editingOrder || pendingRemovalIndex === null) return;
     
-    editingOrder.items.splice(pendingRemovalIndex, 1);
+    const line = editingOrder.items[pendingRemovalIndex];
+
+    /*
+     * KEPT AND STRUCK, not deleted - if the kitchen ever knew about it.
+     *
+     * Owner: "strick not working. i see text without any strick."
+     *
+     * Because this ran `items.splice(index, 1)`. The line stopped existing, so
+     * the rule that strikes cancelled lines was correct and had nothing to be
+     * correct about. A dish that simply vanishes is also the thing the strike
+     * was asked for INSTEAD of: "it symbolic that we cancelled it" only means
+     * something while it is still on the screen.
+     *
+     * A dish ADDED IN THIS SESSION is different. Nobody cooked it and nobody
+     * was told about it, so there is nothing to symbolise - it goes, the way
+     * taking something out of a basket does.
+     *
+     * Quantity 0 is what keeps it off the bill: updateOrderTotal reduces over
+     * quantity, and the payload drops zero-quantity lines before they reach
+     * the till. A cancelled dish cannot be charged for.
+     */
+    const wasOrdered = !!(line && (line._id || line.sale_inline_item_id || line.item_id));
+    if (wasOrdered) {
+        line.cancelled = true;
+        line.cancelled_quantity = Number(line.quantity) || 0;
+        line.quantity = 0;
+    } else {
+        editingOrder.items.splice(pendingRemovalIndex, 1);
+    }
     pendingRemovalIndex = null;
     
     const modalEl = document.getElementById('removeItemConfirmModal');
@@ -1758,6 +1798,20 @@ async function openItemPicker() {
  * A function DECLARATION is reachable on window, so this is the seam.
  */
 function orderBeingModified() {
+    return editingOrder;
+}
+
+/**
+ * Start modifying an order.
+ *
+ * The counterpart to orderBeingModified, and here for the same reason: a `let`
+ * at the top of this file cannot be reached from outside it, so without a
+ * named way in, nothing - no later screen, no test - can put an order into the
+ * modify flow. Two functions, one in and one out, and the binding stops being
+ * a thing only this file can talk about.
+ */
+function setOrderBeingModified(order) {
+    editingOrder = order;
     return editingOrder;
 }
 
