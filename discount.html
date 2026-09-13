@@ -430,8 +430,30 @@
                 return;
             }
 
-            // ✅ NEW: Fetch active orders to disable occupied tables
+            /*
+             * WHICH TABLES ARE FULL - which is not the same as which are busy.
+             *
+             * This greyed out every table that had an order on it, which was
+             * right only because the shop rule happened to be one order per
+             * table. That rule is now a setting: one (the default), no limit,
+             * or at most N.
+             *
+             * So the question changes from "does this table have an order?" to
+             * "has this table reached its limit?", and the answer needs the
+             * count, not just the name. getTablesWithActiveOrders carries a
+             * per-table count and the limit beside it, so one request answers
+             * both.
+             *
+             * A server too old to send the limit leaves it undefined and the
+             * fallback below is 1 - exactly what this screen did before. The
+             * server refuses an over-limit order either way; this is only so a
+             * waiter finds out before walking to the table and typing.
+             *
+             * Ported from Table_Order, where it was written first.
+             */
             let occupiedTables = [];
+            let openPerTable = {};
+            let tableOrderLimit = 1;
             try {
                 const branchId = localStorage.getItem('branch_id') || null;
                 const data = await POSNIC.api.post('/sales/getTablesWithActiveOrders', {
@@ -439,13 +461,43 @@
                 });
                 if (data.type === 'success' && data.data && data.data.tables) {
                     occupiedTables = data.data.tables;
+                    (data.data.table_details || []).forEach(function (row) {
+                        openPerTable[String(row.table_number)] = Number(row.orders) || 0;
+                    });
+                    /* Number.isFinite, not `||`. Zero is a real answer here -
+                       it means no limit - and `||` would turn a shop that
+                       deliberately allows any number back into a one-order
+                       shop. */
+                    var served = data.data.table_order_limit;
+                    tableOrderLimit = Number.isFinite(Number(served)) ? Number(served) : 1;
                 }
             } catch (error) {
                 console.error('Failed to fetch active orders:', error);
             }
 
+            /* How many orders this table already has. Falls back to the name
+               list for a server that sends no per-table detail: one order is
+               the safe reading, because it is what greys the table out under
+               the default rule. */
+            const openOn = (value) =>
+                Object.prototype.hasOwnProperty.call(openPerTable, value)
+                    ? openPerTable[value]
+                    : (occupiedTables.includes(value) ? 1 : 0);
+
+            /* 0 means no limit, so nothing is ever full. */
+            const isFull = (value) => tableOrderLimit > 0 && openOn(value) >= tableOrderLimit;
+
             // ✅ OPTIMIZATION: Only update DOM if occupied tables OR configured tables changed
-            const newOccupiedKey = JSON.stringify([...occupiedTables].sort());
+            /*
+             * The COUNTS, not just the names. This screen redraws only when
+             * this key changes, and under "at most N" a table going from one
+             * order to two changes no name at all - so the badge would freeze
+             * at whatever it said when the screen opened, and a table reaching
+             * its limit would stay tappable right up to the refusal.
+             */
+            const newOccupiedKey = JSON.stringify(
+                [...occupiedTables].sort().map((name) => name + ':' + openOn(name))
+            ) + '|' + tableOrderLimit;
             const newTableordersKey = JSON.stringify(tableorders.map(t => t.tableorder_id || t.tableorder_value));
             if (isPollingUpdate && previousTableMode === 'list') {
                 if (newOccupiedKey === previousOccupiedTablesKey && newTableordersKey === previousTableordersKey) {
@@ -469,7 +521,17 @@
             tableorders.forEach((t, index) => {
                 const value = (t.tableorder_value ?? (index + 1)).toString();
                 const id = `table_${value}`;
-                const isOccupied = occupiedTables.includes(value);
+                const isOccupied = isFull(value);
+                const openHere = openOn(value);
+                /* Under "at most N" a table can be busy and still take another
+                   order, and a waiter has no way to know how close it is. The
+                   count is already here, so it is shown. Not under the default
+                   rule, where a table is either free or full and a "1" beside
+                   every occupied table would be noise on a screen read at
+                   speed. */
+                const countBadge = (tableOrderLimit !== 1 && openHere > 0)
+                    ? `<span class="table-open-count">${openHere}</span>`
+                    : '';
 
                 html += `
                     <div class="table-item ${isOccupied ? 'table-occupied' : ''}">
@@ -479,7 +541,8 @@
                             value="${value}"
                             data-id="${t.id}"
                             ${isOccupied ? 'disabled' : ''}>
-                        <label for="${id}" class="table-label ${isOccupied ? 'disabled' : ''}">${value}</label>
+                        <label for="${id}" class="table-label ${isOccupied ? 'disabled' : ''}"
+                            title="${isOccupied ? 'This table is full' : ''}">${value}${countBadge}</label>
                     </div>
                 `;
             });

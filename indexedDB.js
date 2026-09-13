@@ -1228,7 +1228,98 @@ async function getProductById(id) {
     });
 }
 
+/*
+ * THE NAME THIS ORDER WILL ANSWER TO.
+ *
+ * A waiter taps Send twice, or taps once on a handset that has already sent
+ * and is waiting for a reply it will never get. Both reach the till, and table
+ * 5 comes back showing the same order twice with cancelling one cancelling
+ * both. Reported from a live floor.
+ *
+ * The till has been able to recognise a resent order for as long as it has had
+ * a KOT screen, but only if the order carries a key. This app sent one - and
+ * minted it per ATTEMPT, so a queued retry was recognised and a second tap was
+ * not.
+ *
+ * The key is minted for the cart, kept while the cart stands, and cleared when
+ * the cart changes or the order lands. Ported from Table_Order, where it was
+ * written first.
+ */
+const ORDER_KEY = 'kiosk_order_key';
+const ORDER_SHAPE = 'kiosk_order_shape';
+
+function newOrderKey() {
+    try {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+    } catch (e) {
+        /* an older webview: fall through */
+    }
+    return 'ord-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+/** The key for the cart as it stands, minting one if this cart has none. */
+function currentOrderKey() {
+    try {
+        let key = localStorage.getItem(ORDER_KEY);
+        if (!key) {
+            key = newOrderKey();
+            localStorage.setItem(ORDER_KEY, key);
+        }
+        return key;
+    } catch (e) {
+        /* Storage blocked. Better a key that cannot dedupe than no order at
+           all, so the send still goes through. */
+        return newOrderKey();
+    }
+}
+
+/** This cart is not the cart that was sent. Whatever goes next is new. */
+function resetOrderKey() {
+    try {
+        localStorage.removeItem(ORDER_KEY);
+        localStorage.removeItem(ORDER_SHAPE);
+    } catch (e) {
+        /* nothing to clear */
+    }
+}
+
+/*
+ * WHAT THE WAITER ACTUALLY CHOSE: which dish, how many, at what price, with
+ * what written on it.
+ *
+ * Deliberately not the whole line. A product refresh rewrites the cart with
+ * fresher copies of the same items, and syncCartSilently saves it back on
+ * every one of those - which is not a change the customer made. If it counted
+ * as one, a refresh landing between a dropped send and its retry would mint a
+ * new key and print the second ticket this exists to prevent.
+ */
+function cartShape(cart) {
+    return JSON.stringify(
+        (cart || []).map((line) => [
+            String(line.id ?? ''),
+            Number(line.quantity) || 0,
+            Number(line.price) || 0,
+            String(line.note ?? ''),
+        ])
+    );
+}
+
 async function saveCartData(cart) {
+    /* A cart that is not the cart the last key was minted for gets a new one:
+       a waiter who adds a dish after a failed send must not be handed back the
+       order without it. */
+    try {
+        const shape = cartShape(cart);
+        if (localStorage.getItem(ORDER_SHAPE) !== shape) {
+            localStorage.setItem(ORDER_SHAPE, shape);
+            localStorage.removeItem(ORDER_KEY);
+        }
+    } catch (e) {
+        /* Storage blocked: the send still goes, it just cannot dedupe. */
+    }
+
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("cart", "readwrite");
@@ -1339,10 +1430,27 @@ async function checkout(transactionId) {
         }
         //const savedNumber = localStorage.getItem("kiosk_mobile_number");
 
-        /* Made once, before the first attempt, and reused on every retry:
-           a key minted per attempt makes each resend look like a new order,
-           which is the thing it exists to prevent. */
-        const orderKey = OrderQueue.newKey();
+        /*
+         * THE KEY BELONGS TO THE CART, NOT TO THE TAP.
+         *
+         * It used to be OrderQueue.newKey(), minted fresh on every call - so
+         * a queued RETRY reused it correctly, but a second TAP made a new one
+         * and the till wrote a second ticket. Reported from a live floor:
+         * table 5 showing the same order twice, and cancelling one cancelling
+         * both.
+         *
+         * Cart-scoped gives the three behaviours a floor actually needs:
+         *
+         *   two taps on one cart           same key, the till answers with
+         *                                  the one order it already has
+         *   a retry after a dropped reply  same key, no second ticket
+         *   a dish added, then resend      new key, a new ticket, correctly
+         *
+         * That last line is why this is not a hash of the items: a waiter who
+         * adds a dish after a failed send must not be handed back the order
+         * without it, silently.
+         */
+        const orderKey = currentOrderKey();
 
         // 🚀 Send checkout request
         const orderBody = {
@@ -1376,6 +1484,9 @@ async function checkout(transactionId) {
         window._pendingOrder = null;
 
         if (result.type === "success") {
+            /* It landed, so this cart's name is spent: whatever the waiter
+               builds next is a new order and must get a new key. */
+            resetOrderKey();
             const tokenId = result.data.tokenId; // 🔐 3-digit non-repeating token
             localStorage.setItem("kioskReceipt", JSON.stringify(result.data));
 
