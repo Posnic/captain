@@ -141,3 +141,67 @@ test('the form underneath cannot scroll while the menu is up', async ({ page }) 
   const freed = await page.evaluate(() => getComputedStyle(document.body).overflow);
   expect(freed).not.toBe('hidden');
 });
+
+/* ------------------------------------------------- and on the floor screen */
+
+/*
+ * THE SAME MODAL LIVES ON TWO SCREENS, and the first pass gave the menu to one
+ * of them - the wrong one. order-history is where a waiter looks something up;
+ * the FLOOR is where they add a second round to a table that is still eating.
+ *
+ * Owner, checking: "inside table add item seperately given ?"
+ */
+
+/** The floor screen, with the menu cached the way a shift leaves it. */
+async function atTheFloor(page) {
+  await onTheMenu(page, 'nothing', { menu: MENU });
+  await page.goto('/kot-management.html');
+  await page.waitForFunction(() => typeof openItemPicker === 'function');
+}
+
+test('the floor has the same way in as the order history', async ({ page }) => {
+  await atTheFloor(page);
+  await expect(page.locator('#open-item-picker')).toHaveCount(1);
+  await expect(page.locator('#item-picker')).toHaveCount(1);
+});
+
+test('and it draws the real menu there too', async ({ page }) => {
+  await atTheFloor(page);
+  await page.evaluate(() => openItemPicker());
+
+  const picker = page.locator('#item-picker');
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('.menu-section')).toHaveCount(2);
+  await expect(picker.locator('.dish')).toHaveCount(3);
+  await expect(picker.locator('.dish[data-id="p-1"] .dish-price')).toContainText('220');
+});
+
+test('adding from the floor hands the dish to the order being modified', async ({ page }) => {
+  await atTheFloor(page);
+  await page.evaluate(() => {
+    window.__added = [];
+    window.addProductToOrder = (id, name, price) => window.__added.push({ id, name, price });
+  });
+
+  await page.evaluate(() => openItemPicker());
+  await page.locator('#item-picker .btn-add[data-id="p-3"]').click();
+
+  expect(await page.evaluate(() => window.__added)).toEqual([
+    { id: 'p-3', name: 'Coffee', price: 40 },
+  ]);
+});
+
+test('neither screen is left with the cramped search box on show', async ({ page }) => {
+  /* Kept in the markup because renderProductSuggestions still writes into it,
+     but a waiter must not meet both a button and a text box doing the same
+     job - that is the congestion that was complained about. */
+  /* Signed in ONCE. onTheMenu walks the login, and a second walk finds no
+     login form because the app is already through it. */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+  for (const where of ['/order-history.html', '/kot-management.html']) {
+    await page.goto(where);
+    await expect(page.locator('#product-search')).toHaveCount(1);
+    await expect(page.locator('#product-search')).toBeHidden();
+    await expect(page.locator('#open-item-picker')).toHaveCount(1);
+  }
+});

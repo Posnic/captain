@@ -15,11 +15,15 @@
          Biryani here too. sounds-like.js first: item-search picks it up. -->
     <script src="assets/common/sounds-like.js"></script>
     <script src="assets/common/item-search.js"></script>
+    <!-- The same renderer the menu screen uses. The picker's own code arrives
+         with order-history/script.js, which this page already loads. -->
+    <script src="assets/common/menu-view.js"></script>
     <script src="indexedDB.js?v=5"></script>
     <script src="assets/common/order-queue-ui.js"></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <!-- The decisions every screen shares, made once. -->
     <link href="assets/common/design.css" rel="stylesheet">
+    <link href="assets/products/menu.css" rel="stylesheet">
     <link href="assets/kot/style.css" rel="stylesheet">
     <!-- After style.css, which it replaces for the table cards. -->
     <link href="assets/kot/floor.css" rel="stylesheet">
@@ -191,7 +195,21 @@
                         </div>
                         <div class="col-md-6">
                             <h6>Add something</h6>
-                            <div class="product-search-container">
+                            <!--
+                                THE SAME BUTTON THE ORDER HISTORY HAS.
+
+                                This modal lives on two screens and only one of
+                                them had been given the menu - the wrong one, as
+                                it turns out: this is the floor, which is where
+                                a waiter adds a second round from.
+
+                                The search box stays, hidden, because
+                                renderProductSuggestions still writes into it.
+                            -->
+                            <button type="button" class="btn add-items-btn" id="open-item-picker">
+                                + Add items from the menu
+                            </button>
+                            <div class="product-search-container" hidden>
                                 <input type="text" id="product-search" placeholder="Search the menu" class="form-control mb-3">
                                 <div id="product-suggestions" class="product-suggestions"></div>
                             </div>
@@ -310,6 +328,24 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!--
+        THE MENU, FULL SCREEN, WHILE ADDING TO AN ORDER.
+
+        Drawn by MenuView - the same module behind products.html - so a waiter
+        adding a second round to a table sees the screen they already know.
+    -->
+    <div id="item-picker" class="item-picker" hidden>
+        <div class="item-picker-head">
+            <button type="button" class="item-picker-back" id="item-picker-close" aria-label="Back to the order">&larr;</button>
+            <span class="item-picker-title" id="item-picker-title">Add to the order</span>
+        </div>
+        <div class="item-picker-rail" id="item-picker-rail"></div>
+        <div class="item-picker-body" id="item-picker-body"></div>
+        <div class="item-picker-foot">
+            <button type="button" class="btn item-picker-done" id="item-picker-done">Done</button>
         </div>
     </div>
 
