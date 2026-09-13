@@ -1697,6 +1697,79 @@ async function openItemPicker() {
  * ordering screen itself uses. That is the whole reason this looks and behaves
  * the same rather than merely similar.
  */
+/**
+ * How many of each dish are on the order being modified.
+ *
+ * MenuView draws a row as `- qty +` whenever the cart it is given has a count
+ * for it, and as ADD when it does not. Handing it an empty map - which the
+ * first version did - means every row says ADD for ever, however many times it
+ * has been tapped, and the only feedback is a word that flashes and goes away.
+ *
+ * Keyed by product_id, which is what the order carries and what the data-id on
+ * a row is. The VALUE is a line object, not a number: MenuView.render reads
+ * `cart.get(id).quantity`, so a map of plain counts makes every row draw ADD -
+ * correct right after a tap, because that path calls MenuView.dish directly
+ * with a number, and wrong after any redraw. That asymmetry is the whole trap.
+ */
+/**
+ * The order currently being modified.
+ *
+ * One named way to ask, because `editingOrder` is a `let` at the top of this
+ * file: a script-scoped binding that SHADOWS any window property of the same
+ * name. Anything outside this file - a test, a later screen - that reads
+ * `window.editingOrder` gets an object the application never writes to, which
+ * is a mistake that has already been made twice here and is invisible both
+ * times: the code runs, and quietly describes nothing.
+ *
+ * A function DECLARATION is reachable on window, so this is the seam.
+ */
+function orderBeingModified() {
+    return editingOrder;
+}
+
+function pickerCart() {
+    const cart = new Map();
+    /*
+     * `editingOrder`, NOT `window.editingOrder`.
+     *
+     * It is declared `let` at the top of this file, so it is a script-scoped
+     * binding that SHADOWS any window property of the same name. Reading the
+     * window one gets an object the application never writes to: every row
+     * would draw ADD for ever, exactly as if nothing had been added - the bug
+     * this code exists to fix, reintroduced one line lower down.
+     */
+    const order = orderBeingModified();
+    const items = (order && order.items) || [];
+    for (const item of items) {
+        const id = String(item.product_id || item.id || '');
+        if (!id) continue;
+        const had = cart.get(id);
+        const quantity = (had ? had.quantity : 0) + (Number(item.quantity) || 0);
+        cart.set(id, { quantity });
+    }
+    return cart;
+}
+
+/**
+ * Redraw ONE row, after its count changed.
+ *
+ * Not the whole menu: a full redraw loses the scroll position, and losing it
+ * after every tap is how adding three dishes becomes three journeys back down
+ * the menu.
+ */
+function pickerRefreshRow(id) {
+    const row = document.querySelector('#item-picker-body .dish[data-id="' + id + '"]');
+    if (!row) return;
+    const item = pickerItem(id);
+    if (!item) return;
+    const line = pickerCart().get(String(id));
+    /* dish() takes a NUMBER; render() takes the line. Same map, two shapes. */
+    const fresh = MenuView.dish(item, line ? line.quantity : 0, {});
+    const holder = document.createElement('div');
+    holder.innerHTML = fresh;
+    if (holder.firstElementChild) row.replaceWith(holder.firstElementChild);
+}
+
 function drawPicker() {
     const body = document.getElementById('item-picker-body');
     const rail = document.getElementById('item-picker-rail');
@@ -1714,7 +1787,7 @@ function drawPicker() {
         /* An empty cart map: this sheet shows the MENU, and what is already on
            the order is on the screen behind it. Showing quantities here would
            be two places claiming to be the count. */
-        body.innerHTML = MenuView.render(pickerMenu, new Map(), {});
+        body.innerHTML = MenuView.render(pickerMenu, pickerCart(), {});
         return;
     }
 
@@ -1745,7 +1818,7 @@ function drawPicker() {
      */
     body.innerHTML = MenuView.render(
         [{ key: 'found', name: hits.length + (hits.length === 1 ? ' match' : ' matches'), items: hits }],
-        new Map(),
+        pickerCart(),
         {}
     );
 }
@@ -1869,6 +1942,27 @@ document.addEventListener('click', function (event) {
      * Scoped to the sheet: .btn-add is the menu screen's own class and this
      * page must not start answering for taps that are not in here.
      */
+    /*
+     * ONE FEWER, from inside the menu.
+     *
+     * A waiter who taps once too often should not have to close the menu, find
+     * the line on the order behind it and take one off there. Routed through
+     * updateItemQuantity so the removal confirmation, the totals and the KOT
+     * card all behave exactly as they do on the order screen.
+     */
+    const less = event.target.closest('.btn-decrease');
+    if (less && less.closest('#item-picker')) {
+        const id = less.getAttribute('data-id');
+        const order = orderBeingModified();
+        const items = (order && order.items) || [];
+        const at = items.findIndex((item) => String(item.product_id) === String(id));
+        if (at > -1) {
+            updateItemQuantity(at, -1);
+            pickerRefreshRow(id);
+        }
+        return;
+    }
+
     const add = event.target.closest('.btn-add, .btn-increase');
     if (add && add.closest('#item-picker')) {
         const id = add.getAttribute('data-id');
@@ -1885,7 +1979,12 @@ document.addEventListener('click', function (event) {
         const found = pickerItem(id);
         if (!found) return;
         addProductToOrder(id, found.name, found.selling_price || found.price || 0);
-        say(add);
+        /*
+         * The row becomes a counter. No "Added" flash and no second ADD: the
+         * count IS the feedback, and it is the same thing the ordering screen
+         * shows, so a waiter does not have to learn this screen separately.
+         */
+        pickerRefreshRow(id);
         return;
     }
 });
