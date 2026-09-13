@@ -1422,6 +1422,11 @@ async function checkout(transactionId) {
 
             console.log("✅ Checkout successful! Token:", tokenId);
 
+            /* The order is placed and this page is leaving. kioskPlaceOrder
+               reads this to decide whether to give the button back: every
+               other ending leaves the waiter on this screen and needing it. */
+            window.__kioskOrderPlaced = true;
+
             // 🚀 Final navigation to Thank You page
             // Use explicit .html so it works in both browser server and Capacitor WebView
             window.location.href = `thankyou.html?token=${tokenId}`;

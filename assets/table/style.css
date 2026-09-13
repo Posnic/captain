@@ -544,6 +544,35 @@ input.add-person-btn:not(.active) {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
+/*
+ * HOW MANY ORDERS ARE ALREADY ON THIS TABLE.
+ *
+ * Shown only where it can change what a waiter does, which is when the shop
+ * allows more than one order per table but not unlimited: a table at two of
+ * three is still tappable, and the number is the only thing that says so.
+ * Under the default rule a table is either free or full, and a "1" beside
+ * every busy table would be noise on a screen used at speed.
+ */
+.table-open-count {
+    display: inline-block;
+    min-width: 17px;
+    margin-left: 5px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: var(--primary-soft, #e8e7ff);
+    color: var(--primary, #5f63f2);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 17px;
+    vertical-align: middle;
+}
+
+/* On a full table it has to read against the grey, not the accent. */
+.table-item.table-occupied .table-open-count {
+    background: #d0d0d0;
+    color: #6b6b6b;
+}
+
 /* Disabled/Occupied table styling */
 .table-item.table-occupied .table-label {
     background: #e5e5e5 !important;
