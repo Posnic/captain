@@ -1289,3 +1289,35 @@ body.picker-open {
     font-weight: 700;
     cursor: pointer;
 }
+
+/*
+ * A CANCELLED LINE IS STRUCK THROUGH.
+ *
+ * Owner: "whenever order cancel or item cancel those line item name should be
+ * strick in the middle. it symbolic that we cancelled it. i want that."
+ *
+ * The line itself, not a badge at the top of the card: a waiter reading down
+ * an order wants to see which dish is off without holding a status in their
+ * head, and a rule through the name is what that has meant on paper for as
+ * long as there have been kitchens.
+ *
+ * The NAME carries the rule, not the whole row. Striking the price and the
+ * quantity as well makes the numbers hard to read at exactly the moment
+ * somebody is checking what is still owed.
+ */
+.item-preview.is-cancelled,
+.order-item-card.is-cancelled .line-name,
+tr.is-cancelled .line-name {
+    text-decoration: line-through;
+    /* Through the middle of the glyphs rather than under them. */
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--danger, #dc2626);
+    color: var(--ink-soft, #64748b);
+}
+
+/* The rest of a cancelled row steps back without disappearing: it still has
+   to be countable when somebody asks what was taken off. */
+.order-item-card.is-cancelled,
+tr.is-cancelled {
+    opacity: 0.72;
+}

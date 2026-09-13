@@ -760,3 +760,24 @@ body {
 .kot-right::-webkit-scrollbar-thumb:hover {
     background: #868e96;
 }
+
+/*
+ * A CANCELLED LINE IS STRUCK THROUGH.
+ *
+ * Owner: "whenever order cancel or item cancel those line item name should be
+ * strick in the middle. it symbolic that we cancelled it."
+ *
+ * The floor is where a waiter reads a ticket back to a table, so a dish that
+ * is off has to be visible on the line without opening anything. The name
+ * carries the rule and the quantity does not: the numbers still have to be
+ * readable when somebody is working out what is owed.
+ */
+.kot-item.is-cancelled .item-name {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--danger, #dc2626);
+    color: var(--ink-soft, #64748b);
+}
+.kot-item.is-cancelled {
+    opacity: 0.72;
+}

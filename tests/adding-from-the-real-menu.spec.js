@@ -34,6 +34,23 @@ async function atTheHistory(page) {
   await onTheMenu(page, 'nothing', { menu: MENU });
   await page.goto('/order-history.html');
   await page.waitForFunction(() => typeof openItemPicker === 'function');
+
+  /*
+   * THE MODIFY MODAL IS OPENED FIRST, because that is the only way in.
+   *
+   * `#open-item-picker` lives inside `#editOrderModal` on both screens, so a
+   * waiter never reaches this sheet without that modal being up. The sheet
+   * lives inside the modal too - Bootstrap 5 enforces focus and pulls it back
+   * out of anything that is not a descendant, which left the search box able
+   * to be tapped and never focused.
+   *
+   * Calling openItemPicker() on a bare page tested a path that does not exist,
+   * and it is why these read as passing while the search was dead in the hand.
+   */
+  await page.evaluate(() => {
+    new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
+  });
+  await expect(page.locator('#editOrderModal')).toBeVisible();
 }
 
 test('the picker draws the real menu, with its sections', async ({ page }) => {
@@ -137,9 +154,16 @@ test('the form underneath cannot scroll while the menu is up', async ({ page }) 
   const locked = await page.evaluate(() => getComputedStyle(document.body).overflow);
   expect(locked).toBe('hidden');
 
+  /*
+   * The PICKER'S OWN lock is what is checked on the way out, not the body's
+   * overflow: the modify modal is open underneath, and Bootstrap holds the
+   * body locked for as long as it is. Asserting on overflow here would be
+   * asserting that closing the sheet also unlocks the page behind the modal,
+   * which would be wrong.
+   */
+  await expect(page.locator('body')).toHaveClass(/picker-open/);
   await page.locator('#item-picker-close').click();
-  const freed = await page.evaluate(() => getComputedStyle(document.body).overflow);
-  expect(freed).not.toBe('hidden');
+  await expect(page.locator('body')).not.toHaveClass(/picker-open/);
 });
 
 /* ------------------------------------------------- and on the floor screen */
@@ -157,6 +181,23 @@ async function atTheFloor(page) {
   await onTheMenu(page, 'nothing', { menu: MENU });
   await page.goto('/kot-management.html');
   await page.waitForFunction(() => typeof openItemPicker === 'function');
+
+  /*
+   * THE MODIFY MODAL IS OPENED FIRST, because that is the only way in.
+   *
+   * `#open-item-picker` lives inside `#editOrderModal` on both screens, so a
+   * waiter never reaches this sheet without that modal being up. The sheet
+   * lives inside the modal too - Bootstrap 5 enforces focus and pulls it back
+   * out of anything that is not a descendant, which left the search box able
+   * to be tapped and never focused.
+   *
+   * Calling openItemPicker() on a bare page tested a path that does not exist,
+   * and it is why these read as passing while the search was dead in the hand.
+   */
+  await page.evaluate(() => {
+    new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
+  });
+  await expect(page.locator('#editOrderModal')).toBeVisible();
 }
 
 test('the floor has the same way in as the order history', async ({ page }) => {

@@ -731,7 +731,7 @@ function renderOrders() {
                 </div>
                 <div class="order-items-preview">
                     ${order.items.slice(0, 2).map(item =>
-        `<span class="item-preview">${item.quantity}x ${item.name}</span>`
+        `<span class="item-preview${struck(item, order)}">${item.quantity}x ${item.name}</span>`
     ).join(', ')}
                     ${order.items.length > 2 ? `... +${order.items.length - 2} more` : ''}
                 </div>
@@ -843,9 +843,9 @@ function viewOrderDetails(orderId) {
                     </thead>
                     <tbody>
                         ${order.items.map(item => `
-                        <tr>
+                        <tr class="${struck(item, order).trim()}">
                             <td>
-                                ${item.name}
+                                <span class="line-name">${item.name}</span>
                                 ${item.item_description
             ? `<div class="order-item-notes">${item.item_description}</div>`
             : ''
@@ -1344,9 +1344,9 @@ function renderCurrentOrderItems() {
         const totalTax = perUnitTax * quantity;
         
         return `
-        <div class="order-item-card">
+        <div class="order-item-card${struck(item, editingOrder)}">
             <div class="item-info" data-index="${index}">
-                <h6>${item.name}</h6>
+                <h6><span class="line-name">${item.name}</span></h6>
                 ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ₹${totalSellingPrice.toFixed(2)}</strong></p>` : ''}
                 ${item.item_description ? `<p class="item-notes small text-muted">${item.item_description}</p>` : ""}
             </div>
@@ -1614,6 +1614,40 @@ function showToast(message, type = 'success', duration = 3000) {
  * the one button that talks to the till. Adding is a choice; committing is a
  * separate decision, and they stay separate.
  */
+
+/**
+ * Has this line been cancelled?
+ *
+ * Owner: "whenever order cancel or item cancel those line item name should be
+ * strick in the middle. it symbolic that we cancelled it."
+ *
+ * Two ways a line is cancelled and they arrive differently:
+ *
+ *   THE WHOLE ORDER was cancelled - every line on it is off, and the order
+ *   carries the status rather than the lines.
+ *   ONE LINE was taken off a live order. The till records that on the item,
+ *   and it has been spelled more than one way over the years, so all of them
+ *   are accepted here rather than in four different templates.
+ *
+ * One function, because three screens show these lines and a dish struck
+ * through in one view and plain in another is worse than neither.
+ */
+function lineIsCancelled(item, order) {
+    if (order && String(order.status || '').toLowerCase() === 'cancelled') return true;
+    if (!item) return false;
+    if (item.cancelled === true || item.is_cancelled === true) return true;
+    if (String(item.status || '').toLowerCase() === 'cancelled') return true;
+    /* A line reduced to nothing is a line that was taken off. */
+    if (item.cancelled_quantity && Number(item.cancelled_quantity) >= Number(item.quantity || 0)) {
+        return true;
+    }
+    return false;
+}
+
+/** The class that strikes a line through, or nothing. */
+function struck(item, order) {
+    return lineIsCancelled(item, order) ? ' is-cancelled' : '';
+}
 
 let pickerMenu = null;
 /* The flat list behind the sections, which is what a search ranks over. Kept

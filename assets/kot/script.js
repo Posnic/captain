@@ -462,6 +462,31 @@ function closeSlidingPanel() {
  * take both - the data uses both - and a caller that has only a name should
  * not be the thing that breaks next.
  */
+/**
+ * Was this whole ticket cancelled?
+ *
+ * The till spells it on the ticket, not on its lines, so a cancelled order
+ * has to strike every line it carries.
+ */
+function kotIsCancelled(kot) {
+    return String((kot && kot.status) || '').toLowerCase() === 'cancelled';
+}
+
+/**
+ * Was this one line taken off a live ticket?
+ *
+ * Spelled more than one way over the years, so all of them are accepted here
+ * rather than at each of the places that draws a line.
+ */
+function itemIsCancelled(item) {
+    if (!item) return false;
+    if (item.cancelled === true || item.is_cancelled === true) return true;
+    if (String(item.status || '').toLowerCase() === 'cancelled') return true;
+    const off = Number(item.cancelled_quantity || 0);
+    const had = Number(item.item_quantity || item.quantity || 0);
+    return off > 0 && had > 0 && off >= had;
+}
+
 function isTakeawayName(name) {
     return String(name || '').replace(/\s+/g, '').toLowerCase() === 'takeaway';
 }
@@ -584,8 +609,17 @@ async function selectTable(tableName, takeaway) {
             items.forEach((item, index) => {
                 const itemName = item.sale_inline_item_name || item.item_name || 'Item';
                 const itemQty = item.item_quantity || item.sale_inline_item_qty || item.quantity || 1;
+                /*
+                 * A cancelled line is struck through here too.
+                 *
+                 * Owner: "whenever order cancel or item cancel those line item
+                 * name should be strick in the middle." The floor is where a
+                 * waiter reads the ticket back to a table, so a dish that is
+                 * off has to be visible without opening anything.
+                 */
+                const off = kotIsCancelled(kot) || itemIsCancelled(item) ? ' is-cancelled' : '';
                 itemsHtml += `
-                    <div class="kot-item">
+                    <div class="kot-item${off}">
                         <span class="item-index">${index + 1}.</span>
                         <span class="item-name">${itemName}</span>
                         <span class="item-qty">x${itemQty}</span>
