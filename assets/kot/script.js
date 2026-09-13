@@ -397,7 +397,9 @@ async function loadTables() {
         const count = document.getElementById('floor-count');
         if (count) {
             const open = detailed.length + (hasTakeaway ? 1 : 0);
-            count.textContent = open === 1 ? '1 table open' : open + ' tables open';
+            /* Just the number now: the words are on the heading beside it,
+               and "3 tables open" under "Active tables" says tables twice. */
+            count.textContent = open === 1 ? '1 open' : open + ' open';
         }
     } catch (error) {
         console.error('Error loading tables:', error);
@@ -890,3 +892,67 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     startKotTablePolling();
 });
+
+/* ==================================================================
+ * BEING HOME
+ * ==================================================================
+ *
+ * Owner, relaying a client: "due to empty stuff, he try to go back and close
+ * the app. i tink he dont have feeling he is in main page dashboard. add some
+ * welcome text and few other stuff make him feel he is in dashboard and
+ * already in home."
+ *
+ * A quiet morning drew this screen as the word "Tables" over an empty box.
+ * Nothing named the shop, greeted anybody or suggested this was where you were
+ * supposed to have arrived - so it read as a screen that had failed to load,
+ * and the way out of a screen that has failed to load is the back button.
+ *
+ * Two lines fix that, and neither is decoration: the greeting says the app is
+ * working and knows what time it is, and the branch name says WHICH SHOP this
+ * phone is pointed at - which on an estate of handsets is a real question and
+ * has been answered nowhere else on this screen.
+ */
+
+/** Morning, afternoon or evening, as a person would say it. */
+function timeOfDay(now) {
+    const hour = (now || new Date()).getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+/**
+ * The branch this handset is working in.
+ *
+ * The list and the choice are stored separately - the list came from sign-in,
+ * the choice from the branch picker - so the name has to be looked up rather
+ * than read. A shop with one branch never saw the picker, so the single entry
+ * IS the answer there.
+ */
+function branchName() {
+    try {
+        const branches = JSON.parse(localStorage.getItem('kiosk_branch_list') || '[]') || [];
+        if (!branches.length) return '';
+        const chosen = localStorage.getItem('kiosk_selected_branch');
+        const match = branches.find(
+            (b) => String(b.store_id) === String(chosen) || String(b.branch_id) === String(chosen)
+        );
+        return (match || branches[0]).branch_name || '';
+    } catch (e) {
+        /* A handset mid-setup has no list yet. The greeting still stands. */
+        return '';
+    }
+}
+
+function sayWhereWeAre() {
+    const hello = document.getElementById('floor-hello');
+    const shop = document.getElementById('floor-shop');
+    if (hello) hello.textContent = timeOfDay();
+
+    const name = branchName();
+    /* "Your shop" rather than a blank line while the name is unknown: an empty
+       heading reopens the hole this was written to close. */
+    if (shop) shop.textContent = name || 'Your shop';
+}
+
+document.addEventListener('DOMContentLoaded', sayWhereWeAre);

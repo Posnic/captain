@@ -43,7 +43,26 @@
             thumb already is.
         -->
         <div class="floor-head">
-            <h1 class="floor-title">Tables</h1>
+            <!--
+                YOU ARE HOME, AND THIS IS YOUR SHOP.
+
+                Owner, relaying a client: "due to empty stuff, he try to go back
+                and close the app. i tink he dont have feeling he is in main page
+                dashboard."
+
+                The screen said "Tables" over an empty box. Nothing on it named
+                the shop, greeted anybody, or suggested this was the place you
+                were meant to end up - so a quiet morning looked like a screen
+                that had failed to load, and the way out of a screen that has
+                failed to load is the back button.
+
+                A greeting and the branch's own name cost one line each and
+                answer "where am I" before anybody has to ask it.
+            -->
+            <div class="floor-greet">
+                <span class="floor-hello" id="floor-hello">Welcome back</span>
+                <h1 class="floor-title" id="floor-shop">Your shop</h1>
+            </div>
             <!-- Hidden until there is more than one branch to change to.
                  A shop with a single branch was offered a button that
                  takes them to a list with one card on it: not a choice,
@@ -125,7 +144,18 @@
         <div class="kot-container">
             <!-- Tables Section - Full Width -->
             <div class="kot-tables-section">
-                <div class="floor-count" id="floor-count"></div>
+                <!--
+                    Owner: "when you show table mention text like active order
+                    or active tables or some suitable name."
+
+                    A grid of numbered boxes under no heading is a grid of
+                    numbered boxes. Saying what they ARE turns them into the
+                    answer to a question somebody already had.
+                -->
+                <div class="floor-section">
+                    <span class="floor-section-name">Active tables</span>
+                    <span class="floor-count" id="floor-count"></span>
+                </div>
                 <div class="floor-grid" id="tables-list">
                     <!-- Cards are drawn by loadTables in assets/kot/script.js,
                          oldest wait first. -->

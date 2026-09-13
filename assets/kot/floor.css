@@ -364,3 +364,71 @@ body {
   border-width: 3px;
   color: var(--accent) !important;
 }
+
+/* ================================================== being somewhere */
+
+/*
+ * THE TOP OF THE SCREEN SAYS WHERE YOU ARE.
+ *
+ * Owner, relaying a client: "he dont have feeling he is in main page
+ * dashboard." It said "Tables" over an empty box, which on a quiet morning is
+ * indistinguishable from a screen that failed to load - and the way out of a
+ * screen that failed to load is the back button, which is exactly what he did.
+ *
+ * The greeting is small and grey; the shop's name is the heading. That order
+ * matters: the name is the fact worth reading, and a handset that could be
+ * pointed at any till in the estate has been answering "which one" nowhere.
+ */
+.floor-greet {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+.floor-hello {
+  font-size: var(--t-xs, 12px);
+  font-weight: 600;
+  color: var(--ink-soft, #475569);
+  letter-spacing: 0.01em;
+}
+.floor-greet .floor-title {
+  margin: 0;
+  font-size: var(--t-xl, 20px);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ink, #0f172a);
+  /* A long branch name shortens rather than pushing the icons off the edge. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * WHAT THE GRID UNDERNEATH IS.
+ *
+ * Owner: "when you show table mention text like active order or active tables
+ * or some suitable name." A grid of numbered boxes under no heading is a grid
+ * of numbered boxes; named, it answers a question somebody already had.
+ */
+.floor-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3, 12px);
+  margin: var(--s4, 16px) 0 var(--s2, 8px);
+}
+.floor-section-name {
+  font-size: var(--t-xs, 12px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint, #94a3b8);
+}
+/* The count loses its own block now that it shares a line with the heading. */
+.floor-section .floor-count {
+  margin: 0;
+  font-size: var(--t-sm, 13px);
+  font-weight: 700;
+  color: var(--ink-soft, #475569);
+}
