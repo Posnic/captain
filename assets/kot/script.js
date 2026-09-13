@@ -267,7 +267,27 @@ document.addEventListener('click', async function (event) {
     } catch (error) {
         button.disabled = false;
         button.textContent = said;
-        showToast((error && error.message) || 'Could not ask for the bill', 'error');
+
+        /*
+         * A 404 HERE MEANS THE TILL IS OLD, NOT THAT SOMETHING WENT WRONG.
+         *
+         * The desktop app carries its own copy of the API inside the exe, so a
+         * shop talking to its own till is running whatever version was last
+         * installed there. /sales/requestBillPrint does not exist in a build
+         * made before it was written, and Express answers a route it has never
+         * heard of with 404 - which reached a waiter as a blank failure and
+         * cost a round of "it says table not open or something".
+         *
+         * Saying which machine needs attention is the whole difference between
+         * a message somebody can act on and one they can only report.
+         */
+        const status = error && (error.status || error.statusCode);
+        showToast(
+            status === 404
+                ? 'This till is too old to print bills from a phone. Update POSNIC on the till.'
+                : (error && error.message) || 'Could not ask for the bill',
+            'error'
+        );
     }
 });
 
