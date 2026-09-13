@@ -214,6 +214,75 @@ test('a counted dish stays counted after a search and back', async ({ page }) =>
   await expect(page.locator('#item-picker .dish[data-id="p-1"] .dish-qty')).toHaveText('1');
 });
 
+test('a dish already on the order shows its count in a SEARCH RESULT', async ({ page }) => {
+  /*
+   * Owner: "how about if existing item searched and try to add?"
+   *
+   * The case that would have been missed. A search result is drawn from the
+   * flat list, not from the sections, so if the count came from the row rather
+   * than from the order a searched dish would come back as ADD - and tapping
+   * it would look like adding the first one while actually adding a third.
+   */
+  await modifyingAnOrder(page);
+
+  const row = page.locator('#item-picker .dish[data-id="p-1"]');
+  await row.locator('.btn-add').click();
+  await row.locator('.btn-increase').click();
+  await expect(row.locator('.dish-qty')).toHaveText('2');
+
+  await page.locator('#picker-search-input').fill('cb');
+  const found = page.locator('#item-picker .dish[data-id="p-1"]');
+  await expect(found.locator('.dish-qty')).toHaveText('2');
+  await expect(found.locator('.btn-add')).toHaveCount(0);
+});
+
+test('adding from a search result counts on, it does not start again', async ({ page }) => {
+  await modifyingAnOrder(page);
+
+  await page.locator('#item-picker .dish[data-id="p-1"] .btn-add').click();
+  await page.locator('#picker-search-input').fill('cb');
+
+  const found = page.locator('#item-picker .dish[data-id="p-1"]');
+  await found.locator('.btn-increase').click();
+  await expect(found.locator('.dish-qty')).toHaveText('2');
+
+  /* And the order says two, not two separate lines of one. */
+  const lines = await page.evaluate(() =>
+    window.__order.items.filter((i) => i.product_id === 'p-1')
+  );
+  expect(lines).toHaveLength(1);
+  expect(lines[0].quantity).toBe(2);
+});
+
+test('- works inside a search result too', async ({ page }) => {
+  await modifyingAnOrder(page);
+
+  await page.locator('#item-picker .dish[data-id="p-1"] .btn-add').click();
+  await page.locator('#item-picker .dish[data-id="p-1"] .btn-increase').click();
+  await page.locator('#picker-search-input').fill('cb');
+
+  const found = page.locator('#item-picker .dish[data-id="p-1"]');
+  await found.locator('.btn-decrease').click();
+  await expect(found.locator('.dish-qty')).toHaveText('1');
+  expect(
+    await page.evaluate(() => window.__order.items.find((i) => i.product_id === 'p-1').quantity)
+  ).toBe(1);
+});
+
+test('taking the last one off turns the row back into ADD', async ({ page }) => {
+  /* The other end of the same behaviour: a line removed entirely must not
+     leave a counter showing zero. */
+  await modifyingAnOrder(page);
+
+  const row = page.locator('#item-picker .dish[data-id="p-1"]');
+  await row.locator('.btn-add').click();
+  await expect(row.locator('.dish-qty')).toHaveText('1');
+
+  await row.locator('.btn-decrease').click();
+  await expect(row.locator('.btn-add')).toHaveCount(1);
+  await expect(row.locator('.dish-qty')).toHaveCount(0);
+});
+
 test('the MENU button opens every category with its count', async ({ page }) => {
   await modifyingAnOrder(page);
 
