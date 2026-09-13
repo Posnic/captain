@@ -325,8 +325,49 @@
             <button type="button" class="item-picker-back" id="item-picker-close" aria-label="Back to the order">&larr;</button>
             <span class="item-picker-title" id="item-picker-title">Add to the order</span>
         </div>
+        <!--
+            THE SAME SEARCH THE ORDERING SCREEN HAS.
+
+            Owner: "i want whole UI as same in new order search box, center menu
+            button with categories, efective search and list of items."
+
+            Same markup, same classes, and the ranking behind it is
+            ItemSearch - the module the ordering screen uses - so "cb" finds
+            Chicken Biryani here exactly as it does there. A second, simpler
+            search written for this sheet would have been the thing that drifts.
+        -->
+        <div class="item-picker-search">
+            <div class="product-search-inner">
+                <span class="product-search-icon"><i class="fas fa-search"></i></span>
+                <input type="text" id="picker-search-input" placeholder="Search the menu" autocomplete="off"
+                    autocorrect="off" autocapitalize="none" spellcheck="false" />
+                <button type="button" id="picker-search-clear" class="product-search-clear" hidden
+                    aria-label="Clear">&times;</button>
+            </div>
+        </div>
         <div class="item-picker-rail" id="item-picker-rail"></div>
         <div class="item-picker-body" id="item-picker-body"></div>
+
+        <!--
+            Every category at once, with counts. The rail is fine for six
+            categories and useless for twenty-five, where the one you want is
+            always off the right-hand edge.
+        -->
+        <button type="button" class="menu-index-btn picker-index-btn" id="picker-index-btn" hidden>
+            <i class="fas fa-list-ul"></i> MENU
+        </button>
+        <div class="ui-scrim picker-index-scrim" id="picker-index" hidden>
+            <div id="picker-index-scrim" style="position:absolute;inset:0;"></div>
+            <div class="ui-sheet" style="position:relative;">
+                <div class="ui-sheet-head" style="display:flex;align-items:center;justify-content:space-between;">
+                    <h2 class="ui-sheet-title">Menu</h2>
+                    <button type="button" class="ui-btn-quiet" id="picker-index-close"
+                        style="color:var(--ink-soft);font-size:20px;">&times;</button>
+                </div>
+                <div class="ui-sheet-body" id="picker-index-list"></div>
+            </div>
+        </div>
+
         <div class="item-picker-foot">
             <button type="button" class="btn item-picker-done" id="item-picker-done">Done</button>
         </div>

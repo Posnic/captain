@@ -1616,6 +1616,23 @@ function showToast(message, type = 'success', duration = 3000) {
  */
 
 let pickerMenu = null;
+/* The flat list behind the sections, which is what a search ranks over. Kept
+   so typing does not have to re-read IndexedDB on every keystroke. */
+let pickerAll = [];
+/*
+ * The same list, PREPARED for searching.
+ *
+ * ItemSearch.search wants what ItemSearch.index() returns, not raw rows -
+ * handing it the rows throws `indexed.words is not iterable`, which in here
+ * would have been a sheet that died the moment somebody typed. Built once when
+ * the menu loads, because the folding and the word splitting are the expensive
+ * half and doing them per keystroke is what makes a cheap Android stutter.
+ */
+let pickerIndex = null;
+/* What is in the box right now. Held rather than read off the input, because
+   the redraw that follows a keystroke happens after a debounce and the box may
+   have moved on by then. */
+let pickerTerm = '';
 
 async function openItemPicker() {
     const sheet = document.getElementById('item-picker');
@@ -1649,16 +1666,122 @@ async function openItemPicker() {
             (grouped[key] = grouped[key] || []).push(item);
         }
 
+        pickerAll = products;
+        pickerIndex = (typeof ItemSearch !== 'undefined' && ItemSearch.index)
+            ? ItemSearch.index(products)
+            : null;
         pickerMenu = MenuView.sections(grouped, {});
-        rail.innerHTML = MenuView.rail(pickerMenu, {});
-        /* An empty cart map: this sheet shows the MENU, and what is already on
-           the order is on the screen behind it. Showing quantities here would
-           be two places claiming to be the count. */
-        body.innerHTML = MenuView.render(pickerMenu, new Map(), {});
+        pickerTerm = '';
+        const box = document.getElementById('picker-search-input');
+        if (box) box.value = '';
+        drawPicker();
     } catch (error) {
         console.error('Could not open the menu', error);
         body.innerHTML = MenuView.nothing('Could not load the menu', 'Try again in a moment.');
     }
+}
+
+/**
+ * Draw the sheet for whatever is typed in it.
+ *
+ * Two states, the same two the ordering screen has:
+ *
+ *   NOTHING TYPED   the whole menu, in the shop's own section order, with the
+ *                   rail and the MENU button to move around it
+ *   SOMETHING TYPED one flat list, ranked by ItemSearch, with the rail and the
+ *                   index hidden - a jump index is meaningless over a result
+ *                   set, and leaving it there implies the sections are still
+ *                   the thing you are moving through
+ *
+ * The rows are drawn by MenuView and ranked by ItemSearch: the two modules the
+ * ordering screen itself uses. That is the whole reason this looks and behaves
+ * the same rather than merely similar.
+ */
+function drawPicker() {
+    const body = document.getElementById('item-picker-body');
+    const rail = document.getElementById('item-picker-rail');
+    const indexBtn = document.getElementById('picker-index-btn');
+    if (!body) return;
+
+    const term = String(pickerTerm || '').trim();
+
+    if (!term) {
+        if (rail) {
+            rail.innerHTML = MenuView.rail(pickerMenu, {});
+            rail.hidden = false;
+        }
+        if (indexBtn) indexBtn.hidden = !(pickerMenu && pickerMenu.length > 1);
+        /* An empty cart map: this sheet shows the MENU, and what is already on
+           the order is on the screen behind it. Showing quantities here would
+           be two places claiming to be the count. */
+        body.innerHTML = MenuView.render(pickerMenu, new Map(), {});
+        return;
+    }
+
+    if (rail) rail.hidden = true;
+    if (indexBtn) indexBtn.hidden = true;
+
+    const hits = pickerIndex
+        ? ItemSearch.search(pickerIndex, term, {
+            /* "chicken sixty five" finds Chicken 65, the way it does on the
+               ordering screen. Typed numerals only - no phonetic guessing,
+               which belongs to speech and not to a keyboard. */
+            numbers: true,
+        })
+        : pickerAll.filter((i) => String(i.name || '').toLowerCase().includes(term.toLowerCase()));
+
+    if (!hits.length) {
+        body.innerHTML = MenuView.nothing(
+            'Nothing matches "' + term + '"',
+            'Try fewer letters, or the first letters of each word.'
+        );
+        return;
+    }
+
+    /*
+     * One section, because a search result is one list. Given a name rather
+     * than left blank so the rows sit under a heading like every other row on
+     * this screen - a result list with no heading reads as a different screen.
+     */
+    body.innerHTML = MenuView.render(
+        [{ key: 'found', name: hits.length + (hits.length === 1 ? ' match' : ' matches'), items: hits }],
+        new Map(),
+        {}
+    );
+}
+
+/** Every category with a count, for the MENU sheet. */
+function pickerIndexRows() {
+    return (pickerMenu || [])
+        .map(function (section) {
+            return '<button type="button" class="menu-index-row" data-category="' + section.key + '">'
+                + '<span class="menu-index-name">' + section.name + '</span>'
+                + '<span class="menu-index-count">' + section.items.length + '</span>'
+                + '</button>';
+        })
+        .join('');
+}
+
+function openPickerIndex() {
+    const sheet = document.getElementById('picker-index');
+    const list = document.getElementById('picker-index-list');
+    if (!sheet || !list) return;
+    list.innerHTML = pickerIndexRows();
+    sheet.hidden = false;
+}
+
+function closePickerIndex() {
+    const sheet = document.getElementById('picker-index');
+    if (sheet) sheet.hidden = true;
+}
+
+/** Scroll the sheet to a section, the way the rail does. */
+function pickerGoTo(key) {
+    const section = document.getElementById('sec-' + key);
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('#item-picker-rail .menu-chip').forEach(function (chip) {
+        chip.classList.toggle('is-here', chip.dataset.category === key);
+    });
 }
 
 function closeItemPicker() {
@@ -1666,6 +1789,27 @@ function closeItemPicker() {
     if (sheet) sheet.hidden = true;
     document.body.classList.remove('picker-open');
 }
+
+/*
+ * TYPING, debounced.
+ *
+ * Ranking a two hundred item menu is microseconds, but re-rendering it on
+ * every keystroke is not - and the phone a restaurant actually buys shows that
+ * as a keyboard that lags behind the thumb. 120ms is under the threshold where
+ * somebody notices a wait and well above the gap between two fast keystrokes.
+ */
+let pickerTyping = null;
+document.addEventListener('input', function (event) {
+    if (!event.target || event.target.id !== 'picker-search-input') return;
+    const value = event.target.value;
+    const clear = document.getElementById('picker-search-clear');
+    if (clear) clear.hidden = !value;
+    clearTimeout(pickerTyping);
+    pickerTyping = setTimeout(function () {
+        pickerTerm = value;
+        drawPicker();
+    }, 120);
+});
 
 /* One listener for the whole sheet, because the rows are redrawn. */
 document.addEventListener('click', function (event) {
@@ -1680,14 +1824,42 @@ document.addEventListener('click', function (event) {
         return;
     }
 
+    /* The MENU sheet: every category at once, with counts. */
+    if (event.target.closest('#picker-index-btn')) {
+        openPickerIndex();
+        return;
+    }
+    if (event.target.id === 'picker-index-scrim' || event.target.closest('#picker-index-close')) {
+        closePickerIndex();
+        return;
+    }
+    const indexRow = event.target.closest('.menu-index-row');
+    if (indexRow && indexRow.closest('#picker-index')) {
+        closePickerIndex();
+        /* After the sheet is gone, or the scroll lands against a screen that
+           is about to change height. */
+        setTimeout(function () { pickerGoTo(indexRow.dataset.category); }, 60);
+        return;
+    }
+
     /* A chip jumps to its section, the way the menu screen's rail does. */
     const chip = event.target.closest('.menu-chip');
     if (chip && chip.closest('#item-picker-rail')) {
-        const section = document.getElementById('sec-' + chip.dataset.category);
-        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        document.querySelectorAll('#item-picker-rail .menu-chip').forEach((c) => {
-            c.classList.toggle('is-here', c === chip);
-        });
+        pickerGoTo(chip.dataset.category);
+        return;
+    }
+
+    /* The cross in the search box. */
+    if (event.target.closest('#picker-search-clear')) {
+        const box = document.getElementById('picker-search-input');
+        if (box) {
+            box.value = '';
+            box.focus();
+        }
+        pickerTerm = '';
+        const clear = document.getElementById('picker-search-clear');
+        if (clear) clear.hidden = true;
+        drawPicker();
         return;
     }
 
@@ -1724,7 +1896,15 @@ function pickerItem(id) {
         const hit = (section.items || []).find((item) => String(item.id) === String(id));
         if (hit) return hit;
     }
-    return null;
+    /*
+     * And the flat list, which is what a SEARCH RESULT was drawn from.
+     *
+     * Today every searchable item is also in a section, so this rarely runs.
+     * It is here because the failure if it ever stops being true is silent:
+     * the row says "Added", nothing reaches the order, and the waiter finds
+     * out when the kitchen does not.
+     */
+    return (pickerAll || []).find((item) => String(item.id) === String(id)) || null;
 }
 
 /*

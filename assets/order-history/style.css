@@ -1168,10 +1168,94 @@ body.picker-open {
     color: var(--ink, #0f172a);
 }
 
+/*
+ * THE SEARCH BOX, the same one the ordering screen has.
+ *
+ * Owner: "i want whole UI as same in new order search box, center menu button
+ * with categories, efective search and list of items."
+ *
+ * The inner markup and its classes come straight from products.html, so the
+ * icon, the clear cross and the focus ring are the ones a waiter already
+ * knows. Only the outer padding is written here, because in the sheet it sits
+ * under a title bar rather than under the app header.
+ */
+.item-picker-search {
+    padding: var(--s3, 12px) var(--s4, 16px);
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.item-picker-search .product-search-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--s2, 8px);
+    background: var(--surface-2, #f1f5f9);
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 12px;
+    padding: 0 var(--s3, 12px);
+    min-height: var(--touch, 48px);
+}
+.item-picker-search .product-search-inner:focus-within {
+    border-color: var(--accent, #2563eb);
+    background: var(--surface, #fff);
+}
+.item-picker-search .product-search-icon {
+    color: var(--ink-soft, #64748b);
+    font-size: 15px;
+    flex: 0 0 auto;
+}
+.item-picker-search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    font-size: var(--t-md, 16px); /* 16px or iOS zooms the page on focus */
+    color: var(--ink, #0f172a);
+    padding: 0;
+}
+.item-picker-search .product-search-clear {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--line, #e2e8f0);
+    color: var(--ink-soft, #64748b);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/*
+ * The MENU button, floating over the list.
+ *
+ * menu.css already styles `.menu-index-btn` and that stylesheet is loaded
+ * here, so this only lifts it above the sheet. The sheet is `position: fixed`
+ * with its own stacking context, so the button's own z-index is measured
+ * against the sheet rather than the page.
+ */
+.picker-index-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    z-index: 3;
+}
+.picker-index-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+}
+
 .item-picker-rail {
     background: var(--surface, #fff);
     border-bottom: 1px solid var(--line, #e2e8f0);
     overflow-x: auto;
+}
+/* Hidden while searching: a jump index over a result list is a lie about what
+   you are moving through. */
+.item-picker-rail[hidden] {
+    display: none;
 }
 
 /* The one part that scrolls, so the head and the way out never leave. */
