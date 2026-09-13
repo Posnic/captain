@@ -432,3 +432,104 @@ body {
   font-weight: 700;
   color: var(--ink-soft, #475569);
 }
+
+/* ============================================ online orders needing a person
+ *
+ * Owner: "request should go to desktop application and captain app. let him
+ * confirm. anyone can confirm about that."
+ *
+ * A bar across the top, not a badge. A badge is for something that can wait;
+ * a customer who has asked to cancel is standing at a table wondering whether
+ * their food is coming. It says how many and what the oldest one wants, and
+ * it does not go away until the queue is empty. Nothing blocks the screen -
+ * a waiter carrying three plates is never trapped in a dialog.
+ */
+.online-approvals-bar {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff4e5;
+    color: #7a4100;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+}
+
+.online-approvals-panel {
+    padding: 12px 16px;
+    background: #fffaf3;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.online-approval {
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.online-approval[data-kind="cancel"] {
+    border-color: #d9534f;
+}
+
+.online-approval[data-kind="change"] {
+    border-color: #e0a800;
+}
+
+.online-approval-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.online-approval-what {
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.online-approval-where {
+    margin: 4px 0 0;
+    font-size: 13px;
+    opacity: 0.75;
+}
+
+.online-approval-lines {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    font-size: 15px;
+}
+
+.online-approval-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* Both full-width and equally weighted: neither answer is the safe default,
+   and a small "no" beside a big "yes" is a thumb being steered. */
+.online-approval-actions button {
+    flex: 1 1 0;
+    min-height: 44px;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.online-approval-no {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    background: #fff;
+    color: #333;
+}
+
+.online-approval-yes {
+    border: 0;
+    background: #1f2937;
+    color: #fff;
+}
