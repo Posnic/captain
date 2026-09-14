@@ -220,6 +220,10 @@ test("yesterday's price is not today's, so the waiter is asked again", async ({ 
   await page.locator('#ask-price-input').fill('1400');
   await page.locator('#ask-price-ok').click();
 
+  /* Wait for the line to EXIST before reading it. The click and the write to
+     storage are not the same tick, and on a slow runner the read wins. */
+  await expect(lobster.locator('.dish-qty')).toHaveText('1');
+
   const line = await page.evaluate(async () => (await getCartData()).find((i) => i.id === 'p-lobster'));
   expect(line.askedPrice).toBe(1400);
 });
