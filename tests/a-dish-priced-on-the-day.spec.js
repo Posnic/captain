@@ -288,3 +288,60 @@ test('a dish the shop marks open_price is always asked about', async ({ page }) 
   await page.locator('.dish[data-id="p-oyster"] .btn-add').click();
   await expect(page.locator('#ask-price-scrim')).toBeVisible();
 });
+
+/* ------------------------------------------------------- and on the bill */
+
+test("the bill shows the price the waiter entered, not zero", async ({ page }) => {
+  /*
+   * THE SHOCK, ONE SCREEN LATER. The waiter is asked, types 850, and the bill
+   * screen - the last thing before the kitchen, and the thing read out to a
+   * customer - still totals the line from the catalogue, which has nothing.
+   *
+   * "i see total as 0 and shocked" was about a printed bill. This is the same
+   * zero on the handset the waiter is holding.
+   */
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+
+  await page.locator('#next-btn').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+
+  const line = page.locator('.bill-line').first();
+  await expect(line.locator('.bill-each')).toHaveText(/850\.00/);
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹850.00');
+});
+
+test("two of them add up, and the total is not the catalogue's nothing", async ({ page }) => {
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+  await page.locator('.dish[data-id="p-fish"] .btn-increase').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('2');
+
+  await page.locator('#next-btn').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1700.00');
+});
+
+test("an ordinary dish alongside it still totals the way it always did", async ({ page }) => {
+  /* The line that says this change is safe: the biryani is priced on the card
+     and nothing about it goes through today's-price at all. */
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-biryani"] .btn-add').click();
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+
+  await page.locator('#next-btn').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1070.00');
+});

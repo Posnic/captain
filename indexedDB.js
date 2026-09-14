@@ -746,10 +746,13 @@ async function renderCart(cartData = null, skipRedirect = false) {
 
         for (const item of cartData) {
             const qty = item.quantity || 0;
-            const subtotal = Number(item.subtotal || 0);
-            const discountUnit = Number(item.discount_price || 0);
-            const taxUnit = Number(item.tax_price || 0);
-            const finalUnit = Number(item.final_price || 0);
+            const asked = Number(item.askedPrice) || 0;
+            /* Today's price is the whole price: the catalogue has no rate for
+               this dish, so it has no discount or tax on it either. */
+            const subtotal = asked > 0 ? asked : Number(item.subtotal || 0);
+            const discountUnit = asked > 0 ? 0 : Number(item.discount_price || 0);
+            const taxUnit = asked > 0 ? 0 : Number(item.tax_price || 0);
+            const finalUnit = unitPrice(item);
 
             const lineSubtotal = subtotal * qty;
             const lineDiscount = discountUnit * qty;
@@ -1146,6 +1149,27 @@ async function updateQuantity(id, change, options) {
     }
 }
 
+/**
+ * What one of these costs, on every screen that shows money.
+ *
+ * TODAY'S PRICE WINS. A dish the catalogue prices on the day carries nothing
+ * in `final_price` - that is the whole condition - so a screen that reads the
+ * catalogue shows a fish as free. The waiter was asked, typed 850, and the
+ * bill still said 0.00 each and totalled nothing: the same shock that started
+ * this work, one screen later and on the handset the waiter is holding.
+ *
+ * `askedPrice` is per LINE, because the next table may be quoted something
+ * else, and it is already what the order payload sends - so this makes every
+ * screen agree with what the kitchen and the server are told.
+ *
+ * Absent for every ordinary dish, which is why nothing else changes.
+ */
+function unitPrice(item) {
+    const asked = Number(item && item.askedPrice) || 0;
+    if (asked > 0) return asked;
+    return Number((item && (item.final_price || item.price)) || 0);
+}
+
 async function updateCart() {
     let totalQty = 0;
     let totalPrice = 0;
@@ -1155,7 +1179,7 @@ async function updateCart() {
 
         storedCart.forEach(item => {
             totalQty += item.quantity;
-            totalPrice += item.quantity * item.price;
+            totalPrice += item.quantity * unitPrice(item);
 
             // ✅ Update UI for each item
             $(`#qty-${item.id}`).text(item.quantity);
@@ -1440,9 +1464,9 @@ async function checkout(transactionId) {
                  * every ordinary line from its own catalogue. See
                  * _priceOnlineLine in the api.
                  */
-                item_price: item.askedPrice || item.final_price || item.price || 0,
+                item_price: unitPrice(item),
                 item_subtotal:
-                    (item.askedPrice || item.final_price || item.price || 0) * item.quantity,
+                    unitPrice(item) * item.quantity,
                 gst: (item.tax_price || 0) * item.quantity,
                 item_description: item.notes || ""
             };
