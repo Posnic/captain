@@ -18,12 +18,24 @@ import { onTheMenu, item } from './support/shop.js';
  * happens if they do not answer.
  */
 
+/*
+ * THE FLAG CONTRACT: daily_price says the rate comes from the morning's
+ * market, price_set_on says when somebody last entered it. A shop that has
+ * set neither still says the same thing by leaving the price at zero, which
+ * is how these dishes are set up today - so both shapes are on this menu.
+ */
+const hoursAgo = (n) => new Date(Date.now() - n * 60 * 60 * 1000).toISOString();
+
 const MENU = [
   {
     category_name: 'From the sea',
     items: [
       /* No price on the card: this is the shape that caused it. */
       item('p-fish', 'Tandoori Pomfret', 0, {}),
+      /* Marked, and priced this morning: an ordinary dish all day. */
+      item('p-crab', 'Pepper Crab', 900, { daily_price: true, price_set_on: hoursAgo(2) }),
+      /* Marked, and last priced yesterday: not a price, a leftover. */
+      item('p-lobster', 'Butter Lobster', 1200, { daily_price: true, price_set_on: hoursAgo(26) }),
       item('p-biryani', 'Chicken Biryani', 220, {}),
     ],
   },
@@ -167,4 +179,112 @@ test('a second one costs the same as the first, without asking again', async ({ 
   });
   expect(line.askedPrice).toBe(850);
   expect(line.quantity).toBe(2);
+});
+
+test("a dish priced this morning is ordinary, and the waiter is asked nothing", async ({ page }) => {
+  /*
+   * The whole point of the shop setting these when they open. A handset that
+   * asks anyway, for a number already on the screen, is a handset that gets
+   * ignored - and then the question that matters gets ignored too.
+   */
+  await atTheMenu(page);
+
+  const crab = page.locator('.dish[data-id="p-crab"]');
+  await expect(crab.locator('.dish-price')).toContainText('900');
+  await expect(crab.locator('.dish-ask')).toHaveCount(0);
+
+  await crab.locator('.btn-add').click();
+  await expect(page.locator('#ask-price-scrim')).toBeHidden();
+  await expect(crab.locator('.dish-qty')).toHaveText('1');
+
+  const line = await page.evaluate(async () => (await getCartData()).find((i) => i.id === 'p-crab'));
+  expect(line.askedPrice).toBeFalsy();
+});
+
+test("yesterday's price is not today's, so the waiter is asked again", async ({ page }) => {
+  /*
+   * The quiet failure this flag exists to catch. A stale number is worse than
+   * the zero that started all this: zero is obviously wrong and somebody
+   * shouts, while 1200 for a lobster looks right and reaches the bill.
+   */
+  await atTheMenu(page);
+
+  const lobster = page.locator('.dish[data-id="p-lobster"]');
+  await expect(lobster.locator('.dish-ask')).toHaveText(/today's price/i);
+  await expect(lobster).not.toContainText('1200');
+
+  await lobster.locator('.btn-add').click();
+  await expect(page.locator('#ask-price-scrim')).toBeVisible();
+  await expect(page.locator('#ask-price-dish')).toHaveText('Butter Lobster');
+
+  await page.locator('#ask-price-input').fill('1400');
+  await page.locator('#ask-price-ok').click();
+
+  /* Wait for the line to EXIST before reading it. The click and the write to
+     storage are not the same tick, and on a slow runner the read wins. */
+  await expect(lobster.locator('.dish-qty')).toHaveText('1');
+
+  const line = await page.evaluate(async () => (await getCartData()).find((i) => i.id === 'p-lobster'));
+  expect(line.askedPrice).toBe(1400);
+});
+
+test('a dish marked for the market but never priced is asked about', async ({ page }) => {
+  /* Flag set in the morning, price not entered yet: the same question, and
+     the card price it still carries is not offered as an answer. */
+  await onTheMenu(page, 'nothing', {
+    menu: [{ category_name: 'From the sea', items: [item('p-prawn', 'Tiger Prawn', 700, { daily_price: true })] }],
+  });
+  await page.waitForFunction(() => typeof updateQuantity === 'function');
+
+  const prawn = page.locator('.dish[data-id="p-prawn"]');
+  await expect(prawn.locator('.dish-ask')).toHaveText(/today's price/i);
+  await prawn.locator('.btn-add').click();
+  await expect(page.locator('#ask-price-scrim')).toBeVisible();
+});
+
+test('an unreadable date is treated as not today, never as today', async ({ page }) => {
+  /* The safe way round: a question costs a waiter five seconds, a stale price
+     costs the shop its word. */
+  await onTheMenu(page, 'nothing', {
+    menu: [{ category_name: 'From the sea', items: [
+      item('p-squid', 'Salt Squid', 500, { daily_price: true, price_set_on: 'before the boat came in' }),
+    ] }],
+  });
+  await page.waitForFunction(() => typeof updateQuantity === 'function');
+
+  await expect(page.locator('.dish[data-id="p-squid"] .dish-ask')).toHaveText(/today's price/i);
+});
+
+test('a shop that has set no flag at all is exactly as it was', async ({ page }) => {
+  /*
+   * Every shop until the flag reaches them, which is why this shipped ahead
+   * of the schema: no daily_price anywhere, and the handset still asks for
+   * the dish with no price and stays quiet about the one that has one.
+   */
+  await atTheMenu(page);
+
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-ask')).toHaveText(/today's price/i);
+  await expect(page.locator('.dish[data-id="p-biryani"] .dish-ask')).toHaveCount(0);
+});
+
+test('a dish the shop marks open_price is always asked about', async ({ page }) => {
+  /*
+   * Different from the morning's market: the shop is saying the price is
+   * settled at the counter, every single time, so a card price is not an
+   * answer and today's date is not either.
+   *
+   * This flag was read by the menu row for MONTHS and never once arrived: the
+   * loop that stores the menu names the fields it keeps, and anything it does
+   * not name is dropped before a screen sees it. See indexedDB.js.
+   */
+  await onTheMenu(page, 'nothing', {
+    menu: [{ category_name: 'From the sea', items: [
+      item('p-oyster', 'Oysters', 600, { open_price: true, daily_price: true, price_set_on: hoursAgo(1) }),
+    ] }],
+  });
+  await page.waitForFunction(() => typeof updateQuantity === 'function');
+
+  await expect(page.locator('.dish[data-id="p-oyster"] .dish-ask')).toHaveText(/today's price/i);
+  await page.locator('.dish[data-id="p-oyster"] .btn-add').click();
+  await expect(page.locator('#ask-price-scrim')).toBeVisible();
 });
