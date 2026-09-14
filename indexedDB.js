@@ -1530,7 +1530,24 @@ async function checkout(transactionId) {
                 idempotencyKey: orderKey,
                 branch: branchId,
                 items: payload,
-                customerMobile: '+910000000000',
+                /*
+                 * A TABLE HAS NO PHONE NUMBER.
+                 *
+                 * This endpoint was built for a customer ordering from their
+                 * own phone, where the number is theirs. A waiter standing at
+                 * a table has none, and this used to send `+910000000000`
+                 * because the field looked required.
+                 *
+                 * It is not: nothing validates it, and the sale simply carries
+                 * an empty customer phone. The invented one was worse than
+                 * empty - it printed on a customer's bill under the customer
+                 * line, and it still sits in the phone column of every sales
+                 * report and every lookup by number.
+                 *
+                 * Sent as empty rather than dropped, so the shape of what this
+                 * app posts stays the same as the storefront's.
+                 */
+                customerMobile: '',
                 transactionId: transactionId,
                 tokenId: generateUniqueToken(),
                 payment_status: "cash",
