@@ -71,6 +71,24 @@
   }
 
   /** What this dish costs now, what it cost before, and the saving. */
+  /**
+   * Is this dish priced on the day rather than on the card?
+   *
+   * Whole fish, crab, lobster: the shop cannot print a number because it does
+   * not know one until the morning's market. Two of them went out of a real
+   * kitchen worth nothing, because every layer took the missing price
+   * literally - the row showed 0.00 and the order was accepted.
+   *
+   * A shop says so with `open_price`. A shop that has not set the flag says
+   * the same thing by leaving the price empty, which is how these are set up
+   * today, so both count.
+   */
+  function askPrice(product) {
+    if (!product) return false;
+    if (product.open_price === true) return true;
+    return !(Number(product.price) > 0);
+  }
+
   function pricing(product) {
     const price = Number(product.price) || 0;
     const off = Number(product.discount_price) || 0;
@@ -188,7 +206,11 @@
       escape(product.name) +
       '</p>' +
       '<div class="dish-price">' +
-      money(cost.now, opts.currency) +
+      /*
+       * "Today's price" rather than 0.00. A zero on a menu row reads as free,
+       * and a waiter who believes it sends a table a fish for nothing.
+       */
+      (askPrice(product) ? '<span class="dish-ask">Today\'s price</span>' : money(cost.now, opts.currency)) +
       (cost.was
         ? '<span class="dish-was">' +
           money(cost.was, opts.currency) +
@@ -349,5 +371,21 @@
     );
   }
 
-  return { dish, sections, render, rail, nothing, noPhoto, plain, diet, pricing, stock, escape };
+  return {
+    dish,
+    sections,
+    render,
+    rail,
+    nothing,
+    noPhoto,
+    plain,
+    diet,
+    pricing,
+    /* Exported because the screens have to ask the same question before they
+       put a dish in a cart, and two answers to it is how one of them sends a
+       free fish. */
+    askPrice,
+    stock,
+    escape,
+  };
 });
