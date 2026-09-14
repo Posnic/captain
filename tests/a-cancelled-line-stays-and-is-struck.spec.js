@@ -158,3 +158,130 @@ test('a dish added in this session is removed, not struck', async ({ page }) => 
   await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(2);
   await expect(page.locator('#current-order-items')).not.toContainText('Just Added');
 });
+
+/* ------------------------------------------ and what the till is then told */
+
+/** One live order on the screen, opened for modification the way a waiter does. */
+async function anOrderOpenedFromTheTill(page, lines) {
+  /*
+   * Through loadOrderHistory and editOrder rather than by poking variables:
+   * `allOrders` and `currentOrderId` are script-scoped, so a test that assigns
+   * them on `window` changes nothing the screen can see - and saving reads
+   * both. Driving the real chain is also the only way the table and the dine
+   * type reach the payload, which is what the save refuses to go without.
+   */
+  /*
+   * REGISTERED AFTER onTheMenu, deliberately. The shared harness installs a
+   * catch-all route for the whole shop origin and answers getOrderHistory with
+   * an empty list; Playwright tries the most recently added route first, so a
+   * route added before it never runs.
+   */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+
+  await page.route('**/sales/getOrderHistory', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        type: 'success',
+        data: {
+          orders: [
+            {
+              _id: 'o-1',
+              order_number: 11,
+              status: 'pending',
+              dine_type: 'Dine-in',
+              table_number: '6A',
+              person_count: 4,
+              sales_total: 760,
+              total_amount: 760,
+              created_date: new Date().toISOString(),
+              items: lines,
+            },
+          ],
+        },
+      }),
+    })
+  );
+
+  await page.goto('/order-history.html');
+  await page.waitForFunction(() => typeof editOrder === 'function');
+  await page.evaluate(() => loadOrderHistory());
+  await page.evaluate(() => editOrder('o-1'));
+  await page.locator('#editOrderModal').waitFor({ state: 'visible' });
+}
+
+/* The shape the till really sends: item_quantity alongside quantity. That
+   pairing is the whole bug. */
+const fromTheTill = () => [
+  { _id: 'l-1', item_id: 'p-1', product_id: 'p-1', name: 'Chicken Biryani', item_name: 'Chicken Biryani', item_quantity: 2, quantity: 2, price: 220, unit_price: 220 },
+  { _id: 'l-2', item_id: 'p-2', product_id: 'p-2', name: 'Mutton Biryani', item_name: 'Mutton Biryani', item_quantity: 1, quantity: 1, price: 320, unit_price: 320 },
+];
+
+test('the cancelled dish is left out of what is sent to the till', async ({ page }) => {
+  /*
+   * THE BUG THIS SCREEN SHIPPED WITH, from a live floor at Azure: "i cancel
+   * one item and updated button. it closed. i dont see any print is printed.
+   * also i went again inside same order its not cancelled."
+   *
+   * Every test above passed while this was broken, because all of them stop at
+   * the screen. The line is struck on screen and then sent back to the till at
+   * its original quantity, because it still carries `item_quantity` and the
+   * payload read `quantity || item_quantity` - and 0 is falsy.
+   *
+   * So the till saw the order it already had: nothing cancelled, nothing
+   * written to its history, and therefore no fresh ticket to the kitchen.
+   */
+  let sent = null;
+  await anOrderOpenedFromTheTill(page, fromTheTill());
+  await page.route('**/sales/updateOrder', (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'success', message: 'Order updated', data: {} }),
+    });
+  });
+  await cancel(page, 0);
+  await page.evaluate(() => saveOrderChanges());
+
+  await expect.poll(() => (sent ? sent.items.length : null)).toBe(1);
+  expect(sent.items.map((i) => i.name)).toEqual(['Mutton Biryani']);
+  expect(sent.items[0].quantity).toBe(1);
+});
+
+test('a reduced dish is sent at its new number, not its old one', async ({ page }) => {
+  /* Never broken, and pinned here so a fix for the zero cannot cost it. */
+  let sent = null;
+  await anOrderOpenedFromTheTill(page, fromTheTill());
+  await page.route('**/sales/updateOrder', (route) => {
+    sent = route.request().postDataJSON();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ type: 'success', message: 'Order updated', data: {} }),
+    });
+  });
+  await page.evaluate(() => updateItemQuantity(0, -1));
+  await page.evaluate(() => saveOrderChanges());
+
+  await expect.poll(() => (sent ? sent.items.length : null)).toBe(2);
+  const biryani = sent.items.find((i) => i.name === 'Chicken Biryani');
+  expect(biryani.quantity).toBe(1);
+});
+
+test('striking every dish off says which button to use instead', async ({ page }) => {
+  /* The till refuses an order with no lines, correctly - that request is not
+     the same as cancelling the order, which is one button away. */
+  let posted = false;
+  await anOrderOpenedFromTheTill(page, [fromTheTill()[0]]);
+  await page.route('**/sales/updateOrder', (route) => {
+    posted = true;
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+  await cancel(page, 0);
+  await page.evaluate(() => saveOrderChanges());
+
+  await expect(page.locator('body')).toContainText(/Cancel order/i);
+  expect(posted).toBe(false);
+});
