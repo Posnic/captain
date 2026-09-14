@@ -532,7 +532,28 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                         /* And the same words as the DEFAULT NOTE on a line,
                            which is what item_description has always meant to
                            the cart and the kitchen ticket. */
-                        item_description: item.description || item.item_description || ""
+                        item_description: item.description || item.item_description || "",
+                        /*
+                         * HOW THIS DISH IS PRICED.
+                         *
+                         * `open_price` means the price is settled at the
+                         * counter, every time. `daily_price` means it comes
+                         * from the morning's market, and `price_set_on` says
+                         * when somebody last entered it - priced today it is
+                         * an ordinary dish, priced yesterday it is not,
+                         * because yesterday's rate for a pomfret is not
+                         * today's.
+                         *
+                         * THIS LIST IS A WHITELIST, and that is the whole
+                         * reason these are here. A field the server sends and
+                         * this loop does not name is gone by the time any
+                         * screen sees it - open_price was read by the menu row
+                         * for months and never once arrived. See askPrice in
+                         * assets/common/menu-view.js.
+                         */
+                        open_price: item.open_price === true,
+                        daily_price: item.daily_price === true,
+                        price_set_on: item.price_set_on || ""
                     });
                 });
             });
