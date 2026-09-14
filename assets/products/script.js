@@ -836,7 +836,25 @@ $(document).on("click", ".btn-add", async function () {
     window._pendingQuantity = 1;
     showQuantityHint(1);
 
-    await updateQuantity(id, quantity);
+    /*
+     * A DISH PRICED ON THE DAY IS ASKED ABOUT BEFORE IT GOES ON.
+     *
+     * Owner, from a live table: two fish reached the kitchen worth nothing.
+     * The catalogue cannot carry a price for a whole fish, so the waiter is
+     * asked for the one they were told this morning.
+     *
+     * Asked BEFORE the quantity changes, so backing out of the question leaves
+     * the order exactly as it was rather than adding a free dish and then
+     * taking it off.
+     */
+    const product = await getProductById(id);
+    let askedPrice = 0;
+    if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(product)) {
+        askedPrice = await POSNIC.askPrice(product && product.name);
+        if (!askedPrice) return;
+    }
+
+    await updateQuantity(id, quantity, { askedPrice });
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);

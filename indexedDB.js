@@ -1024,9 +1024,13 @@ function showCategory(category) {
 // });
 
 // ✅ Update Quantity and Save to IndexedDB
-async function updateQuantity(id, change) {
+async function updateQuantity(id, change, options) {
     // ✅ only read needed product
     const storedProduct = await getProductById(id);
+    /* What the waiter was quoted this morning, for a dish the catalogue prices
+       on the day. Absent for every ordinary dish, which is why nothing below
+       changes for them. */
+    const quoted = Number((options && options.askedPrice) || 0) || 0;
 
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
@@ -1047,8 +1051,25 @@ async function updateQuantity(id, change) {
             tax_price: Number(product.tax_price || 0),
             subtotal: Number(product.subtotal || 0),
             final_price: Number(product.final_price || 0),
+            /*
+             * TODAY'S PRICE, for a dish the card cannot carry one for.
+             *
+             * Whole fish, crab, lobster. The catalogue has no selling price,
+             * so the price is whatever the waiter was told this morning - and
+             * it belongs on the LINE, not on the product, because the next
+             * table may be quoted something else.
+             *
+             * `askedPrice` is set by whoever put this in the cart. Nothing
+             * reads it unless it is there, so every ordinary dish is
+             * untouched.
+             */
+            askedPrice: quoted,
             quantity: 0
         };
+    } else if (quoted > 0) {
+        /* Re-quoted: the second fish of the evening may cost something else,
+           and the line carries the number the table was told. */
+        item.askedPrice = quoted;
     }
 
     const allowNegative = storedProduct?.negative_stock === true;
@@ -1392,8 +1413,15 @@ async function checkout(transactionId) {
                 item_id: item.id,
                 item_name: item.name || item.item_name || '',
                 item_quantity: item.quantity,
-                item_price: item.final_price || item.price || 0,
-                item_subtotal: (item.final_price || item.price || 0) * item.quantity,
+                /*
+                 * A dish priced on the day sends what the waiter entered; the
+                 * server still refuses anything it did not ask for, and prices
+                 * every ordinary line from its own catalogue. See
+                 * _priceOnlineLine in the api.
+                 */
+                item_price: item.askedPrice || item.final_price || item.price || 0,
+                item_subtotal:
+                    (item.askedPrice || item.final_price || item.price || 0) * item.quantity,
                 gst: (item.tax_price || 0) * item.quantity,
                 item_description: item.notes || ""
             };

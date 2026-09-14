@@ -2066,6 +2066,23 @@ document.addEventListener('click', function (event) {
          */
         const found = pickerItem(id);
         if (!found) return;
+
+        /*
+         * The same question the ordering screen asks, in the same words.
+         *
+         * A second round added to a table can be a whole fish just as easily
+         * as the first one was, and a sheet that skipped the question would
+         * put it on the order at nothing.
+         */
+        if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(found)) {
+            POSNIC.askPrice(found.name).then((asked) => {
+                if (!asked) return;
+                addProductToOrder(id, found.name, asked);
+                pickerRefreshRow(id);
+            });
+            return;
+        }
+
         addProductToOrder(id, found.name, found.selling_price || found.price || 0);
         /*
          * The row becomes a counter. No "Added" flash and no second ADD: the
