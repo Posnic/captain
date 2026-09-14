@@ -79,14 +79,49 @@
    * kitchen worth nothing, because every layer took the missing price
    * literally - the row showed 0.00 and the order was accepted.
    *
-   * A shop says so with `open_price`. A shop that has not set the flag says
-   * the same thing by leaving the price empty, which is how these are set up
-   * today, so both count.
+   * THE FLAG CONTRACT: daily_price says the rate comes from the market, and
+   * price_set_on says when somebody last entered it. Priced TODAY the dish is
+   * ordinary and the waiter is asked nothing - which is the whole point of the
+   * shop setting it when they open, and the difference between a handset that
+   * helps and one that interrogates. Priced YESTERDAY it is not ordinary:
+   * yesterday's rate for a pomfret is not today's, and charging it quietly is
+   * worse than the zero this started as, because it looks right on the bill.
+   *
+   * `open_price` is always-ask and stays that way: the shop is saying the
+   * price is settled at the counter, every single time.
+   *
+   * A shop that has set no flag at all says the same thing by leaving the
+   * price empty, which is how these dishes are set up today, so that counts
+   * too - this has to work before the flag reaches every shop.
    */
   function askPrice(product) {
     if (!product) return false;
     if (product.open_price === true) return true;
+    if (product.daily_price === true && !pricedToday(product.price_set_on)) return true;
     return !(Number(product.price) > 0);
+  }
+
+  /**
+   * Was that price entered today, on this handset's calendar?
+   *
+   * The phone's day, not the server's. The handset is standing in the shop, so
+   * they are the same day; and the server decides in the SHOP's timezone and
+   * refuses anything stale, so the worst a wrong answer here can do is ask a
+   * waiter for a number that is already on the screen.
+   *
+   * An absent or unreadable date is "not today", which is the safe way round:
+   * a question, rather than a stale price carried onto a bill.
+   */
+  function pricedToday(setOn) {
+    if (!setOn) return false;
+    const when = new Date(setOn);
+    if (Number.isNaN(when.getTime())) return false;
+    const now = new Date();
+    return (
+      when.getFullYear() === now.getFullYear() &&
+      when.getMonth() === now.getMonth() &&
+      when.getDate() === now.getDate()
+    );
   }
 
   function pricing(product) {
