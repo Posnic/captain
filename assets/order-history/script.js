@@ -498,16 +498,23 @@ async function saveOrderChanges() {
         }
     }
     try {
+        const lines = linesForSave(editingOrder.items);
+        if (lines.length === 0) {
+            /*
+             * Every dish struck off. The till reads an order by the lines it
+             * still has, so an empty list is not "cancel everything" to it -
+             * it is a request with nothing in it, and it is refused. Cancelling
+             * the ORDER is the thing the waiter means, and it is one button
+             * away, so say that rather than showing them a server error.
+             */
+            hideLoader();
+            showToast('Nothing left on this order. Use Cancel order instead.', 'error');
+            return;
+        }
+
         const data = await POSNIC.api.post('/sales/updateOrder', {
                 order_id: currentOrderId,
-                items: editingOrder.items
-                    .filter(item => parseFloat(item.quantity || item.item_quantity || 0) > 0)
-                    .map(item => ({
-                        ...item,
-                        product_id: item.product_id || item.item_id || item.id || null,
-                        quantity: parseFloat(item.quantity || item.item_quantity || 1),
-                        price: parseFloat(item.price || item.unit_price || item.item_base_price || 0),
-                    })),
+                items: lines,
                 total_amount: editingOrder.total_amount,
                 extra_discount_type: extraType,
                 extra_discount: extraVal,
@@ -1468,6 +1475,59 @@ function showRemoveItemConfirmation(index) {
 
 function removeItem(index) {
     showRemoveItemConfirmation(index);
+}
+
+/**
+ * HOW MANY OF THIS DISH THE ORDER SHOULD END UP WITH.
+ *
+ * ZERO IS A NUMBER, and that is the whole point of this function. A cancelled
+ * line is kept on the screen with quantity 0 so it can be shown struck through
+ * - but it still carries `item_quantity` from the till, its quantity BEFORE
+ * the waiter struck it off.
+ *
+ * The old code read `item.quantity || item.item_quantity`, and 0 is falsy, so
+ * a cancelled dish was sent back at its original quantity. The till saw no
+ * change, cancelled nothing, printed nothing, and the dish was still there
+ * when the waiter opened the order again. Reported from a live floor at Azure
+ * on 14-09-2026: "i cancel one item and updated button. it closed. i dont see
+ * any print is printed. also i went again inside same order its not
+ * cancelled."
+ *
+ * A reduction from 2 to 1 was never affected - 1 is truthy. Only cancelling
+ * was, which is why it went out looking fine.
+ */
+function lineQuantity(item) {
+    if (!item) return 0;
+    const said = [item.quantity, item.item_quantity].find(
+        (v) => v !== undefined && v !== null && v !== ''
+    );
+    const n = parseFloat(said);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * The lines to send when an order is saved.
+ *
+ * WHAT IS ABSENT IS WHAT IS CANCELLED. The till rebuilds the order from the
+ * lines it receives: a dish that arrives is kept at the quantity given, and a
+ * dish that does NOT arrive is struck off and written into the order's history
+ * as a cancellation - which is also what puts a fresh ticket in the kitchen.
+ *
+ * So a cancelled line must be left out, not sent with a zero, and a line the
+ * waiter never touched must be sent exactly as it was.
+ */
+function linesForSave(items) {
+    return (Array.isArray(items) ? items : [])
+        .map((item) => ({ item, quantity: lineQuantity(item) }))
+        .filter((row) => row.quantity > 0)
+        .map((row) => ({
+            ...row.item,
+            product_id: row.item.product_id || row.item.item_id || row.item.id || null,
+            quantity: row.quantity,
+            price: parseFloat(
+                row.item.price || row.item.unit_price || row.item.item_base_price || 0
+            ),
+        }));
 }
 
 function confirmRemoveItem() {
