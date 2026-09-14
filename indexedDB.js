@@ -782,7 +782,24 @@ async function renderCart(cartData = null, skipRedirect = false) {
                    twenty-five characters in JavaScript. */
                 '<p class="bill-name">' + billText(item.name) + '</p>' +
                 (item.notes ? '<div class="bill-note">' + billText(item.notes) + '</div>' : '') +
-                '<div class="bill-each">₹' + finalUnit.toFixed(2) + ' each</div>' +
+                /*
+                 * TODAY'S PRICE CAN BE CORRECTED HERE.
+                 *
+                 * A dish priced on the day is whatever the waiter was told
+                 * this morning, typed into a box - and 850 for a lobster that
+                 * costs 8500 is one missed key. The menu screen deliberately
+                 * does not ask again when a second plate is added, because the
+                 * table was quoted once, so without this the only way back is
+                 * to strike the line off and start it again.
+                 *
+                 * Only for a line that carries one: an ordinary dish is priced
+                 * by the shop, and a waiter must not be able to retype that.
+                 */
+                (askedOn(item)
+                    ? '<button type="button" class="bill-each is-askable" data-bill="price" data-id="' +
+                      id + '" aria-label="Change today&#39;s price">₹' +
+                      finalUnit.toFixed(2) + ' each</button>'
+                    : '<div class="bill-each">₹' + finalUnit.toFixed(2) + ' each</div>') +
                 '</div>' +
                 '<div class="bill-right">' +
                 '<span class="bill-amount">₹' + lineFinal.toFixed(2) + '</span>' +
@@ -828,8 +845,35 @@ async function renderCart(cartData = null, skipRedirect = false) {
 document.addEventListener('click', function (event) {
     const button = event.target.closest && event.target.closest('[data-bill]');
     if (!button) return;
-    updateCartQuantity(button.getAttribute('data-id'), button.getAttribute('data-bill') === 'more' ? 1 : -1);
+    const what = button.getAttribute('data-bill');
+    if (what === 'price') {
+        changeTodaysPrice(button.getAttribute('data-id'));
+        return;
+    }
+    updateCartQuantity(button.getAttribute('data-id'), what === 'more' ? 1 : -1);
 });
+
+/**
+ * Ask again for today's price on a line that already has one.
+ *
+ * Opened with the number already in the box, so correcting a missed key is one
+ * edit rather than a retype - and cancelling leaves the line exactly as it
+ * was, the same bargain the question makes when a dish is first added.
+ *
+ * A quantity change of ZERO: updateQuantity re-quotes a line whenever it is
+ * handed a price, so the count is untouched and every screen redraws itself.
+ */
+async function changeTodaysPrice(id) {
+    if (!id || !window.POSNIC || typeof POSNIC.askPrice !== 'function') return;
+    const line = (await getCartData()).find((row) => String(row.id) === String(id));
+    if (!line) return;
+
+    const asked = await POSNIC.askPrice(line.name, line.askedPrice);
+    if (!asked) return;
+
+    await updateQuantity(id, 0, { askedPrice: asked });
+    await renderCart();
+}
 
 /*
  * Text that cannot become markup.
@@ -1164,6 +1208,17 @@ async function updateQuantity(id, change, options) {
  *
  * Absent for every ordinary dish, which is why nothing else changes.
  */
+/**
+ * Was this line's price typed in by a waiter rather than read off the card?
+ *
+ * The line carries `askedPrice` only when somebody was asked for it, so this
+ * is also the test for "may it be changed here". An ordinary dish is priced by
+ * the shop, and a waiter must not be able to retype that on the bill.
+ */
+function askedOn(item) {
+    return Number(item && item.askedPrice) > 0;
+}
+
 function unitPrice(item) {
     const asked = Number(item && item.askedPrice) || 0;
     if (asked > 0) return asked;

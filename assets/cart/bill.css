@@ -213,6 +213,32 @@ body.bill-screen {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * A price the waiter typed can be typed again.
+ *
+ * Underlined with a dotted rule rather than dressed as a button: it sits
+ * inside a line of text, and a real button there would compete with the
+ * stepper beside it for a thumb. A dotted underline is the oldest signal there
+ * is for "this can be changed".
+ */
+.bill-each.is-askable {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  /* Small text still needs somewhere for a thumb to land. */
+  min-height: 32px;
+}
+
+.bill-each.is-askable:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .bill-right {
   flex: 0 0 auto;
   display: flex;

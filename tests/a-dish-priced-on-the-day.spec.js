@@ -33,7 +33,13 @@ const MENU = [
       /* No price on the card: this is the shape that caused it. */
       item('p-fish', 'Tandoori Pomfret', 0, {}),
       /* Marked, and priced this morning: an ordinary dish all day. */
-      item('p-crab', 'Pepper Crab', 900, { daily_price: true, price_set_on: hoursAgo(2) }),
+      /*
+       * Priced NOW, not "two hours ago". A suite that runs at one in the
+       * morning made two hours ago yesterday, and this went red for a reason
+       * that had nothing to do with the app. The real question is only ever
+       * "was it priced today", so ask it that way.
+       */
+      item('p-crab', 'Pepper Crab', 900, { daily_price: true, price_set_on: new Date().toISOString() }),
       /* Marked, and last priced yesterday: not a price, a leftover. */
       item('p-lobster', 'Butter Lobster', 1200, { daily_price: true, price_set_on: hoursAgo(26) }),
       item('p-biryani', 'Chicken Biryani', 220, {}),
@@ -344,4 +350,85 @@ test("an ordinary dish alongside it still totals the way it always did", async (
   await page.locator('#next-btn').click();
   await expect(page).toHaveURL(/cart\.html$/);
   await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1070.00');
+});
+
+/* ------------------------------------------- correcting a mistyped price */
+
+test("a price typed wrong can be typed again from the bill", async ({ page }) => {
+  /*
+   * 850 for a lobster that costs 8500 is one missed key, and the menu screen
+   * deliberately does not ask again when a second plate is added - the table
+   * was quoted once. So without this the only way back is to strike the line
+   * off and start it again, on the screen the waiter reads out to the table.
+   */
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+
+  await page.locator('#next-btn').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹850.00');
+
+  /* The question opens with the number already in it: a correction is an edit,
+     not a retype. */
+  await page.locator('.bill-each.is-askable').first().click();
+  await expect(page.locator('#ask-price-input')).toHaveValue('850');
+  await page.locator('#ask-price-input').fill('8500');
+  await page.locator('#ask-price-ok').click();
+
+  await expect(page.locator('.bill-each.is-askable').first()).toContainText('8500.00');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹8500.00');
+});
+
+test('the count is not touched by a correction', async ({ page }) => {
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+  await page.locator('.dish[data-id="p-fish"] .btn-increase').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('2');
+
+  await page.locator('#next-btn').click();
+  await page.locator('.bill-each.is-askable').first().click();
+  await page.locator('#ask-price-input').fill('900');
+  await page.locator('#ask-price-ok').click();
+
+  await expect(page.locator('.bill-qty').first()).toHaveText('2');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1800.00');
+});
+
+test('backing out of the correction leaves the price alone', async ({ page }) => {
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+  await page.locator('#ask-price-input').fill('850');
+  await page.locator('#ask-price-ok').click();
+  await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+
+  await page.locator('#next-btn').click();
+  await page.locator('.bill-each.is-askable').first().click();
+  await page.locator('#ask-price-cancel').click();
+
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹850.00');
+});
+
+test("an ordinary dish's price cannot be retyped on the bill", async ({ page }) => {
+  /*
+   * The shop prices a biryani, not the waiter. A bill screen where any price
+   * can be overwritten is a way to give a discount nobody approved.
+   */
+  await atTheMenu(page);
+
+  await page.locator('.dish[data-id="p-biryani"] .btn-add').click();
+  await page.locator('#next-btn').click();
+  await expect(page).toHaveURL(/cart\.html$/);
+
+  await expect(page.locator('.bill-line').first()).toBeVisible();
+  await expect(page.locator('.bill-each.is-askable')).toHaveCount(0);
+  await expect(page.locator('.bill-each').first()).toContainText('220.00');
 });
