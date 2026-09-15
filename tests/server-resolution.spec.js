@@ -1165,3 +1165,88 @@ test('an address filed in the wrong box still lands in the right slot', async ({
   );
   expect(kept).toEqual({ lan: LAN, cloud: CLOUD });
 });
+
+/* ----------------------------- how fast a dead door is noticed, and skipped */
+
+/*
+ * Owner: "is there any way to smart switch between lan and internet between
+ * communication."
+ *
+ * The switching always worked. What made it feel broken was how long the app
+ * waited before deciding: a till that answers in under ten milliseconds was
+ * given ten seconds to be declared dead, so the first tap after a router
+ * reboot froze for ten seconds - and every tap after it paid the same, because
+ * nothing remembered that the address had just failed.
+ */
+
+test('a till on the Wi-Fi gets a LAN deadline, the internet keeps a long one', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const said = await page.evaluate(() => ({
+    lan: POSNIC.constants.lanRequestTimeoutMs,
+    cloud: POSNIC.constants.requestTimeoutMs,
+  }));
+
+  /* Still two hundred and fifty times a healthy LAN round trip. */
+  expect(said.lan).toBeLessThanOrEqual(3000);
+  expect(said.cloud).toBeGreaterThanOrEqual(8000);
+});
+
+test('an address that just failed is tried LAST, not first', async ({ page }) => {
+  /*
+   * The breaker, and the whole of it: a dead till is not re-dialled ahead of a
+   * working cloud address by every request in a burst. A waiter taking a five
+   * dish order should wait once, not five times.
+   */
+  await page.goto('/index.html');
+
+  const order = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    const before = POSNIC.server.candidates();
+    POSNIC.debugTiming.noteFailure(before[0]);
+    return { before, after: POSNIC.debugTiming.order() };
+  });
+
+  /* LAN is first when nothing has failed - that is the whole design. */
+  expect(order.before[0]).toBe(LAN);
+  /* And last the moment it does, without being dropped from the list. */
+  expect(order.after[order.after.length - 1]).toBe(LAN);
+  expect(order.after).toHaveLength(order.before.length);
+});
+
+test('a failure is forgotten once the address answers again', async ({ page }) => {
+  /* Otherwise a phone that walked out of range and back would stay on the
+     internet all shift, which is the thing this app exists not to do. */
+  await page.goto('/index.html');
+
+  const back = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    const lan = POSNIC.server.candidates()[0];
+    POSNIC.debugTiming.noteFailure(lan);
+    const cold = POSNIC.debugTiming.order()[0];
+    POSNIC.debugTiming.noteSuccess(lan);
+    return { cold, warm: POSNIC.debugTiming.order()[0] };
+  });
+
+  expect(back.cold).toBe(CLOUD);
+  expect(back.warm).toBe(LAN);
+});
+
+test('when every door is cold the list is still walked, not abandoned', async ({ page }) => {
+  /*
+   * The breaker only ever reorders. Refusing to try anything because
+   * everything failed recently would mean a phone sitting offline beside a
+   * server that came back a second ago.
+   */
+  await page.goto('/index.html');
+
+  const walked = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    POSNIC.server.candidates().forEach((url) => POSNIC.debugTiming.noteFailure(url));
+    return POSNIC.debugTiming.order();
+  });
+
+  expect(walked).toHaveLength(2);
+  expect(walked).toContain(LAN);
+  expect(walked).toContain(CLOUD);
+});
