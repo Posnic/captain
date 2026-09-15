@@ -249,6 +249,28 @@ function isServerConnectionError(error) {
  * whatever somebody's thumb produced - and it used to go into an href, a data
  * attribute AND an onclick argument, raw, three times per card.
  */
+/**
+ * WHAT THE KITCHEN WAS TOLD ABOUT THIS DISH.
+ *
+ * Owner: "i see notes inside kot print but inside app not showing note (ex.
+ * medium spicy). need fix. its important captain know the customization."
+ *
+ * The note reached the paper and stopped there. A waiter reading an order back
+ * to a table could see "Chicken Biryani x2" and nothing about the medium
+ * spicy - so the one screen where a mistake is still cheap to catch was the
+ * one screen that did not show it.
+ *
+ * TWO FIELD NAMES, both real. `item_description` is what the till stores and
+ * what a saved order comes back with; `notes` is what a line carries while it
+ * is still in this phone's cart. A screen that reads only one of them is
+ * right half the time, which is worse than being wrong - it works until the
+ * moment somebody checks.
+ */
+function lineNote(item) {
+    if (!item) return '';
+    return String(item.item_description || item.notes || item.item_note || '').trim();
+}
+
 function escapeFloor(value) {
     return String(value == null ? '' : value)
         .replace(/&/g, '&amp;')
@@ -671,11 +693,17 @@ async function selectTable(tableName, takeaway) {
                  * off has to be visible without opening anything.
                  */
                 const off = kotIsCancelled(kot) || itemIsCancelled(item) ? ' is-cancelled' : '';
+                /* Escaped, both of them. A dish name comes from the shop's
+                   own catalogue, but a note is free text somebody typed at a
+                   table - an apostrophe in "don't" or a "<" for "less than
+                   medium" would otherwise end the attribute or the tag. */
+                const note = lineNote(item);
                 itemsHtml += `
                     <div class="kot-item${off}">
                         <span class="item-index">${index + 1}.</span>
-                        <span class="item-name">${itemName}</span>
+                        <span class="item-name">${escapeFloor(itemName)}</span>
                         <span class="item-qty">x${itemQty}</span>
+                        ${note ? `<span class="item-note">${escapeFloor(note)}</span>` : ''}
                     </div>
                 `;
             });

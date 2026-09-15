@@ -528,6 +528,10 @@ body {
 .kot-item {
     display: flex;
     align-items: center;
+    /* The note sits on its own row under the dish. Without this it becomes a
+       fourth cell after the quantity, which reads as another column rather
+       than as something said about the dish above it. */
+    flex-wrap: wrap;
     gap: 12px;
     padding: 12px;
     background: var(--card-bg);
@@ -546,6 +550,13 @@ body {
     font-size: 14px;
     font-weight: 600;
     color: #868e96;
+    /*
+     * A FIXED width, not a minimum, because the note below indents to match
+     * it. With a minimum the cell grows with its content and the note stops
+     * lining up under the dish name by however much it grew - which is
+     * exactly what happened: nine pixels out, enough to read as a mistake.
+     */
+    width: 24px;
     min-width: 24px;
 }
 
@@ -553,6 +564,28 @@ body {
     flex: 1;
     font-size: 14px;
     color: #212529;
+}
+
+/*
+ * WHAT THE KITCHEN WAS TOLD - "medium spicy", "no onion", "less oil".
+ *
+ * Owner: "i see notes inside kot print but inside app not showing note... its
+ * important captain know the customization."
+ *
+ * Indented to the width of the number and its gap, so it lines up under the
+ * dish name rather than under the number: it belongs to the dish, and a
+ * reader's eye should not have to decide that.
+ *
+ * Quieter than the name and not smaller than a phone can read at arm's length
+ * across a table.
+ */
+.item-note {
+    flex-basis: 100%;
+    margin-left: 36px;
+    font-size: 13px;
+    line-height: 1.35;
+    color: #b8620a;
+    overflow-wrap: anywhere;
 }
 
 .item-qty {
@@ -772,7 +805,8 @@ body {
  * carries the rule and the quantity does not: the numbers still have to be
  * readable when somebody is working out what is owed.
  */
-.kot-item.is-cancelled .item-name {
+.kot-item.is-cancelled .item-name,
+.kot-item.is-cancelled .item-note {
     text-decoration: line-through;
     text-decoration-thickness: 2px;
     text-decoration-color: var(--danger, #dc2626);
