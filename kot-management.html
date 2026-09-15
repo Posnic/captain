@@ -137,6 +137,30 @@
                         Changing shop signs you out and clears the menu and tables
                         cached for this one.
                     </div>
+
+                    <!--
+                        Owner: "its better two copies from captain itself...
+                        configuration change reequired pos guy wont have
+                        permission. lets keep in app itself."
+
+                        The person who wants a second copy is the one holding
+                        this phone. It sits here rather than on the till's
+                        settings page because that is who needs it, and it is
+                        on the same screen as the button it changes.
+                    -->
+                    <div style="height:var(--s3)"></div>
+                    <label class="ui-label" for="bill-copies">Copies of a printed bill</label>
+                    <select id="bill-copies" class="ui-field">
+                        <option value="">As the shop is set</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                    <div class="ui-note">
+                        How many come out of the counter printer when you ask for a
+                        bill from this phone. One for the guest and one for the shop,
+                        if you keep a copy. This phone only.
+                    </div>
                     <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
                         <button type="button" class="ui-btn-quiet" id="server-close">Close</button>
                     </div>

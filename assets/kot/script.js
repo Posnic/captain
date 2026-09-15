@@ -66,8 +66,53 @@ function changeServer() {
         }
         where.textContent = address || 'Not connected to a shop yet';
     }
+
+    const copies = document.getElementById('bill-copies');
+    if (copies) copies.value = storedBillCopies();
+
     sheet.hidden = false;
 }
+
+/*
+ * HOW MANY COPIES THIS PHONE ASKS FOR.
+ *
+ * Owner: "its better two copies from captain itself... configuration change
+ * reequired pos guy wont have permission. lets keep in app itself." The person
+ * who wants a second copy is the one holding the phone, and sending them to
+ * find somebody with access to the till's settings page is how a setting stays
+ * wrong for a year.
+ *
+ * EMPTY MEANS "AS THE SHOP IS SET", which is the honest default and not the
+ * same as one: the till has its own setting, and a phone that has never been
+ * asked should not overrule it. Only a number chosen here travels.
+ */
+const BILL_COPIES_KEY = 'posnic.bill_copies';
+
+function storedBillCopies() {
+    try {
+        const said = localStorage.getItem(BILL_COPIES_KEY) || '';
+        return /^[123]$/.test(said) ? said : '';
+    } catch (e) {
+        /* A phone with storage blocked still takes orders. */
+        return '';
+    }
+}
+
+function rememberBillCopies(value) {
+    try {
+        if (/^[123]$/.test(String(value))) localStorage.setItem(BILL_COPIES_KEY, String(value));
+        else localStorage.removeItem(BILL_COPIES_KEY);
+    } catch (e) {
+        /* Nothing to do: the choice lasts this session and the shop's setting
+           answers on the next one. */
+    }
+}
+
+document.addEventListener('change', function (event) {
+    if (event.target && event.target.id === 'bill-copies') {
+        rememberBillCopies(event.target.value);
+    }
+});
 
 /* Delegated, because the sheet is in the page from the start and these three
    controls outlive every redraw of the floor. */
@@ -257,6 +302,14 @@ document.addEventListener('click', async function (event) {
             branchId,
             table_number: table,
             asked_by: who,
+            /*
+             * Sent only when this phone has been told a number. Left out, the
+             * shop's own setting answers - so an older till, or a phone nobody
+             * has touched, behaves exactly as it does today. The server clamps
+             * whatever arrives, because a phone must not be able to spend a
+             * roll of paper on one table.
+             */
+            ...(storedBillCopies() ? { copies: Number(storedBillCopies()) } : {}),
         });
 
         /* The server answers "on its way" or "nothing is open on that table",
