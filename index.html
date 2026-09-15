@@ -75,6 +75,80 @@
                     </div>
                 </div>
 
+                <!--
+                    WHERE THIS PHONE CONNECTS, in one place.
+
+                    Owner: "both able to configurable. easy set up. in one
+                    page... need very simple configuration not to make so much
+                    confusion. lan or internet all should be internal. user
+                    dont know much about networking stuff. however if someone
+                    know we have option."
+
+                    So the top line is a sentence, not a setting: which door is
+                    open now, and that the app changes doors by itself. Nobody
+                    has to know what a subnet is to read it.
+
+                    Everything a person who DOES know might want - forcing one
+                    door, seeing the two addresses, searching the Wi-Fi again -
+                    is one tap below, folded away.
+                -->
+                <div id="connectState" hidden>
+                    <div class="conn-now">
+                        <span class="conn-dot" id="connDot"></span>
+                        <span class="conn-said">
+                            <span class="conn-title" id="connTitle">Checking&hellip;</span>
+                            <span class="conn-note" id="connNote"></span>
+                        </span>
+                    </div>
+
+                    <button type="button" class="conn-more-btn" id="connMoreBtn" aria-expanded="false">
+                        Change how it connects
+                    </button>
+
+                    <div id="connMore" hidden>
+                        <fieldset class="conn-ways">
+                            <legend class="ui-label">How this phone should connect</legend>
+
+                            <label class="conn-way">
+                                <input type="radio" name="conn_way" value="auto">
+                                <span class="conn-way-text">
+                                    <span class="conn-way-title">Automatically</span>
+                                    <span class="conn-way-note">Uses the shop Wi-Fi when it is there, the internet when it is not. Best for everyone.</span>
+                                </span>
+                            </label>
+
+                            <label class="conn-way">
+                                <input type="radio" name="conn_way" value="lan">
+                                <span class="conn-way-text">
+                                    <span class="conn-way-title">Only in the shop</span>
+                                    <span class="conn-way-note">Never uses the internet. Orders stop outside the shop Wi-Fi.</span>
+                                </span>
+                            </label>
+
+                            <label class="conn-way">
+                                <input type="radio" name="conn_way" value="cloud">
+                                <span class="conn-way-text">
+                                    <span class="conn-way-title">Only over the internet</span>
+                                    <span class="conn-way-note">Never uses the shop Wi-Fi. Slower, and stops when the internet does.</span>
+                                </span>
+                            </label>
+                        </fieldset>
+
+                        <div class="conn-addresses">
+                            <div class="conn-address">
+                                <span class="conn-address-label">In the shop</span>
+                                <span class="conn-address-value" id="connLan">not found yet</span>
+                                <button type="button" class="ui-btn-quiet conn-address-btn" onclick="chooseSearch()">Find</button>
+                            </div>
+                            <div class="conn-address">
+                                <span class="conn-address-label">Anywhere</span>
+                                <span class="conn-address-value" id="connCloud">not set</span>
+                                <button type="button" class="ui-btn-quiet conn-address-btn" onclick="chooseManual()">Change</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- The three ways in. -->
                 <div id="connectChoices">
                     <button class="ui-choice" onclick="chooseScan()">
@@ -490,7 +564,124 @@
             info.textContent = url
                 ? (POSNIC.server.isLocal ? 'Using the till on this Wi-Fi' : 'Using ' + url)
                 : 'Not connected to a shop yet';
+            renderConnection();
         }
+
+        /*
+         * WHERE THIS PHONE CONNECTS, said in one sentence.
+         *
+         * Owner: "lan or internet all should be internal. user dont know much
+         * about networking stuff. however if someone know we have option
+         * everything work only local or together."
+         *
+         * So the sentence never uses the word LAN, never shows an address, and
+         * never asks anything. It says which door is open and that the app
+         * changes doors on its own - which is the fact that stops somebody
+         * fiddling with settings when they walk out of range.
+         *
+         * The three ways below are the SAME pin the app has always had, in
+         * plain words: automatic is no pin, and either of the others pins that
+         * address so resolution stops looking at the other one.
+         */
+        function renderConnection() {
+            const block = document.getElementById('connectState');
+            if (!block) return;
+
+            const lan = POSNIC.server.lan;
+            const cloud = POSNIC.server.cloud;
+            const pinned = POSNIC.server.pinned;
+            const configured = POSNIC.server.isConfigured;
+
+            /* Nothing to report on a handset that has never been connected:
+               the three ways in are the whole screen, and a status line about
+               a shop it does not have would be noise on top of them. */
+            block.hidden = !configured;
+            if (!configured) return;
+
+            const dot = document.getElementById('connDot');
+            const title = document.getElementById('connTitle');
+            const note = document.getElementById('connNote');
+
+            const here = POSNIC.server.baseUrl;
+            const inShop = POSNIC.server.isLocal;
+            const down = POSNIC.net && POSNIC.net.offline;
+
+            dot.className = 'conn-dot ' + (down ? 'is-down' : inShop ? 'is-shop' : 'is-internet');
+
+            if (down) {
+                title.textContent = 'Not connected';
+                note.textContent = 'Trying again by itself. Nothing here needs changing for that.';
+            } else if (inShop) {
+                title.textContent = 'Connected in the shop';
+                note.textContent = pinned
+                    ? 'Set to stay on the shop Wi-Fi.'
+                    : 'Fastest, and works with the shop internet down. Moves to the internet by itself if you leave.';
+            } else {
+                title.textContent = 'Connected over the internet';
+                note.textContent = pinned
+                    ? 'Set to stay on the internet.'
+                    : (lan
+                        ? 'Moves back onto the shop Wi-Fi by itself when you are near the till.'
+                        : 'The till on the shop Wi-Fi has not been found yet. Everything works; it would just be faster.');
+            }
+
+            const way = pinned ? (POSNIC.server.isLanUrl(pinned) ? 'lan' : 'cloud') : 'auto';
+            const chosen = document.querySelector(`input[name="conn_way"][value="${way}"]`);
+            if (chosen) chosen.checked = true;
+
+            /* Addresses, for the one person in a hundred who wants them. */
+            const lanLine = document.getElementById('connLan');
+            const cloudLine = document.getElementById('connCloud');
+            if (lanLine) lanLine.textContent = lan ? lan.replace(/^https?:\/\//, '').replace(/\/api$/, '') : 'not found yet';
+            if (cloudLine) cloudLine.textContent = cloud ? cloud.replace(/^https?:\/\//, '').replace(/\/api$/, '') : 'not set';
+        }
+
+        /*
+         * The same pin, chosen in words.
+         *
+         * A way that has no address behind it cannot be chosen - "only in the
+         * shop" with no till found would take the phone off the air, and the
+         * fix would be on the screen it had just left.
+         */
+        function chooseConnectionWay(way) {
+            const lan = POSNIC.server.lan;
+            const cloud = POSNIC.server.cloud;
+
+            if (way === 'lan' && !lan) {
+                serverMsg('The till on this Wi-Fi has not been found yet. Tap Find first.');
+                renderConnection();
+                return;
+            }
+            if (way === 'cloud' && !cloud) {
+                serverMsg('No internet address for this shop yet. Tap Change to set one.');
+                renderConnection();
+                return;
+            }
+
+            if (way === 'lan') POSNIC.server.pin(lan);
+            else if (way === 'cloud') POSNIC.server.pin(cloud);
+            else POSNIC.server.unpin();
+
+            serverMsg('');
+            POSNIC.net.check(true).then(renderConnection);
+            renderConnection();
+        }
+
+        document.addEventListener('change', (event) => {
+            if (event.target && event.target.name === 'conn_way') {
+                chooseConnectionWay(event.target.value);
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const button = event.target.closest && event.target.closest('#connMoreBtn');
+            if (!button) return;
+            const more = document.getElementById('connMore');
+            const open = more.hidden;
+            more.hidden = !open;
+            button.setAttribute('aria-expanded', String(open));
+            button.textContent = open ? 'Hide' : 'Change how it connects';
+        });
 
         function closeServerModal() {
             POSNIC_CONNECT.stopScan();
