@@ -432,3 +432,61 @@ test("an ordinary dish's price cannot be retyped on the bill", async ({ page }) 
   await expect(page.locator('.bill-each.is-askable')).toHaveCount(0);
   await expect(page.locator('.bill-each').first()).toContainText('220.00');
 });
+
+/* ------------------------------ the trading day, which starts at seven */
+
+test('a price set this morning still stands at half past midnight', async ({ page }) => {
+  /*
+   * Owner: "daily price starts in the morning only. means 7am. not midnight
+   * coz up to 1am restaurant might open."
+   *
+   * On a calendar day a kitchen's own prices expire in the middle of its
+   * service: at midnight every fish reads as yesterday's, the handset starts
+   * asking waiters for numbers they were given at eleven that morning, and the
+   * till refuses the dishes until somebody retypes the lot - during the last
+   * push of the night.
+   *
+   * The phone's clock is moved rather than the fixture, because that is the
+   * thing that actually changes on a floor.
+   */
+  const MORNING = new Date('2026-09-14T11:00:00').toISOString();
+
+  await page.clock.install({ time: new Date('2026-09-15T00:30:00') });
+  await onTheMenu(page, 'nothing', {
+    menu: [{ category_name: 'From the sea', items: [
+      item('p-tuna', 'Seer Fish', 900, { daily_price: true, price_set_on: MORNING }),
+    ] }],
+  });
+  await page.waitForFunction(() => typeof updateQuantity === 'function');
+
+  const tuna = page.locator('.dish[data-id="p-tuna"]');
+  await expect(tuna.locator('.dish-price')).toContainText('900');
+  await expect(tuna.locator('.dish-ask')).toHaveCount(0);
+
+  await tuna.locator('.btn-add').click();
+  await expect(page.locator('#ask-price-scrim')).toBeHidden();
+});
+
+test('at seven in the morning the price must be set again', async ({ page }) => {
+  /* The shop is opening. This is the moment the question helps rather than
+     interrupts. */
+  const YESTERDAY_MORNING = new Date('2026-09-14T11:00:00').toISOString();
+
+  await page.clock.install({ time: new Date('2026-09-15T07:05:00') });
+  await onTheMenu(page, 'nothing', {
+    menu: [{ category_name: 'From the sea', items: [
+      item('p-tuna', 'Seer Fish', 900, { daily_price: true, price_set_on: YESTERDAY_MORNING }),
+    ] }],
+  });
+  await page.waitForFunction(() => typeof updateQuantity === 'function');
+
+  await expect(page.locator('.dish[data-id="p-tuna"] .dish-ask')).toHaveText(/today's price/i);
+});
+
+test('the handset turns its day at the same hour as the till', async ({ page }) => {
+  /* Four surfaces answer this separately. Two disagreeing means a waiter is
+     asked for a price the bill already knows, or worse, the other way round. */
+  await onTheMenu(page, 'nothing', {});
+  const hour = await page.evaluate(() => MenuView.dayStartsAtHour());
+  expect(hour).toBe(7);
+});
