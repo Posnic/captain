@@ -48,7 +48,23 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # THE `tools` PACKAGE NO LONGER EXISTS, so do not ask for it.
+      #
+      # setup-android installs `tools platform-tools` by default, and Google
+      # has removed `tools` from the SDK repository - it was deprecated for
+      # years and finally went. The action runs `sdkmanager tools`, gets exit
+      # code 1, and the whole job dies before a line of our code is reached.
+      #
+      # Nothing here needs it. The runner image already carries the SDK, and
+      # Gradle fetches the platform and build-tools it wants on its own.
+      #
+      # It broke on the runner, not in this repository: the same workflow
+      # passed yesterday on the same commit shape, and started failing at
+      # 07:54 on 2026-09-15 for every branch at once. That is the signature of
+      # an image or a repository change rather than a regression.
       - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - run: npm ci
 
