@@ -8,9 +8,19 @@
 # a current build to put on a phone without anybody setting up a toolchain.
 name: APK
 
+# ONE RUN PER COMMIT, NOT TWO.
+#
+# This used to be `push: ['**']` alongside `pull_request`, and the two overlap:
+# every commit on a branch with a PR open built the APK and ran the browser
+# suite TWICE, five minutes each, for one identical tree. The checks list
+# showed it plainly - two "Tests", two "Debug APK", two run ids.
+#
+# A branch is covered by its pull request, and main is covered on merge. A tag
+# is release.yml's business. Nothing is watched less closely; the same commit is
+# simply not built twice.
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
