@@ -112,16 +112,39 @@
    * An absent or unreadable date is "not today", which is the safe way round:
    * a question, rather than a stale price carried onto a bill.
    */
+  /*
+   * THE TRADING DAY STARTS AT SEVEN IN THE MORNING, NOT AT MIDNIGHT.
+   *
+   * Owner: "daily price starts in the morning only. means 7am. not midnight
+   * coz up to 1am restaurant might open."
+   *
+   * A kitchen sets its fish prices when it opens and serves until one. On a
+   * calendar day those prices expire in the middle of service: at midnight the
+   * handset would start asking waiters for numbers they were given at eleven
+   * that morning, and the till would refuse the dishes until somebody re-typed
+   * them - during the last push of the night.
+   *
+   * Shifting the clock back seven hours before the date is read moves the
+   * boundary into the dead hour instead. A price entered at 11am is still
+   * current at half past midnight and goes stale at 7am, when the shop is
+   * opening anyway and about to set the new day's rates.
+   *
+   * The same seven as the till. Four screens ask this question separately and
+   * must answer it the same way, or a waiter is asked for a price the bill
+   * already knows.
+   */
+  const DAY_STARTS_AT_HOUR = 7;
+
+  function tradingDay(d) {
+    const shifted = new Date(d.getTime() - DAY_STARTS_AT_HOUR * 60 * 60 * 1000);
+    return `${shifted.getFullYear()}-${shifted.getMonth() + 1}-${shifted.getDate()}`;
+  }
+
   function pricedToday(setOn) {
     if (!setOn) return false;
     const when = new Date(setOn);
     if (Number.isNaN(when.getTime())) return false;
-    const now = new Date();
-    return (
-      when.getFullYear() === now.getFullYear() &&
-      when.getMonth() === now.getMonth() &&
-      when.getDate() === now.getDate()
-    );
+    return tradingDay(when) === tradingDay(new Date());
   }
 
   function pricing(product) {
@@ -420,6 +443,10 @@
        put a dish in a cart, and two answers to it is how one of them sends a
        free fish. */
     askPrice,
+    /* Exported so a test can ask when this screen turns its day. Four
+       surfaces answer that separately and must agree; nothing in the app
+       calls it. */
+    dayStartsAtHour: () => DAY_STARTS_AT_HOUR,
     stock,
     escape,
   };
