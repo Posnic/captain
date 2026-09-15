@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /*
  * How the app decides which server to talk to.
@@ -25,10 +26,15 @@ const CLOUD = 'https://azure.posnic.io/api';
 const CLOUD_ORIGIN = 'https://azure.posnic.io';
 
 /** Answer /runtime-info like a Posnic server, and everything else emptily. */
-function serve(page, origin, { info = RUNTIME_INFO, extra = {}, seen } = {}) {
+function serve(page, origin, { info = RUNTIME_INFO, extra = {}, seen, delayMs = 0 } = {}) {
   return page.route(`${origin}/**`, async route => {
     const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
-    if (seen && path !== '/runtime-info') seen.push(path);
+    if (seen && path !== '/runtime-info') seen.push(origin + path);
+    /* A server that is reachable but SLOW, which is the case a hedge exists
+       for: nothing fails, so nothing fails over, and the waiter waits. */
+    if (delayMs && path !== '/runtime-info') {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
     const body = path === '/runtime-info' ? info : (extra[path] || { type: 'success', data: {} });
     await route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(body)
@@ -49,6 +55,24 @@ const signedInAs = (page, shopKey) => page.addInitScript(
   shopKey);
 
 const baseUrl = (page) => page.evaluate(() => POSNIC.server.baseUrl);
+
+/**
+ * A handset signed in, holding BOTH addresses, active on the one named.
+ *
+ * Both have to be recorded against the same shop key or the app will not move
+ * between them - which is the guard that stops it adopting a stranger's till,
+ * and the reason a hedge may use the other door at all.
+ */
+async function signedInAt(page, active) {
+  await signedInAs(page, 'shop-a');
+  await seed(page, {
+    active,
+    lan: LAN,
+    cloud: CLOUD,
+    servers: { [LAN]: 'shop-a', [CLOUD]: 'shop-a' },
+  });
+  await page.goto('/index.html');
+}
 
 test('a shop code becomes the shop’s online address', async ({ page }) => {
   await page.goto('/index.html');
@@ -1249,4 +1273,99 @@ test('when every door is cold the list is still walked, not abandoned', async ({
   expect(walked).toHaveLength(2);
   expect(walked).toContain(LAN);
   expect(walked).toContain(CLOUD);
+});
+
+/* ------------------------------------------- both doors, when waiting costs */
+
+/*
+ * Owner: "is there any way to smart switch between lan and internet between
+ * communication."
+ *
+ * Everything else here switches AFTER a failure: something goes wrong, is
+ * noticed, and is recovered from, and a waiter watches all three. A hedge does
+ * not wait to be wrong - the request goes to the till, and if the till has not
+ * answered in a moment it goes to the cloud as well.
+ *
+ * Safe for exactly one request: an order carries an idempotency key and the
+ * till holds a unique index on it, so a copy arriving through the other door
+ * is refused by the database rather than cooked twice.
+ */
+
+test('a till that answers quickly is the only door used', async ({ page }) => {
+  /* The common case, and the one that must cost nothing: a shop whose Wi-Fi is
+     fine never sends a second request. */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, { seen, extra: { '/sales/qrOrder': { type: 'success' } } });
+  await serve(page, CLOUD_ORIGIN, { seen, extra: { '/sales/qrOrder': { type: 'success' } } });
+  await signedInAt(page, LAN);
+
+  await page.evaluate(() => POSNIC.api.post('/sales/qrOrder', { x: 1 }, { hedge: true }));
+
+  const hedged = await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged);
+  expect(hedged).toBe(false);
+  expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/qrOrder')).toHaveLength(0);
+});
+
+test('a till that hesitates does not make the waiter wait for it', async ({ page }) => {
+  /*
+   * THE POINT. The till is reachable but slow - a saturated Wi-Fi, a router
+   * mid-reboot - so nothing has failed and nothing will fail over. Without a
+   * hedge the waiter watches it until the deadline.
+   */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, {
+    seen,
+    extra: { '/sales/qrOrder': { type: 'success', from: 'lan' } },
+    delayMs: 2000,
+  });
+  await serve(page, CLOUD_ORIGIN, {
+    seen,
+    extra: { '/sales/qrOrder': { type: 'success', from: 'cloud' } },
+  });
+  await signedInAt(page, LAN);
+
+  const started = Date.now();
+  const answer = await page.evaluate(() =>
+    POSNIC.api.post('/sales/qrOrder', { x: 1 }, { hedge: true })
+  );
+  const took = Date.now() - started;
+
+  expect(answer.from).toBe('cloud');
+  /* Well inside the two seconds the till was going to take. */
+  expect(took).toBeLessThan(1500);
+  expect(await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged)).toBe(true);
+});
+
+test('a request not marked for it never touches the other door', async ({ page }) => {
+  /*
+   * Only the order may do this, because only the order carries the key that
+   * makes a double arrival harmless. A read sent twice would be waste; a
+   * write without a key sent twice would be a second order.
+   */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, {
+    seen,
+    extra: { '/sales/getListKot': { type: 'success' } },
+    delayMs: 1200,
+  });
+  await serve(page, CLOUD_ORIGIN, { seen, extra: { '/sales/getListKot': { type: 'success' } } });
+  await signedInAt(page, LAN);
+
+  await page.evaluate(() => POSNIC.api.post('/sales/getListKot', {}));
+
+  expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/getListKot')).toHaveLength(0);
+});
+
+test('only the order send asks for it', async ({ page }) => {
+  /* A guard on the source, because the safety argument is about the key and
+     nothing else in the app carries one. */
+  /* Read from disk, not through the page: this asks a question about the
+     SOURCE, and a test that needs a browser to read a file it could open
+     directly is a test with a reason to fail for nothing. */
+  /* From the project root, which is where Playwright runs. `import.meta` is
+     not available in this file the way the runner loads it. */
+  const store = readFileSync('indexedDB.js', 'utf8');
+  const hedges = store.match(/hedge:\s*true/g) || [];
+  expect(hedges).toHaveLength(1);
+  expect(store).toMatch(/qrOrder[\s\S]{0,200}hedge: true/);
 });

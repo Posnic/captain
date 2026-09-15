@@ -1639,7 +1639,19 @@ async function checkout(transactionId) {
            rebuilding it from state the failure may already have changed. */
         window._pendingOrder = { key: orderKey, branch: branchId, body: orderBody };
 
-        const result = await POSNIC.api.post("/sales/qrOrder", orderBody);
+        /*
+         * SENT THROUGH BOTH DOORS IF THE FIRST HESITATES.
+         *
+         * The only request in the app allowed to do this, and only because of
+         * the key above: the till holds a unique index on `idempotencyKey`, so
+         * a copy arriving through the other door is refused by the database
+         * and answered with the order that already exists. Cannot double.
+         *
+         * This is the moment a waiter is standing at a table waiting, which is
+         * the moment worth spending a second request on. Everything else in
+         * the app switches doors only after something has failed.
+         */
+        const result = await POSNIC.api.post("/sales/qrOrder", orderBody, { hedge: true });
         window._pendingOrder = null;
 
         if (result.type === "success") {

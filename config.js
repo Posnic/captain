@@ -1243,6 +1243,99 @@
     });
   }
 
+  /*
+   * BOTH DOORS AT ONCE, when waiting would cost more than asking twice.
+   *
+   * Owner: "is there any way to smart switch between lan and internet between
+   * communication."
+   *
+   * Everything else in this file switches AFTER a failure: something has to go
+   * wrong, be noticed, and be recovered from, and a waiter watches all three.
+   * This does not wait to be wrong. The request goes to the till, and if the
+   * till has not answered in a moment it goes to the cloud as well. Whichever
+   * replies first is the answer; the loser is cancelled mid-flight.
+   *
+   * WHY THIS IS SAFE, and it is the whole argument: an order carries an
+   * idempotency key, and the server holds a unique index on it. If both copies
+   * arrive, the second is refused by the DATABASE and the till hands back the
+   * order that already exists. Not "unlikely to double" - cannot.
+   *
+   * So this is offered per request and taken up by exactly one caller, the one
+   * that sends an order. Nothing else here may use it, because nothing else
+   * carries the key that makes it safe.
+   *
+   * A quarter of a second before the second attempt: a healthy till answers in
+   * ten milliseconds, so anything still silent at 250ms is not about to be
+   * quick, and a shop whose Wi-Fi is fine never sends the second request at
+   * all.
+   */
+  const HEDGE_AFTER_MS = 250;
+
+  function race(send, primary, secondary) {
+    let started = false;
+    let timer = null;
+
+    /*
+     * ONE CONTROLLER EACH, and this is not a detail.
+     *
+     * A single shared controller cancels the WINNER too: the race settles as
+     * soon as the response headers arrive, the abort fires, and the body is
+     * torn out from under the read that was about to happen. It returned null
+     * for a request that had plainly succeeded, which is the kind of failure
+     * that looks like a server problem for a week.
+     */
+    const attempt = (base) => {
+      const controller = new AbortController();
+      const entry = { controller };
+      entry.done = send(base, controller.signal).then((response) => ({ entry, response }));
+      return entry;
+    };
+
+    const first = attempt(primary);
+
+    let second = null;
+    const startSecond = () => {
+      if (!second) {
+        started = true;
+        second = attempt(secondary);
+      }
+      return second.done;
+    };
+
+    /* A primary that FAILS does not wait out the delay: the other door is
+       tried the instant this one is known to be no good. */
+    const firstChain = first.done.catch(() => startSecond());
+
+    const laterChain = new Promise((resolve) => {
+      timer = setTimeout(resolve, HEDGE_AFTER_MS);
+    }).then(startSecond);
+
+    return Promise.race([firstChain, laterChain]).then(
+      (winner) => {
+        clearTimeout(timer);
+        /* Everyone who is not the winner is no longer wanted. Cancelling is
+           what stops a phone holding two sockets open per order on a network
+           that is already struggling. */
+        if (winner.entry !== first) first.controller.abort();
+        if (second && winner.entry !== second) second.controller.abort();
+        lastRace = { hedged: started };
+        return winner.response;
+      },
+      (cause) => {
+        clearTimeout(timer);
+        first.controller.abort();
+        if (second) second.controller.abort();
+        lastRace = { hedged: started };
+        throw cause;
+      }
+    );
+  }
+
+  /* What the last race did, for a test to ask about. Nothing in the app reads
+     it: a screen that behaved differently depending on which door answered
+     would be the opposite of the point. */
+  let lastRace = { hedged: false };
+
   /**
    * One request, with the base URL, the credential, a deadline and failover
    * applied in one place.
@@ -1250,13 +1343,18 @@
    * Returns the parsed body. Throws ApiError for anything else, so a caller
    * never has to check `response.ok` or remember which endpoints need a token.
    */
-  async function request(path, { method = 'GET', body, headers, raw = false, timeout } = {}) {
+  async function request(
+    path,
+    { method = 'GET', body, headers, raw = false, timeout, hedge = false } = {}
+  ) {
     if (!server.baseUrl) {
       throw new ApiError('No shop server has been chosen yet', { code: 'NO_SERVER' });
     }
 
-    const send = async (base) => {
+    const send = async (base, outerSignal) => {
       const controller = new AbortController();
+      /* A race can cancel a request that is no longer wanted. */
+      if (outerSignal) outerSignal.addEventListener('abort', () => controller.abort());
       /*
        * The deadline follows the ADDRESS, not the request.
        *
@@ -1290,9 +1388,21 @@
     };
 
     const base = server.baseUrl;
+
+    /*
+     * THE OTHER DOOR, when this request is safe to send through both.
+     *
+     * Only an address this device has PROVED holds the same shop: hedging onto
+     * a stranger's till would put a table's order in somebody else's kitchen,
+     * and that is a worse failure than any amount of waiting.
+     */
+    const other = hedge
+      ? server.candidates().find((url) => url !== base && server.canAdopt(url)) || null
+      : null;
+
     let response;
     try {
-      response = await send(base);
+      response = other ? await race(send, base, other) : await send(base);
       /* It answered, so it is warm again whatever it did a minute ago. */
       noteSuccess(base);
     } catch (cause) {
@@ -1642,6 +1752,8 @@
     debugTiming: {
       noteFailure,
       noteSuccess,
+      hedgeAfterMs: HEDGE_AFTER_MS,
+      lastRace: () => lastRace,
       order: () => {
         const all = server.candidates();
         return [...all.filter((url) => !coolingOff(url)), ...all.filter(coolingOff)];
