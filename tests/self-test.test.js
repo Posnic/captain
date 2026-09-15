@@ -124,12 +124,16 @@ test('nothing runs unless the URL asks for it', async () => {
   delete globalThis.location;
 });
 
-test('the tag is the one the workflow greps for', () => {
-  const workflow = fs.readFileSync(
-    path.join(root, '.github', 'workflows', 'device-test.yml'),
-    'utf8'
-  );
-  assert.ok(workflow.includes(SelfTest.TAG), 'the workflow greps for a different tag');
+test('the tag is the one the device check greps for', () => {
+  /*
+   * This used to read the CI workflow. The workflow is gone - the device check
+   * runs on a phone plugged into whoever is working, not on a server - so the
+   * question moved with it: the script that reads the log has to grep for the
+   * tag the app actually prints, or it waits forty times three seconds and
+   * reports a silence that never happened.
+   */
+  const script = fs.readFileSync(path.join(root, 'scripts', 'device-check.js'), 'utf8');
+  assert.ok(script.includes(SelfTest.TAG), 'the device check greps for a different tag');
 
   const activity = fs.readFileSync(
     path.join(root, 'android-templates', 'MainActivity.java'),

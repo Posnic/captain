@@ -120,9 +120,29 @@ opinion downstream. Commit in batches rather than every few lines, and use
 `git commit --no-verify` when you are only saving your place - knowing that
 nothing after you will catch it.
 
-`release.yml` still runs on GitHub. Building a signed APK needs a JDK, an
-Android SDK, a keystore and a macOS runner for the iOS half, and none of that
-belongs on a laptop.
+### On a real phone
+
+Some failures only happen inside an Android WebView - a fetch that behaves
+differently under Capacitor, a request shape the platform refuses - and no
+amount of desktop Chromium proves anything about those. With a phone plugged in
+(USB debugging on) or an emulator running:
+
+```powershell
+npm.cmd run check:device
+npm.cmd run check:device -- https://your-shop.posnic.io/api
+```
+
+It builds the APK, installs it, starts it pointed at a server and reads back
+the one line the app prints about its own networking. With nothing attached it
+says so and stops - it is a tool for when you have changed how the app talks to
+a server, not a gate, because a gate that needs somebody to find a phone is a
+gate that gets switched off.
+
+### What still runs on GitHub
+
+`release.yml`, and nothing else. Building a signed APK needs a JDK, an Android
+SDK, a keystore and a macOS runner for the iOS half, and none of that belongs
+on a laptop.
 
 ## Building it yourself
 
