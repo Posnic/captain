@@ -42,20 +42,73 @@
    * @returns {string|null} a base URL, or null if it was some other QR code
    */
   function serverFromScan(text) {
-    const raw = String(text || '').trim();
-    if (!raw) return null;
+    const pair = addressesFromScan(text);
+    return pair.cloud || pair.lan || null;
+  }
 
-    /* A link with the address in a parameter. Checked first: the whole URL
-       would otherwise normalize to the address of the page hosting it. */
+  /**
+   * BOTH of a shop's addresses, out of one code.
+   *
+   * Owner: "when QR scan desktop app should able to share both online url and
+   * offline lan url or host name."
+   *
+   * A phone needs two: the till on the shop Wi-Fi, which answers in single
+   * digit milliseconds and works with the shop's internet down, and the cloud
+   * address, which works from the car park. Set up with only one, a handset is
+   * half configured and nobody finds out until the wrong half is needed.
+   *
+   * THE CONTRACT, for whatever prints the code:
+   *
+   *   https://demo.posnic.io/setup?server=demo&lan=http://192.168.1.5:5555
+   *   {"server":"demo","lan":"192.168.1.5"}
+   *   demo                                  still works, one address
+   *   http://192.168.1.5:5555               still works, one address
+   *
+   * `lan` may be an address, a bare host or an IP - normalize fills in the
+   * scheme and the port. Old codes carrying one address keep working exactly
+   * as they did, which matters because they are printed and stuck to walls.
+   *
+   * @param {string} text whatever the camera read
+   * @returns {{lan: string|null, cloud: string|null}}
+   */
+  function addressesFromScan(text) {
+    const raw = String(text || '').trim();
+    const nothing = { lan: null, cloud: null };
+    if (!raw) return nothing;
+
+    const normalize = (value) => (value ? POSNIC.server.normalize(value) : null);
+
+    /* A code that names both, as JSON. Tried first: it is unambiguous, and a
+       JSON string is not a URL so the parse below would reject it anyway. */
+    if (raw.startsWith('{')) {
+      try {
+        const said = JSON.parse(raw);
+        const cloud = normalize(said.server || said.cloud || said.shop);
+        const lan = normalize(said.lan || said.local || said.host);
+        if (cloud || lan) return { lan, cloud };
+      } catch (e) {
+        /* Not JSON after all. Fall through rather than refuse: a code that
+           begins with a brace and is not JSON is somebody else's QR. */
+      }
+    }
+
+    /* A link carrying one or both in its parameters. Checked before the whole
+       URL, which would otherwise normalize to the address of the page hosting
+       it rather than to the shop. */
     try {
       const url = new URL(raw);
-      const carried = url.searchParams.get('server') || url.searchParams.get('shop');
-      if (carried) return POSNIC.server.normalize(carried);
+      const cloud = normalize(url.searchParams.get('server') || url.searchParams.get('shop'));
+      const lan = normalize(url.searchParams.get('lan') || url.searchParams.get('local'));
+      if (cloud || lan) return { lan, cloud };
     } catch (e) {
       /* not a URL: fall through and treat it as a code or an address */
     }
 
-    return POSNIC.server.normalize(raw);
+    /* One address, the way every code printed so far carries it. Which slot it
+       belongs in is decided by what it is, not by where it came from. */
+    const only = normalize(raw);
+    if (!only) return nothing;
+    return POSNIC.server.isLanUrl(only) ? { lan: only, cloud: null } : { lan: null, cloud: only };
   }
 
   let stream = null;
@@ -122,8 +175,23 @@
           ? window.jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })
           : null;
         if (found && found.data) {
-          const base = serverFromScan(found.data);
+          const pair = addressesFromScan(found.data);
+          const base = pair.cloud || pair.lan;
           if (base) {
+            /*
+             * BOTH ADDRESSES WRITTEN DOWN, one connected.
+             *
+             * A code that named both used to set one and throw the other away,
+             * so a phone set up at the counter knew the till and had no cloud
+             * address for the car park. Remembering is separate from choosing:
+             * resolution picks whichever answers, LAN first.
+             *
+             * The cloud address is preferred as the one to connect through
+             * right now, because it answers from anywhere - including from the
+             * counter, where somebody is standing when they scan this. The LAN
+             * address takes over by itself within a tick.
+             */
+            POSNIC.server.remember(pair);
             stopScan();
             onFound(base);
             return;
@@ -138,5 +206,5 @@
     tick();
   }
 
-  window.POSNIC_CONNECT = { serverFromScan, startScan, stopScan };
+  window.POSNIC_CONNECT = { serverFromScan, addressesFromScan, startScan, stopScan };
 })();

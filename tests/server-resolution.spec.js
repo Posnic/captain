@@ -1070,3 +1070,98 @@ test('and when no road can read it, it says so rather than blaming the address',
   );
   expect(why && why.reason).toBe('UNREADABLE');
 });
+
+/* ------------------------------------- one scan, both of a shop's addresses */
+
+/*
+ * Owner: "when QR scan desktop app should able to share both online url and
+ * offline lan url or host name."
+ *
+ * A phone needs two addresses: the till on the shop Wi-Fi, which answers in
+ * single-digit milliseconds with the shop's internet down, and the cloud
+ * address, which answers from the car park. A scan used to set ONE, so a
+ * handset set up at the counter had no cloud address the first time somebody
+ * walked out of range - and one set up from a code ran every order over the
+ * internet from two metres away.
+ */
+
+const bothFrom = (page, text) =>
+  page.evaluate((code) => POSNIC_CONNECT.addressesFromScan(code), text);
+
+test('a code carrying both addresses is read as both', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const asLink = await bothFrom(
+    page,
+    'https://posnic.io/setup?server=azure&lan=http://192.168.1.8:5555'
+  );
+  expect(asLink).toEqual({ lan: LAN, cloud: CLOUD });
+
+  const asJson = await bothFrom(page, '{"server":"azure","lan":"192.168.1.8"}');
+  expect(asJson).toEqual({ lan: LAN, cloud: CLOUD });
+});
+
+test('a bare host on the LAN side is filled in the way a typed one is', async ({ page }) => {
+  /* The till prints what it knows - a hostname, an IP, sometimes a full URL -
+     and all three have to arrive as the same address. */
+  await page.goto('/index.html');
+  const said = await bothFrom(page, 'https://posnic.io/setup?server=azure&lan=192.168.1.8:5555');
+  expect(said.lan).toBe(LAN);
+});
+
+test('the codes already stuck to walls keep working', async ({ page }) => {
+  /*
+   * The reason this reads a pair rather than replacing the old shape: a code
+   * printed last month carries one address, and it is on a wall.
+   */
+  await page.goto('/index.html');
+
+  expect(await bothFrom(page, 'azure')).toEqual({ lan: null, cloud: CLOUD });
+  expect(await bothFrom(page, 'http://192.168.1.8:5555')).toEqual({ lan: LAN, cloud: null });
+  expect(await bothFrom(page, 'https://posnic.io/join?server=azure')).toEqual({
+    lan: null,
+    cloud: CLOUD,
+  });
+});
+
+test("somebody else's QR code is still not a shop", async ({ page }) => {
+  await page.goto('/index.html');
+  expect(await bothFrom(page, '')).toEqual({ lan: null, cloud: null });
+  expect(await bothFrom(page, '{not json at all')).toEqual({ lan: null, cloud: null });
+});
+
+test('both addresses are written down, and neither is chosen by the writing', async ({ page }) => {
+  /*
+   * Remembering and choosing are separate on purpose. Resolution picks
+   * whichever answers, LAN first - so a phone scanned at the counter is
+   * connected immediately through the cloud and moves itself onto the till
+   * within a tick, without anybody tapping anything.
+   */
+  await page.goto('/index.html');
+
+  const kept = await page.evaluate(() =>
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' })
+  );
+  expect(kept).toEqual({ lan: LAN, cloud: CLOUD });
+
+  const stored = await page.evaluate(() => ({
+    lan: POSNIC.server.lan,
+    cloud: POSNIC.server.cloud,
+    candidates: POSNIC.server.candidates(),
+  }));
+  expect(stored.lan).toBe(LAN);
+  expect(stored.cloud).toBe(CLOUD);
+  /* LAN first, which is what makes the handset come home by itself. */
+  expect(stored.candidates[0]).toBe(LAN);
+});
+
+test('an address filed in the wrong box still lands in the right slot', async ({ page }) => {
+  /* A shop that pastes its cloud address into the LAN box should end up with a
+     working pair, not two entries in the wrong places. */
+  await page.goto('/index.html');
+
+  const kept = await page.evaluate(() =>
+    POSNIC.server.remember({ lan: 'azure', cloud: 'http://192.168.1.8:5555' })
+  );
+  expect(kept).toEqual({ lan: LAN, cloud: CLOUD });
+});
