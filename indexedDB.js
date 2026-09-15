@@ -1603,6 +1603,20 @@ async function checkout(transactionId) {
                  * app posts stays the same as the storefront's.
                  */
                 customerMobile: '',
+                /*
+                 * WHICH PHONE, AND WHAT IT IS RUNNING.
+                 *
+                 * Owner: "every order should have some details. example what
+                 * mobile, user agent, ip address, mobile type or user account
+                 * whatever infromation app can know do it."
+                 *
+                 * The till adds the address it was called from and the waiter
+                 * signed in, because neither is this phone's to claim. This
+                 * half is what only the handset knows: its model, its build,
+                 * and whether it reached the till over the shop's Wi-Fi or the
+                 * cloud. See assets/common/this-device.js.
+                 */
+                client: (POSNIC.thisDevice && POSNIC.thisDevice.facts()) || {},
                 transactionId: transactionId,
                 tokenId: generateUniqueToken(),
                 payment_status: "cash",
