@@ -101,8 +101,28 @@ and order-history screens when the shop's internet is out.
 
 ```powershell
 npm.cmd install
-npx.cmd playwright test
+npm.cmd run check
 ```
+
+`check` runs both suites - the unit tests and the browser tests - which is
+everything this project has.
+
+**They run before a commit, not on a server.** There is no test workflow on
+GitHub for this repository: the checks live in a hook, and the hook is the gate.
+Turn it on once per clone:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+It takes about six minutes, which is the honest price of having no second
+opinion downstream. Commit in batches rather than every few lines, and use
+`git commit --no-verify` when you are only saving your place - knowing that
+nothing after you will catch it.
+
+`release.yml` still runs on GitHub. Building a signed APK needs a JDK, an
+Android SDK, a keystore and a macOS runner for the iOS half, and none of that
+belongs on a laptop.
 
 ## Building it yourself
 
