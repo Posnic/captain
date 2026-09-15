@@ -1,28 +1,8 @@
 #!/usr/bin/env sh
 
-# THE CHECKS, BEFORE THE CODE LEAVES THIS MACHINE.
+# Nothing here on purpose.
 #
-# Owner: "better run all ci stuff inside commit. github bill came around 200
-# usd" and, on scope: "deploy stuff is okay. other check only i said."
-#
-# So: the unit suite and the browser suite, which is exactly what the Tests job
-# runs. The APK build and the signed release stay where they are - they need a
-# JDK, an Android SDK and a keystore, and none of that belongs in a hook.
-#
-# PRE-PUSH RATHER THAN PRE-COMMIT, on purpose. A commit is how you save your
-# place - twenty an hour, half of them on a branch nobody will ever see.
-# Putting five minutes of browser tests in front of each one is how a hook ends
-# up permanently disabled with -n, and then it protects nothing. A push is the
-# moment the work leaves, which is the moment worth checking.
-#
-# TURN IT ON, ONCE PER CLONE:
-#
-#     git config core.hooksPath .githooks
-#
-# Not installed for you: a hook that arrives without being asked for, and runs
-# for five minutes the first time somebody pushes a typo fix, is a hook people
-# learn to bypass.
-#
-# In a hurry: `git push --no-verify`. The pull request still runs everything.
-
-npm run check
+# The checks moved to pre-commit (see that file), so running them again on the
+# way out would double the wait for the same answer. This file exists so that
+# `core.hooksPath` pointing here does not silently fall back to a stale hook in
+# .git/hooks from before the move.
