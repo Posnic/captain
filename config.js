@@ -374,6 +374,45 @@
         return (state.servers || {})[clean] === current;
       },
 
+      /**
+       * Write down both of a shop's addresses at once.
+       *
+       * Owner: "when QR scan desktop app should able to share both online url
+       * and offline lan url or host name."
+       *
+       * A scan used to set ONE address, so a phone set up at the counter knew
+       * the till and nothing else - and the first time somebody carried it out
+       * of range the app had no cloud address to fall back to. The opposite
+       * happened too: set up from a cloud code, it ran every order over the
+       * internet from two metres away until somebody thought to search the
+       * Wi-Fi.
+       *
+       * The slots have always been separate and tried LAN first. This is only
+       * the door that fills both of them in one go.
+       *
+       * Neither is made active here. Resolution decides which one answers,
+       * which is the whole point of keeping two.
+       */
+      remember({ lan, cloud } = {}) {
+        const lanUrl = normalize(lan);
+        const cloudUrl = normalize(cloud);
+        let wrote = false;
+
+        /* Filed by what they ARE, not by which field they arrived in: a shop
+           that pastes its cloud address into the LAN box should still end up
+           with a working pair rather than two entries in the wrong slots. */
+        for (const url of [lanUrl, cloudUrl].filter(Boolean)) {
+          const slot = isLanUrl(url) ? 'lan' : 'cloud';
+          if (state[slot] !== url) {
+            state[slot] = url;
+            wrote = true;
+          }
+        }
+
+        if (wrote) persist();
+        return { lan: normalize(state.lan), cloud: normalize(state.cloud) };
+      },
+
       adopt(url) {
         const clean = trimSlashes(url);
         if (!clean) return false;
