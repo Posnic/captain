@@ -410,3 +410,162 @@
     transition: none;
   }
 }
+
+/* ----------------------------------------------------- where this connects */
+
+/*
+ * Owner: "make it very smart on this... need very simple configuration not to
+ * make so much confusion. lan or internet all should be internal. user dont
+ * know much about networking stuff. however if someone know we have option."
+ *
+ * So the default view is ONE SENTENCE and a dot. No addresses, no words like
+ * LAN, nothing to decide. The dot is the only thing that moves, and it moves
+ * on its own, which is the honest picture: the app changes doors by itself.
+ *
+ * Everything an engineer wants is behind one tap, off the screen entirely
+ * until asked for.
+ */
+.conn-now {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-sunk);
+}
+
+.conn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex: none;
+  background: var(--ink-faint);
+}
+
+.conn-dot.is-shop {
+  background: var(--good);
+}
+
+.conn-dot.is-internet {
+  background: var(--accent);
+}
+
+.conn-dot.is-down {
+  background: var(--bad);
+}
+
+.conn-said {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.conn-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.conn-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.conn-more-btn {
+  display: block;
+  width: 100%;
+  margin-top: var(--s2);
+  padding: var(--s2) 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  /* Small text still needs somewhere for a thumb to land. */
+  min-height: 32px;
+}
+
+.conn-ways {
+  border: 0;
+  padding: 0;
+  margin: var(--s3) 0 0;
+}
+
+.conn-way {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3);
+  margin-top: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.conn-way:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.conn-way input {
+  margin-top: 3px;
+  flex: none;
+}
+
+.conn-way-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conn-way-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.conn-way-note {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+
+.conn-addresses {
+  margin-top: var(--s4);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s3);
+}
+
+.conn-address {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+}
+
+.conn-address-label {
+  width: 92px;
+  flex: none;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.conn-address-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.conn-address-btn {
+  flex: none;
+  color: var(--accent);
+}
