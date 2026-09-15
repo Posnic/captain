@@ -36,6 +36,27 @@
   const LAN_PORT = 5555;
 
   const REQUEST_TIMEOUT_MS = 10000;
+
+  /*
+   * A LAN REQUEST GETS A LAN DEADLINE.
+   *
+   * Owner: "is there any way to smart switch between lan and internet between
+   * communication."
+   *
+   * The switch itself has always worked. What made it feel like it did not is
+   * how long the app waited before deciding: a till on the shop Wi-Fi answers
+   * in under ten milliseconds, and it was given TEN SECONDS before being
+   * called dead. So the first tap after a router reboot - or after a waiter
+   * walks out of range mid-order - froze for ten seconds, and a waiter
+   * concludes the app is broken long before that.
+   *
+   * Two and a half seconds is still two hundred and fifty times a healthy
+   * round trip, and it is the same figure the address probe already uses, so
+   * this is not a new guess about the network. The cloud keeps the long
+   * deadline: it is a real journey over a phone's mobile data, and cutting it
+   * short would fail requests that were going to succeed.
+   */
+  const LAN_REQUEST_TIMEOUT_MS = 2500;
   const PROBE_TIMEOUT_MS = 2500;
   /* A LAN round trip is under 10ms. A host silent for this long is not there. */
   /*
@@ -1068,6 +1089,40 @@
 
   let resolving = null;
 
+  /*
+   * AN ADDRESS THAT JUST FAILED IS NOT ASKED AGAIN IMMEDIATELY.
+   *
+   * A circuit breaker, and the smallest one that does the job. Without it a
+   * dead till is re-dialled by every single request - each one paying the LAN
+   * deadline before failing over - so a waiter taking a five dish order waits
+   * that long five times, and the app looks broken rather than merely
+   * disconnected.
+   *
+   * The breaker is only ever a SKIP AHEAD, never a refusal: if every address
+   * is failing, the list is walked anyway rather than the app declaring itself
+   * offline while a server sits there answering. Half a second of extra
+   * waiting beats being wrong about which door is open.
+   *
+   * The health loop is the half-open probe that closes it again, so nothing
+   * here has to schedule anything: this only decides the ORDER of a list that
+   * was already being walked.
+   */
+  const COOL_OFF_MS = 15000;
+  const failedAt = new Map();
+
+  function noteFailure(url) {
+    if (url) failedAt.set(url, Date.now());
+  }
+
+  function noteSuccess(url) {
+    if (url) failedAt.delete(url);
+  }
+
+  function coolingOff(url) {
+    const when = failedAt.get(url);
+    return !!when && Date.now() - when < COOL_OFF_MS;
+  }
+
   /**
    * Choose a server that answers, in preference order.
    *
@@ -1084,12 +1139,19 @@
     if (resolving) return resolving;
 
     resolving = (async () => {
-      for (const candidate of server.candidates()) {
+      /* Warm addresses first, the ones that just failed after them - the same
+         list, in the order most likely to answer on the first try. */
+      const all = server.candidates();
+      const order = [...all.filter((url) => !coolingOff(url)), ...all.filter(coolingOff)];
+
+      for (const candidate of order) {
         const hit = await probe(candidate);
         if (hit && server.canAdopt(hit.base)) {
+          noteSuccess(hit.base);
           server.adopt(hit.base);
           return hit.base;
         }
+        noteFailure(candidate);
       }
 
       /* A sweep is affordable only where nothing else is happening, which is
@@ -1195,7 +1257,15 @@
 
     const send = async (base) => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout || REQUEST_TIMEOUT_MS);
+      /*
+       * The deadline follows the ADDRESS, not the request.
+       *
+       * A caller that named its own always wins; otherwise a till on the shop
+       * Wi-Fi gets a LAN deadline and the cloud keeps the long one. This is
+       * what turns a dead router from a ten second freeze into a pause.
+       */
+      const limit = timeout || (isLanUrl(base) ? LAN_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+      const timer = setTimeout(() => controller.abort(), limit);
 
       const requestHeaders = new Headers(headers || {});
       requestHeaders.set('Accept', 'application/json');
@@ -1223,7 +1293,12 @@
     let response;
     try {
       response = await send(base);
+      /* It answered, so it is warm again whatever it did a minute ago. */
+      noteSuccess(base);
     } catch (cause) {
+      /* And it did not, so resolution tries the other door FIRST rather than
+         dialling this one again for every request in the burst that follows. */
+      noteFailure(base);
       /* Find a working server whatever the request was, so the next attempt
          lands in the right place, then replay only if replaying is safe. */
       const moved = await resolve();
@@ -1548,7 +1623,30 @@
     discovery: { probe, findOnWifi, scanSubnet, localSubnets },
     resolve,
     ApiError,
-    constants: { CLOUD_SUFFIX, API_PATH, LAN_PORT },
+    constants: {
+      CLOUD_SUFFIX,
+      API_PATH,
+      LAN_PORT,
+      requestTimeoutMs: REQUEST_TIMEOUT_MS,
+      lanRequestTimeoutMs: LAN_REQUEST_TIMEOUT_MS,
+      coolOffMs: COOL_OFF_MS,
+    },
+    /*
+     * The breaker, exposed so a test can ask it questions.
+     *
+     * Not for the app: nothing in a screen should be deciding which door is
+     * warm. It is here because the alternative is a test that waits fifteen
+     * real seconds to watch an address cool off, and a suite that sleeps is a
+     * suite people stop running.
+     */
+    debugTiming: {
+      noteFailure,
+      noteSuccess,
+      order: () => {
+        const all = server.candidates();
+        return [...all.filter((url) => !coolingOff(url)), ...all.filter(coolingOff)];
+      },
+    },
   };
 
   document.addEventListener('DOMContentLoaded', () => net.start());
