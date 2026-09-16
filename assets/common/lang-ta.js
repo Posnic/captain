@@ -149,6 +149,10 @@
     'As the shop is set': 'கடை அமைப்பின்படி',
     'Number card for the wall': 'சுவரில் ஒட்டும் எண் அட்டை',
 
+    /* ------------------------------------- when two phones meet one order */
+    'Somebody else changed this order. Showing you the latest.':
+      'வேறு யாரோ இந்த ஆர்டரை மாற்றிவிட்டார்கள். சமீபத்தியதை காட்டுகிறோம்.',
+
     /* --------------------------------------------------- a table calling */
     'Table is calling': 'டேபிள் கூப்பிடுகிறது',
     'On my way': 'வருகிறேன்',
