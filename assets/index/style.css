@@ -60,6 +60,10 @@ body {
     background: #020617;
     border-radius: 18px;
     padding: 18px 16px 20px;
+    /* The app draws under the status bar from Android 15 on, so the first
+       thing a waiter sees has to step around the clock rather than sit
+       behind it. */
+    margin-top: env(safe-area-inset-top, 0px);
     box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65);
     border: 1px solid rgba(148, 163, 184, 0.25);
 }

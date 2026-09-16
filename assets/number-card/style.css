@@ -19,6 +19,9 @@ body {
   max-width: 900px;
   margin: 0 auto;
   padding: var(--s3, 12px);
+  /* The app draws under the status bar on Android 15 and later, so the top of
+     the page has to step around the clock itself. */
+  padding-top: calc(var(--s3, 12px) + env(safe-area-inset-top, 0px));
 }
 
 .card-head {
