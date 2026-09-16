@@ -328,6 +328,27 @@
    * The "all" key it also builds is skipped - it is every dish over again, and
    * drawing it would double the menu.
    */
+  /*
+   * THE TILL'S FLAT LIST, AS SECTIONS.
+   *
+   * IndexedDB hands back one long list, and every screen that draws the menu
+   * wants it grouped by category in the shop's own order. Two screens grouping
+   * it separately is two chances to group it differently, and a dish's NUMBER
+   * is its position in that order: a difference is a waiter reading 33 off the
+   * wall and tapping something else.
+   *
+   * So the grouping lives here once, and the card on the wall and the picker
+   * in the hand cannot drift apart without this function changing.
+   */
+  function fromFlat(list, options) {
+    const grouped = {};
+    for (const item of list || []) {
+      const key = item.category_name || 'Menu';
+      (grouped[key] = grouped[key] || []).push(item);
+    }
+    return sections(grouped, options || {});
+  }
+
   function sections(products, options) {
     const opts = options || {};
     const out = [];
@@ -505,6 +526,7 @@
        put a dish in a cart, and two answers to it is how one of them sends a
        free fish. */
     askPrice,
+    fromFlat,
     numbers,
     atNumber,
     /* Exported so a test can ask when this screen turns its day. Four

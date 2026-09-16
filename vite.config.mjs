@@ -103,7 +103,8 @@ export default defineConfig({
         'kot-management': path.resolve(ROOT, 'kot-management.html'),
         'order-history': path.resolve(ROOT, 'order-history.html'),
         thankyou: path.resolve(ROOT, 'thankyou.html'),
-        'access-denied': path.resolve(ROOT, 'access-denied.html')
+        'access-denied': path.resolve(ROOT, 'access-denied.html'),
+        'number-card': path.resolve(ROOT, 'number-card.html')
       }
     }
   },

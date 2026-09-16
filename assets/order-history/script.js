@@ -1788,23 +1788,13 @@ async function openItemPicker() {
             return;
         }
 
-        /*
-         * MenuView.sections wants the shape the menu screen holds - products
-         * grouped by category - and IndexedDB hands back a flat list here.
-         * Grouped by the name each row already carries, so the sections come
-         * out in the shop's own order rather than alphabetically.
-         */
-        const grouped = {};
-        for (const item of products) {
-            const key = item.category_name || 'Menu';
-            (grouped[key] = grouped[key] || []).push(item);
-        }
-
         pickerAll = products;
         pickerIndex = (typeof ItemSearch !== 'undefined' && ItemSearch.index)
             ? ItemSearch.index(products)
             : null;
-        pickerMenu = MenuView.sections(grouped, {});
+        /* Grouped where the card on the wall groups it, so a dish has one
+           number and not one per screen. */
+        pickerMenu = MenuView.fromFlat(products);
         pickerTerm = '';
         const box = document.getElementById('picker-search-input');
         if (box) box.value = '';
