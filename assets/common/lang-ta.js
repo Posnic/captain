@@ -152,6 +152,120 @@
     /* --------------------------------------------------- a table calling */
     'Table is calling': 'டேபிள் கூப்பிடுகிறது',
     'On my way': 'வருகிறேன்',
+
+    /* -------------------------------------------- what the gap tool found */
+
+    /*
+     * The second pass. `npm run tamil` reads every sentence in the markup and
+     * names the ones still in English; these are what it found. What is left
+     * in English after this is left deliberately: a counter a script rewrites
+     * the moment a screen opens ("0 items"), a line of sample text, a page
+     * title nobody sees inside the app, and the word English itself.
+     */
+
+    /* getting on to the shop */
+    'Scan the shop code': 'கடை குறியீட்டை ஸ்கேன் செய்',
+    'Point at the code by the till. Nothing to type.':
+      'பில்லிங் அருகே உள்ள குறியீட்டை காட்டுங்கள். எதுவும் தட்டச்சு செய்ய வேண்டாம்.',
+    'For a phone already on the shop network.': 'ஏற்கனவே கடை நெட்வொர்க்கில் உள்ள போனுக்கு.',
+    'Type the address': 'முகவரியை தட்டச்சு செய்',
+    'A shop code, a web address, or the till on this Wi-Fi.':
+      'கடை குறியீடு, இணைய முகவரி, அல்லது இந்த Wi-Fi இல் உள்ள பில்லிங் கணினி.',
+    'Shop code, web address, or till address': 'கடை குறியீடு, இணைய முகவரி, அல்லது பில்லிங் முகவரி',
+    Connect: 'இணை',
+    'Looking for your till on this Wi-Fi…': 'இந்த Wi-Fi இல் பில்லிங் கணினியை தேடுகிறது…',
+    'Checking…': 'சரிபார்க்கிறது…',
+    'Change how it connects': 'இணைப்பு முறையை மாற்று',
+    'Never uses the shop Wi-Fi. Slower, and stops when the internet does.':
+      'கடை Wi-Fi ஐ பயன்படுத்தாது. மெதுவாக இருக்கும், இணையம் இல்லாதபோது நிற்கும்.',
+    'not found yet': 'இன்னும் கிடைக்கவில்லை',
+    'not set': 'அமைக்கப்படவில்லை',
+    Find: 'தேடு',
+    Anywhere: 'எங்கிருந்தும்',
+    Change: 'மாற்று',
+    'Choose another way': 'வேறு வழியை தேர்ந்தெடு',
+    'Quick dine‑in & takeaway ordering': 'விரைவான உள்ளே சாப்பிட & பார்சல் ஆர்டர்',
+
+    /* signing in */
+    'Welcome back': 'மீண்டும் வருக',
+    'Username / Email': 'பயனர் பெயர் / மின்னஞ்சல்',
+    Password: 'கடவுச்சொல்',
+    'Enter your username': 'உங்கள் பயனர் பெயரை உள்ளிடுங்கள்',
+    'Enter your password': 'உங்கள் கடவுச்சொல்லை உள்ளிடுங்கள்',
+    Continue: 'தொடர்',
+    Logout: 'வெளியேறு',
+    'Select Branch': 'கிளையை தேர்ந்தெடு',
+    'Choose a branch to start taking orders.': 'ஆர்டர் எடுக்க ஒரு கிளையை தேர்ந்தெடுங்கள்.',
+    'Your shop': 'உங்கள் கடை',
+    'This shop': 'இந்த கடை',
+    'Server Settings': 'சர்வர் அமைப்புகள்',
+    'Changing shop signs you out and clears the menu and tables cached for this one.':
+      'கடையை மாற்றினால் வெளியேற்றப்படுவீர்கள்; இந்த கடையின் மெனுவும் டேபிள்களும் அழிக்கப்படும்.',
+    Language: 'மொழி',
+    'What this phone shows. Dish names stay as the shop typed them. This phone only.':
+      'இந்த போன் காட்டும் மொழி. உணவு பெயர்கள் கடை எழுதியபடியே இருக்கும். இந்த போனுக்கு மட்டும்.',
+    'Refresh Data & Images': 'தரவு & படங்களை புதுப்பி',
+    'Reload menu': 'மெனுவை மீண்டும் ஏற்று',
+
+    /* when a phone is turned away */
+    'Device Limit Reached': 'சாதன வரம்பு எட்டப்பட்டது',
+    'Maximum 6 devices are allowed to connect.': 'அதிகபட்சம் 6 சாதனங்கள் மட்டுமே இணைக்க முடியும்.',
+    'to free up a slot.': 'ஒரு இடத்தை காலி செய்ய.',
+    'Device Blocked by Administrator': 'நிர்வாகி இந்த சாதனத்தை தடுத்துள்ளார்',
+    'This device has been restricted from accessing the app.':
+      'இந்த சாதனத்திற்கு ஆப்பை பயன்படுத்த அனுமதி இல்லை.',
+    'to restore access.': 'அனுமதியை மீட்டெடுக்க.',
+
+    /* the floor */
+    'KOT Management': 'KOT மேலாண்மை',
+    'Active tables': 'இயங்கும் டேபிள்கள்',
+    'Nothing open right now': 'இப்போது எதுவும் இல்லை',
+    'Every table is settled. Tap': 'எல்லா டேபிளும் முடிந்தது. அடுத்தவர் அமரும்போது',
+    'when the next one sits down.': 'தட்டவும்.',
+    'Table Details': 'டேபிள் விவரம்',
+    'Back to tables': 'டேபிள்களுக்கு திரும்பு',
+
+    /* the order list */
+    'Choose a table to view its order history':
+      'ஆர்டர் வரலாற்றை பார்க்க ஒரு டேபிளை தேர்ந்தெடுங்கள்',
+    Filters: 'வடிகட்டி',
+    All: 'அனைத்தும்',
+    Pending: 'நிலுவையில்',
+    Completed: 'முடிந்தது',
+    Cancelled: 'ரத்து செய்யப்பட்டது',
+    'No Orders Found': 'ஆர்டர்கள் இல்லை',
+    'No orders found for this table.': 'இந்த டேபிளுக்கு ஆர்டர் இல்லை.',
+    'Order Details': 'ஆர்டர் விவரம்',
+    'Search by order ID...': 'ஆர்டர் ID மூலம் தேடு...',
+    Order: 'ஆர்டர்',
+    Time: 'நேரம்',
+    'View bill →': 'பில் பார் →',
+    '+ Add items from the menu': '+ மெனுவிலிருந்து சேர்',
+    'Are you sure you want to cancel this order?': 'இந்த ஆர்டரை ரத்து செய்ய வேண்டுமா?',
+    'Dine Type': 'ஆர்டர் வகை',
+    'Discount type': 'தள்ளுபடி வகை',
+    'Apply & Add': 'பயன்படுத்தி சேர்',
+    'e.g. 10': 'எ.கா. 10',
+
+    /* ordering */
+    'Frequently Ordered': 'அடிக்கடி ஆர்டர் செய்யப்படுபவை',
+    'How does the table want it?': 'டேபிள் எப்படி கேட்கிறது?',
+    'Eg: no onion, less spicy, half plate':
+      'எ.கா: வெங்காயம் வேண்டாம், காரம் குறைவாக, ஹாஃப் பிளேட்',
+    '⚠️ Need more? Our counter staff is happy to help!':
+      '⚠️ இன்னும் வேண்டுமா? கவுண்டரில் கேளுங்கள்.',
+    'Order placed': 'ஆர்டர் செய்யப்பட்டது',
+    'Sent to the kitchen': 'சமையலறைக்கு அனுப்பப்பட்டது',
+    'The order is in. You can start the next one.': 'ஆர்டர் சென்றுவிட்டது. அடுத்ததை தொடங்கலாம்.',
+    '← Back': '← பின்செல்',
+    'Next →': 'அடுத்து →',
+    'Close popup': 'பாப்அப்பை மூடு',
+
+    /* the number card */
+    Print: 'அச்சிடு',
+    'Loading the menu.': 'மெனு ஏற்றப்படுகிறது.',
+    'Numbers move when the shop changes its menu. Reprint after a change.':
+      'கடை மெனுவை மாற்றினால் எண்கள் மாறும். மாற்றத்திற்கு பிறகு மீண்டும் அச்சிடுங்கள்.',
   };
 
   if (root.I18N && typeof root.I18N.register === 'function') {

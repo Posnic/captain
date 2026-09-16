@@ -156,7 +156,22 @@ export async function onTheMenu(page, heard, options = {}) {
   await page.locator('.floor-new').click();
   await expect(page).toHaveURL(/discount\.html$/);
   await page.locator('#manual_table_input').fill('T1');
-  await page.getByRole('button', { name: /Next/ }).click();
+  /*
+   * BY THE CLASS, NOT BY THE WORD ON IT.
+   *
+   * This read `getByRole('button', { name: /Next/ })` until the app learned
+   * Tamil, and then every test that walks the app in Tamil stalled here: the
+   * button now says அடுத்து and the walk could not find it. The screen was
+   * right and the harness was wrong.
+   *
+   * A test that navigates by display text quietly forbids translating that
+   * text, which is a veto nobody voted for.
+   *
+   * By what the button DOES, not by its class either: `.btn-next` is on the
+   * Back button as well, so it matches two things and neither reading is
+   * wrong. The action is the one unambiguous thing about this button.
+   */
+  await page.locator('[onclick*="goToProductsWithTableCheck"]').click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.locator('.dish').first()).toBeVisible();
