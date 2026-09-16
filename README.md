@@ -109,11 +109,16 @@ everything this project has.
 
 **They run before a commit, not on a server.** There is no test workflow on
 GitHub for this repository: the checks live in a hook, and the hook is the gate.
-Turn it on once per clone:
+`npm install` arms it, so a fresh clone is gated from the first commit without
+anybody reading this paragraph. If it ever says it could not:
 
 ```powershell
 git config core.hooksPath .githooks
 ```
+
+A clone where that is unset commits with no checks at all and looks exactly
+like one that ran them, which is why it is not left to a step somebody has to
+remember.
 
 It takes about six minutes, which is the honest price of having no second
 opinion downstream. Commit in batches rather than every few lines, and use
