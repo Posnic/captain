@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KOT Management</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <script src="assets/common/i18n.js"></script>
+    <script src="assets/common/lang-ta.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
@@ -166,6 +168,23 @@
                         bill from this phone. One for the guest and one for the shop,
                         if you keep a copy. This phone only.
                     </div>
+                    <!--
+                        THE WAITER'S LANGUAGE, on the phone rather than on the
+                        till. The till is set once by whoever owns the shop;
+                        the phone is held by whoever is on shift, and two
+                        waiters on the same floor can want different answers.
+                    -->
+                    <div style="height:var(--s3)"></div>
+                    <label class="ui-label" for="app-language">Language</label>
+                    <select id="app-language" class="ui-field">
+                        <option value="en">English</option>
+                        <option value="ta">தமிழ்</option>
+                    </select>
+                    <div class="ui-note">
+                        What this phone shows. Dish names stay as the shop typed
+                        them. This phone only.
+                    </div>
+
                     <!--
                         Owner: "self manage number. app user itself auto assign
                         1 to 200 for 200 items. if enter 33 then it shows..."

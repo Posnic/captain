@@ -70,6 +70,11 @@ function changeServer() {
     const copies = document.getElementById('bill-copies');
     if (copies) copies.value = storedBillCopies();
 
+    /* Whatever this phone is reading in, so the sheet opens telling the truth
+       rather than always saying English. */
+    const language = document.getElementById('app-language');
+    if (language && typeof I18N !== 'undefined') language.value = I18N.language();
+
     sheet.hidden = false;
 }
 
@@ -111,6 +116,15 @@ function rememberBillCopies(value) {
 document.addEventListener('change', function (event) {
     if (event.target && event.target.id === 'bill-copies') {
         rememberBillCopies(event.target.value);
+    }
+
+    /*
+     * The language changes the screen under the waiter's thumb, with no reload
+     * and nothing lost: the English of every line is remembered per node, so
+     * this is a swap and not a redraw. A half-typed note stays half typed.
+     */
+    if (event.target && event.target.id === 'app-language' && typeof I18N !== 'undefined') {
+        I18N.use(event.target.value);
     }
 });
 
