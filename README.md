@@ -138,6 +138,25 @@ says so and stops - it is a tool for when you have changed how the app talks to
 a server, not a gate, because a gate that needs somebody to find a phone is a
 gate that gets switched off.
 
+### Before a release
+
+Two checks that do not run on every commit, because one needs an Android and
+the other takes a few seconds nobody should pay per commit:
+
+```powershell
+npm.cmd run check:native
+npm.cmd run check:device
+```
+
+`check:native` lays out the Android project from scratch, syncs the bundle and
+the plugins, and confirms the files `build-apk.js` patches are still where it
+expects them. **No SDK, no Java, no phone** - about five seconds. It is what
+catches a Capacitor upgrade that moves something, which would otherwise surface
+at a tag with a shopkeeper waiting.
+
+`check:device` is the real thing on a real Android, and the release build is
+the last word.
+
 ### What still runs on GitHub
 
 `release.yml`, and nothing else. Building a signed APK needs a JDK, an Android
