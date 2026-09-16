@@ -832,6 +832,49 @@ function showQuantityHint(quantity) {
     hint.textContent = quantity > 1 ? `x${quantity}` : '';
 }
 
+/*
+ * A ONE-OFF, ASKED FOR AND PRICED AT THE TABLE.
+ *
+ * The till creates a real item marked INSTANT - which is why it never appears
+ * on anybody's menu - and this then adds it to the order like any other dish.
+ * Nothing downstream needs to know it was unusual.
+ */
+$(document).on('click', '[data-quick-sale]', async function () {
+    const said = this.getAttribute('data-quick-sale') || '';
+
+    /* The same sheet a fish priced at the market uses. A waiter should not
+       learn two ways to type a number into this app. */
+    const price = await POSNIC.askPrice(said);
+    if (!price) return;
+
+    /*
+     * THE HELPERS THIS SCREEN ACTUALLY HAS.
+     *
+     * showLoader, hideLoader and showToast live in the KOT, order-list and
+     * login scripts - not here. Written against them, this threw
+     * "hideLoader is not defined" and the dish was never added, silently,
+     * because the failure happened inside the handler's own error path.
+     * popup.js is what the menu screen loads and what it already uses.
+     */
+    try {
+        const made = await POSNIC.quickSale.createOneOff(said, price);
+
+        /* Kept where every screen here reads its menu from, so the row can be
+           drawn, counted and sent exactly like the rest. */
+        await saveData(STORE_NAME, [made]);
+        await loadProducts();
+        await updateQuantity(made.id, 1);
+
+        const box = document.getElementById('product-search-input');
+        if (box) {
+            box.value = '';
+            applyProductFilter();
+        }
+    } catch (error) {
+        showErrorPopup(error.message || 'Could not add it');
+    }
+});
+
 $(document).on("click", ".btn-add", async function () {
     const id = $(this).data("id");
 
@@ -1212,7 +1255,26 @@ async function applyProductFilter() {
             : MenuView.nothing(
                 'Nothing matches "' + input.value.trim() + '"',
                 'Try fewer letters, or the first letters of each word - "cb" finds Chicken Biryani.'
-              );
+              ) +
+              /*
+               * AND THE WAY OUT, WHERE THE WAITER ALREADY IS.
+               *
+               * Owner: "able to add item and price on demand."
+               *
+               * This is the exact moment somebody discovers the thing is not
+               * on the menu - a bottle somebody brought in, a cake the kitchen
+               * agreed to plate. Offering it here costs no room on a screen
+               * used forty times a service, and it already knows what to call
+               * it, because they just typed the name.
+               */
+              '<div class="menu-quick-sale">' +
+              '<button type="button" class="menu-quick-sale-btn" data-quick-sale="' +
+              MenuView.escape(input.value.trim()) +
+              '">Add &ldquo;' +
+              MenuView.escape(input.value.trim()) +
+              '&rdquo; with a price</button>' +
+              '<p class="menu-quick-sale-why">For something the menu does not have. It is charged on this bill and stays off the menu.</p>' +
+              '</div>';
     }
 
     /* Said quietly, and only while it is worth saying. */
