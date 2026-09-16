@@ -992,3 +992,33 @@ body.is-searching .fixed-categories {
   }
   .dish.is-taking .dish-media { transform: none; }
 }
+
+/*
+ * THE WAY OUT OF AN EMPTY SEARCH.
+ *
+ * Offered only where somebody has just discovered the menu does not have the
+ * thing, so it costs nothing on a screen used forty times a service.
+ */
+.menu-quick-sale {
+  padding: var(--s3) var(--s4) var(--s5);
+  text-align: center;
+}
+
+.menu-quick-sale-btn {
+  width: 100%;
+  max-width: 420px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent, #0d6efd);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.menu-quick-sale-why {
+  margin: 10px auto 0;
+  max-width: 420px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
