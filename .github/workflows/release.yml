@@ -38,7 +38,17 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # CAPACITOR 8 REQUIRES NODE >= 22, and said so by failing.
+          #
+          # `npx cap add android` exits 1 on Node 20 with no message of its
+          # own, so the log reads as a build that broke for no reason. Both
+          # platforms failed identically on v1.2.23 and neither said why.
+          #
+          # The machine this was developed on runs Node 24, which is why every
+          # local check passed. That gap is now closed in two places: the
+          # engines field below refuses an old Node with a sentence, and
+          # `npm run check:native` says so before anybody tags anything.
+          node-version: 22
           cache: npm
 
       # Android Gradle Plugin wants 17. The runner default has moved past it
@@ -126,7 +136,17 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # CAPACITOR 8 REQUIRES NODE >= 22, and said so by failing.
+          #
+          # `npx cap add android` exits 1 on Node 20 with no message of its
+          # own, so the log reads as a build that broke for no reason. Both
+          # platforms failed identically on v1.2.23 and neither said why.
+          #
+          # The machine this was developed on runs Node 24, which is why every
+          # local check passed. That gap is now closed in two places: the
+          # engines field below refuses an old Node with a sentence, and
+          # `npm run check:native` says so before anybody tags anything.
+          node-version: 22
           cache: npm
 
       - run: npm ci

@@ -62,6 +62,42 @@ function run(command, args, label) {
   return out;
 }
 
+/*
+ * THE NODE VERSION FIRST, because that is what broke the last release.
+ *
+ * Capacitor 8 requires Node >= 22 and enforces it by exiting 1 from `cap add`
+ * with nothing printed - the log reads as a build that failed for no reason.
+ * v1.2.23 died that way on both platforms while every local check passed,
+ * because the machine it was developed on runs Node 24 and the runner was
+ * pinned to 20.
+ *
+ * A check that only passes because of what happens to be installed is not a
+ * check. This reads the requirement out of the CLI's own package rather than
+ * restating it, so it stays true when Capacitor moves again.
+ */
+function nodeIsNewEnough() {
+  let wanted = '';
+  try {
+    wanted = String(require('@capacitor/cli/package.json').engines.node || '');
+  } catch (e) {
+    return; /* No CLI installed yet; npm ci will say so more clearly. */
+  }
+
+  const least = Number((wanted.match(/(\d+)/) || [])[1]);
+  const here = Number(process.versions.node.split('.')[0]);
+  if (!Number.isFinite(least) || !Number.isFinite(here)) return;
+
+  say(`Node ${process.versions.node}; Capacitor wants ${wanted}`);
+  if (here < least) {
+    say(`
+✖ this Node is too old for Capacitor, which will fail without saying so`);
+    say(`  install Node ${least} or newer, and check .github/workflows/release.yml agrees`);
+    process.exit(1);
+  }
+}
+
+nodeIsNewEnough();
+
 /* The bundle first: `cap sync` copies webDir, and copying a directory that is
    not there is a confusing way to be told the build never ran. */
 say('Building the web bundle.');
