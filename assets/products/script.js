@@ -867,7 +867,23 @@ $(document).on("click", ".btn-add", async function () {
         if (!askedPrice) return;
     }
 
-    await updateQuantity(id, quantity, { askedPrice });
+    /*
+     * AND WHAT THE TABLE WANTS ON IT.
+     *
+     * Asked once, when the dish first goes on the order - not every time the
+     * count goes up, because "two biryanis" is one question about two plates
+     * and asking twice is how a waiter learns to skip the extras.
+     *
+     * Backing out leaves the order exactly as it was, the same rule the price
+     * question follows above: null is a decision, an empty list is an answer.
+     */
+    let extras = [];
+    if (typeof POSNIC !== 'undefined' && POSNIC.askOptions) {
+        extras = await POSNIC.askOptions(product);
+        if (extras === null) return;
+    }
+
+    await updateQuantity(id, quantity, { askedPrice, modifiers: extras });
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);

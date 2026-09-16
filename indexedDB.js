@@ -553,7 +553,19 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                          */
                         open_price: item.open_price === true,
                         daily_price: item.daily_price === true,
-                        price_set_on: item.price_set_on || ""
+                        price_set_on: item.price_set_on || "",
+                        /*
+                         * The shop's option sets for this dish - extra cheese,
+                         * half plate, how spicy - whole, with their prices.
+                         *
+                         * A field this loader does not NAME is dropped. That is
+                         * how open_price was dead for months, and how the
+                         * extras stayed invisible here while the till offered
+                         * them and expected somebody to charge for them.
+                         */
+                        modifier_groups: Array.isArray(item.modifier_groups)
+                            ? item.modifier_groups
+                            : []
                     });
                 });
             });
@@ -781,6 +793,22 @@ async function renderCart(cartData = null, skipRedirect = false) {
                 /* WHOLE. Wrapped by CSS at two lines, never cut at
                    twenty-five characters in JavaScript. */
                 '<p class="bill-name">' + billText(item.name) + '</p>' +
+                /*
+                 * What the table asked for on it, under the name where a note
+                 * already goes. A waiter reading back an order needs to see
+                 * "extra cheese" on the line, not only on the kitchen ticket:
+                 * the whole reason this was typed into the notes box for years
+                 * is that it is the first thing anybody checks.
+                 *
+                 * Without a price. The till prices these and this screen has
+                 * not asked it yet, and a number here that turned out to be a
+                 * different number on the bill would be worse than none.
+                 */
+                ((item.modifiers || []).length
+                    ? '<div class="bill-note bill-extras">' +
+                      billText(item.modifiers.map((one) => one.name).join(', ')) +
+                      '</div>'
+                    : '') +
                 (item.notes ? '<div class="bill-note">' + billText(item.notes) + '</div>' : '') +
                 /*
                  * TODAY'S PRICE CAN BE CORRECTED HERE.
@@ -1099,6 +1127,9 @@ async function updateQuantity(id, change, options) {
        on the day. Absent for every ordinary dish, which is why nothing below
        changes for them. */
     const quoted = Number((options && options.askedPrice) || 0) || 0;
+    /* What the table wants on it, asked once when the dish went on. The till
+       prices these from its own documents; this is only what was chosen. */
+    const chosen = Array.isArray(options && options.modifiers) ? options.modifiers : null;
 
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
@@ -1132,12 +1163,27 @@ async function updateQuantity(id, change, options) {
              * untouched.
              */
             askedPrice: quoted,
+            /*
+             * ONE SET OF EXTRAS PER DISH ON AN ORDER.
+             *
+             * "Two biryanis, both extra spicy" is this line with a count of
+             * two. "One with, one without" is two adds of the same dish, and
+             * this app cannot express that yet: a cart keyed by dish id in
+             * fifteen places would have to be re-keyed to hold two lots of one
+             * dish, and doing that badly breaks the one thing this app is for.
+             * The money fix ships first.
+             */
+            modifiers: chosen || [],
             quantity: 0
         };
     } else if (quoted > 0) {
         /* Re-quoted: the second fish of the evening may cost something else,
            and the line carries the number the table was told. */
         item.askedPrice = quoted;
+        /* Only when this add actually asked. Tapping + on a dish already on
+           the order keeps the extras it went on with, rather than silently
+           dropping them because the second tap asked nothing. */
+        if (chosen) item.modifiers = chosen;
     }
 
     const allowNegative = storedProduct?.negative_stock === true;
@@ -1523,7 +1569,26 @@ async function checkout(transactionId) {
                 item_subtotal:
                     unitPrice(item) * item.quantity,
                 gst: (item.tax_price || 0) * item.quantity,
-                item_description: item.notes || ""
+                item_description: item.notes || "",
+                /*
+                 * WHAT THE TABLE ASKED FOR ON IT, by name.
+                 *
+                 * Not what it costs. The till prices these from the shop's own
+                 * option documents and ignores anything a phone claims, which
+                 * is why the names are all that travel: a client that could
+                 * name a price could name a discount nobody agreed to.
+                 *
+                 * Absent when nothing was chosen, so an ordinary dish sends
+                 * exactly what it always did.
+                 */
+                ...((item.modifiers || []).length
+                    ? {
+                          modifiers: item.modifiers.map((one) => ({
+                              group: one.group || '',
+                              name: one.name || ''
+                          }))
+                      }
+                    : {})
             };
         });
 
