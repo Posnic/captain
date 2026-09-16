@@ -237,6 +237,8 @@ function setupEventListeners() {
         editBtn.addEventListener('click', openEditOrderModal);
     }
 
+
+
     const confirmCancelBtn = document.getElementById('confirm-cancel-order-btn');
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', async function () {
@@ -748,6 +750,10 @@ function renderOrders() {
             <button class="action-btn edit-btn" onclick="event.stopPropagation(); editOrder('${order._id}')">
                 <i class="fas fa-edit"></i> Modify
             </button>
+            ${(order.dine_type || 'Dine-in') === 'Dine-in' ? `
+            <button class="action-btn move-btn" onclick="event.stopPropagation(); moveOrder('${order._id}')">
+                <i class="fas fa-right-left"></i> Move table
+            </button>` : ''}
             <button class="action-btn cancel-btn" onclick="event.stopPropagation(); cancelOrder('${order._id}')">
                 <i class="fas fa-times"></i> Cancel order
             </button>
@@ -958,6 +964,242 @@ window.modifyKot = modifyKot;
 //     currentOrderId = orderId;
 //     openAddItemsModal();
 // }
+/*
+ * THE TABLES THIS SHOP HAS, read once and read the same way everywhere.
+ *
+ * The till caches them under kiosk_tableorders. The edit sheet parsed that
+ * string itself, and the move sheet below would have been a second parser of
+ * the same string: two readings of one list is how a table's id goes missing
+ * on one screen and not on the other.
+ */
+function tablesFromStorage() {
+    let raw = null;
+    try {
+        raw = localStorage.getItem('kiosk_tableorders');
+    } catch (e) {
+        return [];
+    }
+    if (!raw) return [];
+
+    try {
+        return (JSON.parse(raw) || []).map((t, index) => {
+            const value = String(t.tableorder_value != null ? t.tableorder_value : index + 1);
+            return {
+                value,
+                label: value,
+                id: (t._id && t._id.$oid) || t.table_id || '',
+            };
+        });
+    } catch (e) {
+        console.error('Failed to parse kiosk_tableorders:', e);
+        return [];
+    }
+}
+
+/*
+ * MOVING AN ORDER TO ANOTHER TABLE.
+ *
+ * Guests move. A two turns into a four, a table by the door turns out to be
+ * under the air conditioner, a party joins another party.
+ *
+ * This was already possible and almost nobody could find it: Modify, scroll
+ * past every dish on the order, find the table strip, change it, Update. That
+ * is the screen for adding and cancelling dishes, so moving a table meant
+ * walking through the one place where a mis-tap changes what the kitchen
+ * cooks. Here it is its own thing, doing the one thing, and the lines go back
+ * to the till exactly as they came.
+ */
+let orderBeingMoved = null;
+
+/*
+ * BUILT HERE, not written into a page.
+ *
+ * This file is loaded by the order list AND by the KOT screen, and the button
+ * that opens this sheet is drawn by this file, so a sheet living in one
+ * page's HTML would be a button that silently does nothing on the other. The
+ * markup follows the button.
+ */
+function ensureMoveSheet() {
+    let el = document.getElementById('moveTableModal');
+    if (el) return el;
+
+    el = document.createElement('div');
+    el.className = 'modal fade';
+    el.id = 'moveTableModal';
+    el.tabIndex = -1;
+    el.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Move to another table</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="move-table-now" id="move-table-now"></div>
+                    <div class="move-table-list" id="move-table-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn action-btn edit-btn" id="move-table-go" disabled>
+                        Choose a table
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    /* One listener on the list: the tables are drawn fresh on every opening,
+       so a listener per button would be a listener per opening. */
+    el.querySelector('#move-table-list').addEventListener('click', (event) => {
+        const button = event.target.closest('.move-table');
+        if (button && !button.disabled) chooseMoveTable(button);
+    });
+    el.querySelector('#move-table-go').addEventListener('click', confirmMoveTable);
+
+    /* Reopened later for a different order, the last choice must not still be
+       sitting there ready to move this one. */
+    el.addEventListener('hidden.bs.modal', () => {
+        orderBeingMoved = null;
+        const go = document.getElementById('move-table-go');
+        if (go) {
+            go.disabled = true;
+            go.textContent = 'Choose a table';
+        }
+    });
+
+    return el;
+}
+
+function moveOrder(orderId) {
+    const order = (allOrders || []).find((o) => o._id === orderId);
+    if (!order) return;
+
+    ensureMoveSheet();
+    orderBeingMoved = order;
+    renderMoveTables();
+
+    const el = ensureMoveSheet();
+    if (typeof bootstrap !== 'undefined') new bootstrap.Modal(el).show();
+}
+
+/** Where the order is now, however the till spelled it. */
+const tableOf = (order) =>
+    String((order && (order.table_number || order.kiosk_table_no)) || '');
+
+function renderMoveTables() {
+    const order = orderBeingMoved;
+    const container = document.getElementById('move-table-list');
+    if (!order || !container) return;
+
+    const now = tableOf(order);
+    const here = document.getElementById('move-table-now');
+    if (here) here.textContent = now ? `Now on table ${now}` : 'Not on a table yet';
+
+    /*
+     * Which tables are already working. Moving onto one is allowed, because
+     * two parties do share a long table and a waiter knows their own floor
+     * better than this does. Saying so first is the difference between a
+     * decision and a surprise.
+     */
+    const busy = new Set(
+        (allOrders || [])
+            .filter(
+                (o) =>
+                    o._id !== order._id && o.status !== 'cancelled' && o.status !== 'completed'
+            )
+            .map(tableOf)
+            .filter(Boolean)
+    );
+
+    const tables = tablesFromStorage();
+    if (!tables.length) {
+        container.innerHTML =
+            '<div class="text-muted">No tables configured. Whoever set up the till adds them.</div>';
+        return;
+    }
+
+    container.innerHTML = tables
+        .map((t) => {
+            const isHere = t.value === now;
+            return `
+            <button type="button"
+                class="move-table${isHere ? ' is-here' : ''}${busy.has(t.value) ? ' is-busy' : ''}"
+                data-value="${t.value}"
+                data-id="${t.id}"
+                ${isHere ? 'disabled' : ''}>
+                <span class="move-table-no">${t.label}</span>
+                ${isHere ? '<span class="move-table-note">here now</span>' : ''}
+                ${!isHere && busy.has(t.value) ? '<span class="move-table-note">has an order</span>' : ''}
+            </button>`;
+        })
+        .join('');
+}
+
+/*
+ * Chosen, then confirmed. A tap that moved an order the moment it landed
+ * would make a mis-tap into a table change the kitchen hears about, and the
+ * floor is not a place where anybody taps carefully.
+ */
+function chooseMoveTable(button) {
+    const list = document.getElementById('move-table-list');
+    if (!list) return;
+    for (const other of list.querySelectorAll('.move-table')) other.classList.remove('is-chosen');
+    button.classList.add('is-chosen');
+
+    const go = document.getElementById('move-table-go');
+    if (go) {
+        go.disabled = false;
+        go.textContent = `Move to table ${button.dataset.value}`;
+    }
+}
+
+async function confirmMoveTable() {
+    const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
+    const order = orderBeingMoved;
+    if (!chosen || !order) return;
+
+    const go = document.getElementById('move-table-go');
+    if (go) go.disabled = true;
+
+    try {
+        showLoader();
+
+        /*
+         * The same lines back, unchanged. The endpoint refuses an order with
+         * no items, so a move has to carry them; linesForSave is what the
+         * edit sheet sends, so a moved order cannot come out of this door
+         * shaped differently from a modified one.
+         */
+        const data = await POSNIC.api.post('/sales/updateOrder', {
+            order_id: order._id,
+            items: linesForSave(order.items),
+            total_amount: order.total_amount,
+            table_number: chosen.dataset.value,
+            table_id: chosen.dataset.id || '',
+            dine_type: order.dine_type || 'Dine-in',
+            person_count: order.person_count || 1,
+        });
+
+        if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
+
+        showToast(`Moved to table ${chosen.dataset.value}`, 'success');
+
+        const el = document.getElementById('moveTableModal');
+        if (el && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+
+        if (typeof loadTables === 'function') await loadTables();
+        await loadOrderHistory();
+    } catch (error) {
+        showToast(error.message || 'Could not move the order', 'error');
+        if (go) go.disabled = false;
+    } finally {
+        hideLoader();
+    }
+}
+
 function renderEditTables(tables, selectedTableNo) {
     const container = document.getElementById('edit-table-list');
     if (!container) return;
@@ -1188,25 +1430,7 @@ function openEditOrderModal() {
 
     const currentTableNo = order.table_number || order.kiosk_table_no || '';
     const currentPersons = order.person_count || 1;
-    const raw = localStorage.getItem('kiosk_tableorders');
-    let tables = [];
-
-    if (raw) {
-        try {
-            const tableorders = JSON.parse(raw) || [];
-            tables = tableorders.map((t, index) => {
-                const value = (t.tableorder_value ?? (index + 1)).toString();
-                const tableId = t._id?.$oid || t.table_id || ''; // adjust based on actual data
-                return {
-                    value: value,
-                    label: value,
-                    id: tableId
-                };
-            });
-        } catch (e) {
-            console.error('Failed to parse kiosk_tableorders:', e);
-        }
-    }
+    const tables = tablesFromStorage();
 
     renderEditTables(tables, currentTableNo);
     // current table no listல் இல்லனா → manual input select & prefill
