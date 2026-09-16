@@ -1926,6 +1926,10 @@ function drawPicker() {
 
     const term = String(pickerTerm || '').trim();
 
+    /* Every dish's number, from the shop's own menu order - the same on every
+       handset, because it is derived rather than assigned. */
+    const numbers = MenuView.numbers(pickerMenu);
+
     if (!term) {
         if (rail) {
             rail.innerHTML = MenuView.rail(pickerMenu, {});
@@ -1935,7 +1939,7 @@ function drawPicker() {
         /* An empty cart map: this sheet shows the MENU, and what is already on
            the order is on the screen behind it. Showing quantities here would
            be two places claiming to be the count. */
-        body.innerHTML = MenuView.render(pickerMenu, pickerCart(), {});
+        body.innerHTML = MenuView.render(pickerMenu, pickerCart(), { numbers });
         return;
     }
 
@@ -1951,10 +1955,25 @@ function drawPicker() {
         })
         : pickerAll.filter((i) => String(i.name || '').toLowerCase().includes(term.toLowerCase()));
 
-    if (!hits.length) {
+    /*
+     * A NUMBER TYPED IS A NUMBER MEANT - and also, sometimes, a name.
+     *
+     * Owner: "if enter 33 then it shows." Typing 33 puts dish 33 at the top.
+     *
+     * But it does NOT replace the search, because in an Indian kitchen a
+     * number IS a dish name: type 65 and a waiter may well want Chicken 65,
+     * which the text search finds and which no numbering scheme should take
+     * away from them. So the numbered dish goes FIRST, labelled, and every
+     * name match follows it. Both readings are offered and the waiter picks;
+     * neither is guessed at on their behalf.
+     */
+    const byNumber = /^[0-9]{1,4}$/.test(term) ? MenuView.atNumber(pickerMenu, term) : null;
+    const rest = byNumber ? hits.filter((i) => String(i.id) !== String(byNumber.id)) : hits;
+
+    if (!hits.length && !byNumber) {
         body.innerHTML = MenuView.nothing(
             'Nothing matches "' + term + '"',
-            'Try fewer letters, or the first letters of each word.'
+            'Try fewer letters, the first letters of each word, or a dish number.'
         );
         return;
     }
@@ -1964,11 +1983,19 @@ function drawPicker() {
      * than left blank so the rows sit under a heading like every other row on
      * this screen - a result list with no heading reads as a different screen.
      */
-    body.innerHTML = MenuView.render(
-        [{ key: 'found', name: hits.length + (hits.length === 1 ? ' match' : ' matches'), items: hits }],
-        pickerCart(),
-        {}
-    );
+    const sections = [];
+    if (byNumber) {
+        sections.push({ key: 'number', name: 'No. ' + term, items: [byNumber] });
+    }
+    if (rest.length) {
+        sections.push({
+            key: 'found',
+            name: rest.length + (rest.length === 1 ? ' match' : ' matches'),
+            items: rest,
+        });
+    }
+
+    body.innerHTML = MenuView.render(sections, pickerCart(), { numbers });
 }
 
 /** Every category with a count, for the MENU sheet. */
