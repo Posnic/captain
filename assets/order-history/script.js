@@ -1906,16 +1906,35 @@ function pickerCart() {
  * the menu.
  */
 function pickerRefreshRow(id) {
-    const row = document.querySelector('#item-picker-body .dish[data-id="' + id + '"]');
-    if (!row) return;
+    /*
+     * EVERY row for this dish, not the first one.
+     *
+     * A dish can be on the screen twice now: once in a shortcut strip at the
+     * top and once in its own category below. That is deliberate - the strips
+     * are a shortcut, not a replacement, and removing a dish from its section
+     * because it happens to be popular would make the menu wrong.
+     *
+     * But two rows for one dish MUST agree. Refreshing only the first left the
+     * other showing ADD for a dish that was already on the order, which is the
+     * exact confusion the counter was put there to end.
+     */
+    const rows = document.querySelectorAll('#item-picker-body .dish[data-id="' + id + '"]');
+    if (!rows.length) return;
     const item = pickerItem(id);
     if (!item) return;
     const line = pickerCart().get(String(id));
     /* dish() takes a NUMBER; render() takes the line. Same map, two shapes. */
-    const fresh = MenuView.dish(item, line ? line.quantity : 0, {});
-    const holder = document.createElement('div');
-    holder.innerHTML = fresh;
-    if (holder.firstElementChild) row.replaceWith(holder.firstElementChild);
+    /* With the numbers, like every other row on this sheet. Without them a
+       dish LOSES its number the moment somebody taps it, which is worse than
+       never having shown one: the column goes ragged under the thumb. */
+    const fresh = MenuView.dish(item, line ? line.quantity : 0, {
+      numbers: MenuView.numbers(pickerMenu),
+    });
+    for (const row of rows) {
+        const holder = document.createElement('div');
+        holder.innerHTML = fresh;
+        if (holder.firstElementChild) row.replaceWith(holder.firstElementChild);
+    }
 }
 
 function drawPicker() {
@@ -1936,10 +1955,17 @@ function drawPicker() {
             rail.hidden = false;
         }
         if (indexBtn) indexBtn.hidden = !(pickerMenu && pickerMenu.length > 1);
-        /* An empty cart map: this sheet shows the MENU, and what is already on
-           the order is on the screen behind it. Showing quantities here would
-           be two places claiming to be the count. */
-        body.innerHTML = MenuView.render(pickerMenu, pickerCart(), { numbers });
+        /*
+         * The shortcuts, then the whole menu. A waiter who wants the card
+         * scrolls past three short strips; one who wants another water has
+         * already found it.
+         */
+        const cart = pickerCart();
+        body.innerHTML = MenuView.render(
+            [...pickerShortcuts(pickerMenu, cart), ...pickerMenu],
+            cart,
+            { numbers }
+        );
         return;
     }
 
@@ -2164,12 +2190,14 @@ document.addEventListener('click', function (event) {
         if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(found)) {
             POSNIC.askPrice(found.name).then((asked) => {
                 if (!asked) return;
+                rememberRecent(id);
                 addProductToOrder(id, found.name, asked);
                 pickerRefreshRow(id);
             });
             return;
         }
 
+        rememberRecent(id);
         addProductToOrder(id, found.name, found.selling_price || found.price || 0);
         /*
          * The row becomes a counter. No "Added" flash and no second ADD: the
@@ -2180,6 +2208,114 @@ document.addEventListener('click', function (event) {
         return;
     }
 });
+
+/*
+ * AN EMPTY SEARCH IS NOT AN EMPTY MENU.
+ *
+ * Owner: "how to make ux of searching best while add item? when user goes to
+ * search show recent items? or show top selling or signature items? i want
+ * some big options behind search."
+ *
+ * Opening the sheet used to show the whole card from the top - which is the
+ * one thing a waiter already knows how to do and the slowest way to reach
+ * anything. Before a single letter is typed there are three faster answers,
+ * and between them they cover most of what a second round actually is:
+ *
+ *   ON THIS TABLE    what this order already has. A second round is usually
+ *                    another of something, and this is one tap.
+ *   YOU ADDED LATELY what this handset has been adding all shift. A waiter
+ *                    working the same section sells the same twenty dishes.
+ *   SELLING TODAY    the shop's own best sellers, which the app already
+ *                    fetches for the ordering screen's ranking.
+ *
+ * Each is small and each disappears when it has nothing to say. A strip that
+ * is sometimes empty and sometimes not teaches a waiter to ignore the top of
+ * the screen, so an empty one is not drawn at all.
+ *
+ * The whole menu still follows underneath, unchanged. This adds a shortcut; it
+ * does not take the long way round away from anybody.
+ */
+
+const RECENT_KEY = 'posnic.recent_items';
+const RECENT_KEEP = 8;
+
+/** What this handset has added lately, most recent first. */
+function recentItemIds() {
+    try {
+        const said = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(said) ? said.map(String) : [];
+    } catch (e) {
+        /* Storage blocked or corrupt. The sheet simply has one strip fewer. */
+        return [];
+    }
+}
+
+/** Remember one, at the front, without letting the list grow for ever. */
+function rememberRecent(id) {
+    const key = String(id || '');
+    if (!key) return;
+    try {
+        const kept = [key, ...recentItemIds().filter((other) => other !== key)].slice(0, RECENT_KEEP);
+        localStorage.setItem(RECENT_KEY, JSON.stringify(kept));
+    } catch (e) {
+        /* Nothing to remember it with; the strip is absent rather than wrong. */
+    }
+}
+
+/**
+ * The strips above the menu, in the order a waiter would want them.
+ *
+ * Deduplicated across the three: a dish already on the table is not also
+ * offered as recent and as popular, because three copies of one row is a
+ * screen that looks full and says little.
+ *
+ * @param {Array} menu     the sections this sheet is showing
+ * @param {Map}   onOrder  what the order being modified already holds
+ */
+function pickerShortcuts(menu, onOrder) {
+    const byId = new Map();
+    for (const section of menu || []) {
+        for (const item of section.items || []) byId.set(String(item.id), item);
+    }
+
+    const taken = new Set();
+    const pick = (ids, limit) => {
+        const out = [];
+        for (const id of ids) {
+            const key = String(id);
+            if (taken.has(key)) continue;
+            const item = byId.get(key);
+            if (!item) continue;
+            taken.add(key);
+            out.push(item);
+            if (out.length >= limit) break;
+        }
+        return out;
+    };
+
+    const strips = [];
+
+    const onTable = pick([...(onOrder ? onOrder.keys() : [])], 6);
+    if (onTable.length) {
+        strips.push({ key: 'on-table', name: 'On this table', items: onTable });
+    }
+
+    const recent = pick(recentItemIds(), 6);
+    if (recent.length) {
+        strips.push({ key: 'recent', name: 'You added lately', items: recent });
+    }
+
+    /* The shop's own answer, already fetched for the ordering screen. A Set,
+       so the order it arrived in is not preserved - which is fine: these are
+       all popular, and the menu order is a defensible way to show them. */
+    const popular = window._frequentItemIds instanceof Set ? [...window._frequentItemIds] : [];
+    const selling = pick(popular, 6);
+    if (selling.length) {
+        strips.push({ key: 'selling', name: 'Selling today', items: selling });
+    }
+
+    return strips;
+}
 
 /** The dish behind a row, out of the menu this sheet is showing. */
 function pickerItem(id) {

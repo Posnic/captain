@@ -196,9 +196,18 @@ test('a dish already on the order opens as a counter, not as ADD', async ({ page
   });
   await page.evaluate(() => openItemPicker());
 
-  const row = page.locator('#item-picker .dish[data-id="p-1"]');
-  await expect(row.locator('.dish-qty')).toHaveText('2');
-  await expect(row.locator('.btn-add')).toHaveCount(0);
+  /*
+   * EVERY copy of the row, because a dish on the order now appears twice: once
+   * in the "On this table" strip at the top and once in its own category. Both
+   * have to say the same thing - a shortcut showing ADD for a dish already on
+   * the order is the exact confusion the counter exists to end.
+   */
+  const rows = page.locator('#item-picker .dish[data-id="p-1"]');
+  await expect(rows).not.toHaveCount(0);
+  const counts = await rows.locator('.dish-qty').allTextContents();
+  expect(counts.length).toBeGreaterThan(0);
+  expect(counts.every((said) => said === '2')).toBe(true);
+  await expect(rows.locator('.btn-add')).toHaveCount(0);
 });
 
 test('a counted dish stays counted after a search and back', async ({ page }) => {
@@ -206,12 +215,17 @@ test('a counted dish stays counted after a search and back', async ({ page }) =>
      - which is the only reason searching does not lose it. */
   await modifyingAnOrder(page);
 
-  await page.locator('#item-picker .dish[data-id="p-1"] .btn-add').click();
+  /* `.first()` throughout: a dish can be on this screen twice now, in a
+     shortcut strip and in its category, and they are kept in step. */
+  await page.locator('#item-picker .dish[data-id="p-1"] .btn-add').first().click();
   await page.locator('#picker-search-input').fill('chicken');
-  await expect(page.locator('#item-picker .dish[data-id="p-1"] .dish-qty')).toHaveText('1');
+  await expect(page.locator('#item-picker .dish[data-id="p-1"] .dish-qty').first()).toHaveText('1');
 
   await page.locator('#picker-search-clear').click();
-  await expect(page.locator('#item-picker .dish[data-id="p-1"] .dish-qty')).toHaveText('1');
+  const back = await page
+    .locator('#item-picker .dish[data-id="p-1"] .dish-qty')
+    .allTextContents();
+  expect(back.every((said) => said === '1')).toBe(true);
 });
 
 test('a dish already on the order shows its count in a SEARCH RESULT', async ({ page }) => {
