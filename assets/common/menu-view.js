@@ -211,6 +211,18 @@
     else if (qty > 0) classes.push('is-in');
 
     /*
+     * The number, where a waiter will read it without looking for it.
+     *
+     * Shown on every row rather than only on a card by the till, because that
+     * is how anybody learns them: the number sits beside the dish they are
+     * tapping anyway, and after a week they stop tapping and start typing.
+     */
+    const number = opts.numbers instanceof Map ? opts.numbers.get(String(product.id)) : null;
+    const numberMark = number
+      ? '<span class="dish-no" aria-label="Number ' + number + '">' + number + '</span>'
+      : '';
+
+    /*
      * The picture, or the dish's own icon.
      *
      * `onerror` matters more here than it looks: a shop's images live on the
@@ -261,6 +273,7 @@
       (mark ? '<span class="dish-diet is-' + mark + '" title="' + mark + '"></span>' : '') +
       (popular ? '<span class="dish-badge">Bestseller</span>' : '') +
       '<p class="dish-name">' +
+      numberMark +
       escape(product.name) +
       '</p>' +
       '<div class="dish-price">' +
@@ -399,6 +412,55 @@
     return html;
   }
 
+  /**
+   * A NUMBER FOR EVERY DISH, the way a counter till has always had one.
+   *
+   * Owner: "self manage number. app user itself auto assign 1 to 200 for 200
+   * items. if enter 33 then it shows."
+   *
+   * The oldest trick in the trade and still the fastest: a waiter who sells the
+   * same forty dishes learns their numbers in a week and stops reading at all.
+   * Typing two digits beats typing four letters and beats scrolling outright.
+   *
+   * THE NUMBER COMES FROM THE SHOP'S OWN MENU ORDER, not from this phone.
+   * Nothing is stored and nothing is assigned: it is the position of the dish
+   * in the menu the till sends, counted straight through the sections. So
+   * every handset in the building shows the same number for the same dish,
+   * without agreeing about anything - and a card printed from the same order
+   * matches all of them. A number a phone invented for itself would be a
+   * number on one phone, which is worse than no number at all.
+   *
+   * IT MOVES WHEN THE SHOP MOVES A DISH, and that is why typing a number
+   * SHOWS the dish rather than adding it. A waiter's memory of 33 can go stale
+   * between a Monday and a Tuesday; the name on the row is what stops a stale
+   * memory becoming a wrong plate. Confirmed by a tap, never fired blind.
+   */
+  function numbers(list) {
+    const map = new Map();
+    let n = 0;
+    for (const section of list || []) {
+      for (const item of section.items || []) {
+        n += 1;
+        map.set(String(item.id), n);
+      }
+    }
+    return map;
+  }
+
+  /** The dish a number names, or nothing if the menu is shorter than that. */
+  function atNumber(list, wanted) {
+    const want = Number(wanted);
+    if (!Number.isFinite(want) || want < 1) return null;
+    let n = 0;
+    for (const section of list || []) {
+      for (const item of section.items || []) {
+        n += 1;
+        if (n === want) return item;
+      }
+    }
+    return null;
+  }
+
   /** The jump index across the top. */
   function rail(list, options) {
     const opts = options || {};
@@ -443,6 +505,8 @@
        put a dish in a cart, and two answers to it is how one of them sends a
        free fish. */
     askPrice,
+    numbers,
+    atNumber,
     /* Exported so a test can ask when this screen turns its day. Four
        surfaces answer that separately and must agree; nothing in the app
        calls it. */
