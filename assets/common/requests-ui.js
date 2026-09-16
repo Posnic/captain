@@ -46,6 +46,7 @@
     remove_one: 'Remove an item',
     remove_some: 'Remove some items',
     fewer: 'Asked for fewer',
+    table_calling: 'Table is calling',
     already_cancelled: 'Customer cancelled this',
     new_order: 'New order',
   };
@@ -62,6 +63,8 @@
     cancel: { yes: 'cancel', no: 'keep' },
     change: { yes: 'accept', no: 'keep' },
     gone: { yes: 'seen', no: 'seen' },
+    /* Nothing to decide: acknowledging IS the answer. */
+    waiter: { yes: 'seen', no: 'seen' },
   };
 
   const esc = (value) =>
@@ -117,7 +120,7 @@
       (lines ? '<ul class="rq-lines">' + lines + '</ul>' : '') +
       /* Already off: one button, and it says what it does. Two buttons on
          something nobody can decide is two ways to be confused. */
-      (kind === 'gone'
+      (kind === 'gone' || kind === 'waiter'
         ? '<div class="rq-do"><button type="button" class="rq-yes' +
           working +
           '" data-do="yes">Got it</button></div>'
@@ -141,8 +144,17 @@
       '<div class="rq-panel" role="dialog" aria-label="Customer requests">' +
       '<div class="rq-head"><b>Customer requests</b>' +
       '<button type="button" class="rq-close" aria-label="Close">&times;</button></div>' +
+      /* The switch lives in the panel rather than a settings screen: the
+         moment somebody wants to silence calls is the moment they are
+         looking at one. */
+      '<label class="rq-mute"><input type="checkbox" class="rq-mute-box">' +
+      '<span>Do not call me to tables</span></label>' +
       '<ul class="rq-list"></ul></div>';
     document.body.appendChild(element);
+
+    element.addEventListener('change', (event) => {
+      if (event.target.classList.contains('rq-mute-box')) mute(event.target.checked);
+    });
 
     element.addEventListener('click', (event) => {
       if (event.target.closest('.rq-close') || event.target.classList.contains('rq-shade')) {
@@ -172,9 +184,54 @@
     return element;
   }
 
+  /*
+   * A WAITER WHO IS NOT TAKING CALLS.
+   *
+   * Owner: "captain app can switch off if he wants."
+   *
+   * Per DEVICE, not per shop, and deliberately. Four handsets on a floor are
+   * four people, and the one running the bar has no business being buzzed by
+   * table nine - while the shop as a whole absolutely still wants the call
+   * answered by somebody. A shop-wide setting would turn one person's
+   * preference into everybody's blind spot.
+   *
+   * It silences the CALLS only. A customer asking to cancel an order is a
+   * decision somebody has to make, and there is no reading of "switch it off"
+   * that should hide one of those.
+   */
+  const MUTED_KEY = 'posnic.calls-muted';
+
+  function muted() {
+    try {
+      return localStorage.getItem(MUTED_KEY) === 'yes';
+    } catch (e) {
+      /* A browser with storage blocked hears calls, which is the safer way
+         round: a waiter who cannot silence them is inconvenienced, one who
+         is silenced without knowing it leaves a table sitting. */
+      return false;
+    }
+  }
+
+  function mute(on) {
+    try {
+      if (on) localStorage.setItem(MUTED_KEY, 'yes');
+      else localStorage.removeItem(MUTED_KEY);
+    } catch (e) {
+      /* Nothing to do about it, and nothing worth breaking the panel for. */
+    }
+    paint();
+  }
+
+  /** What this handset should be shown, which is not always everything. */
+  function forThisHandset(all) {
+    const waiting = Requests.waiting(all);
+    if (!muted()) return waiting;
+    return waiting.filter((row) => Requests.kindOf(row) !== 'waiter');
+  }
+
   function paint() {
     try {
-      const waiting = Requests.waiting(rows);
+      const waiting = forThisHandset(rows);
       const tab = button();
       /* No requests, no button. A control that is always there and usually
          does nothing is a control people stop seeing. */
@@ -182,8 +239,15 @@
       tab.textContent = waiting.length === 1 ? '1 request' : waiting.length + ' requests';
 
       const box = sheet();
-      box.hidden = !open || waiting.length === 0;
+      /*
+       * Still openable while muted, so the switch can be turned back off.
+       * A panel that hides itself the moment somebody silences it is a
+       * panel they cannot un-silence.
+       */
+      box.hidden = !open;
       if (box.hidden) return;
+      const check = box.querySelector('.rq-mute-box');
+      if (check) check.checked = muted();
       box.querySelector('.rq-list').innerHTML = waiting.map(cardHtml).join('');
     } catch (e) {
       /* See the note at the top: the waiter still has tables to serve. */
@@ -203,7 +267,17 @@
     busy[id] = true;
     paint();
     try {
-      await POSNIC.api.post('/sales/' + encodeURIComponent(id) + '/approval', { decision });
+      /*
+       * A call is not an order and has no approval to give, so it is marked
+       * SEEN through its own door rather than run through a state machine
+       * that has no state for it.
+       */
+      await POSNIC.api.post(
+        kind === 'waiter'
+          ? '/sales/waiterCalls/' + encodeURIComponent(id) + '/seen'
+          : '/sales/' + encodeURIComponent(id) + '/approval',
+        { decision }
+      );
       /* Taken off the list here rather than waiting for the next poll: twenty
          seconds of a card that has already been answered is twenty seconds in
          which somebody answers it again. */
@@ -246,7 +320,28 @@
     if (notYet()) return;
     try {
       const answer = await POSNIC.api.get('/sales/pendingOnlineOrders');
-      rows = (answer && answer.data) || [];
+      /*
+       * The calls ride in their own key, never mixed into the orders: a
+       * handset running an older build reads `data` and is unaffected, where
+       * a merged list would have it draw a table's call as a NEW ORDER with
+       * an accept button that means nothing.
+       *
+       * Shaped into rows the rest of this file already understands, so the
+       * card, the count and the answer all work without knowing anything new.
+       * `sale_id` carries the CALL's id because that is what the answer is
+       * posted against.
+       */
+      const orders = (answer && answer.data) || [];
+      const calls = (answer && answer.calls) || [];
+      rows = (Array.isArray(orders) ? orders : []).concat(
+        (Array.isArray(calls) ? calls : []).map((call) => ({
+          sale_id: String(call.call_id || ''),
+          call_id: String(call.call_id || ''),
+          destination: String(call.table_number || ''),
+          created_date: call.called_at || null,
+          items: [],
+        }))
+      );
     } catch (e) {
       /* An unreachable till is not an empty queue. Keeping what was last seen
          beats blanking the panel while a waiter is reading it. */
@@ -273,6 +368,8 @@
     look,
     paint,
     cardHtml,
+    muted,
+    mute,
     saw(next) {
       rows = next || [];
       paint();

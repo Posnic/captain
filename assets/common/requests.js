@@ -40,6 +40,15 @@
    */
   function kindOf(order) {
     if (!order) return '';
+    /*
+     * A TABLE ASKING FOR SOMEBODY.
+     *
+     * Its own kind because there is nothing to decide. The table wants a
+     * person and the only answer is that one is coming, so the card gets one
+     * button rather than a yes and a no - and it is answered through its own
+     * door, not the approval state machine, which has no state for it.
+     */
+    if (order.call_id) return 'waiter';
     if (order.cancel_seen === false && order.customer_cancelled_at) return 'gone';
     if (order.cancel_requested === true) return 'cancel';
     if (order.change_requested && (order.change_requested.items || []).length) return 'change';
@@ -59,6 +68,7 @@
    */
   function askedFor(order) {
     const kind = kindOf(order);
+    if (kind === 'waiter') return 'table_calling';
     if (kind === 'gone') return 'already_cancelled';
     if (kind === 'cancel') return 'cancel_order';
     if (kind !== 'change') return 'new_order';
@@ -86,6 +96,9 @@
    */
   function linesOf(order) {
     if (!order) return [];
+    /* A call is not about an order, so there are no lines to draw for it -
+       just a table, and the card says that on its own. */
+    if (order.call_id) return [];
     const wants = (order.change_requested && order.change_requested.items) || [];
     const asked = {};
     wants.forEach((one) => {
