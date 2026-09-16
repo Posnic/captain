@@ -550,36 +550,33 @@ async function setCartItemNotes(id, notes) {
 
     await saveCartData(cartData);
 }
+/*
+ * THE NOTE ALREADY ON THE LINE, AND NOTHING ELSE.
+ *
+ * This used to fall back to the dish's own description and hand it back as a
+ * "default note", and three callers stored it on the line. So a dish arrived
+ * carrying its menu copy as a note, the till stored it, and the kitchen
+ * printed it:
+ *
+ *   MIXED TANDOORI CHICKEN PLATTER                                x1
+ *     ** A platter of the tandoor's chicken: kebabs, tikka and wings,
+ *     served sizzling with onion and lime. Built to share. **
+ *
+ * Owner, holding that ticket: "those are item details. not notes."
+ *
+ * He is right, and it matters more than tidiness. That is writing for a guest
+ * choosing dinner; a cook needs "no onion". A ticket that long for two dishes
+ * is one somebody stops reading, and the line that mattered is in the middle
+ * of it.
+ *
+ * The description has not gone anywhere. It is on the menu row, where a waiter
+ * choosing the dish reads it - which is the one place it was ever for.
+ */
 async function getDefaultNotesForProduct(id) {
     const cartData = await getCartData();
     const item = cartData.find(i => i.id === id);
 
-    if (item && item.notes) {
-        return item.notes;
-    }
-
-    let desc = "";
-
-    if (typeof products !== "undefined" && products) {
-        for (const itemsArr of Object.values(products)) {
-            const p = itemsArr.find(p => p.id === id);
-            if (p) {
-                desc = p.item_description || p.description || "";
-                break;
-            }
-        }
-    }
-
-    if (!desc) return "";
-
-    const tmp = document.createElement("textarea");
-    tmp.innerHTML = desc;
-    desc = tmp.value
-        .replace(/<br\s*\/?>/gi, "\n")
-        .replace(/<\/?[^>]+>/g, "")
-        .trim();
-
-    return desc;
+    return (item && item.notes) || "";
 }
 /*
  * THE NOTE IS THE WAITER'S, NOT THE MENU'S.

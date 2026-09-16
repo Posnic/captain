@@ -529,10 +529,32 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                         prep_minutes: Number(item.prep_minutes) || 0,
                         /* The dish's own description, for the menu row. */
                         description: item.description || "",
-                        /* And the same words as the DEFAULT NOTE on a line,
-                           which is what item_description has always meant to
-                           the cart and the kitchen ticket. */
-                        item_description: item.description || item.item_description || "",
+                        /*
+                         * NOT THE NOTE. THE NOTE IS WHAT A WAITER TYPED.
+                         *
+                         * This used to seed item_description with the dish's
+                         * own description, calling it a default note. But
+                         * item_description is the note everywhere else: the
+                         * till stores the waiter's words in it, the KOT view
+                         * reads it as a note, and the notes box writes it.
+                         *
+                         * So every dish arrived carrying its menu copy as a
+                         * note, and the kitchen printed it:
+                         *
+                         *   MIXED TANDOORI CHICKEN PLATTER            x1
+                         *     ** A platter of the tandoor's chicken: kebabs,
+                         *     tikka and wings, served sizzling with onion and
+                         *     lime. Built to share. **
+                         *
+                         * That is writing for a guest choosing dinner, not an
+                         * instruction for somebody cooking it. A ticket that
+                         * long for two dishes is one a cook stops reading, and
+                         * the one line that mattered - no onion - would be
+                         * somewhere in the middle of it.
+                         *
+                         * The description is still carried above, for the menu
+                         * row that is meant to show it.
+                         */
                         /*
                          * HOW THIS DISH IS PRICED.
                          *
