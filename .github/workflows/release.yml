@@ -56,7 +56,16 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          # CAPACITOR 8's ANDROID LIBRARY IS COMPILED FOR JAVA 21.
+          #
+          # On 17 the build reaches gradle and dies with `invalid source
+          # release: 21` inside :capacitor-android, which reads as a problem
+          # with this app rather than with the JDK the runner was handed.
+          #
+          # check:native compares this number against what the Capacitor
+          # templates actually ask for, so the two cannot drift apart again
+          # without somebody being told before they tag anything.
+          java-version: 21
 
       # THE `tools` PACKAGE NO LONGER EXISTS, so do not ask for it.
       #

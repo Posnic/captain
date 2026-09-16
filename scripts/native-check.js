@@ -150,6 +150,43 @@ for (const [relative, what] of MUST_EXIST) {
   }
 }
 
+/*
+ * AND THE JAVA THE TEMPLATES ASK FOR, against the one the release installs.
+ *
+ * v1.2.23 failed twice. The second time it got past the CLI and died in gradle
+ * with `invalid source release: 21`: Capacitor 8's Android library is compiled
+ * for Java 21 and the workflow handed the runner Java 17. Nothing local can
+ * compile that - there is no SDK here - but the two NUMBERS can be compared,
+ * and that is the whole failure.
+ *
+ * Read out of Capacitor's own gradle file and out of the workflow, so neither
+ * is restated here and neither can drift without this saying so.
+ */
+const capacitorGradle = path.join(
+  ROOT,
+  'node_modules',
+  '@capacitor',
+  'android',
+  'capacitor',
+  'build.gradle'
+);
+const workflow = path.join(ROOT, '.github', 'workflows', 'release.yml');
+
+if (fs.existsSync(capacitorGradle) && fs.existsSync(workflow)) {
+  const wants = (fs.readFileSync(capacitorGradle, 'utf8').match(/JavaVersion\.VERSION_(\d+)/) || [])[1];
+  const builds = (fs.readFileSync(workflow, 'utf8').match(/java-version:\s*(\d+)/) || [])[1];
+
+  if (wants && builds) {
+    say(`Capacitor wants Java ${wants}; the release build installs ${builds}`);
+    if (Number(builds) < Number(wants)) {
+      say(`
+✖ the release build would fail with "invalid source release: ${wants}"`);
+      say('  set java-version in .github/workflows/release.yml to at least ' + wants);
+      process.exit(1);
+    }
+  }
+}
+
 say('');
 say('The native project lays out, syncs, and has everything the build patches.');
 say('It is NOT proof that the Java compiles - that is `npm run check:device`, or the release build.');
