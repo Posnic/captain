@@ -117,7 +117,13 @@ test('an empty search is the whole menu again, in the shop’s own order', () =>
   const from = SCRIPT.indexOf('function drawPicker(');
   const body = SCRIPT.slice(from, SCRIPT.indexOf('\n}', from));
   assert.match(body, /if \(!term\)/, 'clearing the box does not bring the menu back');
-  assert.match(body, /MenuView\.render\(pickerMenu/, 'the sections are not redrawn');
+  /*
+   * The whole menu is still drawn - now after the shortcut strips rather than
+   * on its own. The strips are a faster way in, not a replacement: somebody who
+   * wants to read the card from the top must still be able to.
+   */
+  assert.match(body, /\.\.\.pickerMenu\]/, 'the sections are not redrawn under the shortcuts');
+  assert.match(body, /pickerShortcuts\(pickerMenu, cart\)/, 'the shortcuts are gone');
 });
 
 test('a search that finds nothing says so, rather than showing an empty screen', () => {
