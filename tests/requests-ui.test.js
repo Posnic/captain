@@ -51,6 +51,50 @@ function load() {
 
 const ui = load();
 
+/**
+ * The module again, with a POSNIC of our choosing and a note of what it asks
+ * the server for.
+ *
+ * Loaded fresh each time rather than reaching into the one above: the guard
+ * reads POSNIC when it runs, and a shared context would leak one test's world
+ * into the next.
+ */
+function withPosnic({ configured = true, choosing = false, broken = false, onGet } = {}) {
+  const source = fs.readFileSync(
+    path.join(__dirname, '..', 'assets', 'common', 'requests-ui.js'),
+    'utf8'
+  );
+  const context = {
+    Requests,
+    console,
+    setInterval: () => 0,
+    POSNIC: broken
+      ? {}
+      : {
+          server: { isConfigured: configured },
+          net: { choosingServer: () => choosing },
+          api: {
+            get: async (path) => {
+              if (onGet) onGet(path);
+              return { data: [] };
+            },
+          },
+        },
+    document: {
+      readyState: 'loading',
+      addEventListener() {},
+      body: { appendChild() {} },
+      createElement: () => ({ addEventListener() {}, style: {}, classList: { add() {} } }),
+      getElementById: () => null,
+    },
+  };
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  global.PosnicRequests = context.PosnicRequests;
+  return context.PosnicRequests;
+}
+
 const BIRYANI = { item_id: 'm1', name: 'Chicken Biryani', quantity: 2 };
 const NAAN = { item_id: 'r1', name: 'Butter Naan', quantity: 3 };
 const DAL = { item_id: 'd1', name: 'Dal Tadka', quantity: 1 };
@@ -194,4 +238,57 @@ test('a card carries the id and the kind the answer needs', () => {
   const html = ui.cardHtml(asking([{ item_id: 'r1', name: 'Butter Naan', was: 3, quantity: 0 }]));
   assert.match(html, /data-order="s1"/);
   assert.match(html, /data-kind="change"/);
+});
+
+/* ------------------------------------------- when it is allowed to look */
+
+/*
+ * The poller dialled from the moment the page loaded, whatever else was
+ * happening. On the CONNECT screen that meant dialling the OLD address while
+ * somebody typed a new one - and a failed request wakes resolution, so the app
+ * ran a discovery sweep against the address being corrected.
+ *
+ * The health loop has always held off for exactly that reason. This is the
+ * same rule, borrowed rather than reinvented.
+ */
+
+test('it does not dial a shop that has not been chosen yet', async () => {
+  const asked = [];
+  withPosnic({ configured: false, choosing: false, onGet: (path) => asked.push(path) });
+
+  await PosnicRequests.look();
+
+  assert.deepEqual(asked, []);
+});
+
+test('it does not dial while somebody is editing the address', async () => {
+  /* THE ONE THAT MATTERS. Dialling the old address mid-edit is what drags the
+     resolver into a sweep against a server the user is halfway through
+     replacing. */
+  const asked = [];
+  withPosnic({ configured: true, choosing: true, onGet: (path) => asked.push(path) });
+
+  await PosnicRequests.look();
+
+  assert.deepEqual(asked, []);
+});
+
+test('and it looks the moment the editor closes', async () => {
+  const asked = [];
+  withPosnic({ configured: true, choosing: false, onGet: (path) => asked.push(path) });
+
+  await PosnicRequests.look();
+
+  assert.deepEqual(asked, ['/sales/pendingOnlineOrders']);
+});
+
+test('a POSNIC that cannot answer either question is not dialled at', async () => {
+  /* A page where the connection module has not loaded is not the place to
+     find that out by firing requests into it. */
+  const asked = [];
+  withPosnic({ broken: true, onGet: (path) => asked.push(path) });
+
+  await PosnicRequests.look();
+
+  assert.deepEqual(asked, []);
 });
