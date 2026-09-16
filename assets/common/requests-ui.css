@@ -73,6 +73,24 @@
   cursor: pointer;
 }
 
+/* The switch a waiter reaches for while looking at the thing they want to
+   stop. Quiet, and below the heading rather than beside it, so it is never
+   the first thing a thumb lands on. */
+.rq-mute {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 4px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.rq-mute input {
+  width: 20px;
+  height: 20px;
+}
+
 .rq-list {
   margin: 0;
   padding: 0;
