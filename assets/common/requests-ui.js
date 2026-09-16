@@ -215,7 +215,35 @@
     paint();
   }
 
+  /*
+   * NOT WHILE SOMEBODY IS CHOOSING A SERVER, and not before there is one.
+   *
+   * This polled from the moment the page loaded, whatever else was happening.
+   * Two things went wrong with that, and the second is the one that matters:
+   *
+   *   On a handset with no shop yet it dialled nothing, repeatedly.
+   *
+   *   On the CONNECT screen it dialled the OLD address while somebody was
+   *   typing a new one - and a failed request wakes resolution, so the app ran
+   *   a discovery sweep against the very address being corrected. The health
+   *   loop has always held off for exactly this reason (see net.start), and
+   *   this is the same rule, borrowed rather than reinvented.
+   *
+   * The interval keeps running: it simply has nothing to do until the editor
+   * closes, which is what makes the queue appear by itself afterwards.
+   */
+  function notYet() {
+    try {
+      if (!POSNIC.server || !POSNIC.server.isConfigured) return true;
+      return !!(POSNIC.net && POSNIC.net.choosingServer && POSNIC.net.choosingServer());
+    } catch (e) {
+      /* If that cannot even be asked, this is not the screen to find out on. */
+      return true;
+    }
+  }
+
   async function look() {
+    if (notYet()) return;
     try {
       const answer = await POSNIC.api.get('/sales/pendingOnlineOrders');
       rows = (answer && answer.data) || [];
