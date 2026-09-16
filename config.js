@@ -675,8 +675,20 @@
    * @returns {{base, info}|null} on success, null otherwise - unchanged, so
    *   every existing caller behaves exactly as before. `probe.lastFailure`
    *   holds why the most recent one failed, for a screen that wants to say.
+   *
+   * A REFUSAL IS ALSO RECORDED SOMEWHERE THAT SURVIVES A SWEEP.
+   *
+   * `probe.lastFailure` is one variable and a sweep runs sixty-four probes at
+   * a time, so by the end it holds whatever the LAST of two hundred addresses
+   * said - which is "nothing there", from an address with nothing there. The
+   * one answer that mattered, from the till that replied 403, was overwritten
+   * within milliseconds. That is why a refused handset was told the till could
+   * not be found: the app had found it and then forgotten.
+   *
+   * @param {object} [opts.seen]  a collector the caller owns, so a refusal
+   *   belongs to the sweep that saw it rather than to whoever ran last.
    */
-  async function probe(url, timeoutMs = PROBE_TIMEOUT_MS) {
+  async function probe(url, timeoutMs = PROBE_TIMEOUT_MS, { seen = null } = {}) {
     const base = normalize(url);
     if (!base) {
       probe.lastFailure = { reason: 'BAD_ADDRESS', message: REASONS.BAD_ADDRESS, url };
@@ -684,12 +696,26 @@
     }
 
     const target = base + '/runtime-info';
-    const fail = (reason, extra) => {
-      probe.lastFailure = {
+    const fail = (reason, extra, status) => {
+      const failure = {
         reason,
         message: (REASONS[reason] || reason) + (extra || ''),
         url: target,
+        base,
+        /* The address without the /api a shopkeeper never typed: this is what
+           goes on a screen and into a sentence somebody reads out loud. */
+        host: String(base).replace(/\/api$/, ''),
+        status: Number(status) || 0,
       };
+      probe.lastFailure = failure;
+      /*
+       * SOMETHING ANSWERED. A dead address gives a connection error; only a
+       * server sends a status code back. So a refusal is not a miss - it is
+       * the till, found, saying no to this device - and a search that keeps
+       * looking past it is spending a shop's Wi-Fi to find what it already
+       * has.
+       */
+      if (reason === 'REFUSED' && seen) seen.push(failure);
       return null;
     };
 
@@ -721,7 +747,7 @@
         cache: 'no-store',
       });
       if (!response) return fail('UNREACHABLE');
-      if (!response.ok) return fail('REFUSED', String(response.status));
+      if (!response.ok) return fail('REFUSED', String(response.status), response.status);
 
       let info;
       try {
@@ -831,6 +857,9 @@
 
   probe.lastFailure = null;
   probe.REASONS = REASONS;
+  /* The till that answered and refused, if walking the candidate list met one.
+     Kept apart from lastFailure because "it said no" and "nothing was there"
+     send somebody to look in two completely different places. */
   probe.transport = transport;
   probe.usedRoad = null;
 
@@ -964,7 +993,7 @@
       neighbourhood, and the general guesses. Still under sixty probes. */
   const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1 + ownHosts.length * 25;
 
-  async function scanSubnet(subnet, { hosts, onProgress, onBatch, shouldStop, concurrency } = {}) {
+  async function scanSubnet(subnet, { hosts, onProgress, onBatch, shouldStop, concurrency, seen } = {}) {
     const list = hosts || hostOrder();
     const width = concurrency || SCAN_CONCURRENCY;
 
@@ -972,12 +1001,23 @@
       if (shouldStop && shouldStop()) return null;
       const batch = list.slice(start, start + width);
       const results = await Promise.all(
-        batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS))
+        batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS, { seen }))
       );
       if (onBatch) onBatch(batch.length);
       if (onProgress) onProgress(Math.min(start + width, list.length), list.length);
       const hit = results.find(Boolean);
       if (hit) return hit;
+      /*
+       * A REFUSAL ENDS THE SEARCH TOO.
+       *
+       * There is one till on a shop's Wi-Fi. Once it has answered - even to
+       * say no - every remaining address is known to be empty, and sweeping
+       * them is two hundred requests spent on a question already answered.
+       * On the network that prompted this, that was the difference between a
+       * refused handset asking once and a refused handset sweeping the subnet
+       * on every attempt.
+       */
+      if (seen && seen.length) return null;
     }
     return null;
   }
@@ -990,10 +1030,21 @@
    * happens at all.
    */
   async function findOnWifi({ onProgress, shouldStop, skipKnown = false } = {}) {
+    /* Refusals seen during THIS search, kept here rather than in the one
+       global a sweep of sixty-four parallel probes overwrites. */
+    const seen = [];
+    findOnWifi.lastRefusal = null;
+
     if (!skipKnown && server.lan) {
       if (onProgress) onProgress(0, 0, server.lan);
-      const hit = await probe(server.lan, 1500);
+      const hit = await probe(server.lan, 1500, { seen });
       if (hit) return hit;
+      /* The address we already knew answered and said no. There is nothing a
+         sweep can find that is better than that. */
+      if (seen.length) {
+        findOnWifi.lastRefusal = seen[0];
+        return null;
+      }
     }
     if (shouldStop && shouldStop()) return null;
 
@@ -1053,13 +1104,15 @@
           scanSubnet(subnet, {
             hosts,
             concurrency,
+            seen,
             shouldStop: stop,
             onProgress: () => report(0),
             onBatch: (size) => report(size),
           }).then((hit) => {
             /* The first answer ends the others: there is one till, and the
-               remaining sweeps are only spending the phone's radio. */
-            if (hit) stopped = true;
+               remaining sweeps are only spending the phone's radio. A refusal
+               is an answer, so it ends them too. */
+            if (hit || seen.length) stopped = true;
             return hit;
           })
         )
@@ -1070,6 +1123,10 @@
 
     const quick = (await sweep(likely, likely.length)).find(Boolean);
     if (quick) return quick;
+    if (seen.length) {
+      findOnWifi.lastRefusal = seen[0];
+      return null;
+    }
     if (stop()) return null;
 
     /*
@@ -1082,8 +1139,19 @@
      */
     const rest = order.slice(likely.length);
     const width = Math.max(8, Math.floor(SCAN_CONCURRENCY / Math.max(1, subnets.length)));
-    return (await sweep(rest, width)).find(Boolean) || null;
+    const found = (await sweep(rest, width)).find(Boolean) || null;
+    if (!found && seen.length) findOnWifi.lastRefusal = seen[0];
+    return found;
   }
+
+  /*
+   * The till that answered and said no, if this search met one.
+   *
+   * A screen reads this to tell a waiter something true - "the till at
+   * 192.168.100.18 refused this phone" - instead of "no till found", which
+   * sends somebody to check a router that is working perfectly.
+   */
+  findOnWifi.lastRefusal = null;
 
   /* ------------------------------------------------------------ resolution */
 
@@ -1145,11 +1213,25 @@
       const order = [...all.filter((url) => !coolingOff(url)), ...all.filter(coolingOff)];
 
       for (const candidate of order) {
-        const hit = await probe(candidate);
+        const seen = [];
+        const hit = await probe(candidate, PROBE_TIMEOUT_MS, { seen });
         if (hit && server.canAdopt(hit.base)) {
           noteSuccess(hit.base);
           server.adopt(hit.base);
           return hit.base;
+        }
+        /*
+         * A REFUSAL IS NOT A DEAD ADDRESS, so it is not cooled off.
+         *
+         * The breaker exists to skip past addresses with nothing behind them.
+         * A till that answered 403 has something behind it - it is up, on
+         * this Wi-Fi, and deciding - and pushing it to the back of the list
+         * for fifteen seconds is how a phone standing two metres from the
+         * till ends up routing every order over mobile data instead.
+         */
+        if (seen.length) {
+          resolve.lastRefusal = seen[0];
+          continue;
         }
         noteFailure(candidate);
       }
@@ -1721,6 +1803,16 @@
 
     return net;
   })();
+
+  /*
+   * The last till that answered a candidate walk and refused.
+   *
+   * Reported by the self-test, because "right reason with evidence" is the
+   * whole point of that screen: a phone falling back to the cloud while
+   * standing beside a working till is a different fault from one that cannot
+   * reach anything, and they look identical from the outside.
+   */
+  resolve.lastRefusal = null;
 
   /* --------------------------------------------------------------- exports */
 
