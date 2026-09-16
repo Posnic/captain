@@ -788,14 +788,37 @@
 
                 /* Say what to do next. "Not found" on its own leaves somebody
                    holding a phone with no idea whose problem it is. */
+
+                /*
+                 * AND "IT REFUSED ME" IS NOT "IT IS NOT THERE".
+                 *
+                 * A till that answers with a status code has been found: it is
+                 * up, on this Wi-Fi, and turning this phone away - usually
+                 * because the shop has run out of handset slots. Telling a
+                 * waiter "no till found" sends them to check a router that is
+                 * working perfectly, and sends the app sweeping the subnet
+                 * again on the next tap.
+                 */
+                const refused = POSNIC.discovery.findOnWifi.lastRefusal;
+                const refusedNote = refused
+                    ? 'The till at ' + (refused.host || refused.base) + ' answered and refused this phone (' +
+                      (refused.status || 'no') + '). Ask your manager to allow this device on the till.'
+                    : '';
+
                 if (quiet) {
                     /* Nobody asked for this search, so failing it must not
                        take over the screen. It says what it found and gets out
                        of the way of the choices already on offer. */
-                    if (autoNote) autoNote.textContent = 'No till found on this Wi-Fi. Pick one of these instead.';
+                    if (autoNote) {
+                        autoNote.textContent = refusedNote || 'No till found on this Wi-Fi. Pick one of these instead.';
+                    }
                     if (auto) auto.classList.add('is-done');
                 } else {
-                    serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
+                    serverMsg(
+                        refusedNote ||
+                            'No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.',
+                        '#6b7280'
+                    );
                     showChoice('manual');
                 }
             } finally {

@@ -65,6 +65,9 @@
       report.edition = hit && hit.info ? hit.info.edition : null;
       report.road = POSNIC.discovery.probe.usedRoad || 'first';
       report.why = hit ? null : POSNIC.discovery.probe.lastFailure;
+      /* A till that answered and said no is a different fault from one that
+         could not be reached, and the two look identical from outside. */
+      report.refused = (POSNIC.resolve && POSNIC.resolve.lastRefusal) || null;
     } catch (e) {
       report.ok = false;
       report.threw = String((e && e.message) || e);
