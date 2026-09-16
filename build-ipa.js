@@ -139,14 +139,42 @@ fs.mkdirSync(outDir, { recursive: true });
 const archivePath = path.join(outDir, 'Captain.xcarchive');
 
 /*
+ * Ask for whatever `cap sync` just laid down, not for what Capacitor used to
+ * produce.
+ *
+ * CAPACITOR 8 MOVED iOS TO SWIFT PACKAGE MANAGER. Its default template is
+ * assets/ios-spm-template.tar.gz, and an SPM project has no workspace at all
+ * - Capacitor's own answer to "which package manager" is whether a
+ * CapApp-SPM directory exists. So v1.2.23's iOS job died on
+ *
+ *     xcodebuild: error: 'App.xcworkspace' does not exist.
+ *
+ * three lines after an `npx cap add ios` that had just succeeded. Nothing was
+ * broken; the file was asking for a CocoaPods layout that stopped shipping.
+ *
+ * Reading it off disk means the next template change is a build that keeps
+ * working rather than a release quietly missing a platform.
+ */
+const container = fs.existsSync(path.join(appDir, 'App.xcworkspace'))
+  ? '-workspace App.xcworkspace'
+  : fs.existsSync(path.join(appDir, 'App.xcodeproj'))
+    ? '-project App.xcodeproj'
+    : null;
+if (!container) {
+  throw new Error(
+    `cap sync produced neither App.xcworkspace nor App.xcodeproj in ${appDir}`
+  );
+}
+console.log(`Archiving ${container.split(' ')[1]}`);
+
+/*
  * Archive unsigned, always, and sign at export.
  *
  * The obvious thing - passing CODE_SIGN_IDENTITY and PROVISIONING_PROFILE to
- * xcodebuild - applies them to EVERY target in the workspace, and a
- * CocoaPods project is mostly framework targets. Those cannot take a
- * provisioning profile, so the build stops with "Pods-App does not support
- * provisioning profiles", naming a target nobody here wrote and did not mean
- * to sign.
+ * xcodebuild - applies them to EVERY target being built, and most of them are
+ * frameworks: the Capacitor packages under SPM, the Pods-* targets before
+ * that. Those cannot take a provisioning profile, so the build stops naming a
+ * target nobody here wrote and did not mean to sign.
  *
  * Signing at export sidesteps it entirely: one app bundle, one profile, and
  * the frameworks inside it are re-signed with the same identity as a
@@ -154,7 +182,7 @@ const archivePath = path.join(outDir, 'Captain.xcarchive');
  */
 run([
   'xcodebuild',
-  '-workspace App.xcworkspace',
+  container,
   '-scheme App',
   '-configuration Release',
   '-sdk iphoneos',
