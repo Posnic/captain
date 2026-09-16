@@ -158,3 +158,62 @@ test('a dish with nothing matching still says so, number or not', () => {
   assert.match(picker, /or a dish number/,
     'the empty state does not mention the fastest way to find something');
 });
+
+/* ------------------------------------------- the till's list, as sections */
+
+/*
+ * The number a dish wears is its position in the sectioned menu, so whoever
+ * builds those sections decides the numbers. That grouping used to be a loop
+ * inside the picker, which meant the wall card had to grow a second copy of
+ * it, and two copies is how 33 stops meaning the same dish on paper and in
+ * the hand. MenuView.fromFlat is the one copy.
+ */
+
+/** What IndexedDB hands back: one flat list, category on every row. */
+const FLAT = [
+  { id: 'a', name: 'Chicken 65', category_name: 'Starters', category_sort: 1 },
+  { id: 'c', name: 'Chicken Biryani', category_name: 'Mains', category_sort: 2 },
+  { id: 'b', name: 'Gobi Manchurian', category_name: 'Starters', category_sort: 1 },
+  { id: 'd', name: 'Mutton Biryani', category_name: 'Mains', category_sort: 2 },
+];
+
+test('the flat list comes back as sections, in the shop card order', () => {
+  const list = MenuView.fromFlat(FLAT);
+
+  assert.deepStrictEqual(
+    list.map((s) => s.name),
+    ['Starters', 'Mains']
+  );
+  assert.deepStrictEqual(
+    list.map((s) => s.items.map((i) => i.id)),
+    [['a', 'b'], ['c', 'd']]
+  );
+});
+
+test('a dish keeps its number whether the list arrives flat or sectioned', () => {
+  /* The property the wall card depends on: one dish, one number, whichever
+     door the menu came through. */
+  const fromList = MenuView.numbers(MenuView.fromFlat(FLAT));
+
+  assert.strictEqual(fromList.get('a'), 1);
+  assert.strictEqual(fromList.get('b'), 2);
+  assert.strictEqual(fromList.get('c'), 3);
+  assert.strictEqual(fromList.get('d'), 4);
+});
+
+test('a row the shop never filed still gets a number', () => {
+  /*
+   * category_name is whatever the shop typed, and a row saved before the
+   * field existed has none. Dropping it would leave a gap in the numbering,
+   * which is worse than an "Menu" heading nobody minds.
+   */
+  const list = MenuView.fromFlat([{ id: 'x', name: 'Mystery' }]);
+
+  assert.strictEqual(list.length, 1);
+  assert.strictEqual(MenuView.numbers(list).get('x'), 1);
+});
+
+test('nothing at all is no sections, not a crash', () => {
+  assert.deepStrictEqual(MenuView.fromFlat(), []);
+  assert.deepStrictEqual(MenuView.fromFlat([]), []);
+});
