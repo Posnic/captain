@@ -2,9 +2,14 @@ import { createLogger, defineConfig } from 'vite';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'node:module';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(ROOT, 'dist');
+
+/* scripts/build-version.js is CommonJS and shared with the native builds,
+   which are plain node scripts. One copy, read from both. */
+const require = createRequire(import.meta.url);
 
 // Application scripts intentionally remain classic scripts because they share
 // browser globals. copyClassicAssets() packages them unchanged for web/APK.
@@ -80,6 +85,21 @@ function copyClassicAssets() {
       copyDir(imagesDir, assetImages);
       ensureImageFallbacks(rootImages);
       ensureImageFallbacks(assetImages);
+
+      /*
+       * AND THE CACHE BUSTERS, written here rather than typed into the pages.
+       *
+       * They used to be literals: indexedDB.js?v=5 on six screens and ?v=6 on
+       * a seventh. One file behind two query strings is two entries in the
+       * WebView's cache, and after an update one screen can go on serving what
+       * it cached while the screen beside it gets the new copy.
+       *
+       * Last, because it rewrites the HTML this build has just finished
+       * emitting, and the classic assets above have to be in place first.
+       */
+      const stamp = require('./scripts/build-version');
+      const marked = stamp.stampAssetLinks(DIST, stamp.resolveVersion(ROOT));
+      if (marked) logger.info(`Stamped the scripts on ${marked} pages.`);
       for (const legacyName of ['home.png', 'default-store.png', 'default-product.png']) {
         fs.rmSync(path.join(rootImages, legacyName), { force: true });
         fs.rmSync(path.join(assetImages, legacyName), { force: true });
