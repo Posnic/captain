@@ -1330,3 +1330,67 @@ tr.is-cancelled {
     text-transform: uppercase;
     color: var(--danger, #dc2626);
 }
+
+/*
+ * MOVING AN ORDER TO ANOTHER TABLE.
+ *
+ * Table numbers are read at arm's length by somebody already walking, so the
+ * number is the whole button and everything else on it is a footnote.
+ */
+.move-table-now {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  margin-bottom: 10px;
+}
+
+.move-table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.move-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 60px;
+  padding: 8px 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+}
+
+.move-table-no {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.move-table-note {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* Already working. Allowed, and said out loud before the tap rather than
+   after it. */
+.move-table.is-busy {
+  border-color: #e0a800;
+  background: #fffaf0;
+}
+
+/* Where the order is now: shown so the waiter can see they have the right
+   order in front of them, and not tappable, because moving a table to itself
+   is a kitchen ticket for nothing. */
+.move-table.is-here {
+  opacity: 0.55;
+}
+
+.move-table.is-chosen {
+  border-color: #0d6efd;
+  border-width: 2px;
+  background: #eef5ff;
+}
