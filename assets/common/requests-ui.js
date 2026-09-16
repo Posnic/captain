@@ -229,9 +229,156 @@
     return waiting.filter((row) => Requests.kindOf(row) !== 'waiter');
   }
 
+  /*
+   * A HANDSET THAT MAKES A NOISE.
+   *
+   * Owner: "desktop app and captain mobile apps getting notification...
+   * coz everytime its annoying people see waiters to turn back."
+   *
+   * The panel drew the call and counted it, and said nothing at all. A phone
+   * in an apron pocket showing a silent badge is the exact problem this
+   * feature was built to solve, moved onto a smaller screen: somebody still
+   * has to think to look. So a request that arrives makes a sound and, where
+   * the device can, a buzz - and the buzz is the half that works through
+   * cloth, in a room with a blender running.
+   *
+   * ONCE PER REQUEST, NEVER REPEATED. The till's alarm repeats because it
+   * stands on a counter nobody is facing. A phone that keeps buzzing in a
+   * pocket is a phone somebody silences for the whole shift, and the switch
+   * below would then be taking the cancellations down with the calls - which
+   * is precisely what it was written not to do.
+   */
+
+  /* The same two patterns the till and the console use, so a shop running all
+     three hears one product rather than three. */
+  const NOTES = {
+    received: [
+      [784, 0.11, 0.35],
+      [1047, 0.16, 0.35],
+    ],
+    waiting: [
+      [988, 0.15, 0.5],
+      [740, 0.15, 0.5],
+      [988, 0.26, 0.5],
+    ],
+  };
+
+  /* And the same two shapes as vibration: one tap, or three insistent ones. */
+  const BUZZ = { received: 120, waiting: [120, 90, 120] };
+
+  /* What has already been said, by id and by WHY. An order that was waiting
+     for approval and then has a cancellation asked about it is news again. */
+  let said = Object.create(null);
+  let sounds = null;
+
+  const keyOf = (row) => String(row.sale_id || '') + ':' + Requests.kindOf(row);
+
+  function audio() {
+    if (sounds) return sounds;
+    try {
+      const Maker =
+        typeof AudioContext !== 'undefined'
+          ? AudioContext
+          : typeof webkitAudioContext !== 'undefined'
+            ? webkitAudioContext
+            : null;
+      sounds = Maker ? new Maker() : null;
+    } catch (e) {
+      /* No audio on this device. The buzz and the badge carry it. */
+      sounds = null;
+    }
+    return sounds;
+  }
+
+  function tone(which) {
+    const ctx = audio();
+    if (!ctx) return false;
+    try {
+      /* A WebView refuses audio until something has been tapped. A waiter has
+         tapped their way to this screen, so this normally resumes. */
+      if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
+      let at = ctx.currentTime;
+      (NOTES[which] || NOTES.received).forEach((note) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = note[0];
+        osc.type = 'sine';
+        /* Short ramps at both ends: a square start and stop is heard as a
+           click, which is what makes a synthesised tone sound cheap. */
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(note[2], at + 0.012);
+        gain.gain.setValueAtTime(note[2], at + note[1] - 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + note[1]);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(at);
+        osc.stop(at + note[1] + 0.01);
+        at += note[1];
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function buzz(which) {
+    try {
+      /* Android gives a WebView this; iOS does not, and silently having no
+         vibration is fine - the tone is still made. */
+      if (typeof navigator === 'undefined') return false;
+      if (typeof navigator.vibrate !== 'function') return false;
+      navigator.vibrate(BUZZ[which] || BUZZ.received);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Say something about what is new, at most once.
+   *
+   * @param {Array} shown       what this handset is being shown
+   * @param {Array} everything  what is waiting, including what it is not
+   */
+  function announce(shown, everything) {
+    let ring = '';
+    (shown || []).forEach((row) => {
+      if (said[keyOf(row)]) return;
+      /* A new order is the brief chime; anything somebody has to DECIDE - a
+         call, a cancellation, a change - is the longer, louder one. One ring
+         for a poll however much arrived in it, because three buzzes at once
+         is not three times the information. */
+      if (Requests.kindOf(row) !== 'new') ring = 'waiting';
+      else if (!ring) ring = 'received';
+    });
+
+    /*
+     * Remembered from EVERYTHING waiting rather than only from what was
+     * shown, so turning the switch back off does not buzz about a call that
+     * has been standing there all along. Somebody un-muting has chosen to
+     * start hearing calls, not to be startled by an old one.
+     *
+     * Replaced rather than added to, which forgets what has gone: the same
+     * table calling again later is news again rather than silence.
+     */
+    const now = Object.create(null);
+    (everything || []).forEach((row) => {
+      now[keyOf(row)] = true;
+    });
+    said = now;
+
+    if (!ring) return false;
+    tone(ring);
+    buzz(ring);
+    return true;
+  }
+
   function paint() {
     try {
       const waiting = forThisHandset(rows);
+      /* Before anything is drawn, because a waiter looking the other way is
+         the whole reason this panel exists. */
+      announce(waiting, Requests.waiting(rows));
       const tab = button();
       /* No requests, no button. A control that is always there and usually
          does nothing is a control people stop seeing. */
