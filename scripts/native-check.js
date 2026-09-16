@@ -187,6 +187,53 @@ if (fs.existsSync(capacitorGradle) && fs.existsSync(workflow)) {
   }
 }
 
+/*
+ * AND THE iOS CONTAINER, which is the other half of what v1.2.23 lost.
+ *
+ * Capacitor 8 lays iOS out with Swift Package Manager. Its only iOS template
+ * is now ios-spm-template.tar.gz, which carries App.xcodeproj and CapApp-SPM
+ * and NO Podfile - so nothing runs `pod install`, and nothing ever creates
+ * App.xcworkspace. build-ipa.js had asked xcodebuild for that workspace since
+ * the first release, so the job died on
+ *
+ *     xcodebuild: error: 'App.xcworkspace' does not exist.
+ *
+ * seconds after `npx cap add ios` reported success. The Android half of that
+ * release was fixed and shipped; the iPhone build was simply missing.
+ *
+ * There is no Xcode on this machine and this does not pretend otherwise. But
+ * WHICH container Capacitor will produce is knowable from the template it
+ * ships, and that is the thing that changed. Read out of the tarball, so it
+ * keeps telling the truth when Capacitor moves again.
+ */
+function iosContainerMatches() {
+  const cli = path.join(ROOT, 'node_modules', '@capacitor', 'cli');
+  const config = path.join(cli, 'dist', 'config.js');
+  const ipa = path.join(ROOT, 'build-ipa.js');
+  if (!fs.existsSync(config) || !fs.existsSync(ipa)) return;
+
+  const named = (fs.readFileSync(config, 'utf8').match(/['"](ios-[\w-]*template\.tar\.gz)['"]/) || [])[1];
+  const archive = named && path.join(cli, 'assets', named);
+  if (!archive || !fs.existsSync(archive)) return;
+
+  /* Tar keeps its entry names in plain text, so the gunzipped bytes can be
+     read for what is in there without unpacking any of it. */
+  const inside = require('node:zlib').gunzipSync(fs.readFileSync(archive)).toString('latin1');
+  const pods = inside.includes('Podfile');
+  const wanted = pods ? 'App.xcworkspace' : 'App.xcodeproj';
+
+  say(`Capacitor lays iOS out with ${pods ? 'CocoaPods' : 'SPM'} (${named}); the build must archive ${wanted}`);
+
+  if (!fs.readFileSync(ipa, 'utf8').includes(wanted)) {
+    say(`
+✖ the iOS release build would fail with "'...' does not exist"`);
+    say(`  build-ipa.js never names ${wanted}, and ${named} is what Capacitor lays down`);
+    process.exit(1);
+  }
+}
+
+iosContainerMatches();
+
 say('');
 say('The native project lays out, syncs, and has everything the build patches.');
 say('It is NOT proof that the Java compiles - that is `npm run check:device`, or the release build.');
