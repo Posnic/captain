@@ -9,6 +9,7 @@
     "test": "node --test tests/*.test.js",
     "check": "npm test && npx playwright test",
     "check:device": "node scripts/device-check.js",
+    "check:native": "node scripts/native-check.js",
     "test:smoke": "playwright test",
     "test:smoke:headed": "playwright test --headed",
     "optimize:images": "node scripts/optimize-images.js",
