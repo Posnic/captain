@@ -78,9 +78,22 @@ async function refreshProductsPage(button) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    /* The rail, the index sheet and the resize handlers, attached once.
-       Before the first draw, or the chips it draws have nothing listening. */
-    MenuScreen.start();
+    /*
+     * The rail, the index sheet and the resize handlers, attached once.
+     * Before the first draw, or the chips it draws have nothing listening.
+     *
+     * ASKED FOR, NOT ASSUMED. This file is shared: the menu screen loads it,
+     * and so do the cart and the discount screen, for the add-item flow the
+     * three have in common. MenuScreen comes from products/menu.js, which
+     * only the menu screen loads - so on the other two this line threw
+     * "MenuScreen is not defined" and took the whole startup with it:
+     * loadProducts, the database, the images and every listener below.
+     *
+     * The handler is async, so the throw was an unhandled rejection nobody
+     * was shown, and both screens went on working on their fallbacks. That is
+     * the same guard already used at setRow below, for the same reason.
+     */
+    if (typeof MenuScreen !== 'undefined') MenuScreen.start();
 
     await loadProducts();
     loadFrequentItems();
