@@ -13,6 +13,7 @@
     "check": "npm test && npx playwright test",
     "check:device": "node scripts/device-check.js",
     "check:native": "node scripts/native-check.js",
+    "tamil": "node scripts/tamil-gaps.js",
     "prepare": "node scripts/arm-hooks.js",
     "test:smoke": "playwright test",
     "test:smoke:headed": "playwright test --headed",
