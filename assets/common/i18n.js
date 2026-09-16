@@ -207,8 +207,21 @@
       /* A phone with storage turned off still gets a language. */
     }
 
-    const phone = String((navigator && navigator.language) || '').toLowerCase();
-    return phone.indexOf('ta') === 0 ? 'ta' : 'en';
+    /*
+     * ENGLISH UNTIL SOMEBODY CHOOSES OTHERWISE.
+     *
+     * This used to follow the phone's own language, so a handset set to Tamil
+     * came up in Tamil the first time it was opened. That reads as thoughtful
+     * and is the wrong risk to take: the Tamil pack has never been read by
+     * somebody who waits tables, and a shop being handed a stable app should
+     * not meet an unreviewed screen because of a setting on the phone nobody
+     * thought about.
+     *
+     * Choosing Tamil in settings still works and is still remembered. The
+     * difference is that it is now a decision somebody made, rather than one
+     * the app made for them.
+     */
+    return 'en';
   }
 
   function use(code, options) {
