@@ -524,7 +524,8 @@ async function saveOrderChanges() {
                 table_number: newTableNo,
                 table_id: newTableId,
                 dine_type: dineType,
-                person_count: dineType === 'Dine-in' ? (editingOrder.person_count || 1) : ''
+                person_count: dineType === 'Dine-in' ? (editingOrder.person_count || 1) : '',
+                seen_at: orderSeenAt(editingOrder)
         });
 
         if (data.type === 'success') {
@@ -569,6 +570,13 @@ async function saveOrderChanges() {
         }
     } catch (error) {
         console.error('Error saving order changes:', error);
+        /* Out of date rather than broken. The waiter is shown the order as it
+           is now, and nothing they did has been lost: it was never sent. */
+        if (isAConflict(error)) {
+            await tellThemSomebodyElseGotThere();
+            return;
+        }
+
         showToast('Could not update the order: ' + error.message, 'error');
     } finally {
         hideLoader();
@@ -1178,6 +1186,7 @@ async function confirmMoveTable() {
             table_id: chosen.dataset.id || '',
             dine_type: order.dine_type || 'Dine-in',
             person_count: order.person_count || 1,
+            seen_at: orderSeenAt(order),
         });
 
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
@@ -1193,6 +1202,11 @@ async function confirmMoveTable() {
         if (typeof loadTables === 'function') await loadTables();
         await loadOrderHistory();
     } catch (error) {
+        if (isAConflict(error)) {
+            await tellThemSomebodyElseGotThere();
+            return;
+        }
+
         showToast(error.message || 'Could not move the order', 'error');
         if (go) go.disabled = false;
     } finally {
@@ -1740,6 +1754,52 @@ function lineQuantity(item) {
  * So a cancelled line must be left out, not sent with a zero, and a line the
  * waiter never touched must be sent exactly as it was.
  */
+/*
+ * WHICH VERSION OF THE ORDER THIS PHONE IS LOOKING AT.
+ *
+ * A save sends the WHOLE order and the till keeps only what arrives, which is
+ * how a cancelled dish gets cancelled. On a floor with several handsets it is
+ * also how food goes missing: another waiter adds a biryani while this screen
+ * is open, this screen saves a list that never had it, and the till removes a
+ * dish the kitchen has already cooked.
+ *
+ * So the save says what it was looking at, and the till refuses one written
+ * against an older version. Nothing is guessed here: this is the order's own
+ * timestamp, handed back exactly as it arrived.
+ */
+function orderSeenAt(order) {
+    if (!order) return null;
+    return order.updated_date || order.created_date || null;
+}
+
+/*
+ * SOMEBODY ELSE GOT THERE FIRST.
+ *
+ * Not an error message. The waiter did nothing wrong, and their change is not
+ * lost - it was never sent. What they need to know is that the order in front
+ * of them is out of date and is about to be refreshed, so they can look at it
+ * and decide again. Only a person knows whether the dish somebody else added
+ * was meant to go.
+ */
+function isAConflict(error) {
+    return !!error && (error.status === 409 || error.message === 'order_changed');
+}
+
+async function tellThemSomebodyElseGotThere() {
+    showToast('Somebody else changed this order. Showing you the latest.', 'error');
+
+    for (const id of ['editOrderModal', 'moveTableModal']) {
+        const el = document.getElementById(id);
+        if (el && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+    }
+
+    if (typeof loadTables === 'function') await loadTables();
+    await loadOrderHistory();
+}
+
 function linesForSave(items) {
     return (Array.isArray(items) ? items : [])
         .map((item) => ({ item, quantity: lineQuantity(item) }))
