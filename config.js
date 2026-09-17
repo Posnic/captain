@@ -1191,6 +1191,17 @@
     return !!when && Date.now() - when < COOL_OFF_MS;
   }
 
+  /*
+   * How often a phone that cannot find its till may sweep the Wi-Fi for it.
+   *
+   * Long enough that a shop genuinely off the network is not probing sixty
+   * addresses every few seconds until the battery is flat, short enough that a
+   * till which came back on a new address is found inside one cup of coffee
+   * rather than one shift.
+   */
+  const SWEEP_EVERY_MS = 45 * 1000;
+  let sweptAt = 0;
+
   /**
    * Choose a server that answers, in preference order.
    *
@@ -1236,10 +1247,43 @@
         noteFailure(candidate);
       }
 
-      /* A sweep is affordable only where nothing else is happening, which is
-         the sign-in screen. Mid-service it would stall the screen a waiter is
-         holding for seconds, to find what is not there. */
-      if (allowScan) {
+      /*
+       * EVERY KNOWN ADDRESS HAS FAILED, SO LOOK FOR A NEW ONE.
+       *
+       * This used to run only on the sign-in screen, because a sweep takes
+       * seconds and mid-service that would stall the screen a waiter is
+       * holding. The reasoning was right about the cost and wrong about when
+       * it is paid: by the time control reaches this line every address the
+       * phone knows has just failed, the app is already showing the offline
+       * overlay, and there is no working screen left to stall.
+       *
+       * What that restriction cost, in a real shop, on a real evening: the
+       * router handed the till a new DHCP lease on each restart - .2, then
+       * .18, then .11 - and every handset went dead and STAYED dead, because
+       * the one thing that could have found the till again was not allowed to
+       * run. The only cure reachable from a dead screen was to sign out and
+       * back in, which nobody can be expected to guess and which cannot be
+       * explained down a phone to somebody carrying plates.
+       *
+       * Owner: "i cant explain them wifi and all. i want reliaant." A waiter
+       * must never be told anything about Wi-Fi. The phone heals itself or the
+       * feature does not work.
+       *
+       * Rate limited rather than free: a shop genuinely off the network would
+       * otherwise sweep on every scheduled check, and sixty probes a few
+       * seconds apart is a flat battery by closing time.
+       */
+      /*
+       * A PINNED ADDRESS IS AN EXPLICIT CHOICE, so there is nothing to find.
+       *
+       * `canAdopt` refuses everything except the pinned address itself, so a
+       * sweep here could only ever spend seconds and a slice of battery
+       * proving it was not allowed to use what it found. Worse, it delays the
+       * outage screen - the one thing that tells somebody the till is off -
+       * behind a search that cannot help them.
+       */
+      if ((allowScan || Date.now() - sweptAt >= SWEEP_EVERY_MS) && !server.pinned) {
+        sweptAt = Date.now();
         /*
          * Say that something is happening.
          *
@@ -1586,12 +1630,44 @@
      * seconds and conclude it is broken. Saying when the next attempt happens
      * turns doing nothing into a choice.
      */
+    /*
+     * WHILE IT IS LOOKING FOR THE TILL, SAY SO.
+     *
+     * A countdown says "trying again in 9s", which is true and reads as a
+     * machine giving up slowly. When the phone is actually sweeping the Wi-Fi
+     * for a till that has moved it is doing the one thing that will fix this,
+     * and that is worth saying plainly to somebody who knows nothing about
+     * networks and has a table waiting.
+     *
+     * Registered once: `net` is an IIFE, not something that runs per screen.
+     */
+    let searchingNow = null;
+
+    window.addEventListener('posnic:searching', (event) => {
+      const { done, total } = (event && event.detail) || {};
+      searchingNow = total
+        ? `Looking for the till on the Wi-Fi (${done} of ${total})`
+        : 'Looking for the till on the Wi-Fi';
+      const status = document.getElementById('posnic-offline-status');
+      if (status && offline) status.textContent = searchingNow;
+    });
+
+    window.addEventListener('posnic:searched', () => {
+      searchingNow = null;
+    });
+
     function countdown() {
       clearInterval(ticker);
       const status = document.getElementById('posnic-offline-status');
       if (!status) return;
       const paint = () => {
         if (!offline) return;
+        /* A search in progress outranks the countdown: it is the thing that
+           will end the wait, not the thing counting it. */
+        if (searchingNow) {
+          status.textContent = searchingNow;
+          return;
+        }
         const left = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
         status.textContent =
           (attempts === 1 ? 'Tried once' : `Tried ${attempts} times`) +
