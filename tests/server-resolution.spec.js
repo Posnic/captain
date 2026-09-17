@@ -1369,3 +1369,117 @@ test('only the order send asks for it', async ({ page }) => {
   expect(hedges).toHaveLength(1);
   expect(store).toMatch(/qrOrder[\s\S]{0,200}hedge: true/);
 });
+
+/*
+ * THE WAY OUT OF AN OUTAGE HAS TO WORK.
+ *
+ * Owner: "now change server not allowing actually." And, on who is holding the
+ * phone: "they are mostly un educated and doing job part time... so app needs
+ * to be very very smart on this."
+ *
+ * Which means the outage screen is not a report, it is the last thing standing
+ * between a waiter and a table. Every button on it has to do what it says, and
+ * the words have to name something a part-timer can act on.
+ */
+
+test('CHANGE SERVER OPENS THE EDITOR, which it did not', async ({ page }) => {
+  /*
+   * It set `posnic.open-server-settings`, a key nothing in the app has ever
+   * read. So it navigated to the sign-in screen, no editor opened, the app
+   * dialled the same dead address and the outage screen came straight back.
+   * From the outside: a button that does nothing, twice.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await page.getByRole('button', { name: 'Change server' }).click();
+
+  await expect(page.locator('#serverModal')).toBeVisible({ timeout: 15000 });
+});
+
+test('the internet is offered only where there is one to offer', async ({ page }) => {
+  /*
+   * Owner: "not able contact local server, would you like to connect via
+   * internet server or change server."
+   *
+   * A shop with a cloud address can keep taking orders while somebody sorts
+   * the Wi-Fi out. A shop without one must not be offered a road that does not
+   * exist, which is a button that can only disappoint.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-cloud')).toBeHidden();
+});
+
+test('and it is offered when the shop has one', async ({ page }) => {
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, cloud: CLOUD });
+  await refuse(page, LAN_ORIGIN);
+  await refuse(page, CLOUD_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-cloud')).toBeVisible();
+});
+
+test('A TILL THAT IS SIMPLY OFF IS NAMED AS THE THING THAT IS OFF', async ({ page }) => {
+  /*
+   * Owner: "sometime local desktop not started and not available. that also we
+   * need to tell user deskttop app not started."
+   *
+   * The phone is on the network the till was last reached on, so the network
+   * is fine and the address is fine. What is left is the computer. "Not
+   * responding" made people restart the phone, because the phone is the thing
+   * in their hand; naming the computer sends them to the thing that is off.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, lanSubnet: '192.168.1' });
+  /*
+   * The phone's own address, as the native plugin reports it on a handset.
+   * A desktop browser will not give one up - Chromium hides the local IP
+   * behind an mDNS candidate - and the app is right to say nothing when it
+   * cannot tell. Saying nothing is not what is under test here.
+   */
+  await page.addInitScript(() => {
+    window.Capacitor = window.Capacitor || {};
+    window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+    window.Capacitor.Plugins.LocalNetwork = { getLocalIp: async () => ({ ip: '192.168.1.57' }) };
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  /* The check needs the network interface, so it lands a moment after the
+     screen rather than holding it up. */
+  await expect(page.locator('#posnic-offline-title')).toContainText('not running POSNIC', {
+    timeout: 15000,
+  });
+  await expect(page.locator('#posnic-offline-body')).toContainText('right Wi-Fi');
+});
+
+test('and a phone that has wandered off is told which thing moved', async ({ page }) => {
+  /*
+   * Same symptom, opposite cause, and the two are indistinguishable from the
+   * till's silence alone. Sending somebody to switch on a computer that is
+   * already on is how an app loses the benefit of the doubt.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, lanSubnet: '192.168.1' });
+  await page.addInitScript(() => {
+    window.Capacitor = window.Capacitor || {};
+    window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+    window.Capacitor.Plugins.LocalNetwork = { getLocalIp: async () => ({ ip: '10.0.0.44' }) };
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await expect(page.locator('#posnic-offline-title')).toContainText('different Wi-Fi', {
+    timeout: 15000,
+  });
+});

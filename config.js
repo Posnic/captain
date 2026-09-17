@@ -441,6 +441,35 @@
         return setActive(clean);
       },
 
+      /*
+       * WHICH NETWORK THE TILL WAS LAST REACHED ON.
+       *
+       * Owner: "lets say last time you connected to the server was in
+       * different wifi but you try to connect same ip address with new wifi.
+       * then it should tell about to connect the right wifi."
+       *
+       * A phone cannot read the Wi-Fi name without a location permission the
+       * shop should not have to grant, and a waiter should not have to answer.
+       * The subnet is free, needs no permission, and answers the only question
+       * that matters: is this the network the till was on, or another one.
+       *
+       * 192.168.1.11 becomes "192.168.1". Only recorded for a LAN address,
+       * because a cloud address says nothing about which Wi-Fi anybody is on.
+       */
+      rememberNetwork(url) {
+        const clean = normalize(url);
+        if (!clean || !isLanUrl(clean)) return;
+        const match = String(clean).match(/(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}/);
+        if (!match) return;
+        if (state.lanSubnet === match[1]) return;
+        state.lanSubnet = match[1];
+        persist();
+      },
+
+      get lanSubnet() {
+        return state.lanSubnet || null;
+      },
+
       /** Record that this address served this shop, proved by a sign-in. */
       recordShop(url, shopKey) {
         if (!url || !shopKey) return;
@@ -867,6 +896,8 @@
   /* Host numbers this device holds, filled in by localSubnets(). See the
      comment in `add` for why they matter more than any guessed list. */
   let ownHosts = [];
+  /* Only the subnets this phone is really on. See localSubnets(). */
+  let ownSubnets = [];
 
   async function localSubnets() {
     const found = [];
@@ -943,6 +974,17 @@
         }
       });
     }
+
+    /*
+     * WHAT THIS PHONE IS ACTUALLY ON, kept apart from what we would guess.
+     *
+     * Everything above this line came from the phone's own network interface.
+     * Everything below is a guess, and the two must not be confused: telling
+     * somebody they are on the wrong Wi-Fi because 192.168.1 is on a list of
+     * likely subnets would be a confident lie, and the whole point of the
+     * message is that it can be trusted.
+     */
+    ownSubnets = found.slice();
 
     add(server.lan);
     /* Guesses, and last: what a consumer router hands out. */
@@ -1229,6 +1271,9 @@
         if (hit && server.canAdopt(hit.base)) {
           noteSuccess(hit.base);
           server.adopt(hit.base);
+          /* Which Wi-Fi this worked on, so a phone that wakes up somewhere
+             else can say so rather than blaming the till. */
+          server.rememberNetwork(hit.base);
           return hit.base;
         }
         /*
@@ -1282,8 +1327,27 @@
        * outage screen - the one thing that tells somebody the till is off -
        * behind a search that cannot help them.
        */
+      /*
+       * SAY IT IS DOWN NOW, THEN GO LOOKING.
+       *
+       * The sweep takes seconds. Waiting for it before showing anything means
+       * a waiter taps an order and watches a screen that says nothing at all,
+       * which reads as a frozen app and is the moment people start pressing
+       * things. Every address has already failed, so the screen is telling the
+       * truth the instant it appears - and if the search then finds the till,
+       * the screen clears itself and nobody had to do anything.
+       */
       if ((allowScan || Date.now() - sweptAt >= SWEEP_EVERY_MS) && !server.pinned) {
         sweptAt = Date.now();
+
+        /*
+         * Only announced when a search is actually about to happen. Where
+         * nothing follows - a pinned address, or a sweep that just ran - the
+         * caller reports the failure a moment later as it always did, and
+         * moving that moment earlier would change what every other screen sees
+         * without telling anybody anything new.
+         */
+        window.dispatchEvent(new CustomEvent('posnic:all-addresses-failed'));
         /*
          * Say that something is happening.
          *
@@ -1302,6 +1366,7 @@
         window.dispatchEvent(new CustomEvent('posnic:searched', { detail: { found: !!hit } }));
         if (hit && server.canAdopt(hit.base)) {
           server.adopt(hit.base);
+          server.rememberNetwork(hit.base);
           return hit.base;
         }
       }
@@ -1642,6 +1707,32 @@
      * Registered once: `net` is an IIFE, not something that runs per screen.
      */
     let searchingNow = null;
+    /* Has this phone ever reached a server in this session? */
+    let wasOnline = false;
+
+    /*
+     * Every address the phone knows has just failed. Show that immediately,
+     * before the search that may fix it: the screen is already true, and a
+     * waiter staring at nothing is a waiter who starts pressing things.
+     */
+    window.addEventListener('posnic:all-addresses-failed', () => {
+      if (offline) return;
+      /*
+       * Only for a phone that WAS working a moment ago.
+       *
+       * That is the case this exists for: mid-service, the till moves, and a
+       * waiter would otherwise hold a screen that says nothing for the length
+       * of a sweep. A phone still starting up has not shown anybody anything
+       * yet, and marking it down during its first look would put "Not
+       * connected" in front of somebody who is in the middle of setting it up.
+       */
+      if (!wasOnline) return;
+      /* Not while somebody is picking a server either. The whole point of that
+         screen is that the address is wrong, so an outage notice over the top
+         of it says only what they came there to fix. */
+      if (choosingServer() || settingsOpen()) return;
+      net.setOffline();
+    });
 
     window.addEventListener('posnic:searching', (event) => {
       const { done, total } = (event && event.detail) || {};
@@ -1675,6 +1766,31 @@
       };
       paint();
       ticker = setInterval(paint, 1000);
+    }
+
+    /*
+     * IS THIS PHONE EVEN ON THE RIGHT NETWORK?
+     *
+     * Owner: "last time you connected to the server was in different wifi but
+     * you try to connect same ip address with new wifi. then it should tell
+     * about to connect the right wifi."
+     *
+     * Only ever answers yes when it actually knows. A phone that could not
+     * read its own address says nothing, because "you are on the wrong Wi-Fi"
+     * told to somebody standing in the right shop sends them to reset a router
+     * that is working, and one wrong message of that kind costs more trust
+     * than ten right ones earn.
+     */
+    async function whichNetwork() {
+      const wanted = server.lanSubnet;
+      if (!wanted) return 'unknown';
+      try {
+        await localSubnets();
+      } catch (e) {
+        return 'unknown';
+      }
+      if (!ownSubnets.length) return 'unknown';
+      return ownSubnets.includes(wanted) ? 'same' : 'elsewhere';
     }
 
     function settingsOpen() {
@@ -1746,6 +1862,7 @@
           <div id="posnic-offline-status" style="margin:0 0 18px;color:#64748b;font-size:12px;min-height:16px;"></div>
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
             <button type="button" id="posnic-offline-retry" style="border:none;border-radius:8px;background:#f97316;color:#111827;font-weight:800;padding:11px 18px;cursor:pointer;">Try now</button>
+            <button type="button" id="posnic-offline-cloud" hidden style="border:1px solid #475569;border-radius:8px;background:#111827;color:#fff;font-weight:700;padding:11px 18px;cursor:pointer;">Use the internet</button>
             <button type="button" id="posnic-offline-settings" style="border:1px solid #475569;border-radius:8px;background:#111827;color:#fff;font-weight:700;padding:11px 18px;cursor:pointer;">Change server</button>
           </div>
         </div>`;
@@ -1762,9 +1879,58 @@
           button.textContent = 'Try now';
         }
       });
+      /*
+       * CHANGE SERVER DID NOTHING AT ALL.
+       *
+       * Owner: "now change server not allowing actually."
+       *
+       * This set `posnic.open-server-settings`, and nothing in the app has
+       * ever read that key. The real flag is `posnic_change_server`, which the
+       * tables screen sets and index.html reads to open the editor. So the
+       * button navigated to the sign-in screen, no editor opened, the app
+       * health-checked the same dead address, and the outage screen came
+       * straight back - which from the outside is a button that does nothing.
+       *
+       * One name, set in one place, read in two. The KOT screen has always
+       * used it; this is the odd one out finally spelling it the same way.
+       */
       element.querySelector('#posnic-offline-settings').addEventListener('click', () => {
-        sessionStorage.setItem('posnic.open-server-settings', '1');
+        try {
+          sessionStorage.setItem('posnic_change_server', '1');
+        } catch (e) {
+          /* private mode: the page still opens, just without the sheet */
+        }
         window.location.href = 'index.html';
+      });
+
+      /*
+       * THE OTHER WAY OUT, SAID PLAINLY.
+       *
+       * Owner: "not able contact local server, would you like to connect via
+       * internet server or change server."
+       *
+       * A shop with a cloud address can keep taking orders over the internet
+       * while somebody sorts the Wi-Fi out, and before this the only way to
+       * reach that was the Change server editor - which is a screen of
+       * addresses, and a waiter is not going to type one.
+       *
+       * ADOPTED, NOT PINNED, deliberately. Pinning is an explicit choice that
+       * nothing may override, so a phone pinned to the cloud at 7pm would
+       * still be routing every order over the internet a week later, standing
+       * two metres from a working till. Adopting means the till is preferred
+       * again the moment it can be reached.
+       */
+      element.querySelector('#posnic-offline-cloud').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = 'Connecting...';
+        try {
+          server.adopt(server.cloud);
+          await net.check(true);
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Use the internet';
+        }
       });
       return element;
     }
@@ -1811,6 +1977,72 @@
         }
         if (url) url.textContent = server.baseUrl || '';
 
+        /*
+         * The internet is only offered where there is one to offer, and only
+         * while the phone is trying to reach a till. Offering "use the
+         * internet" to a phone already on the internet is noise.
+         */
+        const cloudButton = element.querySelector('#posnic-offline-cloud');
+        if (cloudButton) cloudButton.hidden = !(local && server.cloud);
+
+        /*
+         * WRONG WI-FI IS A DIFFERENT PROBLEM WITH A DIFFERENT ANSWER, and it
+         * looks identical from here: the till does not answer either way. The
+         * check needs the network interface, so it lands a moment later and
+         * replaces the words rather than delaying the screen.
+         */
+        if (local) {
+          whichNetwork()
+            .then((where) => {
+              if (!offline) return;
+
+              if (where === 'elsewhere') {
+                if (title) title.textContent = 'This phone is on a different Wi-Fi';
+                if (body) {
+                  body.textContent =
+                    'The till is on the shop Wi-Fi and this phone is on another network, so it cannot see it. Connect this phone to the shop Wi-Fi and it will find the till again by itself.';
+                }
+                if (url) {
+                  url.textContent = `Till was last reached on ${server.lanSubnet}.x, this phone is on ${ownSubnets.join(', ')}.x`;
+                }
+                return;
+              }
+
+              /*
+               * Not knowing which network this is means saying nothing new.
+               * The screen already carries words that are true either way, and
+               * a guess here would send somebody to the wrong thing.
+               */
+              if (where !== 'same') return;
+
+              /*
+               * SAME NETWORK, NO ANSWER: THE TILL IS OFF.
+               *
+               * Owner: "sometime local desktop not started and not available.
+               * that also we need to tell user deskttop app not started."
+               *
+               * This phone is on the network the till was last reached on and
+               * the till is not answering, so the network is not the problem
+               * and neither is the address. What is left is the computer: off,
+               * asleep, or on with POSNIC not opened. Every one of those is
+               * fixed by the same action, which is why they get one sentence
+               * instead of three.
+               *
+               * "Not responding" made people restart the phone, because a
+               * phone is the thing in their hand. Naming the computer sends
+               * them to the thing that is actually off.
+               */
+              if (title) title.textContent = 'The till computer is not running POSNIC';
+              if (body) {
+                body.textContent =
+                  'This phone is on the right Wi-Fi, so the till computer is switched off or POSNIC is not open on it. Switch it on and open POSNIC, and this phone will connect by itself.';
+              }
+            })
+            .catch(() => {
+              /* Cannot tell: the screen keeps the words it already has. */
+            });
+        }
+
         ['loader', 'page-loader'].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.hidden = true;
@@ -1821,6 +2053,7 @@
       },
 
       setOnline() {
+        wasOnline = true;
         delay = HEALTH_OK_MS;
         attempts = 0;
         clearInterval(ticker);
