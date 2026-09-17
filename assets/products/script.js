@@ -875,6 +875,113 @@ $(document).on('click', '[data-quick-sale]', async function () {
     }
 });
 
+/*
+ * A LONG PRESS ON A DISH SAYS IT HAS RUN OUT.
+ *
+ * The kitchen tells the floor before it tells anybody with a keyboard. A
+ * waiter who hears "no more fish" had to find whoever runs the till, and in
+ * the minutes that took, three more tables ordered it, three more tickets
+ * printed, and three tables were told no after they had chosen.
+ *
+ * NOT A BUTTON ON THE ROW. Forty rows with an extra control on each is a
+ * slower screen for every waiter, every service, to serve something that
+ * happens twice a night. A long press is the phone idiom for "the other thing
+ * you can do to this", and a stray press in an apron pocket does not reach it.
+ *
+ * Held on the row rather than on ADD, so the gesture never fights the tap that
+ * adds a dish.
+ */
+(function () {
+    const HELD_FOR_MS = 550;
+    let timer = null;
+    let held = false;
+
+    const rowOf = (target) => (target.closest ? target.closest('.dish, .frequent-card') : null);
+
+    async function offerToTakeItOff(row) {
+        const id = row.getAttribute('data-id');
+        if (!id) return;
+
+        const product = await getProductById(id);
+        if (!product || typeof POSNIC === 'undefined' || !POSNIC.askRunOut) return;
+
+        const answer = await POSNIC.askRunOut(product);
+        if (answer === null) return;
+
+        try {
+            const branchId = localStorage.getItem('branch_id') || '';
+            const data = await POSNIC.api.post('/items/soldOut', {
+                item: id,
+                off: answer,
+                branch: branchId
+            });
+
+            if (data.type !== 'success') throw new Error(data.message || 'Could not change it');
+
+            /*
+             * The cached menu is what every screen here draws from, so it is
+             * updated before anything is redrawn. The next sync from the till
+             * confirms it; this is so the waiter who just said it sees it.
+             */
+            const stored = await getProductById(id);
+            if (stored) {
+                stored.sold_out_today = answer;
+                await saveData(STORE_NAME, [stored]);
+            }
+
+            await loadProducts();
+            if (typeof applyProductFilter === 'function') applyProductFilter();
+        } catch (error) {
+            /* popup.js, because showToast lives on the KOT and order screens
+               and not on this one. Written against it once already, this threw
+               inside its own error path and said nothing at all. */
+            showErrorPopup(error.message || 'Could not change it');
+        }
+    }
+
+    const start = (event) => {
+        const row = rowOf(event.target);
+        /* Not while they are aiming at a control: the stepper and ADD are taps,
+           and a slow tap on them is still a tap. */
+        if (!row || event.target.closest('button, input, a')) return;
+
+        held = false;
+        timer = setTimeout(() => {
+            held = true;
+            /* A short buzz, so the sheet is not a surprise arriving from
+               nowhere while a thumb is still down. */
+            if (navigator.vibrate) navigator.vibrate(12);
+            offerToTakeItOff(row);
+        }, HELD_FOR_MS);
+    };
+
+    const stop = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+    };
+
+    document.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('touchend', stop);
+    document.addEventListener('touchmove', stop, { passive: true });
+    document.addEventListener('mousedown', start);
+    document.addEventListener('mouseup', stop);
+    document.addEventListener('mouseleave', stop);
+
+    /* A press that became the sheet must not also be a tap that adds a dish. */
+    document.addEventListener(
+        'click',
+        (event) => {
+            if (!held) return;
+            held = false;
+            if (rowOf(event.target)) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        },
+        true
+    );
+})();
+
 $(document).on("click", ".btn-add", async function () {
     const id = $(this).data("id");
 
