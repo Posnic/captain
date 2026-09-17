@@ -214,3 +214,46 @@ test('a manual check always searches, however recently one ran', async () => {
 
   assert.ok(asked.length - afterAuto > 20, 'Try now did nothing the automatic check had not');
 });
+
+test('A PHONE WORKING OVER THE INTERNET COMES HOME TO THE TILL', async () => {
+  /*
+   * The quiet version of the same fault. The till moves, the saved LAN address
+   * is dead, the cloud answers, and the phone settles there. Nothing complains,
+   * because everything works - and the shop spends the evening sending every
+   * order over the internet from two metres away, stopping entirely the moment
+   * the broadband hiccups.
+   *
+   * No sweep would ever run on its own, because a sweep only happens when
+   * EVERY address has failed, and one has not.
+   */
+  const CLOUD = 'https://azure.posnic.io/api';
+  const { POSNIC } = load((url) => url.startsWith(MOVED_TO) || url.startsWith(CLOUD), {
+    lan: WAS_AT,
+    cloud: CLOUD,
+    active: CLOUD,
+  });
+
+  await POSNIC.net.check(false);
+
+  /* The cloud answers first and is adopted, which is right: the waiter is not
+     kept waiting. The search for the till happens behind that answer. */
+  for (let i = 0; i < 80; i += 1) await new Promise((r) => setTimeout(r, 10));
+
+  assert.ok(
+    String(POSNIC.server.baseUrl).startsWith('http://192.168.1.'),
+    `stayed on ${POSNIC.server.baseUrl} with a till on the same Wi-Fi`
+  );
+});
+
+test('and a phone with no till address has nowhere to come home to', async () => {
+  /* A handset set up from the car park, on the cloud only. Sweeping a subnet
+     it has never seen a till on is a flat battery for nothing. */
+  const CLOUD = 'https://azure.posnic.io/api';
+  const { POSNIC, asked } = load((url) => url.startsWith(CLOUD), { cloud: CLOUD, active: CLOUD });
+
+  await POSNIC.net.check(false);
+  const after = asked.length;
+  for (let i = 0; i < 40; i += 1) await new Promise((r) => setTimeout(r, 10));
+
+  assert.ok(asked.length - after < 5, `it swept anyway (${asked.length - after} requests)`);
+});
