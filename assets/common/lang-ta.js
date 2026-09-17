@@ -138,6 +138,12 @@
     'Only over the internet': 'இணையம் வழியாக மட்டும்',
     'Never uses the internet. Orders stop outside the shop Wi-Fi.':
       'இணையத்தை பயன்படுத்தாது. கடை Wi-Fi இல்லாதபோது ஆர்டர் நிற்கும்.',
+    'Shop Wi-Fi only. Fastest, and keeps printing when the internet is down. Orders stop outside the shop Wi-Fi.':
+      'கடை Wi-Fi மட்டும். வேகமானது, இணையம் இல்லாதபோதும் பிரிண்ட் ஆகும். கடை Wi-Fi இல்லாதபோது ஆர்டர் நிற்கும்.',
+    'Shop Wi-Fi when it is there, because it is faster and works with the internet down. The internet when it is not. Best for everyone.':
+      'கடை Wi-Fi இருக்கும்போது அது, ஏனெனில் வேகமானது, இணையம் இல்லாதபோதும் வேலை செய்யும். இல்லாதபோது இணையம். அனைவருக்கும் சிறந்தது.',
+    'For a phone already on the shop Wi-Fi. This is the fast one, and it needs no internet.':
+      'ஏற்கனவே கடை Wi-Fi இல் உள்ள போனுக்கு. இதுதான் வேகமானது, இணையம் தேவையில்லை.',
     'Find the till on this Wi-Fi': 'இந்த Wi-Fi இல் பில்லிங் கணினியை கண்டுபிடி',
     'Point at the code by the till.': 'பில்லிங் அருகே உள்ள QR குறியீட்டை காட்டுங்கள்.',
     'That code is not a Posnic shop. Keep looking.':
@@ -182,6 +188,10 @@
     'Change how it connects': 'இணைப்பு முறையை மாற்று',
     'Never uses the shop Wi-Fi. Slower, and stops when the internet does.':
       'கடை Wi-Fi ஐ பயன்படுத்தாது. மெதுவாக இருக்கும், இணையம் இல்லாதபோது நிற்கும்.',
+    'Internet only. Slower to print, and stops when the internet does.':
+      'இணையம் மட்டும். பிரிண்ட் மெதுவாக இருக்கும், இணையம் இல்லாதபோது நிற்கும்.',
+    'In the shop · Wi-Fi, faster': 'கடையில் · Wi-Fi, வேகமானது',
+    'Anywhere · internet, slower': 'எங்கிருந்தும் · இணையம், மெதுவானது',
     'not found yet': 'இன்னும் கிடைக்கவில்லை',
     'not set': 'அமைக்கப்படவில்லை',
     Find: 'தேடு',

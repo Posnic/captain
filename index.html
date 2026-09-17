@@ -119,7 +119,7 @@
                                 <input type="radio" name="conn_way" value="auto">
                                 <span class="conn-way-text">
                                     <span class="conn-way-title">Automatically</span>
-                                    <span class="conn-way-note">Uses the shop Wi-Fi when it is there, the internet when it is not. Best for everyone.</span>
+                                    <span class="conn-way-note">Shop Wi-Fi when it is there, because it is faster and works with the internet down. The internet when it is not. Best for everyone.</span>
                                 </span>
                             </label>
 
@@ -127,7 +127,7 @@
                                 <input type="radio" name="conn_way" value="lan">
                                 <span class="conn-way-text">
                                     <span class="conn-way-title">Only in the shop</span>
-                                    <span class="conn-way-note">Never uses the internet. Orders stop outside the shop Wi-Fi.</span>
+                                    <span class="conn-way-note">Shop Wi-Fi only. Fastest, and keeps printing when the internet is down. Orders stop outside the shop Wi-Fi.</span>
                                 </span>
                             </label>
 
@@ -135,19 +135,19 @@
                                 <input type="radio" name="conn_way" value="cloud">
                                 <span class="conn-way-text">
                                     <span class="conn-way-title">Only over the internet</span>
-                                    <span class="conn-way-note">Never uses the shop Wi-Fi. Slower, and stops when the internet does.</span>
+                                    <span class="conn-way-note">Internet only. Slower to print, and stops when the internet does.</span>
                                 </span>
                             </label>
                         </fieldset>
 
                         <div class="conn-addresses">
                             <div class="conn-address">
-                                <span class="conn-address-label">In the shop</span>
+                                <span class="conn-address-label">In the shop &middot; Wi-Fi, faster</span>
                                 <span class="conn-address-value" id="connLan">not found yet</span>
                                 <button type="button" class="ui-btn-quiet conn-address-btn" onclick="chooseSearch()">Find</button>
                             </div>
                             <div class="conn-address">
-                                <span class="conn-address-label">Anywhere</span>
+                                <span class="conn-address-label">Anywhere &middot; internet, slower</span>
                                 <span class="conn-address-value" id="connCloud">not set</span>
                                 <button type="button" class="ui-btn-quiet conn-address-btn" onclick="chooseManual()">Change</button>
                             </div>
@@ -170,7 +170,7 @@
                         <span class="ui-choice-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 18.5a1.75 1.75 0 110 3.5 1.75 1.75 0 010-3.5zm0-4.9c1.6 0 3.1.6 4.2 1.7l-1.7 1.7A3.6 3.6 0 0012 16a3.6 3.6 0 00-2.5 1l-1.7-1.7a5.9 5.9 0 014.2-1.7zm0-4.8c2.9 0 5.6 1.1 7.6 3.1l-1.7 1.7A8.3 8.3 0 0012 11.2c-2.2 0-4.3.9-5.9 2.4l-1.7-1.7a10.7 10.7 0 017.6-3.1zm0-4.8c4.2 0 8.1 1.6 11 4.5l-1.7 1.7A13.1 13.1 0 0012 6.4c-3.4 0-6.7 1.3-9.3 3.8L1 8.5A15.5 15.5 0 0112 4z"/></svg></span>
                         <span class="ui-choice-text">
                             <span class="ui-choice-title">Find the till on this Wi-Fi</span>
-                            <span class="ui-choice-note">For a phone already on the shop network.</span>
+                            <span class="ui-choice-note">For a phone already on the shop Wi-Fi. This is the fast one, and it needs no internet.</span>
                         </span>
                         <span class="ui-choice-chev">&rsaquo;</span>
                     </button>
