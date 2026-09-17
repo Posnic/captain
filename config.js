@@ -1244,6 +1244,42 @@
   const SWEEP_EVERY_MS = 45 * 1000;
   let sweptAt = 0;
 
+  /*
+   * HOW OFTEN A PHONE WORKING OVER THE INTERNET LOOKS FOR THE TILL AGAIN.
+   *
+   * The gap this closes: the till moves to a new address, the saved LAN
+   * address is dead, the cloud answers, and the phone settles there. It keeps
+   * working, so nothing complains - and it never sweeps, because a sweep only
+   * happens when EVERY address has failed and one has not. The shop spends the
+   * evening sending every order over the internet from two metres away, paying
+   * a few hundred milliseconds a time, and stops entirely the moment the
+   * broadband hiccups.
+   *
+   * Ten minutes, in the background, and only while there is a LAN address to
+   * come home to. It never blocks a request: the order that triggered it has
+   * already been answered by the cloud.
+   */
+  const COME_HOME_EVERY_MS = 10 * 60 * 1000;
+  let cameHomeAt = 0;
+
+  function comeHome() {
+    /* An explicit choice is never second-guessed, and a phone with no till
+       address has nowhere to come home to. */
+    if (server.pinned || !server.lan) return;
+    if (Date.now() - cameHomeAt < COME_HOME_EVERY_MS) return;
+    cameHomeAt = Date.now();
+
+    findOnWifi()
+      .then((hit) => {
+        if (!hit || !server.isLanUrl(hit.base) || !server.canAdopt(hit.base)) return;
+        server.adopt(hit.base);
+        server.rememberNetwork(hit.base);
+      })
+      .catch(() => {
+        /* Still on the internet, still working. Nothing to say. */
+      });
+  }
+
   /**
    * Choose a server that answers, in preference order.
    *
@@ -1274,6 +1310,10 @@
           /* Which Wi-Fi this worked on, so a phone that wakes up somewhere
              else can say so rather than blaming the till. */
           server.rememberNetwork(hit.base);
+          /* Settling on the internet is not the same as being done. If there
+             is a till on this Wi-Fi, it is faster and it survives the
+             broadband going down, so go and find it. */
+          if (!server.isLanUrl(hit.base)) comeHome();
           return hit.base;
         }
         /*
