@@ -124,7 +124,9 @@ export default defineConfig({
         'order-history': path.resolve(ROOT, 'order-history.html'),
         thankyou: path.resolve(ROOT, 'thankyou.html'),
         'access-denied': path.resolve(ROOT, 'access-denied.html'),
-        'number-card': path.resolve(ROOT, 'number-card.html')
+        'number-card': path.resolve(ROOT, 'number-card.html'),
+        me: path.resolve(ROOT, 'me.html'),
+        'my-sales': path.resolve(ROOT, 'my-sales.html')
       }
     }
   },

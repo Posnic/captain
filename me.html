@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Me</title>
+    <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/common/design.css" rel="stylesheet">
+    <link href="assets/common/ui-theme.css" rel="stylesheet">
+    <link href="assets/me/style.css" rel="stylesheet">
+    <script src="assets/common/i18n.js"></script>
+    <script src="assets/common/lang-ta.js"></script>
+    <script src="assets/jquery-3.6.0.min.js"></script>
+    <!-- Written at build time; absent at a desk, where the page says "dev". -->
+    <script src="app-build.js" onerror="this.remove()"></script>
+    <script src="config.js"></script>
+    <script src="assets/common/lock.js"></script>
+    <script src="indexedDB.js"></script>
+</head>
+
+<body>
+    <!--
+        EVERYTHING THAT IS NOT AN ORDER.
+
+        Owner: "arrange profile update, logout, app setting or preferences and
+        etc make it professional arrangements... right now its like fucking
+        shit."
+
+        He was right. Signing out was on the floor screen and only when the
+        shop had one branch. The language, the bill copies and the number card
+        were in a sheet behind a server icon, which is where somebody goes to
+        change an ADDRESS. The app version was printed on the sign-in screen,
+        so the only way to read it was to sign out.
+
+        One page, three headings, in the order somebody asks the questions:
+        who am I and what have I sold, what is this phone set to, and what is
+        this build.
+    -->
+    <header class="me-head">
+        <button type="button" class="me-back" id="me-back" aria-label="Back">&larr;</button>
+        <h1 class="me-title">Me</h1>
+    </header>
+
+    <main class="me-body">
+        <section class="me-card">
+            <p class="me-who" id="me-who">&nbsp;</p>
+            <!--
+                The day, on the way to the page that breaks it down. A number
+                somebody can see without tapping is the reason to tap.
+            -->
+            <a class="me-row me-row-go" href="my-sales.html" id="me-sales">
+                <span class="me-row-label">My sales today</span>
+                <span class="me-row-value" id="me-today">&nbsp;</span>
+            </a>
+        </section>
+
+        <h2 class="me-heading">Account</h2>
+        <section class="me-card">
+            <button type="button" class="me-row" id="me-password">
+                <span class="me-row-label">Change password</span>
+                <span class="me-row-value" id="me-password-why">On the till</span>
+            </button>
+            <button type="button" class="me-row me-row-danger" id="me-sign-out">
+                <span class="me-row-label">Sign out</span>
+            </button>
+            <p class="me-note">
+                Signing out clears this phone's menu, tables and cart, and asks for
+                the shop password next time.
+            </p>
+        </section>
+
+        <h2 class="me-heading">This phone</h2>
+        <section class="me-card">
+            <button type="button" class="me-row" id="me-lock">
+                <span class="me-row-label">Screen lock</span>
+                <span class="me-row-value" id="me-lock-state">Off</span>
+            </button>
+            <button type="button" class="me-row me-row-quiet" id="me-lock-off" hidden>
+                <span class="me-row-label">Turn the lock off</span>
+            </button>
+
+            <label class="me-field">
+                <span class="me-row-label">Language</span>
+                <select id="me-language" class="ui-field">
+                    <option value="en">English</option>
+                    <option value="ta">தமிழ்</option>
+                </select>
+            </label>
+
+            <label class="me-field">
+                <span class="me-row-label">Copies of a printed bill</span>
+                <select id="me-copies" class="ui-field">
+                    <option value="">As the shop is set</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </label>
+
+            <a class="me-row me-row-go" href="number-card.html">
+                <span class="me-row-label">Number card for the wall</span>
+            </a>
+
+            <button type="button" class="me-row me-row-go" id="me-server">
+                <span class="me-row-label">Change shop server</span>
+                <span class="me-row-value" id="me-server-where">&nbsp;</span>
+            </button>
+            <p class="me-note">
+                Changing shop signs you out and clears the menu and tables cached
+                for this one.
+            </p>
+        </section>
+
+        <h2 class="me-heading">About</h2>
+        <section class="me-card">
+            <p class="me-note" id="me-version">&nbsp;</p>
+        </section>
+    </main>
+
+    <script src="assets/me/script.js"></script>
+</body>
+
+</html>

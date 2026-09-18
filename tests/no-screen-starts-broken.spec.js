@@ -36,6 +36,8 @@ const SCREENS = [
   'kot-management.html',
   'order-history.html',
   'number-card.html',
+  'me.html',
+  'my-sales.html',
   'thankyou.html',
   'access-denied.html',
 ];

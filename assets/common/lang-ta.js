@@ -253,6 +253,35 @@
     "Signing out clears this phone's menu, tables and cart, and asks for the shop password next time.":
       'வெளியேறினால் இந்த போனின் மெனு, டேபிள்கள், கார்ட் அழிக்கப்படும், அடுத்த முறை கடை கடவுச்சொல் கேட்கப்படும்.',
 
+    /* the page for everything that is not an order */
+    Off: 'அணைந்துள்ளது',
+    On: 'இயங்குகிறது',
+    'Loading.': 'ஏற்றப்படுகிறது.',
+
+    Me: 'નான்',
+    Account: 'கணக்கு',
+    'This phone': 'இந்த போன்',
+    About: 'பற்றி',
+    'My sales today': 'இன்றைய என் விற்பனை',
+    'My sales': 'என் விற்பனை',
+    'Change password': 'கடவுச்சொல் மாற்று',
+    'On the till': 'பில்லிங் கணினியில்',
+    'Screen lock': 'திரை பூட்டு',
+    'Turn the lock off': 'பூட்டை அணை',
+    'Number card for the wall': 'சுவருக்கான எண் அட்டை',
+    'Change shop server': 'கடை சர்வரை மாற்று',
+    'Signed in on this phone': 'இந்த போனில் உள்நுழைந்துள்ளது',
+    'Nothing yet': 'இதுவரை எதுவும் இல்லை',
+    'Nothing sold yet': 'இதுவரை விற்பனை இல்லை',
+    Today: 'இன்று',
+    Yesterday: 'நேற்று',
+    'By table': 'டேபிள் வாரியாக',
+    Orders: 'ஆர்டர்கள்',
+    'No tables yet': 'இதுவரை டேபிள்கள் இல்லை',
+    'No orders yet': 'இதுவரை ஆர்டர்கள் இல்லை',
+    'No table': 'டேபிள் இல்லை',
+    Loading: 'ஏற்றப்படுகிறது',
+
     /* the lock, reached from the sheet on the floor screen */
     'Screen lock': 'திரை பூட்டு',
     'Set a PIN': 'PIN அமைக்கவும்',
