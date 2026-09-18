@@ -32,6 +32,9 @@
     /* A dish that has run out, said by the waiter who heard it. */
     'It has run out': 'தீர்ந்துவிட்டது',
     'This phone is not on any network': 'இந்த போன் எந்த நெட்வொர்க்கிலும் இல்லை',
+    'The till is turning this phone away': 'பில்லிங் கணினி இந்த போனை ஏற்கவில்லை',
+    'The till is on and answering, so the Wi-Fi is fine. The shop has probably run out of handset slots. Free one on the till, or add a slot, then press Try now.':
+      'பில்லிங் கணினி இயங்குகிறது, எனவே Wi-Fi சரியாக உள்ளது. கடையில் ஹேண்ட்செட் இடங்கள் தீர்ந்திருக்கலாம். பில்லிங்கில் ஒன்றை விடுவிக்கவும் அல்லது புதிதாக சேர்க்கவும், பிறகு Try now அழுத்தவும்.',
     'Wi-Fi and mobile data are both off, so nothing can reach the till. Turn Wi-Fi on and join the shop network, and this will connect by itself.':
       'Wi-Fi மற்றும் மொபைல் டேட்டா இரண்டும் அணைந்துள்ளன, எனவே பில்லிங் கணினியை அடைய முடியாது. Wi-Fi ஐ ஆன் செய்து கடை நெட்வொர்க்கில் இணையுங்கள், தானாக இணைந்துவிடும்.',
     'Add an item that is not on the menu': 'மெனுவில் இல்லாத ஐட்டத்தை சேர்',

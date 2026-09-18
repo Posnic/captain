@@ -1518,24 +1518,60 @@ test('NO NETWORK AT ALL IS NAMED BEFORE ANYTHING ELSE', async ({ page }) => {
   await expect(page.locator('#posnic-offline-body')).toContainText('Turn Wi-Fi on');
 });
 
-/*
- * A REFUSAL MID-SERVICE REACHES NOBODY, and that is not fixed here.
- *
- * Owner listed "server not allowing (403)" as its own cause, and it is: a dead
- * address gives a connection error, only a server sends a status, so 403 means
- * the till is ON, on this Wi-Fi, and turning this phone away - usually because
- * the shop has run out of handset slots. The fix is a licence screen, not a
- * power button.
- *
- * The connect sheet already says which till refused. The OUTAGE screen does
- * not, and a phone already signed in never reaches the connect sheet. I wrote
- * the wording, found the overlay never appears for a refusing pinned till, and
- * took it out again rather than leave an unreachable message behind - which is
- * the exact fault this file keeps catching in other places.
- *
- * Where it actually goes is not yet known, and guessing at it would be worse
- * than the gap. Left named rather than half-built.
- */
+test('A TILL THAT REFUSES SAYS SO, mid-service', async ({ page }) => {
+  /*
+   * Owner listed it as its own cause: "server not allowing (403)".
+   *
+   * Nothing in the app did anything with a 403. The SEARCH path knew about
+   * refusals and said which till refused, but that screen is only reached
+   * while somebody is looking for a server. A phone already signed in and
+   * working never goes there, so mid-service a refusal arrived as whatever
+   * generic error the calling screen happened to show - which sends a waiter
+   * to find the manager, who restarts a till that is working perfectly.
+   *
+   * A dead address gives a connection error. Only a server sends a status. So
+   * 403 means the till is ON, on this Wi-Fi, and has no room for this phone.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.route(`${LAN_ORIGIN}/**`, async (route) =>
+    route.fulfill({ status: 403, contentType: 'application/json', body: '{"message":"no slot"}' })
+  );
+
+  await page.goto('/index.html');
+  await page.waitForFunction(() => typeof POSNIC !== 'undefined' && POSNIC.api);
+
+  /* A request from a screen that is already working, which is the case the
+     search path never sees. */
+  await page.evaluate(() => POSNIC.api.get('/sales/getListKot').catch(() => {}));
+
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-title')).toContainText('turning this phone away');
+  await expect(page.locator('#posnic-offline-body')).toContainText('handset slots');
+});
+
+test('and it does not throw the waiter back to a sign-in screen', async ({ page }) => {
+  /*
+   * A 401 means this credential is no good and signing in again is the answer.
+   * A 403 means the credential is fine and the shop has no room, so clearing
+   * the session makes somebody type a password in order to be refused twice.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'posnic.session',
+      JSON.stringify({ token: 'still-good', shopKey: 'shop', expiresAt: Date.now() + 8.64e7 })
+    )
+  );
+  await page.route(`${LAN_ORIGIN}/**`, async (route) =>
+    route.fulfill({ status: 403, contentType: 'application/json', body: '{}' })
+  );
+
+  await page.goto('/index.html');
+  await page.waitForFunction(() => typeof POSNIC !== 'undefined' && POSNIC.api);
+  await page.evaluate(() => POSNIC.api.get('/sales/getListKot').catch(() => {}));
+
+  expect(await page.evaluate(() => POSNIC.session.token)).toBe('still-good');
+});
 
 test('and Try now retries the server it is already on', async ({ page }) => {
   /*
