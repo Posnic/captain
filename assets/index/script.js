@@ -460,6 +460,29 @@ document.addEventListener("DOMContentLoaded", async () => {
         }, 200);
     }
 
+    /*
+     * SOMEBODY WHO CAME HERE TO CHANGE THE SERVER IS NOT PASSING THROUGH.
+     *
+     * Owner: "i clicked change server, and choose another way. suddenly
+     * screen gone."
+     *
+     * It was not gone, it had walked off. The floor screen sends the phone
+     * here with a flag, index.html opens the editor sixty milliseconds later
+     * - and the branch auto-load underneath was still running, finished, and
+     * navigated straight back to the floor. A loader covered the editor on
+     * the way out, so from the outside the screen simply vanished.
+     *
+     * choosingServer() reads both flags, the one the floor sets and the one
+     * the editor sets when it opens, so this does not depend on which
+     * DOMContentLoaded handler ran first.
+     */
+    let changingServer = false;
+    try {
+        changingServer = !!(POSNIC.net && POSNIC.net.choosingServer && POSNIC.net.choosingServer());
+    } catch (e) {
+        /* No net module is not a reason to refuse to load a menu. */
+    }
+
     const forceSelect = localStorage.getItem("kiosk_force_branch_select") === "1";
     const savedBranch = localStorage.getItem("kiosk_selected_branch");
     const cachedBranchesRaw = localStorage.getItem("kiosk_branch_list");
@@ -542,7 +565,7 @@ document.addEventListener("DOMContentLoaded", async () => {
      * floor; the trip happens below, after the unlock, and only then.
      */
     let prefetch = null;
-    if (locked && savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
+    if (locked && savedBranch && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
         prefetch = fetchAndStoreBranch(savedBranch, false).then(
             function () {
                 return null;
@@ -568,7 +591,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Auto-load saved branch — login form stays visible during this
     // If redirect succeeds the page navigates away; if it fails login form is already shown
-    if (savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
+    if (savedBranch && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
         showLoader();
         try {
             if (prefetch) {

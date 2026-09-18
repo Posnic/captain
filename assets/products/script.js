@@ -1404,10 +1404,45 @@ async function applyProductFilter() {
          * one thing, and putting a heading above each result buries the best
          * match under the name of its category.
          */
+        /*
+         * THE OFFER BELONGS UNDER THE RESULTS TOO.
+         *
+         * Owner, twice, the second time furious: "i told you already... i
+         * cant add 'fish' coz already fish briyani there and no way to add."
+         *
+         * It was offered only when a search found NOTHING, which is the rare
+         * case. The common one is a search that finds something ELSE: typing
+         * Fish finds Fish Curry, so the offer never came, and the + beside the
+         * box is a 28px circle he has now looked straight past twice.
+         *
+         * So it is offered whenever what was typed is not the name of a dish
+         * on the menu, under the results, where somebody who has just read
+         * them and not found what they wanted is already looking.
+         *
+         * An exact name match suppresses it, because then the dish IS on the
+         * menu and offering to invent a second one with the same name is how
+         * a menu grows duplicates.
+         */
+        const typed = input.value.trim();
+        const exact = hits.some(
+            (p) => String(p.name || '').trim().toLowerCase() === typed.toLowerCase()
+        );
+
+        const offer =
+            '<div class="menu-quick-sale">' +
+            '<button type="button" class="menu-quick-sale-btn" data-quick-sale="' +
+            MenuView.escape(typed) +
+            '">Add &ldquo;' +
+            MenuView.escape(typed) +
+            '&rdquo; with a price</button>' +
+            '<p class="menu-quick-sale-why">For something the menu does not have. It is charged on this bill and stays off the menu.</p>' +
+            '</div>';
+
         listEl.innerHTML = hits.length
             ? '<div class="menu-section-items">' +
               hits.map(p => MenuView.dish(p, (cartMap.get(p.id) || {}).quantity || 0, options)).join('') +
-              '</div>'
+              '</div>' +
+              (typed && !exact ? offer : '')
             : MenuView.nothing(
                 'Nothing matches "' + input.value.trim() + '"',
                 'Try fewer letters, or the first letters of each word - "cb" finds Chicken Biryani.'
@@ -1423,14 +1458,7 @@ async function applyProductFilter() {
                * used forty times a service, and it already knows what to call
                * it, because they just typed the name.
                */
-              '<div class="menu-quick-sale">' +
-              '<button type="button" class="menu-quick-sale-btn" data-quick-sale="' +
-              MenuView.escape(input.value.trim()) +
-              '">Add &ldquo;' +
-              MenuView.escape(input.value.trim()) +
-              '&rdquo; with a price</button>' +
-              '<p class="menu-quick-sale-why">For something the menu does not have. It is charged on this bill and stays off the menu.</p>' +
-              '</div>';
+              offer;
     }
 
     /* Said quietly, and only while it is worth saying. */

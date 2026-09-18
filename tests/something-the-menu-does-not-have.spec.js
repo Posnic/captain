@@ -22,7 +22,17 @@ import { onTheMenu, item } from './support/shop.js';
  * already typed.
  */
 
-const MENU = [{ category_name: 'Mains', items: [item('p-cb', 'Chicken Biryani', 220)] }];
+const MENU = [
+  {
+    category_name: 'Mains',
+    items: [
+      item('p-cb', 'Chicken Biryani', 220),
+      /* The dish that blocked the owner: typing Fish finds THIS, so the
+         search was never empty and nothing was ever offered. */
+      item('p-fc', 'Fish Curry 1 bowl', 290),
+    ],
+  },
+];
 
 /** Search for something the shop does not sell. */
 async function searchingForSomethingMissing(page, term = 'Water bottle') {
@@ -37,12 +47,48 @@ test('an empty search offers to add it, by the name just typed', async ({ page }
   await expect(page.locator('.menu-quick-sale-btn')).toContainText('Water bottle');
 });
 
-test('a search that finds something does not offer it', async ({ page }) => {
-  /* The offer belongs to the moment the menu came up short. On a screen full
-     of results it would be a button inviting a waiter to create a duplicate of
-     a dish that is already there. */
+test('A SEARCH THAT FINDS SOMETHING ELSE STILL OFFERS IT', async ({ page }) => {
+  /*
+   * Owner, twice, the second time furious: "i cant add 'fish' coz already
+   * fish briyani there and no way to add."
+   *
+   * This test used to assert the opposite - that a search with results offers
+   * nothing - on the reasoning that a screen full of dishes should not invite
+   * a duplicate. That covers the rare case and blocks the common one. Fish
+   * finds Fish Curry, so the search is not empty, so nothing was ever
+   * offered; and the + beside the box is a small circle he looked straight
+   * past twice.
+   *
+   * Finding a dish whose name CONTAINS what was typed is not the same as the
+   * menu having the thing somebody wants.
+   */
   await onTheMenu(page, 'nothing', { menu: MENU });
-  await page.locator('#product-search-input').fill('biry');
+  await page.locator('#product-search-input').fill('fish');
+
+  await expect(page.locator('.dish[data-id="p-fc"]')).toBeVisible();
+  await expect(page.locator('.menu-quick-sale-btn')).toBeVisible();
+  await expect(page.locator('.menu-quick-sale-btn')).toContainText('fish');
+});
+
+test('and it comes after the results, not instead of them', async ({ page }) => {
+  /* A waiter reads what the menu does have first. The offer is what is left
+     when none of it was the thing. */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+  await page.locator('#product-search-input').fill('fish');
+
+  const dish = await page.locator('.dish[data-id="p-fc"]').boundingBox();
+  const offer = await page.locator('.menu-quick-sale').boundingBox();
+  expect(offer.y).toBeGreaterThan(dish.y);
+});
+
+test('THE NAME OF A DISH THAT IS ON THE MENU OFFERS NOTHING', async ({ page }) => {
+  /*
+   * The one thing the old reasoning had right. Typing the exact name of a
+   * dish that exists and being offered a second one with that name is how a
+   * menu grows duplicates nobody can tell apart on a bill.
+   */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+  await page.locator('#product-search-input').fill('Chicken Biryani');
 
   await expect(page.locator('.dish[data-id="p-cb"]')).toBeVisible();
   await expect(page.locator('.menu-quick-sale-btn')).toHaveCount(0);

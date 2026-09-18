@@ -739,8 +739,20 @@ body {
 
 .fixed-heading {
   position: sticky;
-  /* Under the header, whose height MenuScreen measures. */
-  top: var(--head-stick, 52px);
+  /*
+   * Under the header, whose height MenuScreen measures - or under the status
+   * bar, whichever is lower.
+   *
+   * Owner: "when you search input box overlapting with top network symbol,
+   * time and etc." The app draws under the system bar, and the header pads
+   * itself by the inset. This row trusted the header's measured height; when
+   * that is small or the header is not there, the row stopped at zero and the
+   * clock sat on top of what somebody was typing.
+   *
+   * max() leaves the normal case exactly as it was, because a visible header
+   * is always taller than the inset it already contains.
+   */
+  top: max(var(--head-stick, 52px), env(safe-area-inset-top, 0px));
   z-index: 15;
   background: var(--surface);
 }

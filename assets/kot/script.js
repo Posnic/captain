@@ -75,6 +75,29 @@ function changeServer() {
     const language = document.getElementById('app-language');
     if (language && typeof I18N !== 'undefined') language.value = I18N.language();
 
+    /* Whose account this phone is on. A handset gets passed around. */
+    const who = document.getElementById('signed-in-as');
+    if (who) {
+        let name = '';
+        try {
+            name = (POSNIC.session && POSNIC.session.user && POSNIC.session.user.name) || '';
+        } catch (e) {
+            name = '';
+        }
+        who.textContent = name ? 'Signed in as ' + name : 'Signed in on this phone';
+    }
+
+    /* Which build this phone is on, said plainly enough to read down a
+       telephone. It was on the sign-in screen only, so signing out was the
+       only way to answer the question. */
+    const version = document.getElementById('app-version-line');
+    if (version) {
+        const build = window.POSNIC_BUILD;
+        version.textContent = build && build.version
+            ? 'Captain ' + build.version + (build.commit ? ' (' + build.commit + ')' : '')
+            : 'Captain dev build';
+    }
+
     paintLock();
     sheet.hidden = false;
 }
@@ -165,6 +188,11 @@ document.addEventListener('click', function (event) {
         return;
     }
 
+    if (event.target.closest('#sign-out')) {
+        signOut();
+        return;
+    }
+
     if (event.target.closest('#lock-set')) {
         if (window.POSNIC && POSNIC.lock) POSNIC.lock.choose().then(paintLock);
         return;
@@ -225,6 +253,20 @@ async function changeBranch() {
 }
 
 async function signOut() {
+    /*
+     * THE CREDENTIAL FIRST, because that is the thing being signed out of.
+     *
+     * This cleared the branch, the menu and the cart and left the bearer token
+     * in place, so "sign out" emptied the phone and kept whoever was signed
+     * in. It now lasts thirty days, which made that a phone anybody could pick
+     * up and carry on with.
+     */
+    try {
+        if (window.POSNIC && POSNIC.session) POSNIC.session.end();
+    } catch (e) {
+        /* Storage that will not answer. The rest of the clear still runs. */
+    }
+
     localStorage.removeItem('kiosk_selected_branch');
     localStorage.removeItem('kiosk_branch_list');
     localStorage.removeItem('kiosk_force_branch_select');

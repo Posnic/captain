@@ -14,6 +14,11 @@
     <script src="assets/common/order-queue.js"></script>
     <!-- What a customer has asked for, where the waiter already is. -->
     <script src="assets/common/requests.js"></script>
+    <!-- Written at build time by build-version.js; absent at a desk, where
+         the app says "dev" - which is true. Loaded here so the sheet can
+         answer "which version am I on" without signing out to read it off
+         the sign-in screen. -->
+    <script src="app-build.js" onerror="this.remove()"></script>
     <script src="assets/common/this-device.js"></script>
     <script src="assets/common/floor-view.js"></script>
     <!-- The same ranked search the menu uses, so "cb" finds Chicken
@@ -235,6 +240,36 @@
                         because the numbers move with it.
                     </div>
 
+                    <!--
+                        A WAY OUT, ON EVERY SHOP.
+
+                        Owner: "no way to change my password or logout? is the
+                        way to develop app? no general stuff?"
+
+                        There was a Sign Out, and it appeared on the floor only
+                        when the shop had exactly ONE branch - the button is
+                        Change Branch otherwise. So on a two-branch shop nobody
+                        could sign out at all, and on a one-branch shop it was
+                        hidden behind a button named after something else.
+
+                        Here, with who is signed in written beside it, because
+                        a handset gets passed around and the first question is
+                        whose account is on it.
+                    -->
+                    <div style="height:var(--s3)"></div>
+                    <label class="ui-label">Signed in</label>
+                    <div style="display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap">
+                        <span id="signed-in-as" class="ui-note" style="flex:1 1 auto;margin:0"></span>
+                        <button type="button" class="ui-btn-quiet" id="sign-out">Sign out</button>
+                    </div>
+                    <div class="ui-note">
+                        Signing out clears this phone's menu, tables and cart, and
+                        asks for the shop password next time.
+                    </div>
+
+                    <div style="height:var(--s3)"></div>
+                    <div class="ui-note" id="app-version-line">&nbsp;</div>
+
                     <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
                         <button type="button" class="ui-btn-quiet" id="server-close">Close</button>
                     </div>
@@ -452,6 +487,18 @@
                         autocorrect="off" autocapitalize="none" spellcheck="false" />
                     <button type="button" id="picker-search-clear" class="product-search-clear" hidden
                         aria-label="Clear">&times;</button>
+                    <!--
+                        Owner: "inside menu pop up menu add + button or some
+                        symbol to do quick sales."
+
+                        The menu screen has one and this sheet did not, so a
+                        waiter adding to an order that is already on a table -
+                        which is most of them - had no way to put something on
+                        it that the menu has not got.
+                    -->
+                    <button type="button" id="picker-quick-sale" class="product-quick-sale"
+                        aria-label="Add an item that is not on the menu"
+                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt"></i></button>
                 </div>
             </div>
             <div class="item-picker-rail" id="item-picker-rail"></div>
