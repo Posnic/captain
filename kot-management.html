@@ -30,6 +30,8 @@
     <!-- The same renderer the menu screen uses. The picker's own code arrives
          with order-history/script.js, which this page already loads. -->
     <script src="assets/common/menu-view.js"></script>
+    <!-- A PIN unlocks, a password authenticates. See assets/common/lock.js. -->
+    <script src="assets/common/lock.js"></script>
     <script src="indexedDB.js"></script>
     <script src="assets/common/order-queue-ui.js"></script>
     <script src="assets/common/requests-ui.js"></script>
@@ -185,6 +187,32 @@
                     </select>
                     <div class="ui-note">
                         What this phone shows. Dish names stay as the shop typed
+                        them. This phone only.
+                    </div>
+
+                    <!--
+                        THE LOCK, REACHABLE FROM A PHONE ALREADY SIGNED IN.
+
+                        Setting one is offered after a sign-in, which is
+                        the only moment somebody has proved they may. But a
+                        handset now stays signed in for thirty days, so on
+                        every phone in service today that offer is a month
+                        away, and until then there was nowhere to go and
+                        ask for it.
+
+                        Here, because this sheet is already where the
+                        things belonging to this phone rather than to the
+                        shop live.
+                    -->
+                    <div style="height:var(--s3)"></div>
+                    <label class="ui-label">Screen lock</label>
+                    <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+                        <button type="button" class="ui-btn-quiet" id="lock-set">Set a PIN</button>
+                        <button type="button" class="ui-btn-quiet" id="lock-off" hidden>Turn it off</button>
+                    </div>
+                    <div class="ui-note">
+                        Four digits to get back in after the phone has been
+                        put down. Your password still works if you forget
                         them. This phone only.
                     </div>
 

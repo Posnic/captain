@@ -35,6 +35,15 @@
     'The till is turning this phone away': 'பில்லிங் கணினி இந்த போனை ஏற்கவில்லை',
     'The till is on and answering, so the Wi-Fi is fine. The shop has probably run out of handset slots. Free one on the till, or add a slot, then press Try now.':
       'பில்லிங் கணினி இயங்குகிறது, எனவே Wi-Fi சரியாக உள்ளது. கடையில் ஹேண்ட்செட் இடங்கள் தீர்ந்திருக்கலாம். பில்லிங்கில் ஒன்றை விடுவிக்கவும் அல்லது புதிதாக சேர்க்கவும், பிறகு Try now அழுத்தவும்.',
+    'Enter your PIN': 'உங்கள் PIN ஐ உள்ளிடவும்',
+    'Lock this phone': 'இந்த போனை பூட்டு',
+    'Choose a 4 digit PIN': '4 இலக்க PIN ஐ தேர்ந்தெடுக்கவும்',
+    'Enter it again': 'மீண்டும் உள்ளிடவும்',
+    'Use my password instead': 'அதற்கு பதிலாக என் கடவுச்சொல்லை பயன்படுத்து',
+    'Not now': 'இப்போது வேண்டாம்',
+    'Those did not match. Start again.': 'இரண்டும் பொருந்தவில்லை. மீண்டும் தொடங்குங்கள்.',
+    'Too many tries. Sign in with your password.': 'அதிக முறை தவறானது. கடவுச்சொல்லுடன் உள்நுழையவும்.',
+    'Sign in with your password.': 'கடவுச்சொல்லுடன் உள்நுழையவும்.',
     'Wi-Fi and mobile data are both off, so nothing can reach the till. Turn Wi-Fi on and join the shop network, and this will connect by itself.':
       'Wi-Fi மற்றும் மொபைல் டேட்டா இரண்டும் அணைந்துள்ளன, எனவே பில்லிங் கணினியை அடைய முடியாது. Wi-Fi ஐ ஆன் செய்து கடை நெட்வொர்க்கில் இணையுங்கள், தானாக இணைந்துவிடும்.',
     'Add an item that is not on the menu': 'மெனுவில் இல்லாத ஐட்டத்தை சேர்',
@@ -233,6 +242,23 @@
     Language: 'மொழி',
     'What this phone shows. Dish names stay as the shop typed them. This phone only.':
       'இந்த போன் காட்டும் மொழி. உணவு பெயர்கள் கடை எழுதியபடியே இருக்கும். இந்த போனுக்கு மட்டும்.',
+    /* the lock, reached from the sheet on the floor screen */
+    'Screen lock': 'திரை பூட்டு',
+    'Set a PIN': 'PIN அமைக்கவும்',
+    'Change the PIN': 'PIN ஐ மாற்றவும்',
+    'Turn it off': 'அணைக்கவும்',
+    'Enter your PIN to turn the lock off':
+      'பூட்டை அணைக்க உங்கள் PIN ஐ உள்ளிடவும்',
+    'Four digits to get back in after the phone has been put down. Your password still works if you forget them. This phone only.':
+      'போனை கீழே வைத்த பிறகு திரும்ப நுழைய நான்கு இலக்கங்கள். மறந்தாலும் உங்கள் கடவுச்சொல் வேலை செய்யும். இந்த போனுக்கு மட்டும்.',
+
+    /* a phone the shop turned off */
+    'The shop has turned this phone off': 'கடை இந்த போனை நிறுத்திவிட்டது',
+    'The till is on and answering, so the Wi-Fi is fine. Somebody at the shop stopped this handset. Signing in again with the shop password will let it back.':
+      'பில்லிங் கணினி இயங்கி பதில் தருகிறது, எனவே Wi-Fi சரியாக உள்ளது. கடையில் யாரோ இந்த போனை நிறுத்திவிட்டார்கள். கடை கடவுச்சொல்லுடன் மீண்டும் உள்நுழைந்தால் மீண்டும் வேலை செய்யும்.',
+    'The shop has turned this phone off. Sign in again with the shop password to use it.':
+      'கடை இந்த போனை நிறுத்திவிட்டது. பயன்படுத்த கடை கடவுச்சொல்லுடன் மீண்டும் உள்நுழையவும்.',
+
     'Refresh Data & Images': 'தரவு & படங்களை புதுப்பி',
     'Reload menu': 'மெனுவை மீண்டும் ஏற்று',
 

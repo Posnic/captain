@@ -144,7 +144,31 @@ async function doLogin() {
          * way to tell a wrong password from a locked-out device from a wrong
          * address was to read the English in the message.
          */
-        const result = await POSNIC.api.post('/users/kioskMobileLogin', { username, password });
+        /*
+         * WHAT THIS PHONE IS, at the one moment the shop can be sure whose
+         * it is.
+         *
+         * Owner: "map device to cloud account." The till writes it down
+         * against the account, so a shop can see its handsets and turn one
+         * off without turning the rest off - which is the thing that makes
+         * a thirty day token safe to hand a part-time waiter.
+         *
+         * The same facts already ride on every order. A phone that cannot
+         * say is not stopped from signing in, and an older app sends
+         * nothing at all: the server treats both as the app it was.
+         */
+        let device;
+        try {
+            device = POSNIC.thisDevice && POSNIC.thisDevice.facts();
+        } catch (e) {
+            device = undefined;
+        }
+
+        const result = await POSNIC.api.post('/users/kioskMobileLogin', {
+            username,
+            password,
+            device,
+        });
 
         /*
          * Two response shapes, because a shop's server is not ours to upgrade.
@@ -172,6 +196,23 @@ async function doLogin() {
         localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
         const userId = (result.user && result.user.id) || branches[0].user_id;
         if (userId) localStorage.setItem("user_id", userId);
+
+        /*
+         * THE OFFER TO SET A PIN IS NOT MADE HERE, AND THAT COST A SUITE.
+         *
+         * It was: after a successful sign-in, which is the only moment
+         * somebody has proved they may set one, so the reasoning was sound and
+         * the placement was not. The pad is a full screen that waits for an
+         * answer, and a sign-in that waits for an answer is a sign-in that has
+         * not finished. 246 specs stopped at a keypad instead of reaching the
+         * floor, which is exactly what a waiter would have done: signed in,
+         * been handed four digits to think about, and not got to their table.
+         *
+         * Nothing may stand between a sign-in and the floor. The lock is
+         * offered from the sheet on the floor screen instead, beside the other
+         * things that belong to this phone rather than to the shop, where
+         * somebody goes to it rather than it arriving at them.
+         */
 
         if (branches.length === 1) {
             const only = branches[0];
@@ -460,11 +501,88 @@ document.addEventListener("DOMContentLoaded", async () => {
         localStorage.removeItem("kiosk_force_branch_select");
     }
 
+    /*
+     * THE LOCK, BEFORE THE PHONE LETS ANYBODY BACK IN.
+     *
+     * Owner: "remember the password and have simple auth."
+     *
+     * The remembering is the token, which now lasts thirty days. That leaves a
+     * phone anybody who picks it up can take orders on, which is what this
+     * asks four digits about.
+     *
+     * Only when a PIN has been set on THIS phone. An update must never start
+     * demanding a number nobody has been given, and a phone with no lock
+     * behaves exactly as it did before this existed.
+     *
+     * Backing out does not sign anybody out - it drops to the password form,
+     * which is the thing that can actually get them in. The PIN is a shortcut
+     * past a sign-in, never a gate in front of one.
+     */
+    const locked = !!(
+        POSNIC.lock &&
+        POSNIC.lock.isSet() &&
+        POSNIC.session &&
+        POSNIC.session.active
+    );
+
+    /*
+     * AND THE FINDING HAPPENS WHILE THE PAD IS UP.
+     *
+     * Owner: "while doing this lock first background do all finding server
+     * stuff."
+     *
+     * Four digits take a couple of seconds; the menu takes longer than that.
+     * They used to happen one after the other, so a phone waited to be
+     * unlocked before it started looking, and a waiter watched a loader having
+     * already done their part. Started here, the menu is usually in by the
+     * time the last digit lands.
+     *
+     * WITHOUT THE REDIRECT, deliberately. A menu that arrives while somebody
+     * is still proving they may hold this phone must not carry them onto the
+     * floor; the trip happens below, after the unlock, and only then.
+     */
+    let prefetch = null;
+    if (locked && savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
+        prefetch = fetchAndStoreBranch(savedBranch, false).then(
+            function () {
+                return null;
+            },
+            function (error) {
+                /* Carried rather than thrown: nothing is awaiting this yet, and
+                   an unhandled rejection behind a lock screen is a red console
+                   on a phone nobody is looking at. */
+                return error || new Error('The menu did not load');
+            }
+        );
+    }
+
+    if (locked) {
+        const who = (POSNIC.session.user && POSNIC.session.user.name) || '';
+        const opened = await POSNIC.lock.unlock(who);
+        if (!opened) {
+            POSNIC.session.end();
+            showLoginMessage('Sign in with your password.');
+            return;
+        }
+    }
+
     // Auto-load saved branch — login form stays visible during this
     // If redirect succeeds the page navigates away; if it fails login form is already shown
     if (savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
         showLoader();
         try {
+            if (prefetch) {
+                /* Fetched while the pad was up. What is left is the trip, and
+                   the order type the floor skips its own screen for - the same
+                   default fetchAndStoreBranch sets when it redirects itself. */
+                const failed = await prefetch;
+                if (failed) throw failed;
+                if (!localStorage.getItem('orderType')) {
+                    localStorage.setItem('orderType', 'Dine-in');
+                }
+                window.location.href = 'kot-management.html';
+                return;
+            }
             await fetchAndStoreBranch(savedBranch, true);
         } catch (e) {
             console.error("Auto-load branch failed:", e);
