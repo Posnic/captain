@@ -900,9 +900,15 @@ async function addOneOff(said) {
     try {
         const made = await POSNIC.quickSale.createOneOff(said, price);
 
-        /* Kept where every screen here reads its menu from, so the row can be
-           drawn, counted and sent exactly like the rest. */
-        await saveData(STORE_NAME, [made]);
+        /*
+         * Kept where every screen here reads its menu from, so the row can be
+         * drawn, counted and sent exactly like the rest.
+         *
+         * saveOne, NOT saveData. saveData clears the store first - it is the
+         * door the whole menu arrives through - so this used to delete every
+         * dish and leave the one that had just been added.
+         */
+        await saveOne(STORE_NAME, [made]);
         await loadProducts();
         await updateQuantity(made.id, 1);
 
@@ -967,7 +973,9 @@ async function addOneOff(said) {
             const stored = await getProductById(id);
             if (stored) {
                 stored.sold_out_today = answer;
-                await saveData(STORE_NAME, [stored]);
+                /* saveOne, NOT saveData: saving one dish through the whole-menu
+                   door deleted the menu and left this row alone. */
+                await saveOne(STORE_NAME, [stored]);
             }
 
             await loadProducts();

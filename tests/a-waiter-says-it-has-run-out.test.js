@@ -304,7 +304,13 @@ test('the shop sees it immediately, not at the next sync', () => {
    * waiter who just said it sees it.
    */
   assert.match(HANDSET, /sold_out_today = answer/, 'the cached menu is not updated');
-  assert.match(HANDSET, /saveData\(STORE_NAME/, 'the change is not stored');
+  /* saveOne, not saveData. saveData clears the store first, so this used to
+     store the change by deleting every other dish on the handset. */
+  assert.match(HANDSET, /saveOne\(STORE_NAME/, 'the change is not stored');
+  assert.ok(
+    !/saveData\(STORE_NAME,\s*\[stored\]/.test(HANDSET),
+    'marking one dish sold out still wipes the menu'
+  );
 });
 
 test('a refusal from the till is shown, not swallowed', () => {

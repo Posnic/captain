@@ -226,6 +226,40 @@ async function getData(storeName) {
 }
 
 // ✅ Save Data to IndexedDB (Now Removes Outdated Products)
+/**
+ * PUT SOME ROWS WITHOUT THROWING THE REST AWAY.
+ *
+ * `saveData` below is a REPLACE: it clears the store and writes what it was
+ * handed, which is exactly right for "here is the whole menu from the API" and
+ * catastrophic for anything else.
+ *
+ * Two callers used it to save ONE dish. Owner, on the first: "i added one item
+ * and try to search other items add nothing listed." He was not describing a
+ * search bug. Adding a one-off item had deleted the entire menu and left the
+ * one row behind, and search was reporting that honestly.
+ *
+ * The second was the sold-out long press, which meant a waiter marking one
+ * dish as finished wiped every dish on the handset until the next full sync.
+ * That shipped in v1.2.30.
+ *
+ * So: one door that replaces, one that does not, and the difference is in the
+ * name rather than in a flag somebody has to remember.
+ */
+async function saveOne(storeName, rows) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+
+        (Array.isArray(rows) ? rows : [rows]).forEach((row) => {
+            if (row && row.id !== undefined) store.put(row);
+        });
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
 async function saveData(storeName, newData) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
