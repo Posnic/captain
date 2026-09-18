@@ -483,9 +483,34 @@
       pin(url) {
         const base = normalize(url);
         if (!base) return null;
-        /* A credential signed by the server being left behind is worthless at
-           the new one, and sending it would only produce confusing 401s. */
-        if (base !== active) session.end();
+        /*
+         * SIGNED OUT ONLY WHEN IT IS A DIFFERENT SHOP.
+         *
+         * Owner: "i chose different server then its logged out."
+         *
+         * This ended the session on ANY change of address, reasoning that a
+         * credential signed by the server being left behind is worthless at
+         * the new one. True between two shops, and wrong for the case this app
+         * is built around: the SAME shop reached at its counter address and at
+         * its cloud address. Moving between those two is the ordinary thing a
+         * handset does when the Wi-Fi comes and goes, and it was costing a
+         * waiter their sign-in every time somebody chose the other one by hand.
+         *
+         * The shop key is what tells them apart. It is a hash of the licence,
+         * identical in the shop's own database and its cloud copy, recorded
+         * against every address that has ever proved itself with a sign-in.
+         *
+         * An address nobody has signed into keeps the session rather than
+         * ending it: if the token really is worthless there the server answers
+         * 401, and a rejected credential is already dropped rather than
+         * resent. Being wrong in that direction costs one refused request;
+         * being wrong the other way costs a password mid-service.
+         */
+        if (base !== active) {
+          const known = (state.servers || {})[base] || '';
+          const mine = session.shopKey || '';
+          if (known && mine && known !== mine) session.end();
+        }
         state.pinned = base;
         state[isLanUrl(base) ? 'lan' : 'cloud'] = base;
         persist();
