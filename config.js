@@ -1703,6 +1703,44 @@
         error.message =
           'This shop’s server is too old for this screen. Update POSNIC on the till.';
       }
+
+      /*
+       * A TILL THAT REFUSES IS NOT A TILL THAT IS DOWN.
+       *
+       * Owner listed it as its own cause: "server not allowing (403)".
+       *
+       * Until now nothing in this file did anything with a 403. The search
+       * path knew about refusals and said which till refused, but that screen
+       * is only reached while somebody is looking for a server. A phone
+       * already signed in and working never goes there, so mid-service a
+       * refusal arrived as whatever generic error the calling screen happened
+       * to show - usually "could not do that", which sends a waiter to find
+       * the manager, who restarts a till that is working perfectly.
+       *
+       * A dead address gives a connection error; only a server sends a status.
+       * So a 403 means the till is ON, on this Wi-Fi, and turning this phone
+       * away - almost always because the shop has run out of handset slots.
+       *
+       * NOT session.end(). A 401 means this credential is no good and signing
+       * in again is the answer. A 403 means the credential is fine and the
+       * shop has no room, and throwing the waiter back to a sign-in screen
+       * makes them type a password to be refused a second time.
+       */
+      if (error.status === 403 && !path.includes('kioskMobileLogin')) {
+        error.code = 'TILL_REFUSED';
+        error.message =
+          'The till is turning this phone away. The shop has probably run out of handset slots - free one on the till, or add a slot, and try again.';
+        try {
+          window.dispatchEvent(
+            new CustomEvent('posnic:refused', {
+              detail: { status: 403, host: server.baseUrl || '' },
+            })
+          );
+        } catch (e) {
+          /* No events, no notice. The message on the error still stands. */
+        }
+      }
+
       throw error;
     }
     return payload;
@@ -1749,6 +1787,20 @@
     let searchingNow = null;
     /* Has this phone ever reached a server in this session? */
     let wasOnline = false;
+
+    /*
+     * The till answered and said no. Held so the outage screen can say which
+     * thing is wrong, and cleared the moment anything answers properly.
+     */
+    let refusedBy = null;
+
+    window.addEventListener('posnic:refused', (event) => {
+      /* Not over the server editor: somebody in there already knows the
+         address is the problem, and this would be telling them so twice. */
+      if (choosingServer() || settingsOpen()) return;
+      refusedBy = (event && event.detail) || { status: 403 };
+      net.setOffline();
+    });
 
     /*
      * Every address the phone knows has just failed. Show that immediately,
@@ -2046,6 +2098,28 @@
          * Checked before the network comparison below, which needs an
          * interface that a phone with everything switched off does not have.
          */
+        /*
+         * A REFUSAL OUTRANKS EVERYTHING, because it is the only cause here
+         * that the till itself has confirmed. Everything below is inference
+         * from silence; this is a server that answered.
+         */
+        if (refusedBy) {
+          if (title) title.textContent = 'The till is turning this phone away';
+          if (body) {
+            body.textContent =
+              'The till is on and answering, so the Wi-Fi is fine. The shop has probably run out of handset slots. Free one on the till, or add a slot, then press Try now.';
+          }
+          if (url) url.textContent = refusedBy.host || server.baseUrl || '';
+          ['loader', 'page-loader'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.hidden = true;
+          });
+          element.hidden = false;
+          document.documentElement.classList.add('posnic-offline-active');
+          countdown();
+          return;
+        }
+
         var nothingAtAll = false;
         try {
           nothingAtAll = navigator && navigator.onLine === false;
@@ -2123,6 +2197,8 @@
 
       setOnline() {
         wasOnline = true;
+        /* Something answered properly, so whatever refused us has stopped. */
+        refusedBy = null;
         delay = HEALTH_OK_MS;
         attempts = 0;
         clearInterval(ticker);
