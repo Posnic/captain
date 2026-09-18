@@ -2031,7 +2031,36 @@
          * check needs the network interface, so it lands a moment later and
          * replaces the words rather than delaying the screen.
          */
-        if (local) {
+        /*
+         * NO NETWORK AT ALL OUTRANKS EVERYTHING ELSE.
+         *
+         * Owner: "app smart enough to find why not able to connect... wifi
+         * change, or internet not available or server not responding or server
+         * not allowing (403)."
+         *
+         * This is the one cause the phone can be certain of without asking
+         * anybody, and it is the one a waiter can fix on their own in five
+         * seconds. Told that the till is not responding while their Wi-Fi is
+         * simply off, somebody goes and restarts a working computer.
+         *
+         * Checked before the network comparison below, which needs an
+         * interface that a phone with everything switched off does not have.
+         */
+        var nothingAtAll = false;
+        try {
+          nothingAtAll = navigator && navigator.onLine === false;
+        } catch (e) {
+          /* No navigator, no claim. */
+        }
+
+        if (nothingAtAll) {
+          if (title) title.textContent = 'This phone is not on any network';
+          if (body) {
+            body.textContent =
+              'Wi-Fi and mobile data are both off, so nothing can reach the till. Turn Wi-Fi on and join the shop network, and this will connect by itself.';
+          }
+          if (url) url.textContent = '';
+        } else if (local) {
           whichNetwork()
             .then((where) => {
               if (!offline) return;
