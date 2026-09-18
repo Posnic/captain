@@ -235,6 +235,33 @@
                         because the numbers move with it.
                     </div>
 
+                    <!--
+                        A WAY OUT, ON EVERY SHOP.
+
+                        Owner: "no way to change my password or logout? is the
+                        way to develop app? no general stuff?"
+
+                        There was a Sign Out, and it appeared on the floor only
+                        when the shop had exactly ONE branch - the button is
+                        Change Branch otherwise. So on a two-branch shop nobody
+                        could sign out at all, and on a one-branch shop it was
+                        hidden behind a button named after something else.
+
+                        Here, with who is signed in written beside it, because
+                        a handset gets passed around and the first question is
+                        whose account is on it.
+                    -->
+                    <div style="height:var(--s3)"></div>
+                    <label class="ui-label">Signed in</label>
+                    <div style="display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap">
+                        <span id="signed-in-as" class="ui-note" style="flex:1 1 auto;margin:0"></span>
+                        <button type="button" class="ui-btn-quiet" id="sign-out">Sign out</button>
+                    </div>
+                    <div class="ui-note">
+                        Signing out clears this phone's menu, tables and cart, and
+                        asks for the shop password next time.
+                    </div>
+
                     <div style="display:flex;justify-content:flex-end;margin-top:var(--s3)">
                         <button type="button" class="ui-btn-quiet" id="server-close">Close</button>
                     </div>

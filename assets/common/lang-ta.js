@@ -242,6 +242,13 @@
     Language: 'மொழி',
     'What this phone shows. Dish names stay as the shop typed them. This phone only.':
       'இந்த போன் காட்டும் மொழி. உணவு பெயர்கள் கடை எழுதியபடியே இருக்கும். இந்த போனுக்கு மட்டும்.',
+    /* signing out */
+    'Signed in': 'உள்நுழைந்துள்ளது',
+    'Sign out': 'வெளியேறு',
+    'Signed in on this phone': 'இந்த போனில் உள்நுழைந்துள்ளது',
+    "Signing out clears this phone's menu, tables and cart, and asks for the shop password next time.":
+      'வெளியேறினால் இந்த போனின் மெனு, டேபிள்கள், கார்ட் அழிக்கப்படும், அடுத்த முறை கடை கடவுச்சொல் கேட்கப்படும்.',
+
     /* the lock, reached from the sheet on the floor screen */
     'Screen lock': 'திரை பூட்டு',
     'Set a PIN': 'PIN அமைக்கவும்',
