@@ -1603,3 +1603,67 @@ test('and Try now retries the server it is already on', async ({ page }) => {
   await expect(page.locator('#posnic-offline')).toBeHidden({ timeout: 15000 });
   expect(asked.some((u) => u.startsWith(LAN_ORIGIN))).toBe(true);
 });
+
+/* ------------------------------------------- choosing an address by hand */
+
+test('CHOOSING THE SAME SHOP AT ANOTHER ADDRESS KEEPS THE SIGN-IN', async ({ page }) => {
+  /*
+   * Owner: "i chose different server then its logged out."
+   *
+   * Pinning ended the session on ANY change of address, reasoning that a
+   * credential signed by the server being left behind is worthless at the new
+   * one. True between two shops; wrong for the case this app is built around,
+   * which is one shop reached at its counter address and at its cloud address.
+   * Moving between those is the ordinary thing a handset does when the Wi-Fi
+   * comes and goes, and it cost a waiter their sign-in every time.
+   */
+  await signedInAt(page, LAN);
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
+  expect(await baseUrl(page)).toBe(CLOUD);
+});
+
+test('and a DIFFERENT shop still signs you out', async ({ page }) => {
+  /*
+   * The half of the old reasoning that was right. A token signed by one shop
+   * is not a credential at another, and carrying it over would produce 401s
+   * nobody can explain while the screen says somebody is signed in.
+   */
+  await signedInAs(page, 'shop-a');
+  await seed(page, {
+    active: LAN,
+    lan: LAN,
+    cloud: CLOUD,
+    /* The cloud address here has proved itself to a DIFFERENT shop. */
+    servers: { [LAN]: 'shop-a', [CLOUD]: 'somebody-else' },
+  });
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(false);
+});
+
+test('an address nobody has signed into keeps the session and lets the server decide', async ({ page }) => {
+  /*
+   * Being wrong in this direction costs one refused request, which the app
+   * already handles by dropping the credential. Being wrong the other way
+   * costs a password mid-service.
+   */
+  await signedInAs(page, 'shop-a');
+  await seed(page, { active: LAN, lan: LAN, servers: { [LAN]: 'shop-a' } });
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
+});

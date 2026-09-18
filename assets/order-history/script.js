@@ -2639,23 +2639,24 @@ document.addEventListener('click', async function (event) {
     const box = document.getElementById('picker-search-input');
     const said = box ? box.value.trim() : '';
 
-    /* Nothing typed is a missing first step, not a failure: a price for a line
-       with no name is a kitchen ticket that says nothing. */
-    if (!said) {
-        if (box) {
-            const was = box.placeholder;
-            box.focus();
-            box.placeholder = 'Type the name first';
-            setTimeout(function () { box.placeholder = was; }, 4000);
-        }
-        return;
-    }
+    /*
+     * Nothing typed is a question, not a refusal: the same sheet that asks the
+     * price asks what it is called.
+     */
+    const name = said || (await POSNIC.askName(''));
+    if (!name) return;
 
-    const price = await POSNIC.askPrice(said);
+    const price = await POSNIC.askPrice(name);
     if (!price) return;
 
     try {
-        const made = await POSNIC.quickSale.createOneOff(said, price);
+        /*
+         * `name`, NOT `said`. A test caught this the minute it was written:
+         * with an empty box `said` is '' and the till would have been asked to
+         * create an item with no name, which it refuses - so the button would
+         * have looked broken in a new way.
+         */
+        const made = await POSNIC.quickSale.createOneOff(name, price);
 
         /* saveOne, never saveData: saveData clears the store first and would
            delete the menu this sheet is drawing from. */

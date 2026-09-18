@@ -864,12 +864,19 @@ $(document).on('click', '#product-quick-sale', async function () {
      * price for an item with no name would produce a line on a kitchen ticket
      * that says nothing, which is worse than being sent back to the box.
      */
+    /*
+     * NOTHING TYPED IS A QUESTION, NOT A REFUSAL.
+     *
+     * Owner: "quick sale not clickable until text added."
+     *
+     * This nudged the placeholder and did nothing else, which reads as a dead
+     * button - and a button that does nothing IS a dead button, however good
+     * its reason. It asks now, on the same sheet the price is asked on.
+     */
     if (!said) {
-        if (box) {
-            box.focus();
-            box.placeholder = 'Type the name first, then press +';
-            setTimeout(function () { box.placeholder = 'Search the menu'; }, 4000);
-        }
+        const named = await POSNIC.askName('');
+        if (!named) return;
+        addOneOff(named);
         return;
     }
 
@@ -1390,6 +1397,41 @@ async function applyProductFilter() {
     }
 
     const listEl = document.getElementById('product-list');
+
+    /*
+     * THE NUMBER ON THE WALL, ON THE SCREEN A WAITER SEARCHES.
+     *
+     * Owner: "number card use of that? how to use? i tried to search with that
+     * number nothing happened."
+     *
+     * Nothing happened because the number lookup was only ever wired into the
+     * Add item sheet. The card is printed for the whole shop and the screen
+     * most orders start on could not answer it, so the feature was half built
+     * and looked broken - which it was, from where he was standing.
+     *
+     * The same derivation as the card and the sheet: MenuView.numbers over the
+     * shop's own menu order, so all three agree without anybody assigning
+     * anything.
+     */
+    const menuForNumbers = Object.entries(products || {})
+        .filter(([key]) => key !== 'all')
+        .map(([key, items]) => ({
+            key,
+            name: (items[0] && items[0].category_name) || key,
+            items,
+        }));
+    const numbers = MenuView.numbers(menuForNumbers);
+
+    /*
+     * THE LOOKUP, NOT THE BADGE.
+     *
+     * Passing `numbers` here draws the number on every row, which turned every
+     * dish name into "1Chicken Biryani" and changed the look of the screen a
+     * waiter uses forty times a service. He asked to be able to USE the
+     * number, not to see it on every line. The Add item sheet still shows
+     * them, because that is the screen somebody opens with the card in front
+     * of them.
+     */
     const options = {
         image: getLocalImageUrl,
         popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
@@ -1428,6 +1470,22 @@ async function applyProductFilter() {
             (p) => String(p.name || '').trim().toLowerCase() === typed.toLowerCase()
         );
 
+        /*
+         * A NUMBER TYPED IS A NUMBER MEANT - and also, sometimes, a name.
+         *
+         * The same rule the Add item sheet follows. Typing 33 puts dish 33
+         * first, labelled; it does NOT replace the search, because in an
+         * Indian kitchen a number IS a dish name - type 65 and a waiter may
+         * well want Chicken 65. Both readings are offered and the waiter
+         * picks, rather than one being guessed on their behalf.
+         */
+        const byNumber = /^[0-9]{1,4}$/.test(typed)
+            ? MenuView.atNumber(menuForNumbers, typed)
+            : null;
+        const rest = byNumber
+            ? hits.filter((p) => String(p.id) !== String(byNumber.id))
+            : hits;
+
         const offer =
             '<div class="menu-quick-sale">' +
             '<button type="button" class="menu-quick-sale-btn" data-quick-sale="' +
@@ -1438,10 +1496,22 @@ async function applyProductFilter() {
             '<p class="menu-quick-sale-why">For something the menu does not have. It is charged on this bill and stays off the menu.</p>' +
             '</div>';
 
-        listEl.innerHTML = hits.length
-            ? '<div class="menu-section-items">' +
-              hits.map(p => MenuView.dish(p, (cartMap.get(p.id) || {}).quantity || 0, options)).join('') +
-              '</div>' +
+        const numbered = byNumber
+            ? '<div class="menu-section-head"><span class="menu-section-name">No. ' +
+              MenuView.escape(typed) +
+              '</span></div>' +
+              '<div class="menu-section-items">' +
+              MenuView.dish(byNumber, (cartMap.get(byNumber.id) || {}).quantity || 0, options) +
+              '</div>'
+            : '';
+
+        listEl.innerHTML = (byNumber || rest.length)
+            ? numbered +
+              (rest.length
+                ? '<div class="menu-section-items">' +
+                  rest.map(p => MenuView.dish(p, (cartMap.get(p.id) || {}).quantity || 0, options)).join('') +
+                  '</div>'
+                : '') +
               (typed && !exact ? offer : '')
             : MenuView.nothing(
                 'Nothing matches "' + input.value.trim() + '"',

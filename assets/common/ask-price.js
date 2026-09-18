@@ -127,6 +127,16 @@
     return { ok: true, value: Math.round(n * 100) / 100 };
   }
 
+  /*
+   * THE SAME SHEET ASKS TWO QUESTIONS.
+   *
+   * A price, and - when a waiter presses the quick sale mark with nothing
+   * typed - what the thing is called. One sheet rather than two because it is
+   * one habit: the keyboard lands in the same place and Enter does the same
+   * thing, and a waiter mid-service should not have to learn a second dialog.
+   */
+  let wantsName = false;
+
   function settle(confirmed) {
     if (!asking) return;
     const scrim = document.getElementById('ask-price-scrim');
@@ -138,6 +148,20 @@
       asking = null;
       scrim.classList.remove('is-open');
       done(null);
+      return;
+    }
+
+    if (wantsName) {
+      const said = String(input.value || '').trim().slice(0, 60);
+      if (!said) {
+        warn.textContent = 'What is it called?';
+        input.focus();
+        return;
+      }
+      const named = asking;
+      asking = null;
+      scrim.classList.remove('is-open');
+      named(said);
       return;
     }
 
@@ -167,10 +191,17 @@
        ever, and the screen behind it waiting on it. */
     if (asking) settle(false);
 
+    wantsName = false;
     const scrim = document.getElementById('ask-price-scrim');
     const input = document.getElementById('ask-price-input');
     document.getElementById('ask-price-dish').textContent = dishName || 'This dish';
     document.getElementById('ask-price-warn').textContent = '';
+    /* Put back whatever the name question changed: one sheet, two jobs, and
+       the second must not inherit the first's furniture. */
+    const sign = document.getElementById('ask-price-sign');
+    if (sign) sign.style.display = '';
+    input.setAttribute('inputmode', 'decimal');
+    input.setAttribute('placeholder', '0');
     input.value = Number(suggested) > 0 ? String(suggested) : '';
 
     scrim.classList.add('is-open');
@@ -186,13 +217,50 @@
     });
   }
 
+  /**
+   * Ask what a one-off is called, and resolve with the name or null.
+   *
+   * Owner: "quick sale not clickable until text added." The mark used to do
+   * nothing until something was typed in the search box, and nudge the
+   * placeholder - which reads as a dead button, because a button that does
+   * nothing IS a dead button however good its reason.
+   */
+  function askName(suggested) {
+    ensure();
+    if (asking) settle(false);
+
+    wantsName = true;
+    const scrim = document.getElementById('ask-price-scrim');
+    const input = document.getElementById('ask-price-input');
+
+    document.getElementById('ask-price-dish').textContent = 'Something not on the menu';
+    document.getElementById('ask-price-warn').textContent = '';
+    /* The rupee sign belongs to a price. */
+    const sign = document.getElementById('ask-price-sign');
+    if (sign) sign.style.display = 'none';
+    input.setAttribute('inputmode', 'text');
+    input.setAttribute('placeholder', 'What is it called?');
+    input.value = String(suggested || '');
+
+    scrim.classList.add('is-open');
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 50);
+
+    return new Promise((resolve) => {
+      asking = resolve;
+    });
+  }
+
   root.POSNIC = root.POSNIC || {};
   root.POSNIC.askPrice = askPrice;
+  root.POSNIC.askName = askName;
   /* Exported so the rule about what counts as a price can be tested without a
      browser, and so the server's copy of it can be checked against this one. */
   root.POSNIC.readPrice = readPrice;
 
   if (typeof module === 'object' && module.exports) {
-    module.exports = { askPrice, readPrice };
+    module.exports = { askPrice, askName, readPrice };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : window);
