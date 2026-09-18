@@ -75,6 +75,7 @@ function changeServer() {
     const language = document.getElementById('app-language');
     if (language && typeof I18N !== 'undefined') language.value = I18N.language();
 
+    paintLock();
     sheet.hidden = false;
 }
 
@@ -113,6 +114,31 @@ function rememberBillCopies(value) {
     }
 }
 
+/*
+ * THE SCREEN LOCK, IN THE TWO STATES IT HAS.
+ *
+ * With no PIN it offers one. With a PIN it changes it, and a second button
+ * turns it off. Nobody reading this at speed should have to work out which
+ * state they are in, so the button says which.
+ */
+function paintLock() {
+    const set = document.getElementById('lock-set');
+    const off = document.getElementById('lock-off');
+    if (!set || !off) return;
+
+    let on = false;
+    try {
+        on = !!(window.POSNIC && POSNIC.lock && POSNIC.lock.isSet());
+    } catch (e) {
+        /* Storage this phone will not read. Nothing is locked, so the honest
+           thing to show is the offer. */
+        on = false;
+    }
+
+    set.textContent = on ? 'Change the PIN' : 'Set a PIN';
+    off.hidden = !on;
+}
+
 document.addEventListener('change', function (event) {
     if (event.target && event.target.id === 'bill-copies') {
         rememberBillCopies(event.target.value);
@@ -136,6 +162,27 @@ document.addEventListener('click', function (event) {
     if (event.target.closest('#server-close') || event.target.id === 'server-scrim') {
         const sheet = document.getElementById('server-sheet');
         if (sheet) sheet.hidden = true;
+        return;
+    }
+
+    if (event.target.closest('#lock-set')) {
+        if (window.POSNIC && POSNIC.lock) POSNIC.lock.choose().then(paintLock);
+        return;
+    }
+
+    if (event.target.closest('#lock-off')) {
+        /*
+         * The current PIN first. Whoever is holding this phone is already
+         * past the lock, so this is not stopping them getting in; it stops a
+         * phone being handed back with the lock quietly gone.
+         */
+        if (!(window.POSNIC && POSNIC.lock)) return;
+        POSNIC.lock
+            .unlock('', { why: 'Enter your PIN to turn the lock off', escape: 'Not now' })
+            .then(function (ok) {
+                if (ok) POSNIC.lock.clear();
+                paintLock();
+            });
         return;
     }
 

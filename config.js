@@ -1727,13 +1727,37 @@
        * makes them type a password to be refused a second time.
        */
       if (error.status === 403 && !path.includes('kioskMobileLogin')) {
-        error.code = 'TILL_REFUSED';
-        error.message =
-          'The till is turning this phone away. The shop has probably run out of handset slots - free one on the till, or add a slot, and try again.';
+        /*
+         * TWO DIFFERENT NOS, AND THEY SEND SOMEBODY TO DIFFERENT PLACES.
+         *
+         * Out of handset slots is a licence, and the shop fixes it on the
+         * till. A phone the shop has TURNED OFF is a decision somebody made
+         * about this handset, and the way back is to sign in again with the
+         * password. Telling a waiter holding a revoked phone to free a slot
+         * sends them to a screen that cannot help them.
+         *
+         * The till says which in the body; a 403 with nothing readable in it
+         * is the older, commoner one.
+         */
+        const said =
+          (error.body && error.body.error && error.body.error.code) ||
+          (error.body && error.body.code) ||
+          '';
+
+        if (said === 'DEVICE_REVOKED') {
+          error.code = 'DEVICE_REVOKED';
+          error.message =
+            'The shop has turned this phone off. Sign in again with the shop password to use it.';
+        } else {
+          error.code = 'TILL_REFUSED';
+          error.message =
+            'The till is turning this phone away. The shop has probably run out of handset slots - free one on the till, or add a slot, and try again.';
+        }
+
         try {
           window.dispatchEvent(
             new CustomEvent('posnic:refused', {
-              detail: { status: 403, host: server.baseUrl || '' },
+              detail: { status: 403, host: server.baseUrl || '', code: error.code },
             })
           );
         } catch (e) {
@@ -2104,10 +2128,16 @@
          * from silence; this is a server that answered.
          */
         if (refusedBy) {
-          if (title) title.textContent = 'The till is turning this phone away';
+          const turnedOff = refusedBy.code === 'DEVICE_REVOKED';
+          if (title) {
+            title.textContent = turnedOff
+              ? 'The shop has turned this phone off'
+              : 'The till is turning this phone away';
+          }
           if (body) {
-            body.textContent =
-              'The till is on and answering, so the Wi-Fi is fine. The shop has probably run out of handset slots. Free one on the till, or add a slot, then press Try now.';
+            body.textContent = turnedOff
+              ? 'The till is on and answering, so the Wi-Fi is fine. Somebody at the shop stopped this handset. Signing in again with the shop password will let it back.'
+              : 'The till is on and answering, so the Wi-Fi is fine. The shop has probably run out of handset slots. Free one on the till, or add a slot, then press Try now.';
           }
           if (url) url.textContent = refusedBy.host || server.baseUrl || '';
           ['loader', 'page-loader'].forEach((id) => {
