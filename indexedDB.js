@@ -273,6 +273,22 @@ async function saveData(storeName, newData) {
             const existingIds = existingData.map(item => item.id);
             const newIds = newData.map(item => item.id);
 
+            /*
+             * WHAT THE MENU DOES NOT CARRY, AND SHOULD NOT LOSE.
+             *
+             * A quick sale item is INSTANT at the till, which keeps it out of
+             * the menu this data comes from. Clearing the store therefore
+             * deleted it, and every screen that looks a cart line up by id -
+             * the stepper, the bill, the send - found nothing.
+             *
+             * Kept only for the CURRENT session's lines. These are not menu
+             * rows and they are not stock; they exist because somebody sold
+             * one this evening.
+             */
+            const keepInstant = existingData.filter(
+                (row) => row && row.instant === true && !newIds.includes(row.id)
+            );
+
             // ✅ Remove outdated items that are no longer in API response
             existingIds.forEach(id => {
                 if (!newIds.includes(id)) {
@@ -284,6 +300,7 @@ async function saveData(storeName, newData) {
             // ✅ Clear and insert new data
             store.clear();
             newData.forEach(item => store.put(item));
+            keepInstant.forEach(item => store.put(item));
 
             transaction.oncomplete = () => {
                 console.log(`✅ Updated ${storeName} in IndexedDB`);
@@ -679,6 +696,23 @@ async function validateCartWithProducts(updatedProducts) {
         .map(item => {
             const updatedProduct = productMap.get(item.id);
 
+            /*
+             * A ONE-OFF HAS NO DISH BEHIND IT, AND THAT IS NOT AN ERROR.
+             *
+             * The same rule as syncCartSilently below, and this is the copy
+             * that actually ran: the cart page refreshes the branch in the
+             * FOREGROUND, so fixing only the silent one left the line being
+             * deleted on the way to the screen meant to show it. Two functions
+             * doing one job, and a fix that landed in one of them.
+             *
+             * A quick sale is INSTANT at the till, which keeps it off the menu
+             * on purpose. The line carries its own name and price, which is
+             * all the bill and the kitchen ticket need.
+             */
+            if (!updatedProduct && item && item.instant === true) {
+                return item;
+            }
+
             // product not found in latest list → remove from cart
             if (!updatedProduct) {
                 return null;
@@ -731,6 +765,17 @@ async function syncCartSilently(updatedProducts) {
                     tax_price: updatedProduct.tax_price,
                 };
             }
+            /*
+             * A ONE-OFF HAS NO DISH BEHIND IT, AND THAT IS NOT AN ERROR.
+             *
+             * This dropped any line whose product is not in the latest menu,
+             * which is right for a dish the shop has deleted and wrong for a
+             * quick sale: those are INSTANT at the till precisely so they stay
+             * off the menu. The line carries its own name and price, which is
+             * everything the bill and the kitchen ticket need.
+             */
+            if (item && item.instant === true) return item;
+
             // product not found in latest list → remove from cart
             return null;
         })
@@ -1199,6 +1244,11 @@ async function updateQuantity(id, change, options) {
         item = {
             id: product.id,
             name: product.name,
+            /* Carried onto the LINE, because the line outlives the menu row:
+               the next branch refresh deletes a one-off from the products
+               store, and the cart sync has to know this line is allowed to
+               have no dish behind it. */
+            instant: product.instant === true,
             img: product.img,
             icon: product.icon || "",
             price: Number(product.price || 0),

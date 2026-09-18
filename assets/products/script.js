@@ -864,12 +864,19 @@ $(document).on('click', '#product-quick-sale', async function () {
      * price for an item with no name would produce a line on a kitchen ticket
      * that says nothing, which is worse than being sent back to the box.
      */
+    /*
+     * NOTHING TYPED IS A QUESTION, NOT A REFUSAL.
+     *
+     * Owner: "quick sale not clickable until text added."
+     *
+     * This nudged the placeholder and did nothing else, which reads as a dead
+     * button - and a button that does nothing IS a dead button, however good
+     * its reason. It asks now, on the same sheet the price is asked on.
+     */
     if (!said) {
-        if (box) {
-            box.focus();
-            box.placeholder = 'Type the name first, then press +';
-            setTimeout(function () { box.placeholder = 'Search the menu'; }, 4000);
-        }
+        const named = await POSNIC.askName('');
+        if (!named) return;
+        addOneOff(named);
         return;
     }
 

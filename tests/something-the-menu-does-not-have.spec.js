@@ -184,3 +184,127 @@ test('a till that refuses says so, and nothing is added', async ({ page }) => {
 
   expect(cart.find((one) => one.id === 'inst-1')).toBeUndefined();
 });
+
+/* ------------------------------------------------- and it stays on the order */
+
+test('IT IS STILL THERE WHEN THE CART PAGE OPENS', async ({ page }) => {
+  /*
+   * Owner: "after price enter it shows added to cart, when i go to cart its
+   * not showing."
+   *
+   * The message was true when it was shown. A quick sale is INSTANT at the
+   * till, which is what keeps it off the menu - and the cart page refreshes
+   * the branch on the way in, which runs two prunes: the products store drops
+   * anything the menu no longer carries, and the cart sync drops any line
+   * whose dish it cannot find. So the line was deleted on the way to the
+   * screen that was supposed to show it.
+   *
+   * The old test stopped at getCartData() in the page that added it, which is
+   * exactly where the bug was not.
+   */
+  await searchingForSomethingMissing(page, 'Water bottle');
+
+  await page.route('**/items/instanceItemInsert', (route) =>
+    route.fulfill({
+      json: { type: 'success', data: { id: 'inst-1', name: 'Water bottle', selling_price: 20 } },
+    })
+  );
+
+  await page.locator('.menu-quick-sale-btn').click();
+  await page.locator('#ask-price-input').fill('20');
+  await page.locator('#ask-price-ok, #ask-price-save, #ask-price-go').first().click();
+
+  await page.waitForFunction(async () => {
+    const cart = await getCartData();
+    return cart.some((one) => one.id === 'inst-1');
+  });
+
+  /* The menu the branch refresh brings back does NOT contain it, because the
+     till keeps INSTANT items off the menu. That is the whole point. */
+  await page.goto('/cart.html');
+
+  const survived = await page.evaluate(async () => {
+    const cart = await getCartData();
+    const line = cart.find((one) => one.id === 'inst-1');
+    return line ? { name: line.name, quantity: line.quantity } : null;
+  });
+
+  expect(survived).not.toBeNull();
+  expect(survived.name).toBe('Water bottle');
+  await expect(page.getByText('Water bottle')).toBeVisible();
+});
+
+test('and the menu refresh does not delete it from this phone either', async ({ page }) => {
+  /*
+   * The second prune. Even with the cart line kept, every screen that looks a
+   * line up by id - the stepper, the bill, the send - found nothing once the
+   * products store had been cleared and refilled from a menu that cannot
+   * contain it.
+   */
+  await searchingForSomethingMissing(page, 'Water bottle');
+
+  await page.route('**/items/instanceItemInsert', (route) =>
+    route.fulfill({
+      json: { type: 'success', data: { id: 'inst-1', name: 'Water bottle', selling_price: 20 } },
+    })
+  );
+
+  await page.locator('.menu-quick-sale-btn').click();
+  await page.locator('#ask-price-input').fill('20');
+  await page.locator('#ask-price-ok, #ask-price-save, #ask-price-go').first().click();
+
+  await page.waitForFunction(async () => {
+    const cart = await getCartData();
+    return cart.some((one) => one.id === 'inst-1');
+  });
+
+  /* A menu arriving with everything except the one-off, which is every menu. */
+  const stillThere = await page.evaluate(async () => {
+    await saveData('products', [
+      { id: 'p-cb', name: 'Chicken Biryani', price: 220, category_name: 'Mains' },
+    ]);
+    const row = await getProductById('inst-1');
+    return !!row;
+  });
+
+  expect(stillThere).toBe(true);
+});
+
+test('THE MARK WORKS WITH AN EMPTY BOX, by asking what it is called', async ({ page }) => {
+  /*
+   * Owner: "quick sale not clickable until text added."
+   *
+   * It used to nudge the placeholder and do nothing else, which reads as a
+   * dead button - and a button that does nothing IS a dead button, however
+   * good its reason. The same sheet that asks the price asks the name.
+   */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+
+  await page.route('**/items/instanceItemInsert', (route) =>
+    route.fulfill({
+      json: { type: 'success', data: { id: 'inst-2', name: 'Birthday cake', selling_price: 500 } },
+    })
+  );
+
+  await page.locator('#product-quick-sale').click();
+
+  await expect(page.locator('#ask-price-scrim')).toHaveClass(/is-open/);
+  await page.locator('#ask-price-input').fill('Birthday cake');
+  await page.locator('#ask-price-ok').click();
+
+  /* And then the price, on the same sheet. */
+  await page.locator('#ask-price-input').fill('500');
+  await page.locator('#ask-price-ok').click();
+
+  const onTheOrder = await page.evaluate(async () => {
+    for (let i = 0; i < 40; i += 1) {
+      const cart = await getCartData();
+      const line = cart.find((one) => one.id === 'inst-2');
+      if (line) return line.name;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return null;
+  });
+
+  expect(onTheOrder).toBe('Birthday cake');
+});

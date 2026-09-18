@@ -74,6 +74,20 @@
       id: String(made.id),
       name: made.name || said,
       price: Number(made.selling_price) || amount,
+      /*
+       * OFF THE MENU ON PURPOSE, AND EVERYTHING DOWNSTREAM HAS TO KNOW.
+       *
+       * The till marks these INSTANT, which keeps them out of the menu it
+       * serves. The app then refreshes that menu and deletes whatever is not
+       * in it - the products store prunes, and the cart sync drops any line
+       * whose dish it cannot find. So a one-off was added, reported added,
+       * and quietly removed the moment anything reloaded the menu. Owner:
+       * "after price enter it shows added to cart, when i go to cart its not
+       * showing."
+       *
+       * This flag is what those two places check.
+       */
+      instant: true,
       /* A one-off is not counted stock: it exists because somebody sold it. */
       negative_stock: true,
       available_quantity: 0,

@@ -56,8 +56,10 @@ test('and it reaches the same till endpoint as the menu screen', () => {
   assert.ok(at > -1, 'the button in the sheet reaches nothing');
 
   const handler = js.slice(at, at + 2000);
-  assert.match(handler, /POSNIC\.askPrice\(said\)/, 'it adds a line at no price');
-  assert.match(handler, /POSNIC\.quickSale\.createOneOff\(said, price\)/);
+  assert.match(handler, /POSNIC\.askPrice\(name\)/, 'it adds a line at no price');
+  /* The name it ASKED for, not the box: with an empty box `said` is '' and the
+     till is handed an item with no name. */
+  assert.match(handler, /POSNIC\.quickSale\.createOneOff\(name, price\)/);
   assert.match(handler, /addProductToOrder\(made\.id, made\.name, price\)/, 'it never joins the order');
 });
 
