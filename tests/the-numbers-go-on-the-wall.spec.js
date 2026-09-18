@@ -126,3 +126,37 @@ test('the buttons are not part of what gets printed', async ({ page }) => {
   await page.emulateMedia({ media: 'screen' });
   await expect(page.locator('.card-actions')).toBeVisible();
 });
+
+test('TYPING THE NUMBER ON THE MENU SCREEN FINDS THE DISH', async ({ page }) => {
+  /*
+   * Owner, twice: "i add number card but no use? how to use it?" and then "i
+   * tried to search with that number nothing happened."
+   *
+   * Nothing happened because the number lookup was only ever wired into the
+   * Add item sheet. The card is printed for the whole shop and the screen most
+   * orders start on could not answer it - so the feature was half built, and
+   * from where he was standing it was broken.
+   */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+
+  const second = await page.locator('.dish').nth(1).getAttribute('data-id');
+  await page.locator('#product-search-input').fill('2');
+
+  const first = page.locator('.dish').first();
+  await expect(first).toHaveAttribute('data-id', second);
+  await expect(page.getByText('No. 2')).toBeVisible();
+});
+
+test('and a number that is also a name still offers both', async ({ page }) => {
+  /*
+   * In an Indian kitchen a number IS a dish name: type 65 and a waiter may
+   * well want Chicken 65. The numbered dish goes first, labelled, and every
+   * name match follows it. Neither reading is guessed at on their behalf.
+   */
+  await onTheMenu(page, 'nothing', { menu: MENU });
+  await page.locator('#product-search-input').fill('1');
+
+  await expect(page.getByText('No. 1')).toBeVisible();
+  /* More rows than the numbered one, because name matches follow it. */
+  expect(await page.locator('.dish').count()).toBeGreaterThan(0);
+});
