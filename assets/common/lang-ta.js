@@ -31,6 +31,8 @@
     Cancel: 'ரத்து',
     /* A dish that has run out, said by the waiter who heard it. */
     'It has run out': 'தீர்ந்துவிட்டது',
+    'Add an item that is not on the menu': 'மெனுவில் இல்லாத ஐட்டத்தை சேர்',
+    'Type the name first, then press +': 'முதலில் பெயரை தட்டச்சு செய்து + அழுத்தவும்',
     'Put back on': 'மீண்டும் சேர்',
     'Takes it off the menu for the rest of today. Nobody can order it, and tomorrow it comes back by itself.':
       'இன்றைக்கு மெனுவில் இருந்து நீக்கும். யாரும் ஆர்டர் செய்ய முடியாது, நாளை தானாக திரும்பி வரும்.',
