@@ -81,6 +81,22 @@
                         autocorrect="off" autocapitalize="none" spellcheck="false" />
                     <button type="button" id="product-search-clear" class="product-search-clear" hidden
                         aria-label="Clear">&times;</button>
+                    <!--
+                        A WAY IN THAT DOES NOT DEPEND ON FINDING NOTHING.
+
+                        The offer used to appear only when a search matched
+                        nothing, which is fine for "birthday cake" and useless
+                        for the case a shop actually hits: owner, "I can add
+                        item like Fish but Fish Curry item already exist. how
+                        can i add now? its blocker."
+
+                        Typing "Fish" finds Fish Curry, so the search is not
+                        empty, so the offer never came - and there was no other
+                        door. This is the other door, and it is always here.
+                    -->
+                    <button type="button" id="product-quick-sale" class="product-quick-sale"
+                        aria-label="Add an item that is not on the menu"
+                        title="Add an item that is not on the menu">+</button>
                 </div>
             </div>
         </section>

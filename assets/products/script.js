@@ -839,8 +839,49 @@ function showQuantityHint(quantity) {
  * on anybody's menu - and this then adds it to the order like any other dish.
  * Nothing downstream needs to know it was unusual.
  */
+/*
+ * THE PERMANENT WAY IN.
+ *
+ * Owner: "quick sale is not adding product which not exist or not matching in
+ * the item list. Example I can add item like Fish but Fish Curry item already
+ * exist. how can i add now? its blocker."
+ *
+ * He is right and the old design was wrong. Offering this only when a search
+ * found NOTHING covers "birthday cake" and misses the case a restaurant
+ * actually hits: a short word that matches something longer. "Fish" finds Fish
+ * Curry, so the search is not empty, so the offer never appeared, and there was
+ * no other door at all.
+ *
+ * The button is always there and takes whatever is in the box as the name,
+ * because by the time somebody wants this they have usually just typed it.
+ */
+$(document).on('click', '#product-quick-sale', async function () {
+    const box = document.getElementById('product-search-input');
+    const said = box ? box.value.trim() : '';
+
+    /*
+     * Nothing typed is not a failure, it is a missing first step. Asking for a
+     * price for an item with no name would produce a line on a kitchen ticket
+     * that says nothing, which is worse than being sent back to the box.
+     */
+    if (!said) {
+        if (box) {
+            box.focus();
+            box.placeholder = 'Type the name first, then press +';
+            setTimeout(function () { box.placeholder = 'Search the menu'; }, 4000);
+        }
+        return;
+    }
+
+    addOneOff(said);
+});
+
 $(document).on('click', '[data-quick-sale]', async function () {
-    const said = this.getAttribute('data-quick-sale') || '';
+    addOneOff(this.getAttribute('data-quick-sale') || '');
+});
+
+async function addOneOff(said) {
+    if (!said) return;
 
     /* The same sheet a fish priced at the market uses. A waiter should not
        learn two ways to type a number into this app. */
@@ -873,7 +914,7 @@ $(document).on('click', '[data-quick-sale]', async function () {
     } catch (error) {
         showErrorPopup(error.message || 'Could not add it');
     }
-});
+}
 
 /*
  * A LONG PRESS ON A DISH SAYS IT HAS RUN OUT.

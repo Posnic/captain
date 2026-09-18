@@ -816,6 +816,32 @@ body {
   padding: 0;
 }
 
+/*
+ * THE WAY IN FOR SOMETHING THE MENU DOES NOT HAVE.
+ *
+ * Beside Clear rather than anywhere else: this is a thing you do TO what you
+ * have typed, and the hand is already there. Deliberately quieter than an
+ * accent button - it is used twice a service, and a loud one on a screen used
+ * forty times would be paid for all evening.
+ */
+.product-quick-sale {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.product-quick-sale:active {
+  background: var(--line);
+}
+
 .search-count {
   padding: 0 var(--s4) var(--s2);
   font-size: var(--t-xs);
