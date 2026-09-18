@@ -2623,3 +2623,57 @@ function say(button) {
         button.disabled = false;
     }, 700);
 }
+
+/*
+ * QUICK SALE FROM THE SHEET, not only from the menu screen.
+ *
+ * Owner: "inside menu pop up menu add + button or some symbol to do quick
+ * sales." Everything below the price is the ordinary add path - the same one
+ * the ADD buttons in this sheet use - so the line, the ticket and the bill
+ * know nothing unusual happened.
+ */
+document.addEventListener('click', async function (event) {
+    if (!event.target || !event.target.closest) return;
+    if (!event.target.closest('#picker-quick-sale')) return;
+
+    const box = document.getElementById('picker-search-input');
+    const said = box ? box.value.trim() : '';
+
+    /* Nothing typed is a missing first step, not a failure: a price for a line
+       with no name is a kitchen ticket that says nothing. */
+    if (!said) {
+        if (box) {
+            const was = box.placeholder;
+            box.focus();
+            box.placeholder = 'Type the name first';
+            setTimeout(function () { box.placeholder = was; }, 4000);
+        }
+        return;
+    }
+
+    const price = await POSNIC.askPrice(said);
+    if (!price) return;
+
+    try {
+        const made = await POSNIC.quickSale.createOneOff(said, price);
+
+        /* saveOne, never saveData: saveData clears the store first and would
+           delete the menu this sheet is drawing from. */
+        if (typeof saveOne === 'function' && typeof STORE_NAME !== 'undefined') {
+            await saveOne(STORE_NAME, [made]);
+        }
+
+        addProductToOrder(made.id, made.name, price);
+        if (box) box.value = '';
+
+        const sheet = document.getElementById('item-picker');
+        if (sheet) sheet.hidden = true;
+    } catch (error) {
+        /* showErrorPopup is what this screen already uses; POSNIC.popup has no
+           such function, and an error path that throws is an error nobody
+           ever sees. */
+        const why = (error && error.message) || 'The till would not add it. Try again.';
+        if (typeof showErrorPopup === 'function') showErrorPopup(why);
+        else console.error('quick sale failed:', error);
+    }
+});

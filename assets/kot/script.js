@@ -87,6 +87,17 @@ function changeServer() {
         who.textContent = name ? 'Signed in as ' + name : 'Signed in on this phone';
     }
 
+    /* Which build this phone is on, said plainly enough to read down a
+       telephone. It was on the sign-in screen only, so signing out was the
+       only way to answer the question. */
+    const version = document.getElementById('app-version-line');
+    if (version) {
+        const build = window.POSNIC_BUILD;
+        version.textContent = build && build.version
+            ? 'Captain ' + build.version + (build.commit ? ' (' + build.commit + ')' : '')
+            : 'Captain dev build';
+    }
+
     paintLock();
     sheet.hidden = false;
 }

@@ -242,6 +242,10 @@
     Language: 'மொழி',
     'What this phone shows. Dish names stay as the shop typed them. This phone only.':
       'இந்த போன் காட்டும் மொழி. உணவு பெயர்கள் கடை எழுதியபடியே இருக்கும். இந்த போனுக்கு மட்டும்.',
+    /* the quick sale mark, the same one the till uses */
+    'Quick sale - something the menu does not have':
+      'விரைவு விற்பனை - மெனுவில் இல்லாத ஒன்று',
+
     /* signing out */
     'Signed in': 'உள்நுழைந்துள்ளது',
     'Sign out': 'வெளியேறு',
