@@ -1483,3 +1483,87 @@ test('and a phone that has wandered off is told which thing moved', async ({ pag
     timeout: 15000,
   });
 });
+
+/*
+ * WHY IT CANNOT CONNECT, IN WORDS SOMEBODY CAN ACT ON.
+ *
+ * Owner: "app smart enough to find why not able to connect. as i said earlier
+ * wifi change, or internet not available or server not responding or server not
+ * allowing (403) etc. proper notifications is mandatory. whey app not working
+ * user should know the reason."
+ *
+ * Four causes, one symptom, and each has a different person doing a different
+ * thing about it. Getting the cause wrong is worse than saying nothing: it
+ * sends somebody to restart a computer that is working.
+ */
+
+test('NO NETWORK AT ALL IS NAMED BEFORE ANYTHING ELSE', async ({ page }) => {
+  /*
+   * The one cause a phone can be certain of on its own, and the one a waiter
+   * can fix in five seconds. Told the till is not responding while their Wi-Fi
+   * is simply off, somebody goes and restarts a working till.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'onLine', { get: () => false });
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await expect(page.locator('#posnic-offline-title')).toContainText('not on any network', {
+    timeout: 15000,
+  });
+  await expect(page.locator('#posnic-offline-body')).toContainText('Turn Wi-Fi on');
+});
+
+/*
+ * A REFUSAL MID-SERVICE REACHES NOBODY, and that is not fixed here.
+ *
+ * Owner listed "server not allowing (403)" as its own cause, and it is: a dead
+ * address gives a connection error, only a server sends a status, so 403 means
+ * the till is ON, on this Wi-Fi, and turning this phone away - usually because
+ * the shop has run out of handset slots. The fix is a licence screen, not a
+ * power button.
+ *
+ * The connect sheet already says which till refused. The OUTAGE screen does
+ * not, and a phone already signed in never reaches the connect sheet. I wrote
+ * the wording, found the overlay never appears for a refusing pinned till, and
+ * took it out again rather than leave an unreachable message behind - which is
+ * the exact fault this file keeps catching in other places.
+ *
+ * Where it actually goes is not yet known, and guessing at it would be worse
+ * than the gap. Left named rather than half-built.
+ */
+
+test('and Try now retries the server it is already on', async ({ page }) => {
+  /*
+   * Owner: "if not working then let user to retry same server."
+   *
+   * It always did, but nothing proved it, so a change to the candidate order
+   * could have quietly turned Try now into "go and find a different till".
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+
+  let up = false;
+  const asked = [];
+  await page.route(`${LAN_ORIGIN}/**`, async (route) => {
+    asked.push(route.request().url());
+    if (!up) return route.abort('connectionrefused');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(RUNTIME_INFO),
+    });
+  });
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  up = true;
+  await page.getByRole('button', { name: 'Try now' }).click();
+
+  await expect(page.locator('#posnic-offline')).toBeHidden({ timeout: 15000 });
+  expect(asked.some((u) => u.startsWith(LAN_ORIGIN))).toBe(true);
+});

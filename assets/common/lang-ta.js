@@ -31,6 +31,9 @@
     Cancel: 'ரத்து',
     /* A dish that has run out, said by the waiter who heard it. */
     'It has run out': 'தீர்ந்துவிட்டது',
+    'This phone is not on any network': 'இந்த போன் எந்த நெட்வொர்க்கிலும் இல்லை',
+    'Wi-Fi and mobile data are both off, so nothing can reach the till. Turn Wi-Fi on and join the shop network, and this will connect by itself.':
+      'Wi-Fi மற்றும் மொபைல் டேட்டா இரண்டும் அணைந்துள்ளன, எனவே பில்லிங் கணினியை அடைய முடியாது. Wi-Fi ஐ ஆன் செய்து கடை நெட்வொர்க்கில் இணையுங்கள், தானாக இணைந்துவிடும்.',
     'Add an item that is not on the menu': 'மெனுவில் இல்லாத ஐட்டத்தை சேர்',
     'Type the name first, then press +': 'முதலில் பெயரை தட்டச்சு செய்து + அழுத்தவும்',
     'Put back on': 'மீண்டும் சேர்',
