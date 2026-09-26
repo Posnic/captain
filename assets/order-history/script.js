@@ -44,7 +44,9 @@ window.addEventListener('beforeunload', stopOrderHistoryPolling);
 document.addEventListener('DOMContentLoaded', function () {
     /* The server is already chosen synchronously by config.js; there is
        nothing left to wait for before the first request. */
-    loadOrderHistory();
+    // The floor also loads this script for ticket editing, without a history
+    // screen. Do not fetch hidden history or show its errors over the floor.
+    if (document.getElementById('table-selection-screen')) loadOrderHistory();
     setupEventListeners();
     showTableSelectionScreen(); // Start with table selection
     restoreTableFilterState(); // Set filters to collapsed by default

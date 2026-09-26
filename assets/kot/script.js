@@ -478,14 +478,25 @@ document.addEventListener('click', function (event) {
     selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
 });
 
+let tablesLoading = false;
 async function loadTables() {
     const container = document.getElementById('tables-list');
     const noOrdersMsg = document.getElementById('no-orders-message');
     
-    if (!container) return;
+    if (!container || tablesLoading) return;
+    tablesLoading = true;
+    let status = document.getElementById('floor-connection-status');
+    if (!status) {
+        status = document.createElement('p');
+        status.id = 'floor-connection-status';
+        status.setAttribute('role', 'status');
+        status.style.cssText = 'font-size:13px;color:#64748b;line-height:1.5;margin:12px 0;';
+        status.hidden = true;
+        container.before(status);
+    }
 
     try {
-        showSectionLoader('tables-list');
+        if (!container.querySelector('.floor-card')) showSectionLoader('tables-list');
         // Get branch_id from localStorage
         // kiosk_selected_branch stores the store_id (MongoDB _id) as a plain string
         const branchId = localStorage.getItem('branch_id') || null;
@@ -495,10 +506,9 @@ async function loadTables() {
         });
         
         if (data.type !== 'success' || !data.data) {
-            if (noOrdersMsg) noOrdersMsg.style.display = 'block';
-            container.innerHTML = '';
-            return;
+            throw new Error(data.message || 'Tables unavailable');
         }
+        status.hidden = true;
 
         const tables = data.data.tables || [];
         const hasTakeaway = data.data.has_takeaway || false;
@@ -581,20 +591,15 @@ async function loadTables() {
         }
     } catch (error) {
         console.error('Error loading tables:', error);
-        /* Gated on IS_LOCAL before, so a cloud shop whose connection dropped
-           sat on an empty tables list with no way back to the server screen.
-           A connection failure is a connection failure wherever the server
-           is; config.js has already tried the other address by the time this
-           runs. */
-        if (isServerConnectionError(error)) {
-            sessionStorage.setItem('server_connection_failed', error.message || 'Server connection failed');
-            stopKotTablePolling();
-            window.location.href = 'index.html';
-            return;
-        }
-        if (noOrdersMsg) noOrdersMsg.style.display = 'block';
-        container.innerHTML = '';
+        // Keep the last table view and let background polling recover. A
+        // failed request cannot tell us that every table has been settled.
+        if (noOrdersMsg) noOrdersMsg.style.display = 'none';
+        status.textContent = container.querySelector('.floor-card')
+            ? 'Tables may be out of date. Reconnecting… You can still take a new order.'
+            : 'Tables are unavailable. Reconnecting… You can still take a new order.';
+        status.hidden = false;
     } finally {
+        tablesLoading = false;
         hideSectionLoader('tables-list');
     }
 }
@@ -981,6 +986,10 @@ function showToast(message, type = 'success') {
         toast.style.display = 'none';
     }, 3000);
 }
+
+window.addEventListener('posnic:orders-sent', () => {
+    loadTables().catch(() => {});
+});
 
 function applyDiscount(kotId) {
     window.location.href = `discount.html?kot=${kotId}`;

@@ -1823,7 +1823,7 @@ async function checkout(transactionId) {
         if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
         window.POSNIC_ORDER_QUEUE_UI?.render();
         // Delivery continues on the next screen, without making the waiter wait.
-        window.location.href = 'products.html';
+        window.location.href = 'kot-management.html';
         return true;
     } catch (error) {
         if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
