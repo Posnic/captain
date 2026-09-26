@@ -1,0 +1,448 @@
+import { test, expect } from "@playwright/test";
+import { createHash, createHmac } from "node:crypto";
+const base = "http://192.168.1.8:42590/api",
+  code = "ABCDEF123456",
+  enrolmentId = "12345678-1234-1234-1234-123456789012";
+const info = {
+  edition: "community",
+  mode: "desktop",
+  version: "1.8.0",
+  apiSchema: 1,
+  syncProtocol: 1,
+  features: { captainAccessV1: true },
+};
+
+test("approved cloud polling completes pairing and reaches the PIN step", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate(() => {
+    const timeout = window.setTimeout;
+    window.setTimeout = (fn, ms, ...args) =>
+      timeout(fn, ms === 5000 ? 10 : ms, ...args);
+  });
+  const cloud = "https://approved.posnic.io/api";
+  await page.route("https://approved.posnic.io/**", (route) =>
+    route.fulfill({
+      json: route.request().url().endsWith("/pair")
+        ? {
+            token: "approved-access",
+            expiresIn: 900,
+            refreshToken: "r".repeat(43),
+            sessionId: "cloud-session",
+            shopKey: "shop",
+            user: { id: "staff" },
+            branches: [{ branch_id: "branch", store_id: "branch" }],
+          }
+        : info,
+    }),
+  );
+  await page.route("https://www.posnic.com/**", (route) => {
+    if (route.request().url().endsWith("/capabilities"))
+      return route.fulfill({ json: { applications: ["captain"] } });
+    if (route.request().url().endsWith("/requests"))
+      return route.fulfill({
+        json: {
+          request: "a".repeat(43),
+          authorizationUrl:
+            "https://www.posnic.com/api/mobile/authorize?request=" +
+            "a".repeat(43),
+          expiresIn: 900,
+        },
+      });
+    return route.fulfill({
+      json: { baseUrl: cloud, code, application: "captain", localServers: [] },
+    });
+  });
+  await page.locator("#captain-cloud-login").click();
+  await expect
+    .poll(() => page.evaluate(() => window.selectedCaptainBranch))
+    .toBe("branch");
+  expect(await page.evaluate(() => CaptainAccess.pinSet)).toBe(true);
+  expect(await page.evaluate(() => POSNIC.session.base)).toBe(cloud);
+});
+async function phone(page) {
+  await page.addInitScript(() => {
+    let session = {},
+      pin = null,
+      locked = false;
+    const result = () => ({
+      pinSet: !!pin,
+      locked,
+      attempts: 5,
+      profile: session.user
+        ? { user: session.user, shopKey: session.shopKey, base: session.base }
+        : null,
+      session: locked ? undefined : session,
+    });
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: {
+        SecureSession: {
+          status: async () => result(),
+          save: async (v) => {
+            session = v.session;
+            return result();
+          },
+          setPin: async (v) => {
+            pin = v.pin;
+            return result();
+          },
+          lock: async () => {
+            locked = !!pin;
+          },
+          clear: async () => {
+            session = {};
+            pin = null;
+            locked = false;
+          },
+          openBrowser: async (v) => {
+            window.openedAccount = v.url;
+          },
+        },
+        LocalNetwork: {
+          getLocalIp: async () => ({ wifi: true, ip: "192.168.1.4" }),
+        },
+      },
+    };
+  });
+  await page.route("http://192.168.1.8:42590/**", async (route) => {
+    const url = new URL(route.request().url());
+    let body = info;
+    if (url.pathname.endsWith("/enrolment-proof"))
+      body = {
+        proof: createHmac(
+          "sha256",
+          createHash("sha256").update(code).digest("hex"),
+        )
+          .update(route.request().postDataJSON().nonce)
+          .digest("hex"),
+      };
+    else if (url.pathname.endsWith("/pair"))
+      body = {
+        token: "test-access",
+        expiresIn: 900,
+        refreshToken: "r".repeat(43),
+        sessionId: "session",
+        shopKey: "shop",
+        user: { id: "staff", name: "Waiter" },
+        branches: [
+          { branch_id: "branch", store_id: "branch", branch_name: "Shop" },
+        ],
+      };
+    await route.fulfill({ json: body });
+  });
+  await page.goto("/index.html");
+  await page.evaluate(() => {
+    window.selectBranch = async (value) => {
+      window.selectedCaptainBranch = value;
+    };
+    POSNIC.lock.choose = async () => {
+      await CaptainAccess.setPin("1234");
+      return true;
+    };
+  });
+}
+
+test("saved custom-port tills are checked first and duplicate discoveries are shown once", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate((base) => {
+    POSNIC.server.pin(base);
+    window.discoveryOrder = [];
+    POSNIC.discovery.probe = async (url) => {
+      window.discoveryOrder.push(url);
+      return { base: url, info: { features: { captainAccessV1: true } } };
+    };
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      window.discoveryOrder.push("sweep");
+      options.collect({ base, info: { features: { captainAccessV1: true } } });
+    };
+  }, base);
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.locator("#captain-search").click();
+  await expect(page.locator("#captain-results button")).toHaveCount(1);
+  expect(
+    (await page.evaluate(() => window.discoveryOrder)).slice(0, 2),
+  ).toEqual([base, "sweep"]);
+});
+test("cancel releases a stuck native Wi-Fi lookup and permits retry", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate(() => {
+    Capacitor.Plugins.LocalNetwork.getLocalIp = () => new Promise(() => {});
+  });
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.locator("#captain-search").click();
+  await page.locator("#captain-cancel").click();
+  await expect(page.locator("#captain-cancel")).toBeHidden();
+  await expect(page.locator("#captain-note")).toHaveText(
+    "Connection cancelled.",
+  );
+  await page.evaluate(() => {
+    Capacitor.Plugins.LocalNetwork.getLocalIp = async () => ({ wifi: false });
+  });
+  await page.locator("#captain-search").click();
+  await expect(page.locator("#captain-note")).toContainText("shop Wi-Fi");
+});
+test("selecting a result rejects late progress and clears the previous address confirmation", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate((base) => {
+    document.getElementById("captain-confirm").checked = true;
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      options.collect({ base, info: { features: { captainAccessV1: true } } });
+      await new Promise((r) => setTimeout(r, 300));
+      options.onProgress(200, 253);
+      options.collect({
+        base: "http://192.168.1.9:5555/api",
+        info: { features: {} },
+      });
+    };
+  }, base);
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.locator("#captain-search").click();
+  await page.locator("#captain-results button").first().click();
+  await expect(page.locator("#captain-cancel")).toBeHidden();
+  await page.waitForTimeout(400);
+  await expect(page.locator("#captain-note")).toContainText(
+    "Check this address",
+  );
+  await expect(page.locator("#captain-results button")).toHaveCount(1);
+  await expect(page.locator("#captain-confirm")).not.toBeChecked();
+});
+test("unreachable till is not mislabeled as an outdated API", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate(() => {
+    POSNIC.discovery.probe = async () => null;
+    POSNIC.discovery.probe.lastFailure = { reason: "UNREACHABLE" };
+  });
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.getByText("Enter pairing code", { exact: true }).click();
+  await page.locator("#captain-server").fill(base);
+  await page.locator("#captain-code").fill(code);
+  await page.locator("#captain-pair").click();
+  await expect(page.locator("#captain-note")).toContainText("not answering");
+  await expect(page.locator("#captain-note")).not.toContainText("Update");
+});
+test("a stuck network scan has a deadline and a useful retry message", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.clock.install();
+  await page.evaluate(() => {
+    POSNIC.discovery.scanSubnet = () => new Promise(() => {});
+  });
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.locator("#captain-search").click();
+  await page.clock.fastForward(21000);
+  await expect(page.locator("#captain-cancel")).toBeHidden();
+  await expect(page.locator("#captain-note")).toContainText("Search timed out");
+});
+test("fresh Community setup keeps QR primary, other methods grouped, and cloud separate", async ({
+  page,
+}) => {
+  await page.goto("/index.html");
+  await expect(
+    page.getByRole("button", { name: "Scan your till’s QR", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("#captain-server")).toBeHidden();
+  await expect(page.locator("#captain-cloud-signup")).toBeVisible();
+  await page.screenshot({
+    path: "test-artifacts/captain-first-open.png",
+    fullPage: true,
+  });
+});
+test("QR checks proof before sending pairing credentials, then securely saves the grant and chooses PIN", async ({
+  page,
+}) => {
+  await phone(page);
+  const requests = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/captain/v1/")) requests.push(r.url());
+  });
+  await page.evaluate(
+    ({ base, code, enrolmentId }) =>
+      CaptainOnboarding.readQr(
+        JSON.stringify({ app: "captain", server: base, code, enrolmentId }),
+      ),
+    { base, code, enrolmentId },
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.selectedCaptainBranch))
+    .toBe("branch");
+  expect(requests.map((url) => url.split("/").pop())).toEqual([
+    "enrolment-proof",
+    "pair",
+  ]);
+  expect(
+    await page.evaluate(() => localStorage.getItem("posnic.session")),
+  ).toBeNull();
+  expect(await page.evaluate(() => CaptainAccess.pinSet)).toBe(true);
+});
+test("a wrong QR proof never receives the code", async ({ page }) => {
+  await phone(page);
+  let pairCalls = 0;
+  await page.route("**/captain/v1/enrolment-proof", (r) =>
+    r.fulfill({ json: { proof: "wrong" } }),
+  );
+  page.on("request", (r) => {
+    if (r.url().endsWith("/captain/v1/pair")) pairCalls++;
+  });
+  await page.evaluate(
+    ({ base, code, enrolmentId }) =>
+      CaptainOnboarding.readQr(
+        JSON.stringify({ app: "captain", server: base, code, enrolmentId }),
+      ),
+    { base, code, enrolmentId },
+  );
+  await expect(page.locator("#captain-note")).toContainText("not the till");
+  expect(pairCalls).toBe(0);
+});
+test("pairing code needs a selected, manager-confirmed address", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.getByText("Enter pairing code", { exact: true }).click();
+  await page.locator("#captain-server").fill(base);
+  await page.locator("#captain-code").fill(code);
+  await page.locator("#captain-pair").click();
+  await expect(page.locator("#captain-note")).toContainText("confirm");
+  await page.locator("#captain-confirm").check();
+  await page.locator("#captain-pair").click();
+  await expect
+    .poll(() => page.evaluate(() => window.selectedCaptainBranch))
+    .toBe("branch");
+});
+test("multiple discovered tills require explicit selection; no Wi-Fi is named", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate(() => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      for (const base of [
+        "http://192.168.1.8:42590/api",
+        "http://192.168.1.9:42590/api",
+      ])
+        options.collect({
+          base,
+          info: { features: { captainAccessV1: true } },
+        });
+    };
+  });
+  await page.getByText("Other connection options", { exact: true }).click();
+  await page.locator("#captain-search").click();
+  await expect(page.locator("#captain-results button")).toHaveCount(2);
+  expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
+  await page.locator("#captain-results button").nth(1).click();
+  await expect(page.locator("#captain-server")).toHaveValue(
+    "http://192.168.1.9:42590/api",
+  );
+  await page.evaluate(() => {
+    Capacitor.Plugins.LocalNetwork.getLocalIp = async () => ({
+      wifi: false,
+      ip: "",
+    });
+  });
+  await page.locator("#captain-search").click();
+  await expect(page.locator("#captain-note")).toContainText(
+    "Connect this phone to the shop Wi-Fi",
+  );
+});
+test("cancellation during proof never submits pairing credentials", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.route("**/captain/v1/enrolment-proof", async (route) => {
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.fulfill({ json: { proof: "late" } }).catch(() => {});
+  });
+  let paired = false;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/pair")) paired = true;
+  });
+  await page.evaluate(
+    ({ base, code, enrolmentId }) =>
+      CaptainOnboarding.readQr(
+        JSON.stringify({ app: "captain", server: base, code, enrolmentId }),
+      ),
+    { base, code, enrolmentId },
+  );
+  await page.locator("#captain-cancel").click();
+  await expect(page.locator("#captain-cancel")).toBeHidden();
+  expect(paired).toBe(false);
+});
+test("recovery cannot move another staff member’s queued orders", async ({
+  page,
+}) => {
+  await phone(page);
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "posnic.pending-orders",
+      JSON.stringify([
+        {
+          id: "saved",
+          owner: {
+            user: "other",
+            shop: "shop",
+            base: "http://192.168.1.8:42590/api",
+          },
+        },
+      ]),
+    ),
+  );
+  await page.evaluate(
+    ({ base, code, enrolmentId }) =>
+      CaptainOnboarding.readQr(
+        JSON.stringify({ app: "captain", server: base, code, enrolmentId }),
+      ),
+    { base, code, enrolmentId },
+  );
+  await expect(page.locator("#captain-note")).toContainText("another staff");
+  expect(await page.evaluate(() => OrderQueue.all()[0].id)).toBe("saved");
+  expect(await page.evaluate(() => POSNIC.session.token)).toBeNull();
+});
+test("cloud uses external approval and a Captain-scoped request; unavailable accounts do not open a browser", async ({
+  page,
+}) => {
+  await phone(page);
+  let capability = false;
+  await page.route("https://www.posnic.com/**", (route) => {
+    if (route.request().url().endsWith("/capabilities"))
+      return route.fulfill({
+        json: { applications: capability ? ["captain"] : ["mobile-pos"] },
+      });
+    if (route.request().url().endsWith("/requests")) {
+      expect(route.request().postDataJSON().application).toBe("captain");
+      return route.fulfill({
+        json: {
+          request: "a".repeat(43),
+          authorizationUrl:
+            "https://www.posnic.com/api/mobile/authorize?request=" +
+            "a".repeat(43),
+          expiresIn: 900,
+        },
+      });
+    }
+    return route.fulfill({
+      status: 202,
+      json: { error: "authorization_pending" },
+    });
+  });
+  await page.locator("#captain-cloud-login").click();
+  await expect(page.locator("#captain-note")).toContainText("not available");
+  expect(await page.evaluate(() => window.openedAccount)).toBeUndefined();
+  capability = true;
+  await page.locator("#captain-cloud-signup").click();
+  await expect
+    .poll(() => page.evaluate(() => window.openedAccount))
+    .toContain("/api/mobile/authorize");
+  await page.locator("#captain-cancel").click();
+  await expect(page.locator("#captain-cancel")).toBeHidden();
+});

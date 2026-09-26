@@ -117,6 +117,7 @@
 
   /** Has somebody set one on this phone? */
   function isSet() {
+    if (root.CaptainAccess && root.CaptainAccess.pinSet) return true;
     const held = read();
     return !!(held && held.hash && held.salt);
   }
@@ -128,6 +129,7 @@
    *   storage refused it - in which case nothing was locked.
    */
   async function set(pin) {
+    if (root.CaptainAccess) { try { return await root.CaptainAccess.setPin(pin); } catch (e) { return false; } }
     if (!looksLikeAPin(pin)) return false;
     const salt = newSalt();
     return write({ salt, hash: await digest(pin, salt), left: TRIES });
@@ -135,6 +137,7 @@
 
   /** Forget it. The password is then the only way back in. */
   function clear() {
+    if (root.CaptainAccess?.pinSet) { void root.CaptainAccess.removePin(); return true; }
     return write(null);
   }
 
@@ -146,6 +149,7 @@
    *   must ask for the password rather than offering the pad again.
    */
   async function check(pin) {
+    if (root.CaptainAccess?.pinSet) { try { return await root.CaptainAccess.unlock(pin); } catch (e) { return {ok:false,left:0,forgotten:true,message:e.message}; } }
     const held = read();
     if (!held) return { ok: false, left: 0, forgotten: true };
 
@@ -153,6 +157,7 @@
       /* A good try restores the count. Somebody who fat-fingers one digit on
          Monday must not arrive at Friday with one try left. */
       write({ salt: held.salt, hash: held.hash, left: TRIES });
+      if (root.CaptainAccess) { await root.CaptainAccess.setPin(pin); write(null); }
       return { ok: true, left: TRIES, forgotten: false };
     }
 
@@ -287,7 +292,7 @@
     if (said.forgotten) {
       /* Out of tries. The PIN is gone, so offering the pad again would be
          asking for something that can no longer work. */
-      if (warn) warn.textContent = 'Too many tries. Sign in with your password.';
+      if (warn) warn.textContent = said.message || (root.CaptainAccess ? 'Ask your manager to reconnect this phone. Your orders are saved.' : 'Too many tries. Sign in with your password.');
       setTimeout(() => settle(false), 1200);
       return;
     }

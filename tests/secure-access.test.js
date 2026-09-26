@@ -1,0 +1,414 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { webcrypto } = require("node:crypto");
+const { createAccess } = require("../assets/common/access");
+
+test("a lost local reply falls back to the verified domain with the identical order, never a second sale", async () => {
+  const f = fixture(),
+    routeKey = "a".repeat(64),
+    lan = "http://192.168.1.20:5555/api",
+    cloud = "https://shop.example/api";
+  const sales = new Map(),
+    attempts = [];
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url, options) => {
+      const body = options.body ? JSON.parse(options.body) : null;
+      if (url.endsWith("/route-proof")) {
+        assert.equal(options.headers.Authorization, undefined);
+        return {
+          ok: true,
+          json: async () => ({
+            proof: require("node:crypto")
+              .createHmac("sha256", routeKey)
+              .update(body.nonce)
+              .digest("hex"),
+          }),
+        };
+      }
+      assert.equal(options.headers.Authorization, "Bearer access");
+      attempts.push({ url, body });
+      if (!sales.has(body.idempotencyKey))
+        sales.set(body.idempotencyKey, {
+          type: "success",
+          data: { orderId: "one" },
+        });
+      if (url.startsWith(lan)) throw Error("reply lost after commit");
+      return { ok: true, json: async () => sales.get(body.idempotencyKey) };
+    },
+    webcrypto,
+  );
+  await access.session.start({
+    ...f.grant,
+    base: lan,
+    routeKey,
+    routes: [cloud],
+    idempotentOrders: true,
+  });
+  const result = await access.session.request("/sales/qrOrder", {
+    method: "POST",
+    body: { idempotencyKey: "stable", items: [1] },
+  });
+  assert.equal(result.data.orderId, "one");
+  assert.equal(sales.size, 1);
+  assert.equal(attempts.length, 2);
+  assert.deepEqual(attempts[0].body, attempts[1].body);
+  assert.equal(access.session.base, lan);
+});
+
+test("a different server cannot receive a bearer, renewal secret or order even if it claims the shop name", async () => {
+  const f = fixture(),
+    seen = [];
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url, options) => {
+      seen.push({ url, options });
+      return {
+        ok: true,
+        json: async () => ({ proof: "wrong", shopKey: "shop" }),
+      };
+    },
+    webcrypto,
+  );
+  await access.session.start({
+    ...f.grant,
+    routeKey: "a".repeat(64),
+    routes: ["http://192.168.1.20:5555/api"],
+    idempotentOrders: true,
+  });
+  await assert.rejects(
+    access.session.request("/sales/qrOrder", {
+      method: "POST",
+      body: { idempotencyKey: "stable" },
+    }),
+    (e) => e.code === "OFFLINE",
+  );
+  assert.equal(seen.length, 2);
+  for (const call of seen) {
+    assert.ok(call.url.endsWith("/route-proof"));
+    assert.equal(call.options.headers.Authorization, undefined);
+    assert.equal(JSON.parse(call.options.body).refreshToken, undefined);
+  }
+});
+
+test("validation and permission failures do not try another address", async () => {
+  for (const status of [401, 403, 422, 429]) {
+    const f = fixture(),
+      routeKey = "b".repeat(64),
+      calls = [];
+    const access = createAccess(
+      f.plugin,
+      f.storage,
+      async (url, options) => {
+        calls.push(url);
+        if (url.endsWith("/route-proof"))
+          return {
+            ok: true,
+            json: async () => ({
+              proof: require("node:crypto")
+                .createHmac("sha256", routeKey)
+                .update(JSON.parse(options.body).nonce)
+                .digest("hex"),
+            }),
+          };
+        return {
+          ok: false,
+          status,
+          json: async () => ({
+            error: { message: "Denied", code: "CAPTAIN_PERMISSION" },
+          }),
+        };
+      },
+      webcrypto,
+    );
+    await access.session.start({
+      ...f.grant,
+      refreshToken: null,
+      routeKey,
+      routes: ["https://other.example/api"],
+      idempotentOrders: true,
+    });
+    await assert.rejects(
+      access.session.request("/sales/qrOrder", {
+        method: "POST",
+        body: { idempotencyKey: "stable" },
+      }),
+      (e) => e.status === status,
+    );
+    assert.ok(calls.every((url) => url.startsWith(f.grant.base)));
+    if (status === 403) assert.equal(access.session.canTakeOrders, false);
+  }
+});
+
+test("iOS keeps its existing login when the Android vault plugin is unavailable", () => {
+  const window = {
+    Capacitor: {
+      isNativePlatform: () => true,
+      getPlatform: () => "ios",
+      registerPlugin: () => {
+        throw Error("Android only");
+      },
+    },
+  };
+  require("node:vm").runInNewContext(
+    require("node:fs").readFileSync(
+      require.resolve("../assets/common/access"),
+      "utf8",
+    ),
+    { window },
+  );
+  assert.equal(window.CaptainAccess, undefined);
+});
+
+test("a renewal reply arriving after sign-out cannot restore access", async () => {
+  const f = fixture();
+  let release, started;
+  const waiting = new Promise((r) => (started = r));
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url) => {
+      if (url.endsWith("/logout")) return { ok: true };
+      started();
+      await new Promise((r) => (release = r));
+      return { ok: true, json: async () => f.grant };
+    },
+    webcrypto,
+  );
+  await access.session.start({ ...f.grant, expiresAt: 1 });
+  const renewal = access.session.prepare();
+  await waiting;
+  await access.session.end();
+  release();
+  await assert.rejects(renewal, /cancelled/);
+  assert.equal(access.session.token, null);
+  assert.equal(f.vault().token, undefined);
+});
+
+function fixture(saved = {}) {
+  const data = new Map(Object.entries(saved));
+  const storage = {
+    getItem: (k) => data.get(k) || null,
+    setItem: (k, v) => data.set(k, v),
+    removeItem: (k) => data.delete(k),
+  };
+  let vault = {},
+    pin,
+    locked = false,
+    failures = 0;
+  const status = () => ({
+    pinSet: !!pin,
+    locked: !!pin && locked,
+    attempts: 5 - failures,
+    profile: vault.token
+      ? { user: vault.user, shopKey: vault.shopKey, base: vault.base }
+      : null,
+    session: locked ? undefined : structuredClone(vault),
+  });
+  const plugin = {
+    async status() {
+      return status();
+    },
+    async save({ session }) {
+      if (locked) throw Error("locked");
+      vault = structuredClone(session);
+      return status();
+    },
+    async setPin(value) {
+      pin = value.pin;
+      locked = false;
+      return status();
+    },
+    async lock() {
+      locked = !!pin;
+    },
+    async unlock(value) {
+      if (failures === 5) throw Error("Recovery required");
+      if (value.pin === pin) {
+        locked = false;
+        failures = 0;
+      } else {
+        failures++;
+      }
+      return status();
+    },
+    async clear() {
+      vault = {};
+      pin = null;
+      locked = false;
+    },
+  };
+  const grant = {
+    token: "access",
+    refreshToken: "r".repeat(43),
+    sessionId: "session",
+    base: "https://shop.example/api",
+    shopKey: "shop",
+    user: { id: "staff" },
+    expiresIn: 900,
+    offlineUntil: new Date(Date.now() + 86400000).toISOString(),
+  };
+  return { data, storage, plugin, grant, vault: () => vault };
+}
+test("migration writes native storage before removing plaintext and binds old queued orders", async () => {
+  const legacy = {
+    token: "old-access",
+    user: { id: "staff" },
+    shopKey: "shop",
+  };
+  const f = fixture({
+    "posnic.session": JSON.stringify(legacy),
+    "posnic.server": JSON.stringify({ active: "http://192.168.1.2:42590/api" }),
+    "posnic.pending-orders": JSON.stringify([{ id: "order" }]),
+  });
+  const access = createAccess(f.plugin, f.storage, async () => {}, webcrypto);
+  await access.ready;
+  assert.equal(f.vault().token, "old-access");
+  assert.equal(f.data.has("posnic.session"), false);
+  assert.equal(
+    JSON.parse(f.data.get("posnic.pending-orders"))[0].owner.user,
+    "staff",
+  );
+});
+test("failed secure migration retains the recoverable original", async () => {
+  const f = fixture({
+    "posnic.session": JSON.stringify({ token: "old-access" }),
+  });
+  f.plugin.save = async () => {
+    throw Error("disk unavailable");
+  };
+  await assert.rejects(
+    createAccess(f.plugin, f.storage, async () => {}, webcrypto).ready,
+    /disk/,
+  );
+  assert.ok(f.data.has("posnic.session"));
+});
+test("concurrent requests renew once, persisting the successor before transmission", async () => {
+  const f = fixture();
+  let calls = 0;
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (_url, options) => {
+      calls++;
+      const body = JSON.parse(options.body);
+      assert.equal(f.vault().rotation, body.nextToken);
+      await new Promise((r) => setTimeout(r, 15));
+      return {
+        ok: true,
+        json: async () => ({
+          ...f.grant,
+          token: "renewed",
+          refreshToken: body.nextToken,
+        }),
+      };
+    },
+    webcrypto,
+  );
+  await access.session.start({ ...f.grant, expiresAt: 1 });
+  await Promise.all([
+    access.session.prepare(),
+    access.session.prepare(),
+    access.session.prepare(),
+  ]);
+  assert.equal(calls, 1);
+  assert.equal(access.session.token, "renewed");
+  assert.equal(f.data.has("posnic.session"), false);
+});
+test("restart after a lost rotation reply retries the identical successor", async () => {
+  const f = fixture();
+  let sent;
+  const first = createAccess(
+    f.plugin,
+    f.storage,
+    async (_url, options) => {
+      sent = JSON.parse(options.body).nextToken;
+      throw Error("connection lost");
+    },
+    webcrypto,
+  );
+  await first.session.start({ ...f.grant, expiresAt: 1 });
+  await assert.rejects(first.session.prepare(), /lost/);
+  const restarted = createAccess(
+    f.plugin,
+    f.storage,
+    async (_url, options) => {
+      assert.equal(JSON.parse(options.body).nextToken, sent);
+      return {
+        ok: true,
+        json: async () => ({ ...f.grant, refreshToken: sent }),
+      };
+    },
+    webcrypto,
+  );
+  await restarted.ready;
+  await restarted.session.prepare();
+  assert.equal(f.vault().refreshToken, sent);
+});
+test("PIN restart hides credentials, offline unlock needs no network, wrong tries stay locked", async () => {
+  const f = fixture();
+  let calls = 0;
+  const offline = async () => {
+    calls++;
+    throw Error("offline");
+  };
+  const first = createAccess(f.plugin, f.storage, offline, webcrypto);
+  await first.session.start(f.grant);
+  await first.setPin("1234");
+  await first.session.suspend();
+  const next = createAccess(f.plugin, f.storage, offline, webcrypto);
+  await next.ready;
+  assert.equal(next.session.token, null);
+  assert.equal((await next.unlock("0000")).ok, false);
+  assert.equal((await next.unlock("1234")).ok, true);
+  assert.equal(calls, 0);
+  await next.session.suspend();
+  for (let i = 0; i < 5; i++)
+    assert.equal((await next.unlock("0000")).ok, false);
+  await assert.rejects(next.unlock("1234"), /Recovery/);
+  assert.equal(next.session.token, null);
+});
+test("expired offline authorization cannot be extended with a PIN; sign-out preserves orders", async () => {
+  const f = fixture({ "posnic.pending-orders": '[{"id":"retained"}]' });
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async () => {
+      throw Error("offline");
+    },
+    webcrypto,
+  );
+  await access.session.start({
+    ...f.grant,
+    offlineUntil: new Date(0).toISOString(),
+  });
+  await access.setPin("1234");
+  await access.session.suspend();
+  await assert.rejects(access.unlock("1234"), /offline/);
+  assert.equal(access.session.token, null);
+  await access.session.end();
+  assert.equal(f.data.get("posnic.pending-orders"), '[{"id":"retained"}]');
+});
+test("revocation locks the phone and retains both orders and recovery identity", async () => {
+  const f = fixture({ "posnic.pending-orders": '[{"id":"retained"}]' });
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: { code: "DEVICE_REVOKED", message: "Ask your manager" },
+      }),
+    }),
+    webcrypto,
+  );
+  await access.session.start({ ...f.grant, expiresAt: 1 });
+  await access.setPin("1234");
+  await assert.rejects(access.session.prepare(), /manager/);
+  assert.equal(access.session.token, null);
+  assert.equal(access.session.user.id, "staff");
+  assert.ok(f.data.has("posnic.pending-orders"));
+});

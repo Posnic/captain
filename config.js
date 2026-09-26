@@ -545,6 +545,7 @@
   /* --------------------------------------------------------------- session */
 
   const session = (function () {
+    if (window.CaptainAccess) return window.CaptainAccess.session;
     let state = load(STORE_SESSION);
 
     return {
@@ -1020,7 +1021,7 @@
   }
 
   /** The host numbers of one subnet, likeliest first. */
-  function hostOrder() {
+  function hostOrder(ownHost) {
     /* The host that worked last, so a re-scan on the same network finishes on
        the first probe rather than the tenth batch. */
     const previous = String(server.lan || '').match(/(?:\d{1,3}\.){3}(\d{1,3})/);
@@ -1029,7 +1030,7 @@
     const seen = new Set();
     const hosts = [];
     const add = (host) => {
-      if (host < 2 || host > 254 || seen.has(host)) return;
+      if (host < (ownHost ? 1 : 2) || host > 254 || host === ownHost || seen.has(host)) return;
       seen.add(host);
       hosts.push(host);
     };
@@ -1044,7 +1045,7 @@
      * back on .170 - not low, not round, and not on any list anybody would
      * have written. Its phone would have been in the same part of the pool.
      */
-    for (const own of ownHosts) {
+    for (const own of ownHost ? [ownHost, ...ownHosts] : ownHosts) {
       for (let step = 0; step <= 12; step += 1) {
         add(own - step);
         add(own + step);
@@ -1052,6 +1053,7 @@
     }
 
     LIKELY_HOSTS.forEach(add);
+    if (ownHost) add(1);
     for (let host = 2; host <= 254; host++) add(host);
     return hosts;
   }
@@ -1060,8 +1062,8 @@
       neighbourhood, and the general guesses. Still under sixty probes. */
   const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1 + ownHosts.length * 25;
 
-  async function scanSubnet(subnet, { hosts, onProgress, onBatch, shouldStop, concurrency, seen } = {}) {
-    const list = hosts || hostOrder();
+  async function scanSubnet(subnet, { hosts, ownHost, onProgress, onBatch, shouldStop, concurrency, seen, collect } = {}) {
+    const list = hosts || hostOrder(ownHost);
     const width = concurrency || SCAN_CONCURRENCY;
 
     for (let start = 0; start < list.length; start += width) {
@@ -1070,10 +1072,13 @@
       const results = await Promise.all(
         batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS, { seen }))
       );
+      // A completed batch must not redraw a cancelled search or a selected till.
+      if (shouldStop && shouldStop()) return null;
       if (onBatch) onBatch(batch.length);
       if (onProgress) onProgress(Math.min(start + width, list.length), list.length);
       const hit = results.find(Boolean);
-      if (hit) return hit;
+      if (collect) results.filter(Boolean).forEach(collect);
+      else if (hit) return hit;
       /*
        * A REFUSAL ENDS THE SEARCH TOO.
        *
@@ -1084,7 +1089,7 @@
        * refused handset asking once and a refused handset sweeping the subnet
        * on every attempt.
        */
-      if (seen && seen.length) return null;
+      if (!collect && seen && seen.length) return null;
     }
     return null;
   }
@@ -1603,11 +1608,16 @@
     path,
     { method = 'GET', body, headers, raw = false, timeout, hedge = false } = {}
   ) {
+    const authenticating = path === '/users/kioskMobileLogin' && method === 'POST';
+    if (!authenticating && session.managed && session.request)
+      return session.request(path, {method, body, headers, raw, timeout});
+    if (session.prepare && !authenticating) await session.prepare();
     if (!server.baseUrl) {
       throw new ApiError('No shop server has been chosen yet', { code: 'NO_SERVER' });
     }
 
     const send = async (base, outerSignal) => {
+      if (!authenticating && session.managed && base !== session.base) throw new ApiError("Reconnect to the server that authorized this phone. Orders are retained.", { code: "SESSION_AUTHORITY" });
       const controller = new AbortController();
       /* A race can cancel a request that is no longer wanted. */
       if (outerSignal) outerSignal.addEventListener('abort', () => controller.abort());
@@ -1623,7 +1633,7 @@
 
       const requestHeaders = new Headers(headers || {});
       requestHeaders.set('Accept', 'application/json');
-      if (session.token && !requestHeaders.has('Authorization')) {
+      if (!authenticating && session.token && !requestHeaders.has('Authorization')) {
         requestHeaders.set('Authorization', `Bearer ${session.token}`);
       }
       if (body !== undefined && !requestHeaders.has('Content-Type')) {
@@ -1637,6 +1647,7 @@
           body: body === undefined ? undefined : JSON.stringify(body),
           signal: controller.signal,
           cache: 'no-store',
+          ...(session.managed ? {credentials:'omit',redirect:'error'} : {}),
         });
       } finally {
         clearTimeout(timer);
@@ -1708,7 +1719,8 @@
          everyone; clearing an empty session would just bounce the user back to
          a sign-in that cannot help. */
       if (error.status === 401 && session.token && !path.includes('kioskMobileLogin')) {
-        session.end();
+        if (session.suspend) await session.suspend();
+        else session.end();
       }
       /*
        * A 401 on the SIGN-IN route means the password was wrong.
@@ -2095,6 +2107,14 @@
          * are the only two things that could fix it.
          */
         if (!server.isConfigured || settingsOpen()) return;
+        // A configured staff session can keep taking orders from its cached menu.
+        if (session.active && window.POSNIC_ORDER_QUEUE_UI) {
+          const old = document.getElementById('posnic-offline');
+          if (old) old.style.display = 'none';
+          document.documentElement.classList.remove('posnic-offline-active');
+          window.dispatchEvent(new CustomEvent('posnic:offline'));
+          return;
+        }
 
         const element = overlay();
         const local = server.isLocal;
@@ -2272,6 +2292,11 @@
       },
 
       async check(manual = false) {
+        if (session.managed && session.request) {
+          if (window.CaptainAccess?.locked || session.needsReconnect) return false;
+          try { await session.request('/captain/v1/session', {method:'GET', timeout:3000}); return true; }
+          catch { net.setOffline(); return false; }
+        }
         /* A scheduled tick that arrives mid-edit stands aside too; a manual
            check is the editor itself asking, and always runs. */
         if (!manual && choosingServer()) return false;

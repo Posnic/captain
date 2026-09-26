@@ -216,7 +216,7 @@
                    cart and leave the token, so the phone looked signed out and
                    was not. */
                 try {
-                    if (window.POSNIC && POSNIC.session) POSNIC.session.end();
+                    if (window.POSNIC && POSNIC.session) await POSNIC.session.end();
                 } catch (e) {
                     /* storage that will not answer; the rest still runs */
                 }

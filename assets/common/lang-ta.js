@@ -363,6 +363,31 @@
       'கடை மெனுவை மாற்றினால் எண்கள் மாறும். மாற்றத்திற்கு பிறகு மீண்டும் அச்சிடுங்கள்.',
   };
 
+  Object.assign(TAMIL, {
+  "Ready for your first shift?": "முதல் பணிநேரத்திற்குத் தயாரா?",
+  "Ask your manager to open Settings → Devices → Captain App on the till.": "மேலாளரிடம் கணினியில் அமைப்புகள் → சாதனங்கள் → Captain செயலியைத் திறக்கச் சொல்லுங்கள்.",
+  "Scan your till’s QR": "கணினியின் QR குறியீட்டை ஸ்கேன் செய்யவும்",
+  "Other connection options": "மற்ற இணைப்பு வழிகள்",
+  "Search this Wi-Fi": "இந்த Wi-Fi இல் தேடவும்",
+  "Enter pairing code": "இணைப்புக் குறியீட்டை உள்ளிடவும்",
+  "Shop code or till address": "கடை குறியீடு அல்லது கணினி முகவரி",
+  "Pairing code": "இணைப்புக் குறியீடு",
+  "My manager confirmed this till address": "இந்தக் கணினி முகவரியை மேலாளர் உறுதிப்படுத்தினார்",
+  "A code needs the shop address. Community shops do not need a cloud account.": "குறியீட்டுடன் கடை முகவரியும் தேவை. Community கடைகளுக்கு கிளவுட் கணக்கு தேவையில்லை.",
+  "Connect this phone": "இந்தத் தொலைபேசியை இணைக்கவும்",
+  "Enter an address": "முகவரியை உள்ளிடவும்",
+  "☁ Posnic Cloud": "☁ Posnic கிளவுட்",
+  "Approve this phone in your browser.": "உலாவியில் இந்தத் தொலைபேசிக்கு அனுமதி வழங்கவும்.",
+  "Sign in": "உள்நுழைக",
+  "Create account / Free trial": "கணக்கை உருவாக்கு / இலவச சோதனை",
+  "Cancel connection": "இணைப்பை ரத்துசெய்",
+  "Staff sign-in / Recover access": "பணியாளர் உள்நுழைவு / அணுகலை மீட்டெடு",
+  "Connect Captain": "Captain இணைப்பு",
+  "demo or 192.168.1.5:5555": "demo அல்லது 192.168.1.5:5555",
+  "Code shown by your manager": "மேலாளர் காட்டிய குறியீடு",
+  "Posnic Cloud": "Posnic கிளவுட்"
+});
+
   if (root.I18N && typeof root.I18N.register === 'function') {
     root.I18N.register('ta', TAMIL);
   } else {

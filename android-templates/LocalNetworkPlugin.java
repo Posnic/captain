@@ -28,6 +28,7 @@ public class LocalNetworkPlugin extends Plugin {
                     if (network.getName().startsWith("wlan")) {
                         JSObject result = new JSObject();
                         result.put("ip", ip);
+                        result.put("wifi", true);
                         call.resolve(result);
                         return;
                     }
@@ -37,6 +38,7 @@ public class LocalNetworkPlugin extends Plugin {
 
             JSObject result = new JSObject();
             result.put("ip", fallbackIp == null ? "" : fallbackIp);
+            result.put("wifi", false);
             call.resolve(result);
         } catch (Exception error) {
             call.reject("Unable to read local network address", error);

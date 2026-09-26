@@ -43,6 +43,9 @@ jspm_packages/
 
 # Playwright test output
 test-results/
+test-results-*/
+test-artifacts/
+test-builds/
 playwright-report/
 blob-report/
 

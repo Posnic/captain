@@ -138,7 +138,7 @@ stamp.stampGradle(path.join(androidDir, 'app', 'build.gradle'), version);
 const javaSourceDir = path.join(androidDir, 'app', 'src', 'main', 'java', 'com', 'posnic', 'captain');
 const javaTemplateDir = path.join(__dirname, 'android-templates');
 fs.mkdirSync(javaSourceDir, { recursive: true });
-for (const fileName of ['MainActivity.java', 'LocalNetworkPlugin.java']) {
+for (const fileName of ['MainActivity.java', 'LocalNetworkPlugin.java', 'SecureSessionPlugin.java']) {
   fs.copyFileSync(
     path.join(javaTemplateDir, fileName),
     path.join(javaSourceDir, fileName)
@@ -254,6 +254,15 @@ if (fs.existsSync(manifestPath)) {
         '\n            android:windowSoftInputMode=\"adjustResize\"'
     );
   }
+  if (!manifest.includes('android:scheme="com.posnic.captain"')) {
+    manifest = manifest.replace('</activity>', `<intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.posnic.captain" android:host="authorized" />
+            </intent-filter>\n        </activity>`);
+  }
+  manifest = manifest.replace(/android:allowBackup="true"/g, 'android:allowBackup="false"');
   fs.writeFileSync(manifestPath, manifest, 'utf8');
 }
 

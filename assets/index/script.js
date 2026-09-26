@@ -186,7 +186,9 @@ async function doLogin() {
          * update when they update.
          */
         const branches = result.branches || result.data || [];
-        POSNIC.session.start(result);
+        if (typeof OrderQueue !== 'undefined' && OrderQueue.all().some(row => row.owner && (row.owner.user !== result.user?.id || row.owner.shop !== result.shopKey || row.owner.base !== POSNIC.server.baseUrl))) throw new Error('Reconnect the original staff member and server to keep saved orders separate.');
+        if (window.CaptainAccess?.locked) await POSNIC.session.end();
+        await POSNIC.session.start(result);
 
         if (!Array.isArray(branches) || branches.length === 0) {
             showLoginMessage("No branches are set up for this account. Ask your manager.");
@@ -378,6 +380,7 @@ async function selectBranch(branchId) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+    try { await POSNIC.session.ready; } catch (e) { showLoginMessage(e.message); return; }
     showBranchFooter(false);
 
     /*
@@ -438,7 +441,7 @@ document.addEventListener("DOMContentLoaded", async () => {
      * Nothing is lost by skipping it here: the editor is opening anyway, and
      * closing the editor starts the checks again.
      */
-    if (!POSNIC.net.choosingServer()) {
+    if (POSNIC.server.isConfigured && !POSNIC.net.choosingServer()) {
         POSNIC.net.check(true).then(function(ok) {
             if (!ok && typeof openServerModal === 'function' && !POSNIC.server.isConfigured) {
                 openServerModal();
@@ -565,7 +568,7 @@ document.addEventListener("DOMContentLoaded", async () => {
      * floor; the trip happens below, after the unlock, and only then.
      */
     let prefetch = null;
-    if (locked && savedBranch && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
+    if (locked && savedBranch && !window.CaptainAccess && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
         prefetch = fetchAndStoreBranch(savedBranch, false).then(
             function () {
                 return null;
@@ -583,15 +586,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         const who = (POSNIC.session.user && POSNIC.session.user.name) || '';
         const opened = await POSNIC.lock.unlock(who);
         if (!opened) {
-            POSNIC.session.end();
-            showLoginMessage('Sign in with your password.');
+            if (!window.CaptainAccess) await POSNIC.session.end();
+            showLoginMessage(window.CaptainAccess ? 'Unlock again when connected, or ask your manager to reconnect this phone. Your orders are saved.' : 'Sign in with your password.');
             return;
         }
     }
 
+    if (window.CaptainAccess && !changingServer && POSNIC.session.active && savedBranch && !forceSelect && !serverFailure && !openServerSettings) {
+        const cached = await getData(STORE_NAME);
+        if (cached?.length) { window.location.href = 'kot-management.html'; return; }
+    }
     // Auto-load saved branch — login form stays visible during this
     // If redirect succeeds the page navigates away; if it fails login form is already shown
-    if (savedBranch && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
+    if (savedBranch && (!window.CaptainAccess || POSNIC.session.active) && !forceSelect && !serverFailure && !openServerSettings && !changingServer) {
         showLoader();
         try {
             if (prefetch) {
@@ -636,7 +643,7 @@ async function logoutKiosk() {
         showLoader();
 
         // Clear all kiosk-related localStorage
-        POSNIC.session.end();
+        await POSNIC.session.end();
         localStorage.removeItem("kiosk_selected_branch");
         localStorage.removeItem("kiosk_branch_list");
         localStorage.removeItem("kiosk_force_branch_select");

@@ -175,6 +175,7 @@
           ? window.jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' })
           : null;
         if (found && found.data) {
+          if (window.CaptainOnboarding?.readQr(found.data)) return;
           const pair = addressesFromScan(found.data);
           const base = pair.cloud || pair.lan;
           if (base) {
