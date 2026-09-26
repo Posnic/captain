@@ -2,6 +2,23 @@
   "use strict";
   let operation = null;
   const $ = (id) => document.getElementById(id);
+  function showStep(signIn) {
+    $("captain-onboarding").hidden = signIn;
+    $("captain-legacy").hidden = !signIn;
+    $("captain-legacy").open = signIn;
+    if (signIn) {
+      const base = POSNIC.server.baseUrl;
+      $("captain-selected-shop").textContent = base ? new URL(base).host : "Your shop";
+    }
+  }
+  function showCode() {
+    const panel = $("captain-code-options");
+    panel.hidden = !panel.hidden;
+    panel.open = !panel.hidden;
+    $("captain-code-toggle").setAttribute("aria-expanded", String(!panel.hidden));
+    $("captain-connect").hidden = !panel.hidden;
+    if (!panel.hidden) $("captain-code").focus();
+  }
   const note = (text) => {
     $("captain-note").textContent = text;
   };
@@ -36,6 +53,8 @@
     if (operation) return;
     operation = new AbortController();
     $("captain-cancel").hidden = false;
+    const controls = ["captain-connect", "captain-search", "captain-scan", "captain-code-toggle", "captain-pair", "captain-cloud-login", "captain-server"];
+    controls.forEach((id) => { $(id).disabled = true; });
     try {
       await work(operation.signal);
     } catch (e) {
@@ -44,6 +63,7 @@
     } finally {
       operation = null;
       $("captain-cancel").hidden = true;
+      controls.forEach((id) => { $(id).disabled = false; });
     }
   }
   function secure() {
@@ -183,10 +203,9 @@
         $("captain-server").value = hit.base;
         // An address change always needs a fresh manager confirmation.
         $("captain-confirm").checked = false;
-        $("captain-code-options").open = true;
-        note(
-          "Check this address with your manager. Finding a till does not sign you in.",
-        );
+        POSNIC.server.pin(hit.base);
+        note("");
+        showStep(true);
       };
       results.append(button);
     };
@@ -372,6 +391,31 @@
     },
   };
   document.addEventListener("DOMContentLoaded", () => {
+    $("captain-server").value = POSNIC.server.baseUrl || "";
+    $("captain-code-toggle").onclick = showCode;
+    $("captain-change-shop").onclick = () => { showStep(false); note(""); };
+    $("captain-connect").onclick = () => {
+      const input = $("captain-server").value.trim();
+      if (!input) { $("captain-server").focus(); note("Enter a shop code or address, or use Wi-Fi search."); return; }
+      void run(async (signal) => {
+      const base = POSNIC.server.normalize(input);
+      if (!base) throw new Error("Check the shop code or address and try again.");
+      note("Connecting to your shop…");
+      const hit = await POSNIC.discovery.probe(base, 5000);
+      if (signal.aborted) return;
+      if (!hit) throw new Error("Could not reach this shop. Check the address or connect to the shop Wi-Fi.");
+      POSNIC.server.pin(hit.base);
+      note("");
+      showStep(true);
+      $("username").focus();
+      });
+    };
+    $("captain-server").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); $("captain-connect").click(); }
+    });
+    window.addEventListener("posnic:server-changed", () => {
+      if (POSNIC.server.isConfigured) { $("captain-server").value = POSNIC.server.baseUrl; showStep(true); }
+    });
     $("captain-server").addEventListener("input", () => {
       $("captain-confirm").checked = false;
     });
@@ -397,6 +441,6 @@
       POSNIC_CONNECT.stopScan();
       note("Connection cancelled.");
     };
-    $("captain-legacy").open = POSNIC.server.isConfigured;
+    showStep(POSNIC.server.isConfigured);
   });
 })();

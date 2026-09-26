@@ -376,15 +376,12 @@ test('an older server refusing a password says so, rather than looking broken', 
   await expect(page.locator('#login-message')).toContainText('Invalid account');
 });
 
-test('signing in with no server chosen says so, instead of failing the password', async ({ page }) => {
+test('fresh setup asks for a shop before exposing staff credentials', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#captain-legacy > summary').click();
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#login-message')).toContainText('Choose your shop server first');
-  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#username')).toBeHidden();
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#captain-note')).toContainText('Enter a shop code or address');
+  await expect(page.locator('#captain-server')).toBeFocused();
 });
 
 test('a locked-out device is told to wait, not that its password is wrong', async ({ page }) => {
@@ -907,18 +904,16 @@ test('first-time setup presents QR without scanning the network automatically', 
 
 test('other connection options remain available without a cloud account', async ({ page }) => {
   await page.goto('/index.html');
-  await page.getByText('Other connection options', { exact: true }).click();
   await expect(page.locator('#captain-search')).toBeVisible();
-  await expect(page.getByText('Enter pairing code', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Enter an address', exact: true })).toBeVisible();
+  await expect(page.locator('#captain-code-toggle')).toBeVisible();
+  await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('manual address entry opens directly without waiting for discovery', async ({ page }) => {
   await page.goto('/index.html');
-  await page.getByText('Other connection options', { exact: true }).click();
-  await page.getByRole('button', { name: 'Enter an address', exact: true }).click();
+  await page.locator('#captain-server').click();
   await expect(page.locator('#connectAuto')).toBeHidden();
-  await expect(page.locator('#serverUrlInput')).toBeVisible();
+  await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('a shop that is already set up starts on the menu, not on a search', async ({ page }) => {
