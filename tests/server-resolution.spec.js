@@ -1650,3 +1650,27 @@ test('an address nobody has signed into keeps the session and lets the server de
 
   expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
 });
+
+for (const stall of ['fetch', 'body']) {
+  test(`discovery recovers when native ${stall} never settles or honours abort`, async ({ page }) => {
+    await page.addInitScript(({ stall }) => {
+      const original = window.fetch.bind(window);
+      window.fetch = (...args) => {
+        if (String(args[0]).includes('shop.example')) {
+          const pending = new Promise(() => {});
+          if (stall === 'fetch') return pending;
+          return Promise.resolve({ ok: true, json: () => pending });
+        }
+        return original(...args);
+      };
+    }, { stall });
+    await page.route('https://shop.example/**', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    }));
+    await page.goto('/index.html');
+    const hit = await page.evaluate(() => POSNIC.discovery.probe('https://shop.example', 100));
+    expect(hit.base).toBe('https://shop.example/api');
+    expect(await page.evaluate(() => POSNIC.discovery.probe.usedRoad)).toBeTruthy();
+  });
+}

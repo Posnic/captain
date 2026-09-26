@@ -193,53 +193,60 @@
           if (refreshBody) result = await post(base, path, refreshBody);
           else {
             const controller = new AbortController();
-            const timer = setTimeout(
-              () => controller.abort(),
-              options.timeout || 7000,
-            );
+            let timer;
             try {
-              const response = await fetcher(base + path, {
-                method: options.method || "GET",
-                credentials: "omit",
-                redirect: "error",
-                cache: "no-store",
-                signal: controller.signal,
-                headers: {
-                  ...options.headers,
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
-                  Authorization: "Bearer " + state.token,
-                },
-                body:
-                  options.body === undefined
-                    ? undefined
-                    : JSON.stringify(options.body),
-              });
-              if (options.raw && response.ok) result = response;
-              else {
-                const payload = await response.json().catch(() => null);
-                if (!response.ok)
-                  throw Object.assign(
-                    new Error(
-                      payload?.error?.message ||
-                        payload?.message ||
-                        `Server answered ${response.status}`,
-                    ),
-                    {
-                      status: response.status,
-                      code: payload?.error?.code || payload?.code,
-                      body: payload,
+              result = await Promise.race([
+                (async () => {
+                  const response = await fetcher(base + path, {
+                    method: options.method || "GET",
+                    credentials: "omit",
+                    redirect: "error",
+                    cache: "no-store",
+                    signal: controller.signal,
+                    headers: {
+                      ...options.headers,
+                      Accept: "application/json",
+                      "Content-Type": "application/json",
+                      Authorization: "Bearer " + state.token,
                     },
-                  );
-                if (!payload)
-                  throw Object.assign(
-                    new Error(
-                      "The server reply was incomplete. This order is retained.",
-                    ),
-                    { code: "TIMEOUT" },
-                  );
-                result = payload;
-              }
+                    body:
+                      options.body === undefined
+                        ? undefined
+                        : JSON.stringify(options.body),
+                  });
+                  if (options.raw && response.ok) return response;
+                  else {
+                    const payload = await response.json().catch(() => null);
+                    if (!response.ok)
+                      throw Object.assign(
+                        new Error(
+                          payload?.error?.message ||
+                            payload?.message ||
+                            `Server answered ${response.status}`,
+                        ),
+                        {
+                          status: response.status,
+                          code: payload?.error?.code || payload?.code,
+                          body: payload,
+                        },
+                      );
+                    if (!payload)
+                      throw Object.assign(
+                        new Error(
+                          "The server reply was incomplete. This order is retained.",
+                        ),
+                        { code: "TIMEOUT" },
+                      );
+                    return payload;
+                  }
+                })(),
+                new Promise((_, reject) => {
+                  timer = setTimeout(() => {
+                    reject(Object.assign(new Error("The server did not answer in time."), { code: "TIMEOUT" }));
+                    controller.abort();
+                  }, options.timeout || 7000);
+                }),
+              ]);
             } finally {
               clearTimeout(timer);
             }
