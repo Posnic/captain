@@ -208,7 +208,7 @@ test("a double tap durably saves one order and returns to ordering without waiti
     document.getElementById("next-btn").click();
     document.getElementById("next-btn").click();
   });
-  await expect(page).toHaveURL(/products\.html$/);
+  await expect(page).toHaveURL(/kot-management\.html$/);
   await expect.poll(() => orders.length).toBe(1);
   await expect
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
@@ -226,7 +226,7 @@ test("rejected orders stay visible and only retry deliberately with the same key
   await shop(page, { orders, reply });
   await toCartWithAMeal(page);
   await page.locator("#next-btn").click();
-  await expect(page).toHaveURL(/products\.html$/);
+  await expect(page).toHaveURL(/kot-management\.html$/);
   await expect(page.getByRole("button", { name: "Retry now", exact: true })).toBeHidden();
   await page.screenshot({ path: 'test-artifacts/captain-pending-collapsed.png', fullPage: true });
   await page.locator("#posnic-unsent-details summary").click();
@@ -254,7 +254,7 @@ test("no network still saves the order and reload retains it without blocking or
   await toCartWithAMeal(page);
   await page.route(`${SHOP_ORIGIN}/**`, (route) => route.abort());
   await page.locator("#next-btn").click();
-  await expect(page).toHaveURL(/products\.html$/);
+  await expect(page).toHaveURL(/kot-management\.html$/);
   await expect
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(1);
@@ -263,7 +263,15 @@ test("no network still saves the order and reload retains it without blocking or
   await expect(page.locator("#posnic-unsent-text")).toContainText(
     "Not sent to kitchen",
   );
-  await expect(page.locator('.btn-add[data-id="product-1"]')).toBeVisible();
+  const headerBox = await page.locator('.floor-head').boundingBox();
+  const noticeBox = await page.locator('#posnic-unsent').boundingBox();
+  expect(noticeBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
+  await page.screenshot({ path: 'test-artifacts/captain-floor-pending.png', fullPage: true });
+  await expect(page.locator('.floor-new')).toBeVisible();
+  await expect(page.locator('#floor-connection-status')).toBeVisible();
+  await expect(page.locator('#no-orders-message')).toBeHidden();
+  await expect(page.locator('#order-toast')).not.toHaveClass(/show/);
+  await expect(page).toHaveURL(/kot-management\.html$/);
   expect(await page.evaluate(() => OrderQueue.all()[0].key)).toBe(key);
   await page.unroute(`${SHOP_ORIGIN}/**`);
   await shop(page);
@@ -273,6 +281,7 @@ test("no network still saves the order and reload retains it without blocking or
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(0);
   await expect(page.locator("#posnic-unsent")).toBeHidden();
+  await expect(page.locator('#floor-connection-status')).toBeHidden();
 });
 
 test("full storage leaves the cart intact and sends nothing", async ({

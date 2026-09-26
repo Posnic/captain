@@ -681,11 +681,13 @@ body {
 
 .order-toast {
     position: fixed;
-    top: 16px;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    top: auto;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
     display: none;
+    max-width: calc(100vw - 32px);
 }
 
 .order-toast-content {

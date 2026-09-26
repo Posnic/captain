@@ -135,7 +135,7 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();
   await page.locator('#next-btn').click();
 
-  await expect(page).toHaveURL(/products\.html$/);
+  await expect(page).toHaveURL(/kot-management\.html$/);
   await expect.poll(() => apiCalls.filter(path => path === '/sales/qrOrder').length).toBe(1);
   await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(0);
 

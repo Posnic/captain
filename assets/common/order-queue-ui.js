@@ -55,7 +55,10 @@
     el.style.cssText =
       "position:relative;background:#f8fafc;color:#475569;border-bottom:1px solid #e2e8f0;padding:0 16px;font:13px/1.4 system-ui;max-height:45vh;overflow:auto;";
     el.innerHTML = `<details id="${ID}-details"><summary style="min-height:44px;display:flex;align-items:center;gap:12px;cursor:pointer"><span id="${ID}-text" role="status" style="flex:1"></span><span style="font-weight:600">View</span></summary><div id="${ID}-rows"></div><div style="display:flex;align-items:center;gap:16px;padding:12px 0"><button type="button" id="${ID}-send">Retry now</button><a id="${ID}-reconnect" href="index.html?serverFailure=1" hidden>Reconnect</a></div></details>`;
-    document.body.prepend(el);
+    const header = document.querySelector('.floor-head, .mobile-header, .bill-head');
+    if (header) header.after(el);
+    else document.body.prepend(el);
+    el.style.flexShrink = '0';
     el.querySelector(`#${ID}-send`).style.cssText = buttonStyle;
     el.querySelector(`#${ID}-send`).onclick = () => flush(true);
     el.querySelector(`#${ID}-reconnect`).onclick = () => {
@@ -143,6 +146,7 @@
         await reconcileCart();
         if (manual && !OrderQueue.count()) await POSNIC.net.check(true);
         const result = await OrderQueue.flush(sendOne, { force: manual, key });
+        if (result.sent) window.dispatchEvent(new Event('posnic:orders-sent'));
         if (result.sent && typeof showToast === "function")
           showToast(`Sent ${result.sent} to the kitchen.`);
       } catch (e) {
