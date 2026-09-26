@@ -2133,8 +2133,8 @@
         if (title) title.textContent = local ? 'The till is not responding' : 'The shop server is not responding';
         if (body) {
           body.textContent = local
-            ? 'This address answered before, so it is usually the till: check POSNIC is open on it, and that this phone is on the shop Wi-Fi.'
-            : 'This address answered before, so it is usually the connection: check this phone has internet.';
+            ? 'Cannot connect to the shop server. Make sure Posnic is running on the till and both devices are on the same network, then try again. Closing the Posnic window is OK if it is still running in the system tray.'
+            : 'Cannot connect to the shop server. Check your internet connection, then try again.';
         }
         if (url) url.textContent = server.baseUrl || '';
 

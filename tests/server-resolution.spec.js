@@ -540,7 +540,7 @@ test('a till that stops answering is named as the thing that is down', async ({ 
   // The address it is trying, so nobody guesses which shop it means.
   await expect(page.locator('#posnic-offline-url')).toContainText(LAN);
   // What would actually fix it.
-  await expect(page.locator('#posnic-offline-body')).toContainText('POSNIC is open on it');
+  await expect(page.locator('#posnic-offline-body')).toContainText('Posnic is running on the till');
   // Both ways out are offered.
   await expect(page.getByRole('button', { name: 'Try now' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Change server' })).toBeVisible();
