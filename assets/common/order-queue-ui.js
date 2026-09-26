@@ -51,10 +51,10 @@
     if (el) return el;
     el = document.createElement("section");
     el.id = ID;
-    el.setAttribute("aria-label", "Connection and saved orders");
+    el.setAttribute("aria-label", "Orders awaiting delivery");
     el.style.cssText =
-      "position:relative;background:#f1f5f9;color:#334155;border-bottom:1px solid #cbd5e1;padding:10px 14px;font:14px/1.4 system-ui;max-height:45vh;overflow:auto;";
-    el.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><span id="${ID}-text" role="status" style="flex:1"></span><a id="${ID}-reconnect" href="index.html?serverFailure=1" hidden>Reconnect</a><button type="button" id="${ID}-send" style="min-height:44px">Retry now</button></div><details id="${ID}-details"><summary style="padding:10px 0">Saved orders</summary><div id="${ID}-rows"></div></details>`;
+      "position:relative;background:#f8fafc;color:#475569;border-bottom:1px solid #e2e8f0;padding:0 16px;font:13px/1.4 system-ui;max-height:45vh;overflow:auto;";
+    el.innerHTML = `<details id="${ID}-details"><summary style="min-height:44px;display:flex;align-items:center;gap:12px;cursor:pointer"><span id="${ID}-text" role="status" style="flex:1"></span><span style="font-weight:600">View</span></summary><div id="${ID}-rows"></div><div style="display:flex;align-items:center;gap:16px;padding:12px 0"><button type="button" id="${ID}-send">Retry now</button><a id="${ID}-reconnect" href="index.html?serverFailure=1" hidden>Reconnect</a></div></details>`;
     document.body.prepend(el);
     el.querySelector(`#${ID}-send`).style.cssText = buttonStyle;
     el.querySelector(`#${ID}-send`).onclick = () => flush(true);
@@ -72,16 +72,13 @@
       lastError = e.message;
       rows = [];
     }
-    el.hidden = !POSNIC.session.active && !rows.length && !lastError;
-    const mode = POSNIC.net?.offline
-      ? "Offline"
-      : POSNIC.server.isLocal
-        ? "Connected locally"
-        : "Connected over internet";
+    // A healthy connection needs no space in the ordering interface.
+    // Automatic delivery continues even while this notice is absent.
+    el.hidden = !rows.length && !lastError;
     el.querySelector(`#${ID}-text`).textContent =
       lastError ||
-      `${mode}${rows.length ? ` · ${rows.length} ${rows.length === 1 ? 'order' : 'orders'} saved on this phone · Not sent to kitchen` : ""}`;
-    el.querySelector(`#${ID}-details`).hidden = !rows.length;
+      `${rows.length} ${rows.length === 1 ? 'order' : 'orders'} saved · Not sent to kitchen`;
+    if (el.hidden) el.querySelector(`#${ID}-details`).open = false;
     const list = el.querySelector(`#${ID}-rows`);
     list.replaceChildren();
     const needsAccess =
@@ -89,8 +86,8 @@
       window.CaptainAccess?.locked ||
       POSNIC.session.needsReconnect;
     el.querySelector(`#${ID}-reconnect`).hidden = !needsAccess;
+    el.querySelector(`#${ID}-send`).hidden = needsAccess || !rows.length;
     if (!POSNIC.session.active || window.CaptainAccess?.locked) {
-      el.querySelector(`#${ID}-details`).hidden = true;
       if (rows.length)
         el.querySelector(`#${ID}-text`).textContent =
           `${rows.length} orders saved. Unlock or reconnect to view and send them.`;
