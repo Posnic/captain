@@ -307,6 +307,7 @@ function renderBranchList(branches) {
 
         const title = document.createElement("h5");
         title.className = "card-title";
+        title.translate = !b.branch_name;
         title.textContent = b.branch_name || "Branch";
 
         body.appendChild(title);

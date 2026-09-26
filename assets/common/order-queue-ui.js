@@ -80,7 +80,7 @@
     el.hidden = !rows.length && !lastError;
     el.querySelector(`#${ID}-text`).textContent =
       lastError ||
-      `${rows.length} ${rows.length === 1 ? 'order' : 'orders'} saved · Not sent to kitchen`;
+      (rows.length === 1 ? `${rows.length} order saved · Not sent to kitchen` : `${rows.length} orders saved · Not sent to kitchen`);
     if (el.hidden) el.querySelector(`#${ID}-details`).open = false;
     const list = el.querySelector(`#${ID}-rows`);
     list.replaceChildren();
@@ -103,6 +103,7 @@
       const title = document.createElement("strong");
       title.textContent = `${row.body?.kiosk_table_no ? "Table " + row.body.kiosk_table_no : "Order"} · ${new Date(row.at).toLocaleTimeString()} · ${row.state === "attention" ? "Needs attention" : row.state === "blocked" ? "Reconnect required" : "Waiting to send"}`;
       const items = document.createElement("p");
+      items.setAttribute("translate", "no");
       items.textContent = (row.body?.items || [])
         .map((i) => `${i.item_quantity} × ${i.item_name || i.item_id}`)
         .join(", ");

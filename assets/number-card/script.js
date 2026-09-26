@@ -43,7 +43,7 @@
     let html = '';
     for (const section of list) {
       html += '<section class="card-group">';
-      html += '<h2>' + MenuView.escape(section.name) + '</h2>';
+      html += '<h2 translate="no">' + MenuView.escape(section.name) + '</h2>';
       html += '<ul>';
       for (const item of section.items) {
         const n = numbers.get(String(item.id));
@@ -52,7 +52,7 @@
           MenuView.escape(String(item.id)) +
           '"><span class="n">' +
           n +
-          '</span><span class="d">' +
+          '</span><span class="d" translate="no">' +
           MenuView.escape(item.name || item.item_name || '') +
           '</span></li>';
       }

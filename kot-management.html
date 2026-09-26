@@ -7,7 +7,7 @@
     <title>KOT Management</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
     <script src="assets/common/i18n.js"></script>
-    <script src="assets/common/lang-ta.js"></script>
+    <script src="assets/common/languages.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
     <script src="assets/common/access.js"></script>
     <script src="config.js"></script>
@@ -51,6 +51,7 @@
     <link href="assets/kot/floor.css" rel="stylesheet">
     <link href="assets/order-history/style.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/common/i18n.css">
 </head>
 
 <body class="floor-screen">
@@ -553,7 +554,7 @@
         <div class="modal-dialog modal-dialog-centered edit-notes-dialog">
             <div class="modal-content edit-notes-content">
                 <div class="modal-header edit-notes-header">
-                    <h5 class="modal-title" id="edit-notes-product-name">Item Notes</h5>
+                    <h5 class="modal-title" id="edit-notes-product-name" translate="no">Item Notes</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body edit-notes-body">
@@ -578,7 +579,7 @@
                 </div>
                 <div class="modal-body">
                     <p id="remove-item-message">Are you sure you want to remove this item from the order?</p>
-                    <p id="remove-item-name" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p>
+                    <p id="remove-item-name" translate="no" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>

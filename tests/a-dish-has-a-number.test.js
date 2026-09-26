@@ -103,7 +103,7 @@ test('the row wears its number, which is how anybody learns it', () => {
   assert.match(html, /class="dish-no"[^>]*>1</);
   assert.match(html, /class="dish-no"[^>]*>5</);
   /* Beside the name, not somewhere else on the row. */
-  assert.match(html, /<p class="dish-name"><span class="dish-no"[^>]*>3<\/span>Chicken Biryani/);
+  assert.match(html, /<p class="dish-name"[^>]*><span class="dish-no"[^>]*>3<\/span>Chicken Biryani/);
 });
 
 test('a screen that asks for no numbers gets none', () => {

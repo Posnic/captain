@@ -35,6 +35,7 @@
         } catch (e) {
             name = '';
         }
+        line.translate = !name;
         line.textContent = name || 'Signed in on this phone';
     }
 

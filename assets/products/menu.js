@@ -234,7 +234,7 @@
         (section) =>
           '<button type="button" class="menu-index-row" data-category="' +
           MenuView.escape(section.key) +
-          '"><span>' +
+          '"><span translate="no">' +
           MenuView.escape(section.name) +
           '</span><span class="menu-index-count">' +
           section.items.length +
@@ -368,7 +368,7 @@
         media.appendChild(mark);
       }
       if (mark) {
-        if (left) mark.textContent = 'Only ' + left + ' left';
+        if (left) mark.textContent = 'Stock: ' + left;
         else mark.remove();
       }
     }

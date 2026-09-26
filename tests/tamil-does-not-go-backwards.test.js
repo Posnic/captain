@@ -23,18 +23,14 @@ const { fromMarkup, pack } = require('../scripts/tamil-gaps');
 
 /*
  * English on purpose:
- *   the two counters are rewritten by script the moment a screen opens, so
- *     what is in the markup is a placeholder nobody reads;
+ *   Captain is the product name;
  *   the address line is sample text showing the SHAPE of an address;
- *   the page title is not shown inside the app at all;
  *   and "English" is the name of a language in its own language, which is how
  *     every language picker in the world writes it.
  */
 const ENGLISH_ON_PURPOSE = [
-  '0 items · 0 qty',
-  '0 items',
+  'Captain',
   'demo · shop.posnic.io · 192.168.1.5',
-  'Order History - Restaurant',
   'English',
 ];
 
@@ -47,7 +43,7 @@ test('every sentence on a screen has Tamil, or is one of the few that should not
   assert.deepStrictEqual(
     unexpected,
     [],
-    'These are on a screen with no Tamil. Add them to assets/common/lang-ta.js, ' +
+    'These are on a screen with no Tamil. Add them to assets/common/locales/ta.json, ' +
       'or to ENGLISH_ON_PURPOSE here with a reason:\n  ' +
       unexpected.join('\n  ')
   );

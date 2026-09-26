@@ -23,7 +23,7 @@
     <link href="assets/common/design.css" rel="stylesheet">
     <link href="assets/common/requests-ui.css" rel="stylesheet">
     <script src="assets/common/i18n.js"></script>
-    <script src="assets/common/lang-ta.js"></script>
+    <script src="assets/common/languages.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
     <!-- Written at build time by build-version.js. Absent at a desk, where
          the app simply says "dev" - which is true. -->
@@ -53,6 +53,7 @@
     <link href="assets/index/style.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link href="assets/index/setup.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/common/i18n.css">
 </head>
 
 <body>
@@ -238,6 +239,7 @@
                 <h1 class="brand-title">Captain</h1>
                 <p class="brand-subtitle">By Posnic</p>
             </div>
+            <label class="setup-language"><span class="visually-hidden">Language</span><select id="setup-language" data-language-picker aria-label="Language"></select></label>
             <button type="button" class="setup-settings" onclick="openServerModal()" aria-label="Connection settings" title="Connection settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/></svg></button>
         </div>
 

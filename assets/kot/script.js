@@ -84,7 +84,14 @@ function changeServer() {
         } catch (e) {
             name = '';
         }
-        who.textContent = name ? 'Signed in as ' + name : 'Signed in on this phone';
+        if (name) {
+            const label = document.createElement('span');
+            label.textContent = 'Signed in as ';
+            const person = document.createElement('bdi');
+            person.setAttribute('translate', 'no');
+            person.textContent = name;
+            who.replaceChildren(label, person);
+        } else who.textContent = 'Signed in on this phone';
     }
 
     /* Which build this phone is on, said plainly enough to read down a
@@ -750,7 +757,7 @@ async function selectTable(tableName, takeaway) {
         // Header shown once
         let headerHtml = `
             <div class="kot-details-header">
-                <span class="active-kot-badge">${kotCount} Active KOT${kotCount > 1 ? 's' : ''}</span>
+                <span class="active-kot-badge">${kotCount} orders</span>
                 ${
                   isTakeaway
                     ? ''
@@ -809,9 +816,9 @@ async function selectTable(tableName, takeaway) {
                 itemsHtml += `
                     <div class="kot-item${off}">
                         <span class="item-index">${index + 1}.</span>
-                        <span class="item-name">${escapeFloor(itemName)}</span>
+                        <span class="item-name" translate="no">${escapeFloor(itemName)}</span>
                         <span class="item-qty">x${itemQty}</span>
-                        ${note ? `<span class="item-note">${escapeFloor(note)}</span>` : ''}
+                        ${note ? `<span class="item-note" translate="no">${escapeFloor(note)}</span>` : ''}
                     </div>
                 `;
             });
@@ -1179,7 +1186,10 @@ function sayWhereWeAre() {
     const name = branchName();
     /* "Your shop" rather than a blank line while the name is unknown: an empty
        heading reopens the hole this was written to close. */
-    if (shop) shop.textContent = name || 'Your shop';
+    if (shop) {
+        shop.setAttribute('translate', name ? 'no' : 'yes');
+        shop.textContent = name || 'Your shop';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', sayWhereWeAre);

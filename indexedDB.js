@@ -893,7 +893,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
                 '<div class="bill-body">' +
                 /* WHOLE. Wrapped by CSS at two lines, never cut at
                    twenty-five characters in JavaScript. */
-                '<p class="bill-name">' + billText(item.name) + '</p>' +
+                '<p class="bill-name" translate="no">' + billText(item.name) + '</p>' +
                 /*
                  * What the table asked for on it, under the name where a note
                  * already goes. A waiter reading back an order needs to see
@@ -906,11 +906,11 @@ async function renderCart(cartData = null, skipRedirect = false) {
                  * different number on the bill would be worse than none.
                  */
                 ((item.modifiers || []).length
-                    ? '<div class="bill-note bill-extras">' +
+                    ? '<div class="bill-note bill-extras" translate="no">' +
                       billText(item.modifiers.map((one) => one.name).join(', ')) +
                       '</div>'
                     : '') +
-                (item.notes ? '<div class="bill-note">' + billText(item.notes) + '</div>' : '') +
+                (item.notes ? '<div class="bill-note" translate="no">' + billText(item.notes) + '</div>' : '') +
                 /*
                  * TODAY'S PRICE CAN BE CORRECTED HERE.
                  *
@@ -1924,4 +1924,3 @@ document.addEventListener('keydown', (e) => {
         hidePopup();
     }
 });
-

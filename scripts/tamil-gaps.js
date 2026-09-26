@@ -34,7 +34,7 @@ const NOT_WORDS = [
 ];
 
 const isWorth = (said) =>
-  said.length > 2 && said.length < 80 && !NOT_WORDS.some((rule) => rule.test(said));
+  said.length > 2 && said.length < 900 && !NOT_WORDS.some((rule) => rule.test(said));
 
 /*
  * AS THE BROWSER WOULD READ IT.
@@ -99,6 +99,8 @@ function fromMarkup() {
 
 /** The pack, read the way a page reads it. */
 function pack() {
+  const catalog = path.join(ROOT, 'assets', 'common', 'locales', 'ta.json');
+  if (fs.existsSync(catalog)) return JSON.parse(fs.readFileSync(catalog, 'utf8'));
   const source = fs.readFileSync(path.join(ROOT, 'assets', 'common', 'lang-ta.js'), 'utf8');
   const root = {};
   // eslint-disable-next-line no-new-func
