@@ -28,6 +28,7 @@
     <!-- Written at build time by build-version.js. Absent at a desk, where
          the app simply says "dev" - which is true. -->
     <script src="app-build.js" onerror="this.remove()"></script>
+    <script src="assets/common/access.js"></script>
     <script src="config.js"></script>
     <!-- What this phone can say about itself, sent once at sign-in so the
          shop can see its handsets. See assets/common/this-device.js. -->
@@ -45,6 +46,7 @@
          no internet, which is the whole point of scanning the till's code. -->
     <script src="assets/vendor/jsqr/jsQR.js"></script>
     <script src="assets/common/connect.js"></script>
+    <script src="assets/common/onboarding.js"></script>
     <!-- Can this handset reach that server, and if not what stopped it. Runs
          only when the URL asks; see assets/common/self-test.js. -->
     <script src="assets/common/self-test.js"></script>
@@ -238,7 +240,7 @@
     <div class="auth-page">
         <div class="auth-header">
             <div class="brand-circle">
-                <span class="brand-initials">TO</span>
+                <img src="assets/common/posnic-mark.svg" alt="Posnic" width="36" height="36">
             </div>
             <div class="brand-text">
                 <h1 class="brand-title">Captain</h1>
@@ -267,6 +269,33 @@
         <div class="auth-card container">
             <!-- Login Section -->
             <div id="login-section">
+                <section id="captain-onboarding" aria-label="Connect Captain">
+                    <h3 class="section-title">Ready for your first shift?</h3>
+                    <p>Ask your manager to open Settings → Devices → Captain App on the till.</p>
+                    <button id="captain-scan" type="button" class="ui-btn">Scan your till’s QR</button>
+                    <details><summary>Other connection options</summary>
+                        <button id="captain-search" type="button" class="ui-btn-quiet">Search this Wi-Fi</button>
+                        <div id="captain-results" style="display:grid;gap:8px"></div>
+                        <details id="captain-code-options"><summary>Enter pairing code</summary>
+                            <label for="captain-server">Shop code or till address</label>
+                            <input id="captain-server" class="ui-field" autocapitalize="none" autocomplete="off" placeholder="demo or 192.168.1.5:5555">
+                            <label for="captain-code">Pairing code</label>
+                            <input id="captain-code" class="ui-field" autocomplete="off" placeholder="Code shown by your manager">
+                            <label><input id="captain-confirm" type="checkbox"> My manager confirmed this till address</label>
+                            <p>A code needs the shop address. Community shops do not need a cloud account.</p>
+                            <button id="captain-pair" type="button" class="ui-btn">Connect this phone</button>
+                        </details>
+                        <button type="button" class="ui-btn-quiet" onclick="openServerModal();chooseManual()">Enter an address</button>
+                    </details>
+                    <section aria-label="Posnic Cloud" style="border-top:1px solid var(--line,#ddd);padding-top:16px">
+                        <h4>☁ Posnic Cloud</h4><p>Approve this phone in your browser.</p>
+                        <button id="captain-cloud-login" type="button" class="ui-btn-quiet">Sign in</button>
+                        <button id="captain-cloud-signup" type="button" class="ui-btn-quiet">Create account / Free trial</button>
+                    </section>
+                    <p id="captain-note" role="status" aria-live="polite"></p>
+                    <button id="captain-cancel" type="button" class="ui-btn-quiet" hidden>Cancel connection</button>
+                </section>
+                <details id="captain-legacy"><summary>Staff sign-in / Recover access</summary>
                 <h3 class="section-title text-center mb-4">Login</h3>
 
                 <div class="mb-3">
@@ -286,6 +315,7 @@
                 </button>
 
                 <div id="login-message" class="mt-3 text-danger text-center" style="display:none;"></div>
+                </details>
             </div>
 
             <!-- Branch Selection Section -->
@@ -334,8 +364,7 @@
             banner.style.display = 'block';
             banner.style.color = '#fff';
             if (!url) {
-                banner.style.background = '#b45309';
-                banner.textContent = 'No server yet - tap the gear to choose one';
+                banner.style.display = 'none';
                 return;
             }
             if (POSNIC.server.isLocal) {
@@ -564,7 +593,7 @@
              * came here to change something specific.
              */
             if (!POSNIC.server.baseUrl && !POSNIC.server.pinned && !POSNIC.server.shopCode) {
-                autoDetectServer({ quiet: true });
+                serverMsg('Scan your till’s QR, or choose a connection option.');
             }
         }
 

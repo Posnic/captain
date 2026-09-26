@@ -1583,6 +1583,16 @@ async function saveCartData(cart) {
     /* A cart that is not the cart the last key was minted for gets a new one:
        a waiter who adds a dish after a failed send must not be handed back the
        order without it. */
+
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction("cart", "readwrite");
+        const store = transaction.objectStore("cart");
+
+        store.clear();
+        cart.forEach(item => store.put(item));
+
+        transaction.oncomplete = () => {
     try {
         const shape = cartShape(cart);
         if (localStorage.getItem(ORDER_SHAPE) !== shape) {
@@ -1593,15 +1603,8 @@ async function saveCartData(cart) {
         /* Storage blocked: the send still goes, it just cannot dedupe. */
     }
 
-    const db = await getDB();
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction("cart", "readwrite");
-        const store = transaction.objectStore("cart");
-
-        store.clear();
-        cart.forEach(item => store.put(item));
-
-        transaction.oncomplete = () => resolve();
+            resolve();
+        };
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
     });
@@ -1806,108 +1809,26 @@ async function checkout(transactionId) {
                 person_count: (orderType === 'Dine-in') ? personCount : ''
         };
 
-        /* Held so the catch below can keep exactly what was sent, rather than
-           rebuilding it from state the failure may already have changed. */
-        window._pendingOrder = { key: orderKey, branch: branchId, body: orderBody };
-
-        /*
-         * SENT THROUGH BOTH DOORS IF THE FIRST HESITATES.
-         *
-         * The only request in the app allowed to do this, and only because of
-         * the key above: the till holds a unique index on `idempotencyKey`, so
-         * a copy arriving through the other door is refused by the database
-         * and answered with the order that already exists. Cannot double.
-         *
-         * This is the moment a waiter is standing at a table waiting, which is
-         * the moment worth spending a second request on. Everything else in
-         * the app switches doors only after something has failed.
-         */
-        const result = await POSNIC.api.post("/sales/qrOrder", orderBody, { hedge: true });
-        window._pendingOrder = null;
-
-        if (result.type === "success") {
-            /* It landed, so this cart's name is spent: whatever the waiter
-               builds next is a new order and must get a new key. */
-            resetOrderKey();
-            const tokenId = result.data.tokenId; // 🔐 3-digit non-repeating token
-            localStorage.setItem("kioskReceipt", JSON.stringify(result.data));
-
-            /*
-             * Keep what was just ordered, so it can be ordered again.
-             *
-             * "Same again" is a normal thing to say at a table and currently
-             * means finding every item by hand a second time. Stored per
-             * branch and kept small: this is a convenience, not a record, and
-             * the sale itself is the record.
-             */
-            try {
-                localStorage.setItem('posnic.last-order', JSON.stringify({
-                    branch: branchId,
-                    at: Date.now(),
-                    items: (payload || []).map(i => ({
-                        item_id: i.item_id,
-                        item_name: i.item_name,
-                        item_quantity: i.item_quantity,
-                    })),
-                }));
-            } catch (e) { /* a convenience, never worth failing an order for */ }
-
-            // 🔄 After order, refresh branch products so stock is updated immediately
-            try {
-                if (branchId && typeof fetchAndStoreBranch === 'function') {
-                    await fetchAndStoreBranch(branchId, false, true);
-                }
-            } catch (e) {
-                console.error('Failed to refresh products after order', e);
-            }
-
-            // 🧹 Clear cart in IndexedDB and UI (skip the auto-redirect to discount.html)
-            await saveCartData([]);
-            await renderCart([], true);
-
-            // 🧹 Clear relevant localStorage items
-            localStorage.removeItem("kiosk_mobile_number");
-            localStorage.removeItem('kiosk_discount_percentage');
-            localStorage.removeItem('kiosk_discount_amount');
-            localStorage.removeItem('kiosk_discount_description');
-            localStorage.removeItem('kiosk_table_no');
-            localStorage.removeItem('kiosk_person_count');
-
-            console.log("✅ Checkout successful! Token:", tokenId);
-
-            // 🚀 Final navigation to Thank You page
-            // Use explicit .html so it works in both browser server and Capacitor WebView
-            window.location.href = `thankyou.html?token=${tokenId}`;
-        } else {
-            console.log("❌ Checkout failed:", result.message || result);
-            showErrorPopup(result.message || "Order failed. Please try again.");
-        }
-
+        // Persist before any network request; the cart stays intact if storage fails.
+        if (POSNIC.session.canTakeOrders === false)
+            throw new Error('Reconnect your account before taking new orders. Existing orders are retained.');
+        const existing = OrderQueue.all().find(row => row.key === orderKey);
+        if (!existing && !OrderQueue.add({key: orderKey, branch: branchId, body: orderBody, held: true}))
+            throw new Error('Order NOT saved. Phone storage is full or unavailable. Keep this cart and retry.');
+        await saveCartData([]);
+        if (!OrderQueue.update(orderKey, {held: false}))
+            throw new Error('Order is saved, but needs recovery. Keep app data and retry.');
+        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note']) localStorage.removeItem(key);
+        await renderCart([], true);
+        if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
+        window.POSNIC_ORDER_QUEUE_UI?.render();
+        // Delivery continues on the next screen, without making the waiter wait.
+        window.location.href = 'products.html';
+        return true;
     } catch (error) {
-        console.log("❌ Error during checkout:", error);
-
-        /*
-         * An order that never reached a server is kept, not lost.
-         *
-         * Only when the request never got an answer. A server that REFUSED
-         * the order refused it for a reason - an item gone, a branch not
-         * configured - and queueing that would retry a rejection for ever.
-         */
-        const unreachable = error && (error.code === 'OFFLINE' || error.code === 'TIMEOUT');
-        if (unreachable && typeof OrderQueue !== 'undefined' && window._pendingOrder) {
-            OrderQueue.add(window._pendingOrder);
-            window._pendingOrder = null;
-            hideOrderProcessingScreen();
-            showErrorPopup(
-                "No connection to the shop, so this order is saved on the phone and " +
-                "NOT yet with the kitchen. It will be sent when the connection is back."
-            );
-            await saveCartData([]);
-            await renderCart([]);
-            return false;
-        }
-
-        showErrorPopup("Order failed. Please try again.");
+        if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
+        showErrorPopup(error.message || 'Order could not be saved. Keep this cart and retry.');
+        return false;
     }
 }
 

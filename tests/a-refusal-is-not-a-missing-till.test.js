@@ -131,6 +131,32 @@ function load(answers) {
 
 const TILL = 'http://192.168.100.18:5555';
 
+test('native Wi-Fi search starts near the phone and skips the phone itself', async () => {
+  const { POSNIC, asked } = load(() => true);
+  await POSNIC.discovery.scanSubnet('192.168.1', { ownHost: 170, concurrency: 1 });
+  assert.match(asked[0], /^http:\/\/192\.168\.1\.169:5555\//);
+  assert.ok(!asked.some((url) => url.includes('192.168.1.170:')));
+});
+
+test('native Wi-Fi search includes a till at host one', async () => {
+  const { POSNIC, asked } = load(() => true);
+  await POSNIC.discovery.scanSubnet('192.168.1', { ownHost: 2, concurrency: 1 });
+  assert.match(asked[0], /^http:\/\/192\.168\.1\.1:5555\//);
+});
+
+test('cancelling an in-flight batch suppresses result and progress callbacks', async () => {
+  let stopped = false;
+  const { POSNIC } = load(() => { stopped = true; return true; });
+  const callbacks = [];
+  await POSNIC.discovery.scanSubnet('192.168.1', {
+    hosts: [2, 3], shouldStop: () => stopped,
+    onBatch: () => callbacks.push('batch'),
+    onProgress: () => callbacks.push('progress'),
+    collect: () => callbacks.push('result'),
+  });
+  assert.deepStrictEqual(callbacks, []);
+});
+
 /* ---------------------------------------------------- what a refusal means */
 
 test('A REFUSAL CARRIES THE STATUS AND THE ADDRESS, not just "it failed"', async () => {

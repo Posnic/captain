@@ -378,6 +378,7 @@ test('an older server refusing a password says so, rather than looking broken', 
 
 test('signing in with no server chosen says so, instead of failing the password', async ({ page }) => {
   await page.goto('/index.html');
+  await page.locator('#captain-legacy > summary').click();
   await page.locator('#username').fill('someone');
   await page.locator('#password').fill('a-password');
   await page.locator('#login-btn').click();
@@ -446,7 +447,7 @@ test('the connect screen offers all three ways, and asks nothing first', async (
      not start a network sweep: that held the screen for seconds against a
      network with no till on it. */
   await expect(page.locator('#connectManual')).toBeHidden();
-  await expect(page.locator('#serverSaveMsg')).toHaveText('');
+  await expect(page.locator('#serverSaveMsg')).toContainText('Scan your till’s QR');
 });
 
 test('typing is one of the three, reached deliberately', async ({ page }) => {
@@ -897,40 +898,25 @@ test('a working address still succeeds on the first road, untouched', async ({ p
  * line at the top and the three choices stay under it the whole time.
  */
 
-test('a handset that has never connected starts looking on its own', async ({ page }) => {
+test('first-time setup presents QR without scanning the network automatically', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#serverModal')).toBeVisible();
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await expect(page.locator('#connectAutoNote')).toContainText(/Looking|Checking|Searching/);
+  await expect(page.locator('#captain-scan')).toBeVisible();
+  await expect(page.locator('#serverModal')).toBeHidden();
+  await expect(page.locator('#captain-legacy')).not.toHaveAttribute('open', '');
 });
 
-test('and does not take the screen while it looks', async ({ page }) => {
-  /* The reason it was removed. All three ways in stay on offer, so somebody
-     who knows their shop code never waits for a search to give up. */
+test('other connection options remain available without a cloud account', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await expect(page.locator('#connectChoices')).toBeVisible();
-  await expect(page.getByText('Type the address')).toBeVisible();
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
+  await page.getByText('Other connection options', { exact: true }).click();
+  await expect(page.locator('#captain-search')).toBeVisible();
+  await expect(page.getByText('Enter pairing code', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enter an address', exact: true })).toBeVisible();
 });
 
-test('choosing by hand ends the search nobody asked for', async ({ page }) => {
+test('manual address entry opens directly without waiting for discovery', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await page.getByText('Type the address').click();
-
+  await page.getByText('Other connection options', { exact: true }).click();
+  await page.getByRole('button', { name: 'Enter an address', exact: true }).click();
   await expect(page.locator('#connectAuto')).toBeHidden();
   await expect(page.locator('#serverUrlInput')).toBeVisible();
 });
@@ -1356,7 +1342,7 @@ test('a request not marked for it never touches the other door', async ({ page }
   expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/getListKot')).toHaveLength(0);
 });
 
-test('only the order send asks for it', async ({ page }) => {
+test('checkout uses the durable queue and never races independent writers', async () => {
   /* A guard on the source, because the safety argument is about the key and
      nothing else in the app carries one. */
   /* Read from disk, not through the page: this asks a question about the
@@ -1366,8 +1352,10 @@ test('only the order send asks for it', async ({ page }) => {
      not available in this file the way the runner loads it. */
   const store = readFileSync('indexedDB.js', 'utf8');
   const hedges = store.match(/hedge:\s*true/g) || [];
-  expect(hedges).toHaveLength(1);
-  expect(store).toMatch(/qrOrder[\s\S]{0,200}hedge: true/);
+  expect(hedges).toHaveLength(0);
+  expect(store).toContain('OrderQueue.add({key: orderKey');
+  const delivery = readFileSync('assets/common/order-queue-ui.js', 'utf8');
+  expect(delivery).not.toMatch(/hedge:\s*true/);
 });
 
 /*

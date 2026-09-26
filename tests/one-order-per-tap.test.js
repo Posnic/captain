@@ -180,7 +180,7 @@ test('the order carries the cart\'s key, not a fresh one per attempt', () => {
     'the key is minted per attempt again, so a second tap writes a second ticket'
   );
   assert.match(db, /idempotencyKey: orderKey,/);
-  /* Cleared when it lands, before the receipt is kept. */
-  const landed = db.indexOf('resetOrderKey();');
-  assert.ok(landed !== -1 && landed < db.indexOf('kioskReceipt'), 'the key outlives the order it named');
+  assert.match(db, /OrderQueue\.add\(\{key: orderKey/);
+  const saved = db.indexOf('OrderQueue.add({key: orderKey');
+  assert.ok(saved < db.indexOf('await saveCartData([]);', saved), 'cart must not clear before the order is durable');
 });

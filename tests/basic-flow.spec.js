@@ -19,7 +19,7 @@ export const RUNTIME_INFO = {
   channel: null,
   apiSchema: 1,
   syncProtocol: 1,
-  features: { account: true }
+  features: { account: true, idempotentOrders: true }
 };
 
 const branchData = {
@@ -135,15 +135,9 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();
   await page.locator('#next-btn').click();
 
-  await expect(page).toHaveURL(/thankyou\.html\?token=A101$/);
-  /*
-   * "Sent to the kitchen", not "Order Placed! We're preparing your delicious
-   * food" - that was written at a CUSTOMER, and the person holding this phone
-   * is the waiter who just sent it.
-   */
-  await expect(page.getByText('Sent to the kitchen')).toBeVisible();
-  /* The token, which is what somebody gets asked for afterwards. */
-  await expect(page.locator('#orderId')).toHaveText('A101');
+  await expect(page).toHaveURL(/products\.html$/);
+  await expect.poll(() => apiCalls.filter(path => path === '/sales/qrOrder').length).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(0);
 
   await page.goto('/order-history.html');
   await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
