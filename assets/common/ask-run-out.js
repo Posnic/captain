@@ -125,6 +125,7 @@
     const scrim = document.getElementById('ask-run-out-scrim');
     const ok = document.getElementById('ask-run-out-ok');
 
+    document.getElementById('ask-run-out-dish').translate = !nameOf(product);
     document.getElementById('ask-run-out-dish').textContent = nameOf(product) || 'This dish';
     document.getElementById('ask-run-out-why').textContent = off
       ? 'This is off the menu today. Put it back and the floor can order it again straight away.'

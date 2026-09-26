@@ -145,7 +145,7 @@ test('a language nobody has a pack for falls back rather than blanking the scree
 
   await page.waitForFunction(() => typeof window.I18N === 'object');
 
-  const landed = await page.evaluate(() => I18N.use('fr'));
+  const landed = await page.evaluate(() => I18N.use('zz'));
   expect(landed).toBe('en');
   await expect(searchBox(page)).toHaveAttribute('placeholder', 'Search the menu');
 });

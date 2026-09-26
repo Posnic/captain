@@ -42,7 +42,7 @@ function updateSlidingPanelKotCard() {
         itemsHtml += `
             <div class="kot-item">
                 <span class="item-index">${index + 1}.</span>
-                <span class="item-name">${safe(itemName)}</span>
+                <span class="item-name" translate="no">${safe(itemName)}</span>
                 <span class="item-qty">x${itemQty}</span>
                 ${note ? `<span class="item-note">${safe(note)}</span>` : ''}
             </div>

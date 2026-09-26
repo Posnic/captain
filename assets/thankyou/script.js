@@ -58,7 +58,7 @@ async function renderAndPrint() {
 
     itemsContainer.innerHTML = `
         <div class="item header-row">        
-            <div class="item-name">Item Name</div>
+            <div class="item-name" translate="no">Item Name</div>
             <div class="item-qty">Qty</div>
             <div class="item-amt">Amount</div>
         </div>
@@ -88,7 +88,7 @@ async function renderAndPrint() {
         if (itemDisc > 0) subInfoParts.push(`-₹${itemDisc.toFixed(2)} disc`);
 
         row.innerHTML = `
-            <div class="item-name">
+            <div class="item-name" translate="no">
                 ${item.item_name}
                 ${subInfoParts.length ? `<div class="sub-info">${subInfoParts.join(" | ")}</div>` : ""}
             </div>

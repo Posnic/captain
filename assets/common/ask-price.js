@@ -194,6 +194,7 @@
     wantsName = false;
     const scrim = document.getElementById('ask-price-scrim');
     const input = document.getElementById('ask-price-input');
+    document.getElementById('ask-price-dish').translate = !dishName;
     document.getElementById('ask-price-dish').textContent = dishName || 'This dish';
     document.getElementById('ask-price-warn').textContent = '';
     /* Put back whatever the name question changed: one sheet, two jobs, and
@@ -233,6 +234,7 @@
     const scrim = document.getElementById('ask-price-scrim');
     const input = document.getElementById('ask-price-input');
 
+    document.getElementById('ask-price-dish').translate = true;
     document.getElementById('ask-price-dish').textContent = 'Something not on the menu';
     document.getElementById('ask-price-warn').textContent = '';
     /* The rupee sign belongs to a price. */

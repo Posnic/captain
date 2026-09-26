@@ -272,7 +272,7 @@
       '<div class="dish-text">' +
       (mark ? '<span class="dish-diet is-' + mark + '" title="' + mark + '"></span>' : '') +
       (popular ? '<span class="dish-badge">Bestseller</span>' : '') +
-      '<p class="dish-name">' +
+      '<p class="dish-name" translate="no">' +
       numberMark +
       escape(product.name) +
       '</p>' +
@@ -290,8 +290,8 @@
           '% off</span>'
         : '') +
       '</div>' +
-      (note ? '<p class="dish-note">' + escape(note) + '</p>' : '') +
-      (prep ? '<div class="dish-prep">⏱ ' + prep + ' min</div>' : '') +
+      (note ? '<p class="dish-note" translate="no">' + escape(note) + '</p>' : '') +
+      (prep ? '<div class="dish-prep">⏱ ' + prep + ' <span>min</span></div>' : '') +
       '</div>' +
       '<div class="dish-media">' +
       media +
@@ -416,7 +416,7 @@
         escape(section.key) +
         '">' +
         '<div class="menu-section-head">' +
-        '<span class="menu-section-name">' +
+        '<span class="menu-section-name" translate="no">' +
         escape(section.name) +
         '</span>' +
         '<span class="menu-section-count">' +
@@ -488,7 +488,7 @@
     let html = '';
     for (let i = 0; i < list.length; i += 1) {
       html +=
-        '<button type="button" class="menu-chip' +
+        '<button type="button" translate="no" class="menu-chip' +
         (i === 0 && opts.markFirst !== false ? ' is-here' : '') +
         '" data-category="' +
         escape(list[i].key) +

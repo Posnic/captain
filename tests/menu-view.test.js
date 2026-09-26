@@ -146,7 +146,8 @@ test('sold out is dimmed and named, not hidden', () => {
 });
 
 test('the kitchen time shows only when the shop has said one', () => {
-  assert.ok(MenuView.dish(dishOf({ prep_minutes: 20 }), 0, {}).includes('20 min'));
+  const rendered = MenuView.dish(dishOf({ prep_minutes: 20 }), 0, {}).replace(/<[^>]*>/g, '');
+  assert.ok(rendered.includes('20 min'));
   assert.ok(!MenuView.dish(dishOf({ prep_minutes: 0 }), 0, {}).includes('min'));
 });
 

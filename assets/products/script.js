@@ -259,10 +259,10 @@ function renderFrequentItems(items) {
         </div>
         <div class="frequent-inner">
             <div class="frequent-img">
-                <img src="${imageUrl}" alt="${product.name}">
+                <img src="${imageUrl}" alt="${product.name}" translate="no">
             </div>
             <div class="frequent-info">
-                <div class="frequent-name">
+                <div class="frequent-name" translate="no">
                     ${product.name}
                 </div>
                 <div class="frequent-price">₹${product.price.toFixed ? product.price.toFixed(2) : product.price}</div>
@@ -1497,9 +1497,9 @@ async function applyProductFilter() {
             '</div>';
 
         const numbered = byNumber
-            ? '<div class="menu-section-head"><span class="menu-section-name">No. ' +
+            ? '<div class="menu-section-head"><span class="menu-section-name"><span>No.</span> <bdi translate="no">' +
               MenuView.escape(typed) +
-              '</span></div>' +
+              '</bdi></span></div>' +
               '<div class="menu-section-items">' +
               MenuView.dish(byNumber, (cartMap.get(byNumber.id) || {}).quantity || 0, options) +
               '</div>'
