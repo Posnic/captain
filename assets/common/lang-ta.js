@@ -388,6 +388,33 @@
   "Posnic Cloud": "Posnic கிளவுட்"
 });
 
+  Object.assign(TAMIL, {
+  "Captain · Sign in": "Captain · உள்நுழைவு",
+  "By Posnic": "Posnic வழங்கும்",
+  "Enter your shop address, or find it using the options below.": "உங்கள் கடை முகவரியை உள்ளிடவும் அல்லது கீழுள்ள வழிகளில் கண்டறியவும்.",
+  "Shop code or server address": "கடைக் குறியீடு அல்லது சேவையக முகவரி",
+  "Shop Wi-Fi is fastest.": "கடையின் வைஃபை வேகமானது.",
+  "Use a domain address when connecting over the internet.": "இணையம் வழியாக இணைக்கும்போது இணைய முகவரியைப் பயன்படுத்தவும்.",
+  "Wi-Fi search": "வைஃபை தேடல்",
+  "Scan QR": "QR ஸ்கேன்",
+  "Connect to shop": "கடையுடன் இணைக்கவும்",
+  "Pair this phone": "இந்த ஃபோனை இணைக்கவும்",
+  "Enter the code from Captain settings on your shop’s POS.": "உங்கள் கடை POS-இல் Captain அமைப்புகளில் உள்ள குறியீட்டை உள்ளிடவும்.",
+  "I confirmed this shop address with my manager": "இந்தக் கடை முகவரியை எனது மேலாளருடன் உறுதிசெய்தேன்",
+  "Pair phone": "ஃபோனை இணைக்கவும்",
+  "Using Posnic Cloud?": "Posnic Cloud பயன்படுத்துகிறீர்களா?",
+  "Sign in with your account": "உங்கள் கணக்கில் உள்நுழையவும்",
+  "Create account": "கணக்கை உருவாக்கவும்",
+  "Staff sign-in": "பணியாளர் உள்நுழைவு",
+  "← Change shop": "← கடையை மாற்றவும்",
+  "Use your staff account to start taking orders.": "ஆர்டர்களை எடுக்க உங்கள் பணியாளர் கணக்கில் உள்நுழையவும்.",
+  "Shop code or address": "கடைக் குறியீடு அல்லது முகவரி",
+  "Find shop on Wi-Fi": "வைஃபையில் கடையைக் கண்டறியவும்",
+  "Scan shop QR code": "கடையின் QR குறியீட்டை ஸ்கேன் செய்யவும்",
+  "12-character code": "12 எழுத்துக் குறியீடு"
+});
+
+  Object.assign(TAMIL, {"Wi-Fi":"வைஃபை","Connection settings":"இணைப்பு அமைப்புகள்","e.g. myshop":"எ.கா. myshop","Code":"குறியீடு"});
   if (root.I18N && typeof root.I18N.register === 'function') {
     root.I18N.register('ta', TAMIL);
   } else {

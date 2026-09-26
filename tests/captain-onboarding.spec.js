@@ -160,7 +160,7 @@ test("saved custom-port tills are checked first and duplicate discoveries are sh
       options.collect({ base, info: { features: { captainAccessV1: true } } });
     };
   }, base);
-  await page.getByText("Other connection options", { exact: true }).click();
+  if (await page.locator("#captain-change-shop").isVisible()) await page.locator("#captain-change-shop").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
   expect(
@@ -174,7 +174,6 @@ test("cancel releases a stuck native Wi-Fi lookup and permits retry", async ({
   await page.evaluate(() => {
     Capacitor.Plugins.LocalNetwork.getLocalIp = () => new Promise(() => {});
   });
-  await page.getByText("Other connection options", { exact: true }).click();
   await page.locator("#captain-search").click();
   await page.locator("#captain-cancel").click();
   await expect(page.locator("#captain-cancel")).toBeHidden();
@@ -203,14 +202,11 @@ test("selecting a result rejects late progress and clears the previous address c
       });
     };
   }, base);
-  await page.getByText("Other connection options", { exact: true }).click();
   await page.locator("#captain-search").click();
   await page.locator("#captain-results button").first().click();
   await expect(page.locator("#captain-cancel")).toBeHidden();
   await page.waitForTimeout(400);
-  await expect(page.locator("#captain-note")).toContainText(
-    "Check this address",
-  );
+  await expect(page.locator("#captain-legacy")).toBeVisible();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
   await expect(page.locator("#captain-confirm")).not.toBeChecked();
 });
@@ -222,8 +218,7 @@ test("unreachable till is not mislabeled as an outdated API", async ({
     POSNIC.discovery.probe = async () => null;
     POSNIC.discovery.probe.lastFailure = { reason: "UNREACHABLE" };
   });
-  await page.getByText("Other connection options", { exact: true }).click();
-  await page.getByText("Enter pairing code", { exact: true }).click();
+  await page.locator("#captain-code-toggle").click();
   await page.locator("#captain-server").fill(base);
   await page.locator("#captain-code").fill(code);
   await page.locator("#captain-pair").click();
@@ -238,21 +233,23 @@ test("a stuck network scan has a deadline and a useful retry message", async ({
   await page.evaluate(() => {
     POSNIC.discovery.scanSubnet = () => new Promise(() => {});
   });
-  await page.getByText("Other connection options", { exact: true }).click();
   await page.locator("#captain-search").click();
   await page.clock.fastForward(21000);
   await expect(page.locator("#captain-cancel")).toBeHidden();
   await expect(page.locator("#captain-note")).toContainText("Search timed out");
 });
-test("fresh Community setup keeps QR primary, other methods grouped, and cloud separate", async ({
+test("fresh setup presents one address and visible discovery tools before staff sign-in", async ({
   page,
 }) => {
   await page.goto("/index.html");
   await expect(
-    page.getByRole("button", { name: "Scan your till’s QR", exact: true }),
+    page.getByRole("button", { name: "Scan shop QR code", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("#captain-server")).toBeHidden();
-  await expect(page.locator("#captain-cloud-signup")).toBeVisible();
+  await expect(page.locator("#captain-server")).toBeVisible();
+  await expect(page.locator("#captain-legacy")).toBeHidden();
+  await expect(page.locator("#serverBanner")).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator("#captain-cloud-signup")).toBeHidden();
   await page.screenshot({
     path: "test-artifacts/captain-first-open.png",
     fullPage: true,
@@ -308,8 +305,7 @@ test("pairing code needs a selected, manager-confirmed address", async ({
   page,
 }) => {
   await phone(page);
-  await page.getByText("Other connection options", { exact: true }).click();
-  await page.getByText("Enter pairing code", { exact: true }).click();
+  await page.locator("#captain-code-toggle").click();
   await page.locator("#captain-server").fill(base);
   await page.locator("#captain-code").fill(code);
   await page.locator("#captain-pair").click();
@@ -336,7 +332,6 @@ test("multiple discovered tills require explicit selection; no Wi-Fi is named", 
         });
     };
   });
-  await page.getByText("Other connection options", { exact: true }).click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-results button")).toHaveCount(2);
   expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
@@ -350,6 +345,7 @@ test("multiple discovered tills require explicit selection; no Wi-Fi is named", 
       ip: "",
     });
   });
+  await page.locator("#captain-change-shop").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-note")).toContainText(
     "Connect this phone to the shop Wi-Fi",
@@ -439,10 +435,49 @@ test("cloud uses external approval and a Captain-scoped request; unavailable acc
   await expect(page.locator("#captain-note")).toContainText("not available");
   expect(await page.evaluate(() => window.openedAccount)).toBeUndefined();
   capability = true;
-  await page.locator("#captain-cloud-signup").click();
+  await page.locator("#captain-cloud-login").click();
   await expect
     .poll(() => page.evaluate(() => window.openedAccount))
     .toContain("/api/mobile/authorize");
   await page.locator("#captain-cancel").click();
   await expect(page.locator("#captain-cancel")).toBeHidden();
+});
+
+test('an entered address is verified before showing a separate staff sign-in screen', async ({ page }) => {
+  await phone(page);
+  await page.locator('#captain-server').fill(base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toBeVisible();
+  await expect(page.locator('#captain-onboarding')).toBeHidden();
+  await expect(page.locator('#captain-selected-shop')).toHaveText('192.168.1.8:42590');
+  await page.screenshot({ path: 'test-artifacts/captain-sign-in.png', fullPage: true });
+  await page.locator('#captain-change-shop').click();
+  await expect(page.locator('#captain-server')).toHaveValue(base);
+  await expect(page.locator('#username')).toBeHidden();
+});
+
+test('unreachable and cancelled addresses do not advance or replace the shop', async ({ page }) => {
+  await phone(page);
+  await page.evaluate(() => { POSNIC.discovery.probe = async () => null; });
+  await page.locator('#captain-server').fill(base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#captain-note')).toContainText('Could not reach');
+  await expect(page.locator('#username')).toBeHidden();
+  expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
+  await page.evaluate(() => { POSNIC.discovery.probe = () => new Promise(resolve => { window.finishProbe = resolve; }); });
+  await page.locator('#captain-connect').click();
+  await page.locator('#captain-cancel').click();
+  await page.evaluate(base => window.finishProbe({base}), base);
+  await expect(page.locator('#captain-connect')).toBeEnabled();
+  expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
+});
+
+test('setup fits a small phone and keeps discovery controls reachable', async ({ page }) => {
+  await page.setViewportSize({width:320,height:640});
+  await page.goto('/index.html');
+  for (const id of ['captain-server','captain-search','captain-scan','captain-code-toggle','captain-connect']) await expect(page.locator('#'+id)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({path:'test-artifacts/captain-setup-small.png',fullPage:true});
+  await page.getByRole('button',{name:'Connection settings',exact:true}).click();
+  await expect(page.locator('#serverModal')).toBeVisible();
 });
