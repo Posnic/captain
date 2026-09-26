@@ -203,6 +203,7 @@ test("a double tap durably saves one order and returns to ordering without waiti
   const orders = [];
   await shop(page, { orders, holdOrderMs: 1500 });
   await toCartWithAMeal(page);
+  await expect(page.locator("#posnic-unsent")).toBeHidden();
   await page.evaluate(() => {
     document.getElementById("next-btn").click();
     document.getElementById("next-btn").click();
@@ -213,6 +214,8 @@ test("a double tap durably saves one order and returns to ordering without waiti
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(0);
   expect(await page.evaluate(() => getCartData())).toHaveLength(0);
+  await expect(page.locator("#posnic-unsent")).toBeHidden();
+  await page.screenshot({ path: 'test-artifacts/captain-clean-ordering.png', fullPage: true });
 });
 
 test("rejected orders stay visible and only retry deliberately with the same key", async ({
@@ -224,6 +227,8 @@ test("rejected orders stay visible and only retry deliberately with the same key
   await toCartWithAMeal(page);
   await page.locator("#next-btn").click();
   await expect(page).toHaveURL(/products\.html$/);
+  await expect(page.getByRole("button", { name: "Retry now", exact: true })).toBeHidden();
+  await page.screenshot({ path: 'test-artifacts/captain-pending-collapsed.png', fullPage: true });
   await page.locator("#posnic-unsent-details summary").click();
   await expect(
     page.getByText("Item unavailable", { exact: true }),
@@ -262,10 +267,12 @@ test("no network still saves the order and reload retains it without blocking or
   expect(await page.evaluate(() => OrderQueue.all()[0].key)).toBe(key);
   await page.unroute(`${SHOP_ORIGIN}/**`);
   await shop(page);
+  await page.locator("#posnic-unsent-details summary").click();
   await page.getByRole("button", { name: "Retry now", exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(0);
+  await expect(page.locator("#posnic-unsent")).toBeHidden();
 });
 
 test("full storage leaves the cart intact and sends nothing", async ({
