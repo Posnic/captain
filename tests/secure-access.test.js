@@ -412,3 +412,26 @@ test("revocation locks the phone and retains both orders and recovery identity",
   assert.equal(access.session.user.id, "staff");
   assert.ok(f.data.has("posnic.pending-orders"));
 });
+
+for (const stall of ["fetch", "body"]) {
+  test(`a stalled ${stall} ignores abort but releases the request and retries the same order`, { timeout: 2000 }, async () => {
+    const f = fixture();
+    let recovering = false;
+    const attempts = [];
+    let lateReply;
+    const pending = new Promise(resolve => { lateReply = resolve; });
+    const answer = { type: "success", data: { orderId: "one" } };
+    const access = createAccess(f.plugin, f.storage, async (_url, options) => {
+      attempts.push(JSON.parse(options.body));
+      if (!recovering && stall === "fetch") return pending;
+      return { ok: true, json: () => recovering ? Promise.resolve(answer) : pending };
+    }, webcrypto);
+    await access.session.start(f.grant);
+    const options = { method: "POST", body: { idempotencyKey: "stable", items: [1] }, timeout: 20 };
+    await assert.rejects(access.session.request("/sales/qrOrder", options), e => e.code === "OFFLINE");
+    recovering = true;
+    assert.deepEqual(await access.session.request("/sales/qrOrder", options), answer);
+    assert.deepEqual(attempts, [options.body, options.body]);
+    lateReply(stall === "fetch" ? { ok: true, json: async () => answer } : answer);
+  });
+}

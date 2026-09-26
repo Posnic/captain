@@ -304,3 +304,37 @@ test("full storage leaves the cart intact and sends nothing", async ({
   expect(orders).toHaveLength(0);
   expect(await page.evaluate(() => getCartData())).toHaveLength(1);
 });
+
+for (const stall of ['fetch', 'body']) {
+  test(`server restart with stalled ${stall} releases delivery and keeps the order retryable`, async ({ page }) => {
+    const orders = [];
+    await page.addInitScript(({ stall }) => {
+      const original = window.fetch.bind(window);
+      window.fetch = async (...args) => {
+        const response = await original(...args);
+        if (sessionStorage.getItem('stall-kitchen') && String(args[0]).includes('/sales/qrOrder')) {
+          const pending = new Promise(() => {}); // Native bridge ignores AbortSignal.
+          if (stall === 'fetch') return pending;
+          return { ok: true, status: 200, headers: response.headers, json: () => pending };
+        }
+        return response;
+      };
+    }, { stall });
+    await shop(page, { orders });
+    await toCartWithAMeal(page);
+    await page.evaluate(() => sessionStorage.setItem('stall-kitchen', '1'));
+    await page.locator('#next-btn').click();
+    await expect(page).toHaveURL(/kot-management\.html$/);
+    await expect(page.locator('.floor-new')).toBeVisible();
+    await expect.poll(() => orders.length).toBe(1);
+    const key = await page.evaluate(() => OrderQueue.all()[0].key);
+    // A settled failed attempt is recorded; a stuck flight never gets this far.
+    await expect.poll(() => page.evaluate(() => OrderQueue.all()[0]?.nextAt), { timeout: 15000 }).toBeGreaterThan(0);
+    await page.evaluate(() => sessionStorage.removeItem('stall-kitchen'));
+    await page.locator('#posnic-unsent-details summary').click();
+    await page.getByRole('button', { name: 'Retry now', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => OrderQueue.count())).toBe(0);
+    expect(orders.length).toBe(2);
+    expect(orders.every(order => order.idempotencyKey === key)).toBe(true);
+  });
+}

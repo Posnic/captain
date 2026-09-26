@@ -789,49 +789,57 @@
 
     const controller = new AbortController();
     let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, firstBudget);
+    let timer;
 
     try {
-      const response = await rawFetch(target, {
-        method: 'GET',
-        signal: controller.signal,
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      });
-      if (!response) return fail('UNREACHABLE');
-      if (!response.ok) return fail('REFUSED', String(response.status), response.status);
+      return await Promise.race([
+        (async () => {
+          const response = await rawFetch(target, {
+            method: 'GET',
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+            cache: 'no-store',
+          });
+          if (!response) return fail('UNREACHABLE');
+          if (!response.ok) return fail('REFUSED', String(response.status), response.status);
 
-      let info;
-      try {
-        info = await response.json();
-      } catch (e) {
-        /*
-         * A BODY THE FIRST ROAD COULD NOT READ IS A TRANSPORT FAULT, NOT A
-         * VERDICT ABOUT THE SERVER.
-         *
-         * This used to give up here, which meant the one failure the fallback
-         * roads exist for was the one failure that never reached them. The
-         * emulator reported it exactly that way: ok:false, reason UNREADABLE,
-         * road "first" - it never tried a second - against a server that
-         * answers curl with two hundred bytes of perfectly good JSON.
-         *
-         * Capacitor's patched fetch is the thing in the middle, and it is
-         * already known to mishandle the rest of this call: it ignores an
-         * AbortSignal and can simply never come back. Handing back a response
-         * whose body will not parse is the same class of fault, so it takes
-         * the same road out.
-         */
-        const unreadable = new Error('unreadable body: ' + describe(e));
-        unreadable.unreadable = true;
-        throw unreadable;
-      }
-      if (!looksLikePosnic(info)) return fail('NOT_POSNIC');
+          let info;
+          try {
+            info = await response.json();
+          } catch (e) {
+            /*
+             * A BODY THE FIRST ROAD COULD NOT READ IS A TRANSPORT FAULT, NOT A
+             * VERDICT ABOUT THE SERVER.
+             *
+             * This used to give up here, which meant the one failure the fallback
+             * roads exist for was the one failure that never reached them. The
+             * emulator reported it exactly that way: ok:false, reason UNREADABLE,
+             * road "first" - it never tried a second - against a server that
+             * answers curl with two hundred bytes of perfectly good JSON.
+             *
+             * Capacitor's patched fetch is the thing in the middle, and it is
+             * already known to mishandle the rest of this call: it ignores an
+             * AbortSignal and can simply never come back. Handing back a response
+             * whose body will not parse is the same class of fault, so it takes
+             * the same road out.
+             */
+            const unreadable = new Error('unreadable body: ' + describe(e));
+            unreadable.unreadable = true;
+            throw unreadable;
+          }
+          if (!looksLikePosnic(info)) return fail('NOT_POSNIC');
 
-      probe.lastFailure = null;
-      return { base, info };
+          probe.lastFailure = null;
+          return { base, info };
+        })(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            timedOut = true;
+            reject(new Error('Server discovery timed out'));
+            controller.abort();
+          }, firstBudget);
+        }),
+      ]);
     } catch (e) {
       /* An abort is our own timer, not the network saying anything. Told
          apart because "it is slow" and "it is not there" send somebody to
@@ -879,15 +887,27 @@
 
       for (const [name, attempt] of roads) {
         try {
-          const response = await attempt(laterBudget);
+          let roadTimer;
+          let result;
+          try {
+            result = await Promise.race([
+              (async () => {
+                const response = await attempt(laterBudget);
+                if (!response?.ok) return { response };
+                try { return { response, info: await response.json() }; }
+                catch { return { response, unreadable: true }; }
+              })(),
+              new Promise((_, reject) => {
+                roadTimer = setTimeout(() => reject(new Error('Discovery timed out')), laterBudget);
+              }),
+            ]);
+          } finally { clearTimeout(roadTimer); }
+          const { response, info } = result;
           if (!response || !response.ok) {
             notes.push(name + ': ' + (response ? String(response.status) : 'no response'));
             continue;
           }
-          let info;
-          try {
-            info = await response.json();
-          } catch (body) {
+          if (result.unreadable) {
             unreadable = true;
             notes.push(name + ': unreadable body');
             continue;
@@ -1629,7 +1649,7 @@
        * what turns a dead router from a ten second freeze into a pause.
        */
       const limit = timeout || (isLanUrl(base) ? LAN_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
-      const timer = setTimeout(() => controller.abort(), limit);
+      let timer;
 
       const requestHeaders = new Headers(headers || {});
       requestHeaders.set('Accept', 'application/json');
@@ -1641,14 +1661,27 @@
       }
 
       try {
-        return await rawFetch(base + path, {
-          method,
-          headers: requestHeaders,
-          body: body === undefined ? undefined : JSON.stringify(body),
-          signal: controller.signal,
-          cache: 'no-store',
-          ...(session.managed ? {credentials:'omit',redirect:'error'} : {}),
-        });
+        return await Promise.race([
+          (async () => {
+            const response = await rawFetch(base + path, {
+              method,
+              headers: requestHeaders,
+              body: body === undefined ? undefined : JSON.stringify(body),
+              signal: controller.signal,
+              cache: 'no-store',
+              ...(session.managed ? {credentials:'omit',redirect:'error'} : {}),
+            });
+            // Include the response body in the deadline; headers alone are not a reply.
+            const payload = raw && response.ok ? undefined : await readBody(response);
+            return { response, payload };
+          })(),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              reject(new DOMException('The shop server did not answer in time', 'AbortError'));
+              controller.abort();
+            }, limit);
+          }),
+        ]);
       } finally {
         clearTimeout(timer);
       }
@@ -1702,13 +1735,14 @@
     }
 
     net.setOnline();
+    const payload = response.payload;
+    response = response.response;
 
     if (raw) {
-      if (!response.ok) throw toApiError(response, await readBody(response));
+      if (!response.ok) throw toApiError(response, payload);
       return response;
     }
 
-    const payload = await readBody(response);
     if (!response.ok) {
       const error = toApiError(response, payload);
       /* A credential the server will not accept is worse than none: every
