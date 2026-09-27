@@ -829,5 +829,11 @@
   "Cash": "ನಗದು",
   "Card": "ಕಾರ್ಡ್",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "ಪಾವತಿ ಸ್ವೀಕರಿಸುವ ಮೊದಲು ಅತಿಥಿಗಳ ಬಿಲ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ."
+  "Review guest bills before collecting payment.": "ಪಾವತಿ ಸ್ವೀಕರಿಸುವ ಮೊದಲು ಅತಿಥಿಗಳ ಬಿಲ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+  "Served": "ಬಡಿಸಲಾಗಿದೆ",
+  "Mark served": "ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+  "Ordered at": "ಆರ್ಡರ್ ಸಮಯ",
+  "Quantity to serve": "ಬಡಿಸಬೇಕಾದ ಪ್ರಮಾಣ",
+  "Items marked served": "ಐಟಂಗಳನ್ನು ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ",
+  "Could not save. Please try again.": "ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
 }

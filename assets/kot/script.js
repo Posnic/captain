@@ -796,6 +796,10 @@ async function selectTable(tableName, takeaway) {
                 `;
             });
 
+            if (window.ServiceRounds && Array.isArray(kot.kitchen_rounds)) {
+                itemsHtml = ServiceRounds.render(kot, !kotIsCancelled(kot));
+            }
+
             kotsCardsHtml += `
                 <div class="kot-card">
                     <div class="kot-meta">

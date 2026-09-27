@@ -829,5 +829,11 @@
   "Cash": "මුදල්",
   "Card": "කාඩ්පත",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "ගෙවීම භාරගැනීමට පෙර අමුත්තන්ගේ බිල් පරීක්ෂා කරන්න."
+  "Review guest bills before collecting payment.": "ගෙවීම භාරගැනීමට පෙර අමුත්තන්ගේ බිල් පරීක්ෂා කරන්න.",
+  "Served": "පිළිගන්වා ඇත",
+  "Mark served": "පිළිගැන්වූ ලෙස සලකුණු කරන්න",
+  "Ordered at": "ඇණවුම් කළ වේලාව",
+  "Quantity to serve": "පිළිගැන්විය යුතු ප්‍රමාණය",
+  "Items marked served": "අයිතම පිළිගැන්වූ ලෙස සලකුණු කර ඇත",
+  "Could not save. Please try again.": "සුරැකීමට නොහැකි විය. නැවත උත්සාහ කරන්න."
 }

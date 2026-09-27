@@ -876,6 +876,7 @@ function viewOrderDetails(orderId) {
                 </div>
             </div>
             
+            ${window.ServiceRounds ? ServiceRounds.render(order) : ''}
             <h6>Order Items:</h6>
             <div class="order-items-table">
                 <table class="table table-sm">
@@ -887,7 +888,7 @@ function viewOrderDetails(orderId) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${order.items.map(item => `
+                        ${(Array.isArray(order.kitchen_rounds) ? [] : order.items).map(item => `
                         <tr class="${struck(item, order).trim()}">
                             <td>
                                 <span class="line-name">${item.name}</span>

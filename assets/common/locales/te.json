@@ -829,5 +829,11 @@
   "Cash": "నగదు",
   "Card": "కార్డు",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "చెల్లింపు తీసుకునే ముందు అతిథుల బిల్లులు తనిఖీ చేయండి."
+  "Review guest bills before collecting payment.": "చెల్లింపు తీసుకునే ముందు అతిథుల బిల్లులు తనిఖీ చేయండి.",
+  "Served": "వడ్డించబడింది",
+  "Mark served": "వడ్డించినట్లు గుర్తించండి",
+  "Ordered at": "ఆర్డర్ సమయం",
+  "Quantity to serve": "వడ్డించాల్సిన పరిమాణం",
+  "Items marked served": "ఐటమ్‌లు వడ్డించినట్లు గుర్తించబడ్డాయి",
+  "Could not save. Please try again.": "సేవ్ చేయలేకపోయాము. మళ్లీ ప్రయత్నించండి."
 }

@@ -829,5 +829,11 @@
   "Cash": "Tiền mặt",
   "Card": "Thẻ",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Kiểm tra hóa đơn của khách trước khi thu tiền."
+  "Review guest bills before collecting payment.": "Kiểm tra hóa đơn của khách trước khi thu tiền.",
+  "Served": "Đã phục vụ",
+  "Mark served": "Đánh dấu đã phục vụ",
+  "Ordered at": "Giờ đặt món",
+  "Quantity to serve": "Số lượng cần phục vụ",
+  "Items marked served": "Đã đánh dấu các món đã phục vụ",
+  "Could not save. Please try again.": "Không thể lưu. Vui lòng thử lại."
 }

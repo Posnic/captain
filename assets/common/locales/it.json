@@ -829,5 +829,11 @@
   "Cash": "Contanti",
   "Card": "Carta",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Controlla i conti degli ospiti prima di riscuotere il pagamento."
+  "Review guest bills before collecting payment.": "Controlla i conti degli ospiti prima di riscuotere il pagamento.",
+  "Served": "Servito",
+  "Mark served": "Segna come servito",
+  "Ordered at": "Ordinato alle",
+  "Quantity to serve": "Quantità da servire",
+  "Items marked served": "Articoli segnati come serviti",
+  "Could not save. Please try again.": "Impossibile salvare. Riprova."
 }

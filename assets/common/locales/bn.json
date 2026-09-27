@@ -829,5 +829,11 @@
   "Cash": "নগদ",
   "Card": "কার্ড",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "টাকা নেওয়ার আগে অতিথিদের বিল যাচাই করুন।"
+  "Review guest bills before collecting payment.": "টাকা নেওয়ার আগে অতিথিদের বিল যাচাই করুন।",
+  "Served": "পরিবেশিত",
+  "Mark served": "পরিবেশিত চিহ্নিত করুন",
+  "Ordered at": "অর্ডারের সময়",
+  "Quantity to serve": "পরিবেশনের পরিমাণ",
+  "Items marked served": "পদগুলি পরিবেশিত চিহ্নিত হয়েছে",
+  "Could not save. Please try again.": "সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।"
 }

@@ -829,5 +829,11 @@
   "Cash": "રોકડ",
   "Card": "કાર્ડ",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "ચુકવણી લેતાં પહેલાં મહેમાનોના બિલ તપાસો."
+  "Review guest bills before collecting payment.": "ચુકવણી લેતાં પહેલાં મહેમાનોના બિલ તપાસો.",
+  "Served": "પીરસાયું",
+  "Mark served": "પીરસાયેલ તરીકે ચિહ્નિત કરો",
+  "Ordered at": "ઓર્ડરનો સમય",
+  "Quantity to serve": "પીરસવાનો જથ્થો",
+  "Items marked served": "વસ્તુઓ પીરસાયેલ તરીકે ચિહ્નિત થઈ",
+  "Could not save. Please try again.": "સાચવી શકાયું નહીં. ફરી પ્રયાસ કરો."
 }

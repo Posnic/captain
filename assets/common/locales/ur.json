@@ -829,5 +829,11 @@
   "Cash": "نقد",
   "Card": "کارڈ",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "ادائیگی وصول کرنے سے پہلے مہمانوں کے بل دیکھیں۔"
+  "Review guest bills before collecting payment.": "ادائیگی وصول کرنے سے پہلے مہمانوں کے بل دیکھیں۔",
+  "Served": "پیش کر دیا گیا",
+  "Mark served": "پیش کیا گیا نشان لگائیں",
+  "Ordered at": "آرڈر کا وقت",
+  "Quantity to serve": "پیش کرنے کی مقدار",
+  "Items marked served": "اشیاء پیش کی گئی نشان زد ہوئیں",
+  "Could not save. Please try again.": "محفوظ نہیں ہو سکا۔ دوبارہ کوشش کریں۔"
 }
