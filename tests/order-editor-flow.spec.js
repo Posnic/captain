@@ -146,3 +146,30 @@ test('adding a previously cancelled dish creates a new line',async({page})=>{
  await expect(page.locator('.editor-added')).toHaveText('Added');
  expect(await page.evaluate(()=>linesForSave(orderBeingModified().items).map(i=>[i.product_id,i.quantity]))).toEqual([['p-biryani',2],['p-coffee',1]]);
 });
+
+for (const where of ['order-history.html', 'kot-management.html']) {
+ test(`unchanged Modify can be cancelled and reopened on ${where}`, async ({page}) => {
+  const posts=await editor(page,where);
+  await expect(page.locator('#save-order-changes')).toBeDisabled();
+  await page.locator('#cancel-order-changes').click();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+  expect(posts).toHaveLength(0);
+  await page.evaluate(()=>modifyKot('order-1'));
+  await expect(page.locator('#editOrderModal')).toBeVisible();
+  await expect(page.locator('#editOrderModal .modal-dialog').first()).toHaveCSS('transform','none');
+  await page.goBack();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  await expect(page).toHaveURL(new RegExp(where.replace('.', '\\.')));
+  expect(posts).toHaveLength(0);
+ });
+}
+
+test('Android Back exits an unchanged editor without a save request',async({page})=>{
+ const posts=await editor(page,'kot-management.html');
+ const consumed=await page.evaluate(()=>!window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ expect(consumed).toBe(true);
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ await expect(page.locator('.modal-backdrop')).toHaveCount(0);
+ expect(posts).toHaveLength(0);
+});
