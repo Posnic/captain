@@ -18,7 +18,8 @@
     stage = "setup",
     snapshot = null,
     error = "",
-    draftKey = "";
+    draftKey = "",
+    collectEnabled = false;
   const t = (s) => (window.I18N ? I18N.t(s) : s);
   const money = (n) => `${snapshot?.currency || ""}${(n / 100).toFixed(2)}`;
   const base = () => POSNIC.session?.base || POSNIC.server.baseUrl;
@@ -75,7 +76,7 @@
         .join("")}`;
     else if (stage === "review") {
       const shares = guests();
-      body = `<p>Check each guest bill before sending it to the cashier.</p>${shares.map((g) => `<details class="guest-bill-review"><summary><strong translate="no">${esc(g.name)}</strong><b translate="no">${esc(money(g.totalMinor))}</b></summary>${g.lines.map((line) => `<div><span translate="no">${esc(line.name)}${line.weight < line.weightTotal ? " (" + line.weight + "/" + line.weightTotal + ")" : ""}</span><span translate="no">${esc(money(line.amountMinor))}</span></div>`).join("")}</details>`).join("")}<div class="guest-bill-total"><strong>Total</strong><strong translate="no">${esc(money(snapshot.totalMinor))}</strong></div><p class="guest-bill-help">Payment is collected at the desktop cashier.</p>`;
+      body = `<p>${collectEnabled ? "Review guest bills before collecting payment." : "Check each guest bill before sending it to the cashier."}</p>${shares.map((g) => `<details class="guest-bill-review"><summary><strong translate="no">${esc(g.name)}</strong><b translate="no">${esc(money(g.totalMinor))}</b></summary>${g.lines.map((line) => `<div><span translate="no">${esc(line.name)}${line.weight < line.weightTotal ? " (" + line.weight + "/" + line.weightTotal + ")" : ""}</span><span translate="no">${esc(money(line.amountMinor))}</span></div>`).join("")}</details>`).join("")}<div class="guest-bill-total"><strong>Total</strong><strong translate="no">${esc(money(snapshot.totalMinor))}</strong></div><p class="guest-bill-help">${collectEnabled ? "Collect payment" : "Payment is collected at the desktop cashier."}</p>`;
     }
     const valid = (() => {
       try {
@@ -84,7 +85,7 @@
         return false;
       }
     })();
-    dialog.innerHTML = `<header><button data-action="back" aria-label="Back">‹ <span>Back</span></button><h2>Split bill</h2><button data-action="close" aria-label="Close">×</button></header><div class="guest-bill-body">${snapshot ? `<div class="guest-bill-context"><strong>${esc(t("Table {0}").replace("{0}", snapshot.table))}</strong><b translate="no">${esc(money(snapshot.totalMinor))}</b></div>` : ""}${notice()}${body}</div><footer><button class="guest-bill-secondary" data-action="close">Cancel</button><button class="guest-bill-primary" data-action="next" ${busy || !snapshot || (stage !== "setup" && !valid) ? "disabled" : ""}>${busy ? "Loading..." : stage === "review" ? (state.pending ? "Retry" : "Send guest bills") : "Continue"}</button></footer>`;
+    dialog.innerHTML = `<header><button data-action="back" aria-label="Back">‹ <span>Back</span></button><h2>Split bill</h2><button data-action="close" aria-label="Close">×</button></header><div class="guest-bill-body">${snapshot ? `<div class="guest-bill-context"><strong>${esc(t("Table {0}").replace("{0}", snapshot.table))}</strong><b translate="no">${esc(money(snapshot.totalMinor))}</b></div>` : ""}${notice()}${body}</div><footer><button class="guest-bill-secondary" data-action="close">Cancel</button><button class="guest-bill-primary" data-action="next" ${busy || !snapshot || (stage !== "setup" && !valid) ? "disabled" : ""}>${busy ? "Loading..." : stage === "review" ? (state.pending ? "Retry" : collectEnabled ? "Collect payment" : "Send guest bills") : "Continue"}</button></footer>`;
     if (busy)
       dialog
         .querySelectorAll(
@@ -258,7 +259,14 @@
           render();
         } else if (a === "next") {
           if (stage === "review") {
-            send();
+            if (collectEnabled && !state.pending) {
+              const draft = {
+                plan: JSON.parse(JSON.stringify(state.plan)),
+                revision: snapshot.revision,
+              };
+              close();
+              CaptainPayments.open(state.table, state.branchId, draft);
+            } else send();
             return;
           }
           stage =
@@ -329,7 +337,10 @@
         "Could not confirm printing. Retry sends the same guest bills without duplicating them.";
       stage = "review";
       render();
-    } else await reload();
+    } else {
+      collectEnabled = (await window.CaptainPayments?.available()) || false;
+      await reload();
+    }
   }
   document.addEventListener("click", (e) => {
     const button = e.target.closest("[data-split-table]");
