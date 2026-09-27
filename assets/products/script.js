@@ -157,36 +157,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // ✅ Auto-close keyboard when user interacts with product list
-    const scrollableProducts = document.querySelector('.scrollable-products');
-    if (scrollableProducts) {
-        // Close keyboard on touch start (mobile)
-        scrollableProducts.addEventListener('touchstart', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        });
-
-        /* Close keyboard on scroll. On the WINDOW, because the menu now
-           scrolls the page rather than a box inside it - a nested scroller
-           under a sticky header is where the keyboard used to leave somebody
-           looking at a strip of screen four rows tall. */
-        window.addEventListener('scroll', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        }, { passive: true });
-
-        // Close keyboard on mouse over (desktop/tablet)
-        scrollableProducts.addEventListener('mouseover', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        });
-    }
+    // Scrolling, keyboard resize and pointer hover must not end a search.
+    // Only an explicit focus change or the keyboard's own dismissal does.
+    let pointerStart = null;
+    const menuTarget = target => ({
+        row: target.closest?.('.dish, .frequent-card') || null,
+        action: target.closest?.('button, a') || null,
+    });
+    document.addEventListener('pointerdown', event => {
+        pointerStart = menuTarget(event.target);
+        // Adding a result or clearing a query should not collapse the keyboard
+        // between pointer-down and click, moving the controls under the finger.
+        if (document.activeElement === searchInput &&
+            (event.target.closest?.('#product-search-clear') ||
+             (pointerStart.row && pointerStart.action))) {
+            event.preventDefault();
+        }
+    }, true);
+    document.addEventListener('pointercancel', () => { pointerStart = null; }, true);
+    document.addEventListener('click', event => {
+        const start = pointerStart;
+        pointerStart = null;
+        // Keyboard/assistive activation has no pointer gesture to compare.
+        if (!start || event.detail === 0) return;
+        const end = menuTarget(event.target);
+        if (end.row && (start.row !== end.row || start.action !== end.action)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
 });
 
 async function loadFrequentItems() {
@@ -1297,9 +1296,13 @@ function setSearchCount(text) {
  * did not. Nobody decided either of those. They happened because the same
  * thing was written twice.
  */
+let productSearchRevision = 0;
 async function applyProductFilter() {
     const input = document.getElementById('product-search-input');
     if (!input) return;
+    const revision = ++productSearchRevision;
+    const query = input.value;
+    const isCurrent = () => revision === productSearchRevision && input.value === query;
 
     /* "3 cb" is three of whatever "cb" finds. The number is remembered for
        the next add, then forgotten, so it cannot leak into a later tap. */
@@ -1326,7 +1329,8 @@ async function applyProductFilter() {
 
     // 🔁 Box empty → the whole menu back, at the top of it
     if (!term) {
-        await loadProducts();
+        await loadProducts(isCurrent);
+        if (!isCurrent()) return;
         /* At the top, and only when a search actually ended. Leaving a search
            returns you to the menu, and the top is the honest place to be put
            back down - but scrolling on every keystroke that happens to clear
@@ -1375,6 +1379,7 @@ async function applyProductFilter() {
 
     // Load cart so qty / stock status stay correct
     const storedCart = await getCartData();
+    if (!isCurrent()) return;
     const cartMap = new Map(storedCart.map(i => [i.id, i]));
 
     const seenIds = new Set();

@@ -1167,8 +1167,9 @@ async function updateCartQuantityNow(id, change) {
  * jump you to a section, and scrolling to a section lights the chip. Nothing
  * is ever rebuilt, so no place is ever lost. See assets/products/menu.js.
  */
-async function loadProducts() {
+async function loadProducts(shouldRender = () => true) {
     const storedProducts = await getData("products");
+    if (!shouldRender()) return;
 
     products = {};
 
@@ -1192,6 +1193,7 @@ async function loadProducts() {
     const allProducts = [];
     Object.values(products).forEach(arr => allProducts.push(...arr));
     products["all"] = allProducts;
+    window._itemSearchIndex = null;
 
     /*
      * DRAWING IS THE MENU SCREEN'S JOB, and only the menu screen has one.
@@ -1213,6 +1215,16 @@ async function loadProducts() {
     if (!listEl || typeof MenuScreen === 'undefined' || typeof MenuView === 'undefined') return;
 
     const loader = document.getElementById('page-loader');
+    // A menu/language refresh must keep the query the waiter is typing.
+    const search = document.getElementById('product-search-input');
+    if (search && typeof ItemSearch !== 'undefined' &&
+        ItemSearch.parseTerm(search.value.trim()).term.trim() &&
+        typeof applyProductFilter === 'function') {
+        await applyProductFilter();
+        if (loader) loader.style.display = 'none';
+        return;
+    }
+
 
     if (!storedProducts.length) {
         listEl.innerHTML = MenuView.nothing(
@@ -1225,6 +1237,14 @@ async function loadProducts() {
     }
 
     const storedCart = await getCartData();
+    if (!shouldRender()) return;
+    if (search && typeof ItemSearch !== 'undefined' &&
+        ItemSearch.parseTerm(search.value.trim()).term.trim() &&
+        typeof applyProductFilter === 'function') {
+        await applyProductFilter();
+        if (loader) loader.style.display = 'none';
+        return;
+    }
     const cartMap = new Map(storedCart.map(i => [i.id, i]));
 
     MenuScreen.draw(products, cartMap, {
