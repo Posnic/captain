@@ -77,6 +77,7 @@ function visit(n, parent, anc = []) {
     else if (v?.type) visit(v, n, [...anc, n]);
   }
 }
+// item-localization is shared catalogue validation, not Captain interface copy.
 function scan(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     if (["vendor", "images", "css", "locales"].includes(e.name)) continue;
@@ -85,7 +86,7 @@ function scan(dir) {
     else if (
       e.name.endsWith(".js") &&
       !e.name.endsWith(".min.js") &&
-      !/^(i18n|lang-ta|languages\.js|speech\.js|voice-order\.js|sounds-like)/.test(
+      !/^(i18n|lang-ta|item-localization\.js|languages\.js|speech\.js|voice-order\.js|sounds-like)/.test(
         e.name,
       )
     ) {

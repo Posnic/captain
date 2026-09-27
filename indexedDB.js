@@ -577,6 +577,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                     products.push({
                         id: item.id?.$oid || item.id?.toString() || Date.now(),
                         name: item.name || "Unknown",
+                        ...window.PosnicItemText.snapshot(item),
                         available_quantity: item.available_quantity || 0,
                         negative_stock: !!item.negative_stock,
                         // ✅ use backend fields as-is
@@ -751,6 +752,7 @@ async function validateCartWithProductsNow(updatedProducts) {
                 return {
                     ...item,
                     name: updatedProduct.name,
+                    ...window.PosnicItemText.snapshot(updatedProduct),
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: Number(updatedProduct.price || item.price || 0),
@@ -790,6 +792,7 @@ async function syncCartSilentlyNow(updatedProducts) {
                 return {
                     ...item,
                     name: updatedProduct.name,
+                    ...window.PosnicItemText.snapshot(updatedProduct),
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: updatedProduct.price,
@@ -924,7 +927,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
                 '<div class="bill-body">' +
                 /* WHOLE. Wrapped by CSS at two lines, never cut at
                    twenty-five characters in JavaScript. */
-                '<p class="bill-name" translate="no">' + billText(item.name) + '</p>' +
+                '<p class="bill-name" translate="no">' + billText(window.ItemLanguage.name(item)) + '</p>' +
                 /*
                  * What the table asked for on it, under the name where a note
                  * already goes. A waiter reading back an order needs to see
@@ -1284,6 +1287,7 @@ async function updateQuantityNow(id, change, options) {
         item = {
             id: product.id,
             name: product.name,
+            ...window.PosnicItemText.snapshot(product),
             /* Carried onto the LINE, because the line outlives the menu row:
                the next branch refresh deletes a one-off from the products
                store, and the cart sync has to know this line is allowed to

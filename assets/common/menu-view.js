@@ -274,7 +274,7 @@
       (popular ? '<span class="dish-badge">Bestseller</span>' : '') +
       '<p class="dish-name" translate="no">' +
       numberMark +
-      escape(product.name) +
+      escape(globalThis.ItemLanguage ? globalThis.ItemLanguage.name(product) : product.name) +
       '</p>' +
       '<div class="dish-price">' +
       /*
