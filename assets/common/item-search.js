@@ -72,7 +72,7 @@
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .trim();
   }
 
@@ -218,8 +218,8 @@
    */
   function index(items) {
     const ear = sounds();
-    return (items || []).map((item) => {
-      const name = fold(item.name);
+    return (items || []).flatMap((item) => [item.name, ...(item.translations || []).map(row => row.name)].filter(Boolean).map(alias => {
+      const name = fold(alias);
       const words = name.split(' ').filter(Boolean);
       return {
         item,
@@ -232,7 +232,7 @@
         sounds: ear ? ear.words(item.name) : [],
         code: fold(item.sku || item.code || item.barcode_id || '') || null,
       };
-    });
+    }));
   }
 
   /**
@@ -353,7 +353,11 @@
       a.entry.name.length - b.entry.name.length ||  // the shorter name is the likelier intent
       a.entry.name.localeCompare(b.entry.name)
     );
-    return hits.map((hit) => hit.entry.item);
+    const seen = new Set();
+    return hits.map((hit) => hit.entry.item).filter(item => {
+      const key = item.id == null ? item : String(item.id);
+      if (seen.has(key)) return false; seen.add(key); return true;
+    });
   }
 
   /**
