@@ -414,24 +414,351 @@ test("revocation locks the phone and retains both orders and recovery identity",
 });
 
 for (const stall of ["fetch", "body"]) {
-  test(`a stalled ${stall} ignores abort but releases the request and retries the same order`, { timeout: 2000 }, async () => {
-    const f = fixture();
-    let recovering = false;
-    const attempts = [];
-    let lateReply;
-    const pending = new Promise(resolve => { lateReply = resolve; });
-    const answer = { type: "success", data: { orderId: "one" } };
-    const access = createAccess(f.plugin, f.storage, async (_url, options) => {
-      attempts.push(JSON.parse(options.body));
-      if (!recovering && stall === "fetch") return pending;
-      return { ok: true, json: () => recovering ? Promise.resolve(answer) : pending };
-    }, webcrypto);
-    await access.session.start(f.grant);
-    const options = { method: "POST", body: { idempotencyKey: "stable", items: [1] }, timeout: 20 };
-    await assert.rejects(access.session.request("/sales/qrOrder", options), e => e.code === "OFFLINE");
-    recovering = true;
-    assert.deepEqual(await access.session.request("/sales/qrOrder", options), answer);
-    assert.deepEqual(attempts, [options.body, options.body]);
-    lateReply(stall === "fetch" ? { ok: true, json: async () => answer } : answer);
-  });
+  test(
+    `a stalled ${stall} ignores abort but releases the request and retries the same order`,
+    { timeout: 2000 },
+    async () => {
+      const f = fixture();
+      let recovering = false;
+      const attempts = [];
+      let lateReply;
+      const pending = new Promise((resolve) => {
+        lateReply = resolve;
+      });
+      const answer = { type: "success", data: { orderId: "one" } };
+      const access = createAccess(
+        f.plugin,
+        f.storage,
+        async (_url, options) => {
+          attempts.push(JSON.parse(options.body));
+          if (!recovering && stall === "fetch") return pending;
+          return {
+            ok: true,
+            json: () => (recovering ? Promise.resolve(answer) : pending),
+          };
+        },
+        webcrypto,
+      );
+      await access.session.start(f.grant);
+      const options = {
+        method: "POST",
+        body: { idempotencyKey: "stable", items: [1] },
+        timeout: 20,
+      };
+      await assert.rejects(
+        access.session.request("/sales/qrOrder", options),
+        (e) => e.code === "OFFLINE",
+      );
+      recovering = true;
+      assert.deepEqual(
+        await access.session.request("/sales/qrOrder", options),
+        answer,
+      );
+      assert.deepEqual(attempts, [options.body, options.body]);
+      lateReply(
+        stall === "fetch" ? { ok: true, json: async () => answer } : answer,
+      );
+    },
+  );
 }
+for (const loseReply of [false, true])
+  test(`independent local and cloud sessions use their own credentials and preserve write ownership (${loseReply})`, async () => {
+    const f = fixture(),
+      lan = "http://192.168.1.20:5555/api",
+      cloud = f.grant.base,
+      seen = [];
+    let down = !loseReply;
+    const handler = async (url, options) => {
+      const here = url.startsWith(lan),
+        body = options.body && JSON.parse(options.body);
+      if (url.endsWith("/route-proof")) {
+        if (here && down) throw Error("Wi-Fi unavailable");
+        assert.equal(options.headers.Authorization, undefined);
+        return {
+          ok: true,
+          json: async () => ({
+            proof: require("node:crypto")
+              .createHmac("sha256", here ? "local-key" : "cloud-key")
+              .update(body.nonce)
+              .digest("hex"),
+          }),
+        };
+      }
+      seen.push({ url, token: options.headers.Authorization, body });
+      assert.equal(
+        options.headers.Authorization,
+        here ? "Bearer local-access" : "Bearer access",
+      );
+      if (here && loseReply) throw Error("Reply lost");
+      return { ok: true, json: async () => ({ type: "success" }) };
+    };
+    let access = createAccess(f.plugin, f.storage, handler, webcrypto);
+    await access.session.start({
+      ...f.grant,
+      routeKey: "cloud-key",
+      idempotentOrders: true,
+      connections: [
+        {
+          ...f.grant,
+          base: lan,
+          token: "local-access",
+          sessionId: "local-session",
+          routeKey: "local-key",
+          targetDeviceId: "till-1",
+          expiresAt: Date.now() + 900000,
+        },
+      ],
+    });
+    const options = { method: "POST", body: { idempotencyKey: "new-sale" } };
+    if (!loseReply) {
+      assert.equal(
+        (await access.session.request("/sales/qrOrder", options)).type,
+        "success",
+      );
+      assert.equal(seen[0].url, cloud + "/sales/qrOrder");
+    } else {
+      await assert.rejects(access.session.request("/sales/qrOrder", options));
+      assert.equal(seen.length, 1);
+      assert.ok(seen[0].url.startsWith(lan));
+      down = true;
+      access = createAccess(f.plugin, f.storage, handler, webcrypto);
+      await access.ready;
+      await assert.rejects(access.session.request("/sales/qrOrder", options));
+      assert.equal(
+        seen.length,
+        1,
+        "a restart must not reroute an uncertain order to a second database",
+      );
+    }
+  });
+test("local renewal persists its own successor while preserving cloud credentials", async () => {
+  const f = fixture(),
+    lan = "http://192.168.1.20:5555/api";
+  let rotated;
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url, options) => {
+      const body = options.body && JSON.parse(options.body);
+      if (url.endsWith("/route-proof"))
+        return {
+          ok: true,
+          json: async () => ({
+            proof: require("node:crypto")
+              .createHmac(
+                "sha256",
+                url.startsWith(lan) ? "local-key" : "cloud-key",
+              )
+              .update(body.nonce)
+              .digest("hex"),
+          }),
+        };
+      if (url.endsWith("/refresh")) {
+        assert.ok(url.startsWith(lan));
+        rotated = body.nextToken;
+        return {
+          ok: true,
+          json: async () => ({
+            ...f.grant,
+            token: "local-new",
+            refreshToken: rotated,
+            routeKey: "local-key",
+            sessionId: "local-session",
+          }),
+        };
+      }
+      assert.equal(options.headers.Authorization, "Bearer local-new");
+      return { ok: true, json: async () => ({ ok: true }) };
+    },
+    webcrypto,
+  );
+  await access.session.start({
+    ...f.grant,
+    routeKey: "cloud-key",
+    connections: [
+      {
+        ...f.grant,
+        base: lan,
+        routeKey: "local-key",
+        sessionId: "local-session",
+        targetDeviceId: "till-1",
+        expiresAt: 1,
+      },
+    ],
+  });
+  await access.session.request("/sales/getOrderHistory", { method: "POST" });
+  assert.equal(f.vault().token, "access");
+  assert.equal(f.vault().connections[0].token, "local-new");
+  assert.equal(f.vault().connections[0].refreshToken, rotated);
+});
+test("a replacement IP is proved before it is stored as a connection", async () => {
+  const f = fixture(),
+    calls = [];
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, json: async () => ({ proof: "wrong" }) };
+    },
+    webcrypto,
+  );
+  await access.session.start({ ...f.grant, routeKey: "key" });
+  await assert.rejects(
+    access.session.addAddress("http://192.168.1.99:5555/api"),
+    /not the server/,
+  );
+  assert.equal(f.vault().routes, undefined);
+  assert.equal(calls[0].options.headers.Authorization, undefined);
+});
+
+test("late local approval is retried without interrupting the established cloud session", async (t) => {
+  const f = fixture(),
+    lan = "http://192.168.1.20:5555/api",
+    code = "ABCDEF123456";
+  let delivered = false,
+    proofs = 0,
+    time = Date.now();
+  t.mock.method(Date, "now", () => time);
+  const previous = globalThis.POSNIC;
+  globalThis.POSNIC = {
+    thisDevice: { facts: () => ({ deviceId: "phone" }) },
+    server: { recordShop() {}, remember() {} },
+  };
+  t.after(() => {
+    globalThis.POSNIC = previous;
+  });
+  const access = createAccess(
+    f.plugin,
+    f.storage,
+    async (url, options) => {
+      const body = JSON.parse(options.body);
+      if (url.endsWith("/enrolment-proof")) {
+        proofs++;
+        if (!delivered)
+          return {
+            ok: false,
+            status: 401,
+            json: async () => ({ error: { message: "Not delivered yet" } }),
+          };
+        return {
+          ok: true,
+          json: async () => ({
+            proof: require("node:crypto")
+              .createHmac(
+                "sha256",
+                require("node:crypto")
+                  .createHash("sha256")
+                  .update(code)
+                  .digest("hex"),
+              )
+              .update(body.nonce)
+              .digest("hex"),
+          }),
+        };
+      }
+      assert.equal(url, lan + "/captain/v1/pair");
+      assert.equal(body.code, code);
+      return {
+        ok: true,
+        json: async () => ({
+          ...f.grant,
+          token: "local-token",
+          routeKey: "local-key",
+          sessionId: "local-session",
+        }),
+      };
+    },
+    webcrypto,
+  );
+  await access.session.start({
+    ...f.grant,
+    cloudAuthorization: { connectionToken: "receipt", verifier: "proof" },
+    pendingConnections: [
+      { deviceId: "till", addresses: [lan], code, enrolmentId: "approval" },
+    ],
+  });
+  await access.session.refreshConnections();
+  assert.equal(proofs, 1);
+  assert.equal(f.vault().connections, undefined);
+  delivered = true;
+  time += 11000;
+  await access.session.refreshConnections();
+  assert.equal(proofs, 2);
+  assert.equal(f.vault().token, "access");
+  assert.equal(f.vault().connections[0].token, "local-token");
+  assert.equal(f.vault().pendingConnections, undefined);
+});
+test("parallel local requests share one refresh rotation and refusal cannot fall through to cloud", async () => {
+  for (const refused of [false, true]) {
+    const f = fixture(),
+      lan = "http://192.168.1.20:5555/api";
+    let renewals = 0,
+      cloudWrites = 0;
+    const access = createAccess(
+      f.plugin,
+      f.storage,
+      async (url, options) => {
+        const body = options.body && JSON.parse(options.body);
+        if (url.endsWith("/route-proof"))
+          return {
+            ok: true,
+            json: async () => ({
+              proof: require("node:crypto")
+                .createHmac(
+                  "sha256",
+                  url.startsWith(lan) ? "local-key" : "cloud-key",
+                )
+                .update(body.nonce)
+                .digest("hex"),
+            }),
+          };
+        if (url.endsWith("/refresh")) {
+          renewals++;
+          await new Promise((r) => setTimeout(r, 10));
+          return refused
+            ? {
+                ok: false,
+                status: 403,
+                json: async () => ({ error: { message: "Device revoked" } }),
+              }
+            : {
+                ok: true,
+                json: async () => ({
+                  ...f.grant,
+                  token: "local-new",
+                  refreshToken: body.nextToken,
+                  routeKey: "local-key",
+                  sessionId: "local-session",
+                }),
+              };
+        }
+        if (!url.startsWith(lan)) cloudWrites++;
+        return { ok: true, json: async () => ({ ok: true }) };
+      },
+      webcrypto,
+    );
+    await access.session.start({
+      ...f.grant,
+      routeKey: "cloud-key",
+      connections: [
+        {
+          ...f.grant,
+          base: lan,
+          routeKey: "local-key",
+          sessionId: "local-session",
+          expiresAt: 1,
+        },
+      ],
+    });
+    const results = await Promise.allSettled([
+      access.session.request("/sales/getOrderHistory", { method: "POST" }),
+      access.session.request("/sales/getOrderHistory", { method: "POST" }),
+    ]);
+    assert.equal(renewals, 1);
+    assert.equal(cloudWrites, 0);
+    assert.ok(
+      results.every((r) => r.status === (refused ? "rejected" : "fulfilled")),
+    );
+  }
+});

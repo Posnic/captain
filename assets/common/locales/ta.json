@@ -747,5 +747,12 @@
   "Decrease quantity": "அளவைக் குறைக்கவும்",
   "Discard changes?": "மாற்றங்களைக் கைவிடவா?",
   "Guests": "விருந்தினர்கள்",
-  "Increase quantity": "அளவை அதிகரிக்கவும்"
+  "Increase quantity": "அளவை அதிகரிக்கவும்",
+  "Local server": "உள்ளூர் சர்வர்",
+  "Internet server": "இணைய சர்வர்",
+  "Save": "சேமிக்கவும்",
+  "Saved": "சேமிக்கப்பட்டது",
+  "Switch staff": "பணியாளரை மாற்றவும்",
+  "Use another cloud account": "வேறொரு கிளவுட் கணக்கைப் பயன்படுத்தவும்",
+  "Send saved orders before switching accounts. Connection settings remain available.": "கணக்கை மாற்றுவதற்கு முன் சேமித்த ஆர்டர்களை அனுப்பவும். இணைப்பு அமைப்புகளைப் பயன்படுத்தலாம்."
 }

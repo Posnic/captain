@@ -1981,8 +1981,8 @@
     }
 
     function settingsOpen() {
-      const modal = document.getElementById('serverModal');
-      return !!(modal && modal.style.display && modal.style.display !== 'none');
+      const setup = document.getElementById('captain-onboarding');
+      return !!(setup && !setup.hidden);
     }
 
     /*

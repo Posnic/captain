@@ -747,5 +747,12 @@
   "Decrease quantity": "Aantal verlagen",
   "Discard changes?": "Wijzigingen verwerpen?",
   "Guests": "Gasten",
-  "Increase quantity": "Aantal verhogen"
+  "Increase quantity": "Aantal verhogen",
+  "Local server": "Lokale server",
+  "Internet server": "Internetserver",
+  "Save": "Opslaan",
+  "Saved": "Opgeslagen",
+  "Switch staff": "Medewerker wisselen",
+  "Use another cloud account": "Ander cloudaccount gebruiken",
+  "Send saved orders before switching accounts. Connection settings remain available.": "Verstuur opgeslagen bestellingen voordat u van account wisselt. Verbindingsinstellingen blijven beschikbaar."
 }

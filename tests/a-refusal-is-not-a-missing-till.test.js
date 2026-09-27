@@ -273,13 +273,13 @@ test('THE SCREEN SAYS WHICH TILL REFUSED, not "no till found"', () => {
    * working perfectly, and their manager after them. The till's address and
    * the status are both things somebody can act on.
    */
-  const page = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  assert.match(page, /POSNIC\.discovery\.findOnWifi\.lastRefusal/);
+  const page = fs.readFileSync(path.join(ROOT, 'assets/common/onboarding.js'), 'utf8');
+  assert.match(page, /const refused = seen\[0\]/);
   assert.match(page, /answered and refused this phone/);
   assert.match(page, /Ask your manager to allow this device on the till/);
   /* And the honest "nothing there" message is still there for when nothing
      is there. */
-  assert.match(page, /No till found on this Wi-Fi/);
+  assert.match(page, /No compatible till found/);
 });
 
 test('and the self-test reports it, because that screen exists to say why', () => {

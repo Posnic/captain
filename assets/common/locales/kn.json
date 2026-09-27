@@ -747,5 +747,12 @@
   "Decrease quantity": "ಪ್ರಮಾಣ ಕಡಿಮೆ ಮಾಡಿ",
   "Discard changes?": "ಬದಲಾವಣೆಗಳನ್ನು ತ್ಯಜಿಸಬೇಕೇ?",
   "Guests": "ಅತಿಥಿಗಳು",
-  "Increase quantity": "ಪ್ರಮಾಣ ಹೆಚ್ಚಿಸಿ"
+  "Increase quantity": "ಪ್ರಮಾಣ ಹೆಚ್ಚಿಸಿ",
+  "Local server": "ಸ್ಥಳೀಯ ಸರ್ವರ್",
+  "Internet server": "ಇಂಟರ್ನೆಟ್ ಸರ್ವರ್",
+  "Save": "ಉಳಿಸಿ",
+  "Saved": "ಉಳಿಸಲಾಗಿದೆ",
+  "Switch staff": "ಸಿಬ್ಬಂದಿಯನ್ನು ಬದಲಿಸಿ",
+  "Use another cloud account": "ಬೇರೆ ಕ್ಲೌಡ್ ಖಾತೆ ಬಳಸಿ",
+  "Send saved orders before switching accounts. Connection settings remain available.": "ಖಾತೆ ಬದಲಿಸುವ ಮೊದಲು ಉಳಿಸಿದ ಆರ್ಡರ್‌ಗಳನ್ನು ಕಳುಹಿಸಿ. ಸಂಪರ್ಕ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಲಭ್ಯವಿವೆ."
 }

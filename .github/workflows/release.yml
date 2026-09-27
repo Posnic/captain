@@ -260,8 +260,15 @@ jobs:
             echo
             echo "## Choosing a server"
             echo
-            echo "On the shop Wi-Fi, open Server settings and tap **Find server on this Wi-Fi**."
-            echo "Otherwise enter the shop code (for example \`azure\`), tap Test, then Save & Use."
+            echo "**Android:** choose **Sign in with your account**, approve Captain in your browser, and select the branch and staff member."
+            echo
+            echo "You can also enter a shop code or server address, search the shop Wi-Fi, or scan its QR. Android also supports pairing codes."
+            echo
+            echo "First-time setup and Change server use the same screen. Expand **Connection settings** to update the local and internet addresses, including before staff sign-in."
+            echo
+            echo "Approved local connections are preferred; the verified internet connection is used when needed. Unsent orders stay saved. An order with an uncertain delivery result waits for its original server to prevent duplicate kitchen orders."
+            echo
+            echo "**iOS:** address sign-in remains available. Secure browser approval and pairing currently require Android."
           } > notes.md
 
       - uses: softprops/action-gh-release@v3

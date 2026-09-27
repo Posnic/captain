@@ -747,5 +747,12 @@
   "Decrease quantity": "Reducir cantidad",
   "Discard changes?": "¿Descartar los cambios?",
   "Guests": "Comensales",
-  "Increase quantity": "Aumentar cantidad"
+  "Increase quantity": "Aumentar cantidad",
+  "Local server": "Servidor local",
+  "Internet server": "Servidor de Internet",
+  "Save": "Guardar",
+  "Saved": "Guardado",
+  "Switch staff": "Cambiar de empleado",
+  "Use another cloud account": "Usar otra cuenta en la nube",
+  "Send saved orders before switching accounts. Connection settings remain available.": "Envíe los pedidos guardados antes de cambiar de cuenta. Los ajustes de conexión siguen disponibles."
 }

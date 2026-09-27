@@ -747,5 +747,12 @@
   "Decrease quantity": "تقليل الكمية",
   "Discard changes?": "تجاهل التغييرات؟",
   "Guests": "الضيوف",
-  "Increase quantity": "زيادة الكمية"
+  "Increase quantity": "زيادة الكمية",
+  "Local server": "الخادم المحلي",
+  "Internet server": "خادم الإنترنت",
+  "Save": "حفظ",
+  "Saved": "تم الحفظ",
+  "Switch staff": "تبديل الموظف",
+  "Use another cloud account": "استخدام حساب سحابي آخر",
+  "Send saved orders before switching accounts. Connection settings remain available.": "أرسل الطلبات المحفوظة قبل تبديل الحساب. تظل إعدادات الاتصال متاحة."
 }

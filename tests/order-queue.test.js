@@ -224,3 +224,33 @@ test("attempts are counted, so a stuck order is visible", async () => {
   );
   assert.equal(OrderQueue.all()[0].attempts, 2);
 });
+
+test("delivery authority is retained on failed queue deletion and retired only after success", () => {
+  reset();
+  OrderQueue.add({ ...order("ack"), owner: { shop: "shop", user: "staff" } });
+  localStorage.setItem(
+    "posnic.order-authorities",
+    JSON.stringify({ "shop:staff:ack": "till-a", "shop:other:ack": "till-b" }),
+  );
+  const set = localStorage.setItem;
+  localStorage.setItem = (name, value) => {
+    if (name === OrderQueue.STORE) throw Error("Storage unavailable");
+    return set(name, value);
+  };
+  try {
+    assert.equal(OrderQueue.remove("ack"), false);
+    assert.equal(
+      JSON.parse(localStorage.getItem("posnic.order-authorities"))[
+        "shop:staff:ack"
+      ],
+      "till-a",
+    );
+  } finally {
+    localStorage.setItem = set;
+  }
+  assert.equal(OrderQueue.remove("ack"), true);
+  assert.deepEqual(
+    JSON.parse(localStorage.getItem("posnic.order-authorities")),
+    { "shop:other:ack": "till-b" },
+  );
+});

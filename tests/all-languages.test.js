@@ -35,7 +35,7 @@ test('the offline bundle matches the editable catalogs and every page loads it',
 });
 test('all local markup messages are covered except brands and address examples', () => {
   const {fromMarkup} = require('../scripts/tamil-gaps');
-  const unchanged = new Set(['English','Captain','Posnic','Posnic Cloud','demo · shop.posnic.io · 192.168.1.5']);
+  const unchanged = new Set(['English','Captain','Posnic','Posnic Cloud','http://192.168.0.12:5555/api','https://azure.posnic.io/api']);
   const missing=[...fromMarkup().keys()].filter(key=>!english[key]&&!unchanged.has(key));
   assert.deepEqual(missing,[]);
 });

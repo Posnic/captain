@@ -301,20 +301,16 @@ test('a rejected credential is dropped rather than resent', async ({ page }) => 
   expect(await page.evaluate(() => POSNIC.session.token)).toBeNull();
 });
 
-test('auto detect checks the known local server before sweeping', async ({ page }) => {
-  await seed(page, { lan: LAN, active: LAN });
-  await serve(page, LAN_ORIGIN);
-
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Find the till on this Wi-Fi').click();
-
-  await expect(page.locator('#serverSaveMsg')).toContainText(`Found the till at ${LAN}`);
-  /* One button, always usable. Test and Save were two, in a required order,
-     so the obvious one did nothing until the other had been pressed. */
-  await expect(page.locator('#serverSaveBtn')).toBeEnabled();
-  await expect(page.locator('#serverSaveBtn')).toHaveText('Connect');
-  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
+test('Wi-Fi discovery checks the known local server before sweeping', async ({ page }) => {
+  await seed(page,{lan:LAN,active:LAN});await serve(page,LAN_ORIGIN);
+  await page.addInitScript(()=>{window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:async()=>({wifi:true,ip:'192.168.1.4'})}}};});
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
+  await page.locator('#captain-search').click();
+  await expect(page.locator('#captain-results button')).toContainText(LAN);
+  await page.locator('#captain-results button').click();
+  await expect(page.locator('#captain-legacy')).toBeVisible();
+  expect(await baseUrl(page)).toBe(LAN);
 });
 
 test('signing in against an older server still finds the shop', async ({ page }) => {
@@ -423,42 +419,16 @@ test('a locked-out device is told to wait, not that its password is wrong', asyn
  * them. The screen used to be a text box, which only serves the third.
  */
 
-test('the connect screen offers all three ways, and asks nothing first', async ({ page }) => {
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
-  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
-  /*
-   * "Type the address", not "Type the shop code".
-   *
-   * The box takes three different things - a shop code, a web address, or the
-   * till on this Wi-Fi - and the app completes each: "demo" becomes
-   * https://demo.posnic.io/api, a web address gains /api, and a private
-   * address gains the till's port. Calling all of that "the shop code" told
-   * somebody typing a URL they were in the wrong place.
-   */
-  await expect(page.getByText('Type the address')).toBeVisible();
-
-  /* The text box is not the front door any more. Opening the sheet also must
-     not start a network sweep: that held the screen for seconds against a
-     network with no till on it. */
-  await expect(page.locator('#connectManual')).toBeHidden();
-  await expect(page.locator('#serverSaveMsg')).toContainText('Scan your till’s QR');
+test('connection settings offer browser approval, one address, Wi-Fi, QR and pairing code', async ({ page }) => {
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  for(const id of ['captain-cloud-login','captain-server','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
+  await expect(page.locator('#captain-cancel')).toBeHidden();
 });
-
-test('typing is one of the three, reached deliberately', async ({ page }) => {
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Type the address').click();
-
-  await expect(page.locator('#connectManual')).toBeVisible();
-  await expect(page.locator('#serverUrlInput')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
-
-  // And there is a way back to the other two.
-  await page.locator('#connectBackBtn').click();
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
+test('address entry remains directly available alongside the discovery tools', async ({ page }) => {
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-server').fill('myshop');
+  await expect(page.locator('#captain-connect')).toBeVisible();
+  await expect(page.locator('#captain-scan')).toBeVisible();
 });
 
 test('a scanned code is read however it was written', async ({ page }) => {
@@ -493,12 +463,12 @@ test('a device with no camera says so instead of failing silently', async ({ pag
     });
   });
   await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Scan the shop code').click();
+  await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-scan').click();
 
   await expect(page.locator('#scanNote')).toContainText('No camera available');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
+  await expect(page.locator('#captain-search')).toBeVisible();
 });
 
 test('a blocked camera explains the way out', async ({ page }) => {
@@ -509,8 +479,8 @@ test('a blocked camera explains the way out', async ({ page }) => {
     });
   });
   await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Scan the shop code').click();
+  await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-scan').click();
 
   /* Refusing the camera is a decision, not a fault: say what to do next
      rather than reporting a DOMException at somebody. */
@@ -929,7 +899,7 @@ test('a shop that is already set up starts on the menu, not on a search', async 
   await page.waitForFunction(() => typeof window.openServerModal === 'function');
   await page.evaluate(() => window.openServerModal());
 
-  await expect(page.locator('#connectChoices')).toBeVisible();
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
   await expect(page.locator('#connectAuto')).toBeHidden();
 });
 
@@ -961,7 +931,7 @@ test('coming here to change the server does not dial the old one', async ({ page
   await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
 
   await page.goto('/index.html');
-  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
 
   /* Long enough that a health check would have gone out. */
   await page.waitForTimeout(1500);
@@ -977,12 +947,12 @@ test('and the address it is on is there to edit, already selected', async ({ pag
   await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
 
   await page.goto('/index.html');
-  await expect(page.locator('#serverModal')).toBeVisible();
-  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
+  await expect(page.locator('#captain-server')).toHaveValue(LAN);
 
   await page.waitForTimeout(400);
   const selected = await page.evaluate(() => {
-    const field = document.getElementById('serverUrlInput');
+    const field = document.getElementById('captain-server');
     return field.selectionEnd - field.selectionStart;
   });
   expect(selected).toBeGreaterThan(0);
@@ -1001,10 +971,10 @@ test('closing the editor starts the health checks it had been holding off', asyn
   await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
 
   await page.goto('/index.html');
-  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
   expect(tried).toEqual([]);
 
-  await page.locator('#serverModal').evaluate(() => closeServerModal());
+  await page.locator('#captain-onboarding').evaluate(() => closeServerModal());
   await page.waitForTimeout(1200);
   expect(tried.length, 'nothing resumed after the editor closed').toBeGreaterThan(0);
 });
@@ -1380,7 +1350,7 @@ test('CHANGE SERVER OPENS THE EDITOR, which it did not', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Change server' }).click();
 
-  await expect(page.locator('#serverModal')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#captain-onboarding')).toBeVisible({ timeout: 15000 });
 });
 
 test('the internet is offered only where there is one to offer', async ({ page }) => {

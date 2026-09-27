@@ -747,5 +747,12 @@
   "Decrease quantity": "Decrease quantity",
   "Discard changes?": "Discard changes?",
   "Guests": "Guests",
-  "Increase quantity": "Increase quantity"
+  "Increase quantity": "Increase quantity",
+  "Local server": "Local server",
+  "Internet server": "Internet server",
+  "Save": "Save",
+  "Saved": "Saved",
+  "Switch staff": "Switch staff",
+  "Use another cloud account": "Use another cloud account",
+  "Send saved orders before switching accounts. Connection settings remain available.": "Send saved orders before switching accounts. Connection settings remain available."
 }

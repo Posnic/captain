@@ -747,5 +747,12 @@
   "Decrease quantity": "मात्रा घटाएँ",
   "Discard changes?": "बदलाव छोड़ दें?",
   "Guests": "मेहमान",
-  "Increase quantity": "मात्रा बढ़ाएँ"
+  "Increase quantity": "मात्रा बढ़ाएँ",
+  "Local server": "स्थानीय सर्वर",
+  "Internet server": "इंटरनेट सर्वर",
+  "Save": "सहेजें",
+  "Saved": "सहेजा गया",
+  "Switch staff": "कर्मचारी बदलें",
+  "Use another cloud account": "दूसरे क्लाउड खाते का उपयोग करें",
+  "Send saved orders before switching accounts. Connection settings remain available.": "खाता बदलने से पहले सहेजे गए ऑर्डर भेजें। कनेक्शन सेटिंग उपलब्ध रहेंगी।"
 }

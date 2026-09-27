@@ -210,56 +210,7 @@
             });
         }
 
-        const out = at('me-sign-out');
-        if (out) {
-            out.addEventListener('click', async function () {
-                /* The credential first: this used to clear the menu and the
-                   cart and leave the token, so the phone looked signed out and
-                   was not. */
-                try {
-                    if (window.POSNIC && POSNIC.session) await POSNIC.session.end();
-                } catch (e) {
-                    /* storage that will not answer; the rest still runs */
-                }
-
-                [
-                    'kiosk_selected_branch',
-                    'kiosk_branch_list',
-                    'kiosk_force_branch_select',
-                    'branch_id',
-                    'user_id',
-                    'orderType',
-                    'lastActiveCategory',
-                    'kiosk_table_no',
-                    'kiosk_table_id',
-                ].forEach(function (key) {
-                    try {
-                        localStorage.removeItem(key);
-                    } catch (e) {
-                        /* nothing */
-                    }
-                });
-
-                try {
-                    sessionStorage.clear();
-                } catch (e) {
-                    /* nothing */
-                }
-
-                try {
-                    const db = await getDB();
-                    const tx = db.transaction([BRANCH_STORE, STORE_NAME, CART_STORE], 'readwrite');
-                    tx.objectStore(BRANCH_STORE).clear();
-                    tx.objectStore(STORE_NAME).clear();
-                    tx.objectStore(CART_STORE).clear();
-                } catch (e) {
-                    /* A phone that cannot open its own database is still
-                       signed out: the credential is already gone. */
-                }
-
-                window.location.href = 'index.html';
-            });
-        }
+        at('me-sign-out')?.addEventListener('click', () => CaptainAccount.change('staff'));
     }
 
     document.addEventListener('DOMContentLoaded', function () {

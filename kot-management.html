@@ -39,6 +39,7 @@
     <!-- A PIN unlocks, a password authenticates. See assets/common/lock.js. -->
     <script src="assets/common/lock.js"></script>
     <script src="indexedDB.js"></script>
+    <script src="assets/common/account.js"></script>
     <script src="assets/common/order-queue-ui.js"></script>
     <script src="assets/common/requests-ui.js"></script>
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
@@ -280,6 +281,8 @@
                     <label class="ui-label">Signed in</label>
                     <div style="display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap">
                         <span id="signed-in-as" class="ui-note" style="flex:1 1 auto;margin:0"></span>
+                        <button type="button" class="ui-btn-quiet" data-account-change="staff">Switch staff</button>
+                        <button type="button" class="ui-btn-quiet" data-account-change="cloud">Use another cloud account</button>
                         <button type="button" class="ui-btn-quiet" id="sign-out">Sign out</button>
                     </div>
                     <div class="ui-note">

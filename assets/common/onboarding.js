@@ -3,19 +3,25 @@
   let operation = null;
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
+    if (signIn) sessionStorage.removeItem("posnic_editing_server");
     $("captain-onboarding").hidden = signIn;
     $("captain-legacy").hidden = !signIn;
     $("captain-legacy").open = signIn;
     if (signIn) {
       const base = POSNIC.server.baseUrl;
-      $("captain-selected-shop").textContent = base ? new URL(base).host : "Your shop";
+      $("captain-selected-shop").textContent = base
+        ? new URL(base).host
+        : "Your shop";
     }
   }
   function showCode() {
     const panel = $("captain-code-options");
     panel.hidden = !panel.hidden;
     panel.open = !panel.hidden;
-    $("captain-code-toggle").setAttribute("aria-expanded", String(!panel.hidden));
+    $("captain-code-toggle").setAttribute(
+      "aria-expanded",
+      String(!panel.hidden),
+    );
     $("captain-connect").hidden = !panel.hidden;
     if (!panel.hidden) $("captain-code").focus();
   }
@@ -53,8 +59,18 @@
     if (operation) return;
     operation = new AbortController();
     $("captain-cancel").hidden = false;
-    const controls = ["captain-connect", "captain-search", "captain-scan", "captain-code-toggle", "captain-pair", "captain-cloud-login", "captain-server"];
-    controls.forEach((id) => { $(id).disabled = true; });
+    const controls = [
+      "captain-connect",
+      "captain-search",
+      "captain-scan",
+      "captain-code-toggle",
+      "captain-pair",
+      "captain-cloud-login",
+      "captain-server",
+    ];
+    controls.forEach((id) => {
+      $(id).disabled = true;
+    });
     try {
       await work(operation.signal);
     } catch (e) {
@@ -63,7 +79,9 @@
     } finally {
       operation = null;
       $("captain-cancel").hidden = true;
-      controls.forEach((id) => { $(id).disabled = false; });
+      controls.forEach((id) => {
+        $(id).disabled = false;
+      });
     }
   }
   function secure() {
@@ -72,7 +90,7 @@
         "Install the Android app for secure pairing and PIN access. Address sign-in is still available below.",
       );
   }
-  async function pair(details, signal) {
+  async function pair(details, signal, prepared) {
     secure();
     await CaptainAccess.ready;
     const base = POSNIC.server.normalize(details.server);
@@ -82,7 +100,9 @@
       .toUpperCase();
     if (!/^[A-F0-9]{12}$/.test(code))
       throw new Error("Enter the pairing code shown on the till.");
-    if (details.enrolmentId)
+    if (prepared) {
+      /* Already exchanged through the approved browser flow. */
+    } else if (details.enrolmentId)
       await verify(base, code, details.enrolmentId, signal);
     else {
       const hit = await POSNIC.discovery.probe(base, 3000);
@@ -107,16 +127,18 @@
     }
     const waiting = OrderQueue.all();
     // Recovery can release the local lock, but never relabel queued orders.
-    const grant = await CaptainAccess.post(
-      base,
-      "/captain/v1/pair",
-      {
-        code,
-        device: POSNIC.thisDevice.facts(),
-        codeVerifier: details.verifier,
-      },
-      signal,
-    );
+    const grant =
+      prepared ||
+      (await CaptainAccess.post(
+        base,
+        "/captain/v1/pair",
+        {
+          code,
+          device: POSNIC.thisDevice.facts(),
+          codeVerifier: details.verifier,
+        },
+        signal,
+      ));
     if (
       waiting.some(
         (row) =>
@@ -133,9 +155,18 @@
       );
     if (signal?.aborted)
       throw new Error("Connection cancelled. Ask your manager for a new code.");
-    if (CaptainAccess.locked) await POSNIC.session.end();
+    if (CaptainAccess.locked || POSNIC.session.active)
+      await POSNIC.session.end();
     POSNIC.server.pin(base);
     await POSNIC.session.start({ ...grant, base });
+    if (prepared) {
+      POSNIC.server.remember({
+        cloud: base,
+        lan: grant.pendingConnections?.[0]?.addresses?.[0],
+      });
+      POSNIC.server.unpin();
+    }
+    sessionStorage.removeItem("posnic_editing_server");
     localStorage.setItem("kiosk_branch_list", JSON.stringify(grant.branches));
     localStorage.setItem("user_id", grant.user.id);
     const branch = grant.branches[0];
@@ -203,9 +234,7 @@
         $("captain-server").value = hit.base;
         // An address change always needs a fresh manager confirmation.
         $("captain-confirm").checked = false;
-        POSNIC.server.pin(hit.base);
-        note("");
-        showStep(true);
+        void useAddress(hit.base).catch((error) => note(error.message));
       };
       results.append(button);
     };
@@ -242,6 +271,17 @@
       signal,
       "Search timed out. Select a till already found, retry, or scan its QR.",
     );
+    if (!signal.aborted && seen.length && !count) {
+      const refused = seen[0];
+      note(
+        "The till at " +
+          (refused.host || refused.base) +
+          " answered and refused this phone (" +
+          refused.status +
+          "). Ask your manager to allow this device on the till.",
+      );
+      return;
+    }
     if (!signal.aborted)
       note(
         count
@@ -279,12 +319,20 @@
   async function cloud(intent, signal) {
     secure();
     const origin = "https://www.posnic.com";
-    const capabilities = await fetch(origin + "/api/mobile/capabilities", {
-      signal: AbortSignal.timeout(7000),
-    });
+    const capabilities = await bounded(
+      (async () => {
+        const reply = await fetch(origin + "/api/mobile/capabilities", {
+          signal: AbortSignal.timeout(7000),
+        });
+        return { ok: reply.ok, body: await reply.json() };
+      })(),
+      7000,
+      signal,
+      "Could not connect. Try again.",
+    );
     if (
       !capabilities.ok ||
-      !(await capabilities.json()).applications?.includes("captain")
+      !capabilities.body.applications?.includes("captain")
     )
       throw new Error(
         "Captain cloud approval is not available on this account server yet. Use the till’s QR or local address.",
@@ -329,52 +377,102 @@
         signal.addEventListener("abort", done, { once: true });
       });
       if (signal.aborted) break;
-      const grant = await CaptainAccess.post(
-        origin,
-        "/api/mobile/token",
-        { request: pending.request, codeVerifier: verifier },
-        signal,
-      );
+      let grant;
+      try {
+        grant = await CaptainAccess.post(
+          origin,
+          "/api/mobile/token",
+          { request: pending.request, codeVerifier: verifier },
+          signal,
+        );
+      } catch (error) {
+        if (
+          !signal.aborted &&
+          (!error.status || error.status >= 500 || error.status === 429)
+        )
+          continue;
+        throw error;
+      }
       if (grant.error === "authorization_pending") continue;
-      // Local routes are considered only during enrollment, never for queued writes.
-      for (const till of grant.localServers || [])
-        for (const address of till.addresses || []) {
-          const base = POSNIC.server.normalize(address);
-          if (!base || !POSNIC.server.isLanUrl(base)) continue;
-          try {
-            await verify(base, till.code, till.enrolmentId, signal);
-          } catch {
-            continue;
-          }
-          return pair(
-            {
-              server: base,
-              code: till.code,
-              enrolmentId: till.enrolmentId,
-              verifier,
-            },
-            signal,
-          );
-        }
-      const endpoint = new URL(grant.baseUrl);
-      if (
-        endpoint.protocol !== "https:" ||
-        endpoint.username ||
-        endpoint.password
-      )
+      const base = POSNIC.server.normalize(grant.baseUrl);
+      if (!base || new URL(base).protocol !== "https:")
         throw new Error("Invalid cloud shop address.");
-      // HTTPS account approval verified this exact endpoint, not discovery.
-      $("captain-confirm").checked = true;
-      return pair(
-        { server: grant.baseUrl, code: grant.code, verifier },
+      // Establish the cloud identity first; local credentials are kept separately.
+      const approved = await CaptainAccess.post(
+        base,
+        "/captain/v1/pair",
+        {
+          code: grant.code,
+          device: POSNIC.thisDevice.facts(),
+          codeVerifier: verifier,
+        },
         signal,
       );
+      approved.connections = [];
+      approved.cloudAuthorization = {
+        connectionToken: grant.connectionToken,
+        verifier,
+      };
+      approved.pendingConnections = grant.localServers || [];
+      return pair({ server: base, code: grant.code }, signal, approved);
     }
     throw new Error(
       signal.aborted ? "Connection cancelled." : "Approval expired. Try again.",
     );
   }
+  async function useAddress(base, signal) {
+    const hit = await POSNIC.discovery.probe(base, 5000);
+    if (signal?.aborted) return;
+    if (!hit)
+      throw new Error(
+        "Could not reach this shop. Check the address or connect to the shop Wi-Fi.",
+      );
+    if (window.CaptainAccess?.locked) {
+      POSNIC.server.remember({ lan: hit.base });
+      localStorage.setItem(
+        "posnic.connection-candidates",
+        JSON.stringify([hit.base]),
+      );
+      note("Saved");
+      return;
+    }
+    if (POSNIC.session.managed) {
+      await POSNIC.session.addAddress(hit.base);
+      note("Connected");
+      return;
+    }
+    if (POSNIC.session.active && hit.base !== POSNIC.session.base)
+      await POSNIC.session.end();
+    POSNIC.server.pin(hit.base);
+    note("");
+    showStep(true);
+    $("username").focus();
+  }
   window.CaptainOnboarding = {
+    get busy() {
+      return !!operation;
+    },
+    open() {
+      sessionStorage.setItem("posnic_editing_server", "1");
+      POSNIC.net.stop?.();
+      $("login-section").style.display = "";
+      $("branch-section").style.display = "none";
+      $("connection-back").hidden = !POSNIC.server.isConfigured;
+      $("captain-server").value = POSNIC.server.baseUrl || "";
+      $("connection-lan").value = POSNIC.server.lan || "";
+      $("connection-cloud").value = POSNIC.server.cloud || "";
+      showStep(false);
+      note("");
+      $("captain-server").select();
+    },
+    close() {
+      operation?.abort();
+      POSNIC_CONNECT.stopScan();
+      sessionStorage.removeItem("posnic_editing_server");
+      if (POSNIC.session.active) window.location.href = "kot-management.html";
+      else showStep(POSNIC.server.isConfigured);
+      POSNIC.net.start();
+    },
     readQr(raw) {
       let data;
       try {
@@ -384,7 +482,6 @@
       }
       if (data.app !== "captain" || !data.code) return false;
       POSNIC_CONNECT.stopScan();
-      document.getElementById("serverModal").style.display = "none";
       sessionStorage.removeItem("posnic_editing_server");
       void run((signal) => pair(data, signal));
       return true;
@@ -393,36 +490,46 @@
   document.addEventListener("DOMContentLoaded", () => {
     $("captain-server").value = POSNIC.server.baseUrl || "";
     $("captain-code-toggle").onclick = showCode;
-    $("captain-change-shop").onclick = () => { showStep(false); note(""); };
+    $("captain-change-shop").onclick = () => CaptainOnboarding.open();
     $("captain-connect").onclick = () => {
       const input = $("captain-server").value.trim();
-      if (!input) { $("captain-server").focus(); note("Enter a shop code or address, or use Wi-Fi search."); return; }
+      if (!input) {
+        $("captain-server").focus();
+        note("Enter a shop code or address, or use Wi-Fi search.");
+        return;
+      }
       void run(async (signal) => {
-      const base = POSNIC.server.normalize(input);
-      if (!base) throw new Error("Check the shop code or address and try again.");
-      note("Connecting to your shop…");
-      const hit = await POSNIC.discovery.probe(base, 5000);
-      if (signal.aborted) return;
-      if (!hit) throw new Error("Could not reach this shop. Check the address or connect to the shop Wi-Fi.");
-      POSNIC.server.pin(hit.base);
-      note("");
-      showStep(true);
-      $("username").focus();
+        const base = POSNIC.server.normalize(input);
+        if (!base)
+          throw new Error("Check the shop code or address and try again.");
+        note("Connecting to your shop…");
+        await useAddress(base, signal);
       });
     };
     $("captain-server").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") { event.preventDefault(); $("captain-connect").click(); }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        $("captain-connect").click();
+      }
     });
     window.addEventListener("posnic:server-changed", () => {
-      if (POSNIC.server.isConfigured) { $("captain-server").value = POSNIC.server.baseUrl; showStep(true); }
+      if (
+        POSNIC.server.isConfigured &&
+        !sessionStorage.getItem("posnic_editing_server")
+      ) {
+        $("captain-server").value = POSNIC.server.baseUrl;
+        showStep(true);
+      }
     });
     $("captain-server").addEventListener("input", () => {
       $("captain-confirm").checked = false;
     });
     $("captain-scan").onclick = () => {
       if (operation) return;
-      openServerModal();
-      chooseScan();
+      POSNIC_CONNECT.startScan((base) => {
+        $("captain-server").value = base;
+        void run((signal) => useAddress(base, signal));
+      });
     };
     $("captain-search").onclick = () => void run(search);
     $("captain-pair").onclick = () =>
@@ -441,6 +548,37 @@
       POSNIC_CONNECT.stopScan();
       note("Connection cancelled.");
     };
-    showStep(POSNIC.server.isConfigured);
+    $("connection-back").onclick = () => CaptainOnboarding.close();
+    $("connection-save").onclick = () =>
+      void run(async (signal) => {
+        const lan = $("connection-lan").value.trim(),
+          cloud = $("connection-cloud").value.trim();
+        const addresses = [lan, cloud]
+          .filter(Boolean)
+          .map((value) => POSNIC.server.normalize(value));
+        if (!addresses.length || addresses.some((value) => !value))
+          throw new Error("Check the shop code or address and try again.");
+        if (POSNIC.session.managed) {
+          for (const base of addresses) await POSNIC.session.addAddress(base);
+        } else {
+          POSNIC.server.remember({ lan, cloud });
+          if (window.CaptainAccess?.locked)
+            localStorage.setItem(
+              "posnic.connection-candidates",
+              JSON.stringify(addresses),
+            );
+          else if (!POSNIC.session.active) {
+            POSNIC.server.pin(addresses[0]);
+            POSNIC.server.unpin();
+          }
+        }
+        $("captain-server").value = POSNIC.server.baseUrl || addresses[0];
+        $("connection-back").hidden = false;
+        note("Saved");
+      });
+    showStep(
+      POSNIC.server.isConfigured &&
+        !sessionStorage.getItem("posnic_change_server"),
+    );
   });
 })();

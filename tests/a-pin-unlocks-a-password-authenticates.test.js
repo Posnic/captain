@@ -181,7 +181,7 @@ test('THE LOCK ONLY ASKS WHEN THERE IS A SESSION TO RESUME', () => {
   /* And the pad is only opened behind that decision. */
   const asks = BOOT.indexOf('await POSNIC.lock.unlock(');
   assert.ok(asks > at, 'the pad opens before anything has decided it should');
-  assert.match(BOOT.slice(asks - 120, asks), /if \(locked\)/);
+  assert.match(BOOT.slice(asks - 160, asks), /if \(locked && !changingServer\)/);
 });
 
 test('BACKING OUT DROPS TO THE PASSWORD, which is the thing that works', () => {

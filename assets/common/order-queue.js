@@ -89,7 +89,27 @@
   }
 
   function remove(key) {
-    return write(read().filter((row) => row.key !== key));
+    const rows = read(),
+      removed = rows.find((row) => row.key === key);
+    if (!write(rows.filter((row) => row.key !== key))) return false;
+    // Only retire delivery ownership after the queue deletion is durable.
+    // Keeping it on a failed write prevents a retry from using another till.
+    if (removed?.owner)
+      try {
+        const name = "posnic.order-authorities";
+        const entries = JSON.parse(localStorage.getItem(name) || "{}");
+        delete entries[
+          removed.owner.shop +
+            ":" +
+            removed.owner.user +
+            ":" +
+            (removed.body?.idempotencyKey || key)
+        ];
+        localStorage.setItem(name, JSON.stringify(entries));
+      } catch {
+        /* A leftover delivery record is safe; the order is already removed. */
+      }
+    return true;
   }
 
   function noteAttempt(key) {
