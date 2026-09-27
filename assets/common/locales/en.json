@@ -754,5 +754,21 @@
   "Saved": "Saved",
   "Switch staff": "Switch staff",
   "Use another cloud account": "Use another cloud account",
-  "Send saved orders before switching accounts. Connection settings remain available.": "Send saved orders before switching accounts. Connection settings remain available."
+  "Send saved orders before switching accounts. Connection settings remain available.": "Send saved orders before switching accounts. Connection settings remain available.",
+  "Add “{1}” with a price": "Add “{1}” with a price",
+  "Change today's price": "Change today's price",
+  "For": "For",
+  "Number {0}": "Number {0}",
+  "Only {0} left": "Only {0} left",
+  "Stop & check the order": "Stop & check the order",
+  "Token {0}": "Token {0}",
+  "{1}% off": "{1}% off",
+  "₹{0} each": "₹{0} each",
+  "🎤 Say again": "🎤 Say again",
+  "👁 Read the order back": "👁 Read the order back",
+  "📤 Send it to the kitchen": "📤 Send it to the kitchen",
+  "🗑 Clear the order first": "🗑 Clear the order first",
+  "₹{1} each": "₹{1} each",
+  "Change Branch": "Change branch",
+  "Sign Out": "Sign out"
 }

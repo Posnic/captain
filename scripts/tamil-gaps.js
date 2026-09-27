@@ -57,6 +57,8 @@ const ENTITIES = {
   '&rarr;': '→',
   '&larr;': '←',
   '&middot;': '·',
+  '&ldquo;': '“',
+  '&rdquo;': '”',
 };
 
 const decoded = (said) =>
@@ -64,7 +66,7 @@ const decoded = (said) =>
     const known = ENTITIES[entity.toLowerCase()];
     if (known != null) return known;
     const numbered = entity.match(/^&#(\d+);$/);
-    return numbered ? String.fromCharCode(Number(numbered[1])) : entity;
+    return numbered ? String.fromCodePoint(Number(numbered[1])) : entity;
   });
 
 /** Every sentence the markup puts on a screen, and which files show it. */
@@ -140,4 +142,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { fromMarkup, pack, isWorth };
+module.exports = { fromMarkup, pack, isWorth, decoded };

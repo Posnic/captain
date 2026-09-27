@@ -1,8 +1,8 @@
 # Captain interface languages
 
-Captain includes the same 18 interface languages as POS: English, Tamil, Hindi, Malayalam, Kannada, Telugu, Sinhala, Nepali, Arabic, French, Spanish, Portuguese, Indonesian, Thai, German, Swahili, Dutch, and Italian.
+Captain includes 30 interface languages: English, Tamil, Hindi, Malayalam, Kannada, Telugu, Sinhala, Nepali, Arabic, French, Spanish, Portuguese, Indonesian, Thai, German, Swahili, Dutch, Italian, Bengali, Marathi, Gujarati, Urdu, Simplified Chinese, Traditional Chinese, Japanese, Korean, Russian, Turkish, Vietnamese, and Malay.
 
-All translations ship in the APK and work without a server or translation service. Choose a language before connecting on the setup screen, or in the app's language setting. The choice belongs to this phone. Arabic uses a right-to-left layout; addresses remain left-to-right.
+All translations ship in the APK and work without a server or translation service. Choose a language before connecting on the setup screen, or in the app's language setting. The choice belongs to this phone. Arabic and Urdu use a right-to-left layout; addresses remain left-to-right.
 
 ## Editing translations
 
