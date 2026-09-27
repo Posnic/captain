@@ -747,5 +747,12 @@
   "Decrease quantity": "ลดจำนวน",
   "Discard changes?": "ยกเลิกการเปลี่ยนแปลงหรือไม่?",
   "Guests": "จำนวนลูกค้า",
-  "Increase quantity": "เพิ่มจำนวน"
+  "Increase quantity": "เพิ่มจำนวน",
+  "Local server": "เซิร์ฟเวอร์ภายใน",
+  "Internet server": "เซิร์ฟเวอร์อินเทอร์เน็ต",
+  "Save": "บันทึก",
+  "Saved": "บันทึกแล้ว",
+  "Switch staff": "เปลี่ยนพนักงาน",
+  "Use another cloud account": "ใช้บัญชีคลาวด์อื่น",
+  "Send saved orders before switching accounts. Connection settings remain available.": "ส่งออเดอร์ที่บันทึกไว้ก่อนเปลี่ยนบัญชี ยังสามารถใช้การตั้งค่าการเชื่อมต่อได้"
 }

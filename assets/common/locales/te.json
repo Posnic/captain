@@ -747,5 +747,12 @@
   "Decrease quantity": "పరిమాణాన్ని తగ్గించండి",
   "Discard changes?": "మార్పులను విస్మరించాలా?",
   "Guests": "అతిథులు",
-  "Increase quantity": "పరిమాణాన్ని పెంచండి"
+  "Increase quantity": "పరిమాణాన్ని పెంచండి",
+  "Local server": "స్థానిక సర్వర్",
+  "Internet server": "ఇంటర్నెట్ సర్వర్",
+  "Save": "సేవ్ చేయండి",
+  "Saved": "సేవ్ అయింది",
+  "Switch staff": "సిబ్బందిని మార్చండి",
+  "Use another cloud account": "మరొక క్లౌడ్ ఖాతాను ఉపయోగించండి",
+  "Send saved orders before switching accounts. Connection settings remain available.": "ఖాతాను మార్చే ముందు సేవ్ చేసిన ఆర్డర్‌లను పంపండి. కనెక్షన్ సెట్టింగ్‌లు అందుబాటులో ఉంటాయి."
 }

@@ -30,7 +30,7 @@ const { fromMarkup, pack } = require('../scripts/tamil-gaps');
  */
 const ENGLISH_ON_PURPOSE = [
   'Captain',
-  'demo · shop.posnic.io · 192.168.1.5',
+  'http://192.168.0.12:5555/api','https://azure.posnic.io/api',
   'English',
 ];
 

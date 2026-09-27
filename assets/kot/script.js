@@ -259,41 +259,7 @@ async function changeBranch() {
     }
 }
 
-async function signOut() {
-    /*
-     * THE CREDENTIAL FIRST, because that is the thing being signed out of.
-     *
-     * This cleared the branch, the menu and the cart and left the bearer token
-     * in place, so "sign out" emptied the phone and kept whoever was signed
-     * in. It now lasts thirty days, which made that a phone anybody could pick
-     * up and carry on with.
-     */
-    try {
-        if (window.POSNIC && POSNIC.session) POSNIC.session.end();
-    } catch (e) {
-        /* Storage that will not answer. The rest of the clear still runs. */
-    }
-
-    localStorage.removeItem('kiosk_selected_branch');
-    localStorage.removeItem('kiosk_branch_list');
-    localStorage.removeItem('kiosk_force_branch_select');
-    localStorage.removeItem('branch_id');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('orderType');
-    localStorage.removeItem('lastActiveCategory');
-    localStorage.removeItem('kiosk_table_no');
-    localStorage.removeItem('kiosk_table_id');
-    sessionStorage.clear();
-    try {
-        const db = await getDB();
-        const tx = db.transaction([BRANCH_STORE, STORE_NAME, CART_STORE], 'readwrite');
-        tx.objectStore(BRANCH_STORE).clear();
-        tx.objectStore(STORE_NAME).clear();
-        tx.objectStore(CART_STORE).clear();
-    } catch (e) { /* ignore */ }
-    window.location.href = 'index.html';
-}
-
+async function signOut() { return CaptainAccount.change('staff'); }
 
 async function checkBranchCount() {
     try {

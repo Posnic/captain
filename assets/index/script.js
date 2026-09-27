@@ -92,8 +92,7 @@ function showServerSettingsForConnectionFailure(error) {
     showLoginMessage(getServerConnectionMessage(error));
     showBranchMessage(getServerConnectionMessage(error));
 
-    const modal = document.getElementById('serverModal');
-    if (modal && typeof openServerModal === 'function') {
+    if (typeof openServerModal === 'function') {
         setTimeout(() => openServerModal(), 200);
     }
 }
@@ -583,7 +582,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         );
     }
 
-    if (locked) {
+    if (locked && !changingServer) {
         const who = (POSNIC.session.user && POSNIC.session.user.name) || '';
         const opened = await POSNIC.lock.unlock(who);
         if (!opened) {

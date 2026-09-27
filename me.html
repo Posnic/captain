@@ -18,6 +18,7 @@
     <script src="config.js"></script>
     <script src="assets/common/lock.js"></script>
     <script src="indexedDB.js"></script>
+    <script src="assets/common/account.js"></script>
     <link rel="stylesheet" href="assets/common/i18n.css">
 </head>
 
@@ -63,6 +64,8 @@
                 <span class="me-row-label">Change password</span>
                 <span class="me-row-value" id="me-password-why">On the till</span>
             </button>
+            <button type="button" class="me-row me-row-go" data-account-change="staff"><span class="me-row-label">Switch staff</span></button>
+            <button type="button" class="me-row me-row-go" data-account-change="cloud"><span class="me-row-label">Use another cloud account</span></button>
             <button type="button" class="me-row me-row-danger" id="me-sign-out">
                 <span class="me-row-label">Sign out</span>
             </button>

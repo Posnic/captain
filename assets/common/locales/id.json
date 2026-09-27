@@ -747,5 +747,12 @@
   "Decrease quantity": "Kurangi jumlah",
   "Discard changes?": "Buang perubahan?",
   "Guests": "Tamu",
-  "Increase quantity": "Tambah jumlah"
+  "Increase quantity": "Tambah jumlah",
+  "Local server": "Server lokal",
+  "Internet server": "Server internet",
+  "Save": "Simpan",
+  "Saved": "Tersimpan",
+  "Switch staff": "Ganti staf",
+  "Use another cloud account": "Gunakan akun cloud lain",
+  "Send saved orders before switching accounts. Connection settings remain available.": "Kirim pesanan tersimpan sebelum mengganti akun. Pengaturan koneksi tetap tersedia."
 }

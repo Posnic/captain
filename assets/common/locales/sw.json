@@ -747,5 +747,12 @@
   "Decrease quantity": "Punguza kiasi",
   "Discard changes?": "Ungependa kutupa mabadiliko?",
   "Guests": "Wageni",
-  "Increase quantity": "Ongeza kiasi"
+  "Increase quantity": "Ongeza kiasi",
+  "Local server": "Seva ya ndani",
+  "Internet server": "Seva ya intaneti",
+  "Save": "Hifadhi",
+  "Saved": "Imehifadhiwa",
+  "Switch staff": "Badili mfanyakazi",
+  "Use another cloud account": "Tumia akaunti nyingine ya wingu",
+  "Send saved orders before switching accounts. Connection settings remain available.": "Tuma maagizo yaliyohifadhiwa kabla ya kubadilisha akaunti. Mipangilio ya muunganisho bado inapatikana."
 }

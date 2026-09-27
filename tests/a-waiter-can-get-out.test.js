@@ -54,15 +54,11 @@ test('SIGNING OUT DROPS THE CREDENTIAL, not just the menu', () => {
   const at = FLOOR_JS.indexOf('async function signOut()');
   assert.ok(at > -1, 'nothing signs out');
 
-  const body = FLOOR_JS.slice(at, at + 900);
-  assert.match(body, /POSNIC\.session\.end\(\)/, 'the credential survives a sign out');
+  assert.match(FLOOR_JS.slice(at,at+100), /CaptainAccount.change/);
+  const body = fs.readFileSync(path.join(ROOT,'assets/common/account.js'),'utf8');
+  assert.match(body,/await POSNIC\.session\.end\(\)/);
+  assert.ok(body.indexOf('POSNIC.session.end()') < body.indexOf('clearKioskLocalCache('));
 
-  /* And before the rest, because the credential is the thing being signed out
-     of; a throw half way through must not leave it behind. */
-  assert.ok(
-    body.indexOf('POSNIC.session.end()') < body.indexOf("localStorage.removeItem('kiosk_selected_branch')"),
-    'the credential is dropped after the clear, so a failure keeps it'
-  );
 });
 
 test('CHANGING THE SERVER IS NOT INTERRUPTED BY THE MENU LOADING', () => {
@@ -77,7 +73,7 @@ test('CHANGING THE SERVER IS NOT INTERRUPTED BY THE MENU LOADING', () => {
   const guards = BOOT.match(/&& !changingServer\) \{/g) || [];
   assert.strictEqual(
     guards.length,
-    2,
+    3,
     'both the prefetch and the auto-load must stand aside, found ' + guards.length
   );
 });

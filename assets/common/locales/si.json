@@ -747,5 +747,12 @@
   "Decrease quantity": "ප්‍රමාණය අඩු කරන්න",
   "Discard changes?": "වෙනස්කම් ඉවත දමන්නද?",
   "Guests": "අමුත්තන්",
-  "Increase quantity": "ප්‍රමාණය වැඩි කරන්න"
+  "Increase quantity": "ප්‍රමාණය වැඩි කරන්න",
+  "Local server": "දේශීය සේවාදායකය",
+  "Internet server": "අන්තර්ජාල සේවාදායකය",
+  "Save": "සුරකින්න",
+  "Saved": "සුරකින ලදී",
+  "Switch staff": "සේවකයා මාරු කරන්න",
+  "Use another cloud account": "වෙනත් ක්ලවුඩ් ගිණුමක් භාවිත කරන්න",
+  "Send saved orders before switching accounts. Connection settings remain available.": "ගිණුම් මාරු කිරීමට පෙර සුරැකි ඇණවුම් යවන්න. සම්බන්ධතා සැකසුම් තවමත් ලබා ගත හැක."
 }

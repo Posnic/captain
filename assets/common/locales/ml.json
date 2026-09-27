@@ -747,5 +747,12 @@
   "Decrease quantity": "അളവ് കുറയ്ക്കുക",
   "Discard changes?": "മാറ്റങ്ങൾ ഉപേക്ഷിക്കണോ?",
   "Guests": "അതിഥികൾ",
-  "Increase quantity": "അളവ് കൂട്ടുക"
+  "Increase quantity": "അളവ് കൂട്ടുക",
+  "Local server": "പ്രാദേശിക സർവർ",
+  "Internet server": "ഇന്റർനെറ്റ് സർവർ",
+  "Save": "സേവ് ചെയ്യുക",
+  "Saved": "സേവ് ചെയ്തു",
+  "Switch staff": "ജീവനക്കാരനെ മാറ്റുക",
+  "Use another cloud account": "മറ്റൊരു ക്ലൗഡ് അക്കൗണ്ട് ഉപയോഗിക്കുക",
+  "Send saved orders before switching accounts. Connection settings remain available.": "അക്കൗണ്ട് മാറ്റുന്നതിനുമുമ്പ് സേവ് ചെയ്ത ഓർഡറുകൾ അയയ്ക്കുക. കണക്ഷൻ ക്രമീകരണങ്ങൾ ലഭ്യമാണ്."
 }

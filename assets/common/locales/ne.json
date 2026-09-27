@@ -747,5 +747,12 @@
   "Decrease quantity": "परिमाण घटाउनुहोस्",
   "Discard changes?": "परिवर्तनहरू त्याग्ने?",
   "Guests": "अतिथिहरू",
-  "Increase quantity": "परिमाण बढाउनुहोस्"
+  "Increase quantity": "परिमाण बढाउनुहोस्",
+  "Local server": "स्थानीय सर्भर",
+  "Internet server": "इन्टरनेट सर्भर",
+  "Save": "सुरक्षित गर्नुहोस्",
+  "Saved": "सुरक्षित भयो",
+  "Switch staff": "कर्मचारी बदल्नुहोस्",
+  "Use another cloud account": "अर्को क्लाउड खाता प्रयोग गर्नुहोस्",
+  "Send saved orders before switching accounts. Connection settings remain available.": "खाता बदल्नुअघि सुरक्षित गरिएका अर्डरहरू पठाउनुहोस्। जडान सेटिङहरू उपलब्ध छन्।"
 }

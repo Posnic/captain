@@ -21,10 +21,22 @@
       state = result.session || {};
       return result;
     };
-    async function persist() {
-      const started = generation;
-      const result = await plugin.save({ session: state });
-      if (generation === started) apply(result);
+    let writing = Promise.resolve();
+    function persist() {
+      const started = generation,
+        snapshot = JSON.parse(JSON.stringify(state));
+      writing = writing
+        .catch(() => {})
+        .then(async () => {
+          if (generation !== started) return;
+          const result = await plugin.save({ session: snapshot });
+          if (generation === started) {
+            pinSet = !!result.pinSet;
+            locked = !!result.locked;
+            profile = result.profile || null;
+          }
+        });
+      return writing;
     }
     const ready = (async () => {
       apply(await plugin.status());
@@ -133,18 +145,18 @@
         return null;
       }
     };
-    async function prove(base) {
+    async function prove(base, credential = state, remember = true) {
       const nonce = random();
       const answer = await post(
         base,
         "/captain/v1/route-proof",
-        { sessionId: state.sessionId, nonce },
+        { sessionId: credential.sessionId, nonce },
         null,
         2000,
       );
       const key = await cryptoApi.subtle.importKey(
         "raw",
-        new TextEncoder().encode(state.routeKey),
+        new TextEncoder().encode(credential.routeKey),
         { name: "HMAC", hash: "SHA-256" },
         false,
         ["sign"],
@@ -162,32 +174,245 @@
           new Error("This address is not the server that approved this phone."),
           { code: "WRONG_AUTHORITY" },
         );
-      verified.add(base);
+      if (remember) verified.add(base);
+    }
+    let connectionFlight = null,
+      nextConnectionCheck = 0;
+    const rotations = new Map();
+    const sameIdentity = (grant) =>
+      grant.shopKey === state.shopKey &&
+      grant.user?.id === state.user?.id &&
+      grant.branches?.[0]?.branch_id === state.branches?.[0]?.branch_id;
+    async function refreshConnections() {
+      if (
+        locked ||
+        !state.cloudAuthorization?.connectionToken ||
+        connectionFlight ||
+        Date.now() < nextConnectionCheck
+      )
+        return;
+      nextConnectionCheck = Date.now() + 5 * 60000;
+      const started = generation;
+      connectionFlight = (async () => {
+        let pending = state.pendingConnections;
+        if (!pending) {
+          const metadata = await post(
+            "https://www.posnic.com",
+            "/api/mobile/connections",
+            {
+              connectionToken: state.cloudAuthorization.connectionToken,
+              codeVerifier: state.cloudAuthorization.verifier,
+              connectedDevices: (state.connections || [])
+                .map((connection) => connection.targetDeviceId)
+                .filter(Boolean),
+            },
+          );
+          if (
+            generation !== started ||
+            locked ||
+            safeRoute(metadata.baseUrl) !== state.base
+          )
+            return;
+          pending = metadata.localServers || [];
+          state.pendingConnectionsUntil = Date.now() + 150000;
+        }
+        state.pendingConnectionsUntil ||= Date.now() + 150000;
+        const retry = [];
+        for (const target of pending.slice(0, 8)) {
+          if (generation !== started || locked) return;
+          const addresses = (target.addresses || [])
+            .map(safeRoute)
+            .filter((base) => base && local(base));
+          if (!addresses.length || !target.deviceId) continue;
+          const known = (state.connections || []).find(
+            (c) => c.targetDeviceId === target.deviceId,
+          );
+          if (known) {
+            known.routes = addresses;
+            continue;
+          }
+          let paired = false;
+          for (const base of addresses.slice(0, 2)) {
+            try {
+              const nonce = random();
+              const answer = await post(
+                base,
+                "/captain/v1/enrolment-proof",
+                { enrolmentId: target.enrolmentId, nonce },
+                null,
+                1800,
+              );
+              const digest = await cryptoApi.subtle.digest(
+                "SHA-256",
+                new TextEncoder().encode(target.code),
+              );
+              const secret = [...new Uint8Array(digest)]
+                .map((n) => n.toString(16).padStart(2, "0"))
+                .join("");
+              const key = await cryptoApi.subtle.importKey(
+                "raw",
+                new TextEncoder().encode(secret),
+                { name: "HMAC", hash: "SHA-256" },
+                false,
+                ["sign"],
+              );
+              const proof = [
+                ...new Uint8Array(
+                  await cryptoApi.subtle.sign(
+                    "HMAC",
+                    key,
+                    new TextEncoder().encode(nonce),
+                  ),
+                ),
+              ]
+                .map((n) => n.toString(16).padStart(2, "0"))
+                .join("");
+              if (proof !== answer.proof) continue;
+              const grant = await post(base, "/captain/v1/pair", {
+                code: target.code,
+                device: host.POSNIC.thisDevice.facts(),
+                codeVerifier: state.cloudAuthorization.verifier,
+              });
+              if (generation !== started || locked) return;
+              if (!sameIdentity(grant)) continue;
+              state.connections = [
+                ...(state.connections || []),
+                {
+                  ...grant,
+                  base,
+                  routes: addresses,
+                  targetDeviceId: target.deviceId,
+                  expiresAt: Date.now() + grant.expiresIn * 1000,
+                },
+              ];
+              host.POSNIC?.server.remember({ lan: base });
+              paired = true;
+              break;
+            } catch {
+              /* The cloud connection remains usable while a till catches up. */
+            }
+          }
+          if (!paired) retry.push(target);
+        }
+        if (generation === started && !locked) {
+          if (retry.length) {
+            if (Date.now() < state.pendingConnectionsUntil)
+              state.pendingConnections = retry;
+            else {
+              delete state.pendingConnections;
+              delete state.pendingConnectionsUntil;
+            }
+            nextConnectionCheck = Date.now() + 10000;
+          } else {
+            delete state.pendingConnections;
+            delete state.pendingConnectionsUntil;
+          }
+          await persist();
+        }
+      })()
+        .catch(() => {
+          nextConnectionCheck = Date.now() + 30000;
+        })
+        .finally(() => {
+          connectionFlight = null;
+        });
+      return connectionFlight;
+    }
+    function authority(credential) {
+      return (
+        credential.targetDeviceId ||
+        (state.cloudAuthorization ? "cloud:" + state.shopKey : credential.base)
+      );
+    }
+    function orderAuthority(key, value) {
+      const name = "posnic.order-authorities";
+      const entries = JSON.parse(storage.getItem(name) || "{}");
+      const id = state.shopKey + ":" + state.user?.id + ":" + key;
+      if (value) {
+        entries[id] = value;
+        storage.setItem(name, JSON.stringify(entries));
+      }
+      return entries[id];
     }
     async function transport(path, options, refreshBody) {
       if (refreshBody && !state.routeKey)
         return post(state.base, path, refreshBody);
       const start = generation;
-      const routes = [
-        ...new Set(
-          [state.base, ...(state.routes || [])].map(safeRoute).filter(Boolean),
-        ),
-      ].sort(
+      const choices = [state, ...(!refreshBody ? state.connections || [] : [])];
+      const credentials = new Map();
+      for (const credential of choices)
+        for (const base of [credential.base, ...(credential.routes || [])]
+          .map(safeRoute)
+          .filter(Boolean)) {
+          if (!credentials.has(base)) credentials.set(base, credential);
+        }
+      const routes = [...credentials.keys()].sort(
         (a, b) =>
           Number((cooling.get(a) || 0) > Date.now()) -
             Number((cooling.get(b) || 0) > Date.now()) ||
           Number(local(b)) - Number(local(a)),
       );
+      const orderKey =
+        path === "/sales/qrOrder" && options.body?.idempotencyKey;
       let last;
       for (const base of routes) {
         let attempted = false;
+        const credential = credentials.get(base);
+        if (
+          orderKey &&
+          orderAuthority(orderKey) &&
+          orderAuthority(orderKey) !== authority(credential)
+        )
+          continue;
         try {
-          if (state.routeKey) await prove(base);
-          else if (base !== state.base) continue;
+          if (credential.routeKey) await prove(base, credential);
+          if (
+            credential !== state &&
+            credential.refreshToken &&
+            credential.expiresAt < Date.now() + 60000
+          ) {
+            if (!rotations.has(credential))
+              rotations.set(
+                credential,
+                (async () => {
+                  credential.rotation ||= random();
+                  await persist();
+                  const renewed = await post(base, "/captain/v1/refresh", {
+                    sessionId: credential.sessionId,
+                    refreshToken: credential.refreshToken,
+                    nextToken: credential.rotation,
+                  });
+                  if (start !== generation || locked)
+                    throw Object.assign(new Error("Unlock this phone first."), {
+                      code: "PIN_LOCKED",
+                    });
+                  if (!sameIdentity(renewed))
+                    throw Object.assign(
+                      new Error(
+                        "This address is not the server that approved this phone.",
+                      ),
+                      { code: "WRONG_AUTHORITY" },
+                    );
+                  Object.assign(credential, renewed, {
+                    expiresAt: Date.now() + renewed.expiresIn * 1000,
+                  });
+                  delete credential.rotation;
+                  await persist();
+                })().finally(() => rotations.delete(credential)),
+              );
+            try {
+              await rotations.get(credential);
+            } catch (error) {
+              if ([401, 403].includes(error.status)) error.accessRefused = true;
+              throw error;
+            }
+          }
+          if (!credential.routeKey && base !== credential.base) continue;
           if (start !== generation || locked)
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
+          if (orderKey) orderAuthority(orderKey, authority(credential));
           attempted = true;
           let result;
           if (refreshBody) result = await post(base, path, refreshBody);
@@ -207,7 +432,7 @@
                       ...options.headers,
                       Accept: "application/json",
                       "Content-Type": "application/json",
-                      Authorization: "Bearer " + state.token,
+                      Authorization: "Bearer " + credential.token,
                     },
                     body:
                       options.body === undefined
@@ -242,7 +467,12 @@
                 })(),
                 new Promise((_, reject) => {
                   timer = setTimeout(() => {
-                    reject(Object.assign(new Error("The server did not answer in time."), { code: "TIMEOUT" }));
+                    reject(
+                      Object.assign(
+                        new Error("The server did not answer in time."),
+                        { code: "TIMEOUT" },
+                      ),
+                    );
                     controller.abort();
                   }, options.timeout || 7000);
                 }),
@@ -261,7 +491,7 @@
           return result;
         } catch (error) {
           last = error;
-          if (error.code === "PIN_LOCKED") throw error;
+          if (error.code === "PIN_LOCKED" || error.accessRefused) throw error;
           if (
             attempted &&
             error.status &&
@@ -346,7 +576,13 @@
             status: 403,
             code: "CAPTAIN_ACCESS",
           });
-        await session.prepare();
+        try {
+          await session.prepare();
+        } catch (error) {
+          if ([401, 403].includes(error.status) || !state.connections?.length)
+            throw error;
+        }
+        void refreshConnections();
         try {
           const result = await transport(path, options);
           if (state.blockedAccess) {
@@ -370,8 +606,34 @@
       get base() {
         return state.base || profile?.base;
       },
+      async addAddress(base) {
+        await ready;
+        const clean = safeRoute(base);
+        if (!clean || locked) throw new Error("Unlock this phone first.");
+        for (const credential of [state, ...(state.connections || [])]) {
+          try {
+            await prove(clean, credential);
+            credential.routes = [
+              ...new Set([...(credential.routes || []), clean]),
+            ];
+            await persist();
+            host.POSNIC?.server.remember({
+              [local(clean) ? "lan" : "cloud"]: clean,
+            });
+            return;
+          } catch {
+            /* A candidate must prove the existing session before use. */
+          }
+        }
+        throw new Error(
+          "This address is not the server that approved this phone.",
+        );
+      },
+      refreshConnections,
       async start(grant) {
         await ready;
+        generation++;
+        nextConnectionCheck = 0;
         verified.clear();
         verified.add(grant.base);
         state = {
@@ -391,22 +653,29 @@
         await ready;
         generation++;
         const previous = state;
+        await writing.catch(() => {});
         await plugin.clear();
         state = {};
         profile = null;
         locked = false;
         pinSet = false;
         storage.removeItem("posnic.session");
-        if (previous.sessionId && previous.token && previous.base) {
-          // Local sign-out is immediate even when the till is unreachable.
-          void fetcher(previous.base + "/captain/v1/logout", {
-            method: "POST",
-            credentials: "omit",
-            headers: { Authorization: "Bearer " + previous.token },
-            signal: AbortSignal.timeout(5000),
-            redirect: "error",
-          }).catch(() => {});
-        }
+        storage.removeItem("posnic.connection-candidates");
+        for (const credential of [previous, ...(previous.connections || [])])
+          if (credential.sessionId && credential.token && credential.base) {
+            // Local sign-out is immediate even when the till is unreachable.
+            void (async () => {
+              if (credential.routeKey)
+                await prove(credential.base, credential, false);
+              await fetcher(credential.base + "/captain/v1/logout", {
+                method: "POST",
+                credentials: "omit",
+                headers: { Authorization: "Bearer " + credential.token },
+                signal: AbortSignal.timeout(5000),
+                redirect: "error",
+              });
+            })().catch(() => {});
+          }
       },
       async prepare() {
         await ready;
@@ -437,7 +706,7 @@
             );
             if (started !== generation)
               throw new Error("Connection cancelled.");
-            await session.start({ ...grant, base: state.base });
+            await session.start({ ...state, ...grant, base: state.base });
           })()
             .catch(async (error) => {
               if ([401, 403].includes(error.status)) {
@@ -454,6 +723,7 @@
       },
       async suspend() {
         generation++;
+        await writing.catch(() => {});
         await plugin.lock();
         state = {};
         locked = pinSet;
@@ -476,6 +746,14 @@
       },
       async unlock(pin) {
         const result = apply(await plugin.unlock({ pin }));
+        if (!locked) {
+          const candidates = JSON.parse(
+            storage.getItem("posnic.connection-candidates") || "[]",
+          );
+          for (const base of candidates.slice(0, 2))
+            await session.addAddress(base).catch(() => {});
+          storage.removeItem("posnic.connection-candidates");
+        }
         if (
           result.session?.offlineUntil &&
           Date.parse(result.session.offlineUntil) <= Date.now()
@@ -534,7 +812,8 @@
       if (host.document.hidden) void host.CaptainAccess.session.suspend();
       else
         void host.CaptainAccess.resume().then(() => {
-          if (host.CaptainAccess.locked) host.location.href = "index.html";
+          if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
+            host.location.href = "index.html";
         });
     });
   }
