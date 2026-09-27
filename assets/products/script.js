@@ -57,7 +57,7 @@ async function refreshProductsPage(button) {
     const selectedBranch = localStorage.getItem('kiosk_selected_branch');
     if (!selectedBranch) {
         showErrorPopup('No branch is selected. Please select a branch first.');
-        return;
+        return false;
     }
 
     const icon = button ? button.querySelector('i') : null;
@@ -66,11 +66,14 @@ async function refreshProductsPage(button) {
 
     try {
         localStorage.setItem('POSNIC_IMAGE_CACHE_BUST', String(Date.now()));
-        await fetchAndStoreBranch(selectedBranch, false, true);
+        const refreshed = await fetchAndStoreBranch(selectedBranch, false, true, true);
+        if (refreshed === false) return false;
         await setKioskImagesFromIndexedDB();
+        return true;
     } catch (error) {
         console.error('Failed to refresh product data:', error);
-        showErrorPopup('Unable to refresh products. Check the server connection and try again.');
+        if (button) showErrorPopup('Unable to refresh products. Check the server connection and try again.');
+        return false;
     } finally {
         if (icon) icon.classList.remove('fa-spin');
         if (button) button.disabled = false;
@@ -1620,3 +1623,32 @@ async function changeBranch() {
         window.location.href = 'index.html';
     }
 }
+
+// Back dismisses the top menu layer; it must not throw away the current cart.
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
+    const cartNotes = document.getElementById('cart-notes-modal');
+    if (cartNotes && cartNotes.style.display !== 'none' && cartNotes.getClientRects().length) {
+        event.preventDefault(); document.getElementById('cart-notes-cancel-btn')?.click(); return;
+    }
+    const cancelOrder = document.getElementById('cancelModal');
+    if (cancelOrder && cancelOrder.style.display !== 'none' && cancelOrder.getClientRects().length) {
+        event.preventDefault(); closeCancelModal(); return;
+    }
+    const notes = document.getElementById('product-notes-modal');
+    if (notes && notes.style.display !== 'none' && notes.getClientRects().length) {
+        event.preventDefault();
+        document.getElementById('notes-cancel-btn')?.click();
+        return;
+    }
+    if (document.getElementById('menu-index') && !document.getElementById('menu-index').hidden) {
+        event.preventDefault(); MenuScreen.closeIndex(); return;
+    }
+    if (document.getElementById('cart-summary-sheet')?.classList.contains('open')) {
+        event.preventDefault(); closeCartSummarySheet(); return;
+    }
+    const search = document.getElementById('product-search-input');
+    if (search && search.value) {
+        event.preventDefault(); search.value = ''; applyProductFilter();
+    }
+});

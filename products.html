@@ -40,6 +40,8 @@
     <link href="assets/products/menu.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="assets/common/i18n.css">
+    <link rel="stylesheet" href="assets/common/mobile-gestures.css">
+    <script src="assets/common/mobile-gestures.js" defer></script>
 </head>
 
 <body>
@@ -61,7 +63,7 @@
             <a href="discount.html" class="back-link" aria-label="Back">←</a>
             <div class="store-title">Menu</div>
             <div class="header-buttons">
-                <button class="header-btn" onclick="refreshProductsPage(this)" title="Refresh Data & Images">
+                <button class="header-btn" data-mobile-refresh aria-label="Refresh" onclick="refreshProductsPage(this)" title="Refresh Data & Images">
                     <i class="fas fa-sync-alt"></i>
                 </button>
                 <button class="header-btn" onclick="openOrderHistory()" title="Order History">
@@ -150,6 +152,7 @@
     <div class="ui-scrim" id="menu-index" hidden>
         <div id="menu-index-scrim" style="position:absolute;inset:0;"></div>
         <div class="ui-sheet" style="position:relative;">
+            <div class="mobile-sheet-handle" aria-hidden="true"></div>
             <div class="ui-sheet-head" style="display:flex;align-items:center;justify-content:space-between;">
                 <h2 class="ui-sheet-title">Menu</h2>
                 <button type="button" class="ui-btn-quiet" id="menu-index-close"

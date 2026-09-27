@@ -64,7 +64,7 @@ function showTableSelectionScreen() {
     if (headerElement) {
         headerElement.textContent = 'Select Table';
     }
-    document.getElementById('refresh-btn').style.display = 'none';
+    document.getElementById('refresh-btn').style.display = 'block';
     selectedTable = null;
 }
 
@@ -292,8 +292,19 @@ function setupEventListeners() {
 }
 
 // Load order history from real API
-async function loadOrderHistory() {
-    showLoader();
+let historyRequest = null, historyRequestFilter = null, historyRevision = 0, historyLoaded = false;
+function loadOrderHistory(options = {}) {
+    if (historyRequest && historyRequestFilter === currentFilter) return historyRequest;
+    historyRequestFilter = currentFilter;
+    const revision = ++historyRevision;
+    const request = loadOrderHistoryNow(options, revision).finally(() => {
+        if (historyRequest === request) historyRequest = null;
+    });
+    historyRequest = request;
+    return request;
+}
+async function loadOrderHistoryNow(options, revision) {
+    if (!historyLoaded && !options.background) showLoader();
 
     try {
         let branchId = localStorage.getItem('branch_id');
@@ -321,7 +332,9 @@ async function loadOrderHistory() {
             status: currentFilter === 'all' ? null : currentFilter
         });
 
+        if (revision !== historyRevision) return false;
         if (data.type === 'success') {
+            historyLoaded = true;
             allOrders = data.data.orders || [];
             generateTableCards(); // Generate table selection cards
             if (selectedTable !== null) {
@@ -331,12 +344,13 @@ async function loadOrderHistory() {
         } else {
             throw new Error(data.message || 'Failed to load orders');
         }
+        return true;
     } catch (error) {
+        if (revision !== historyRevision) return false;
         console.error('Error loading order history:', error);
-        // Fallback to empty array if API fails
-        allOrders = [];
-        filterOrders();
-        showToast('Could not load the order history: ' + error.message, 'error');
+        // A failed refresh says nothing about which orders still exist.
+        if (!options.background) showToast('Could not load the order history: ' + error.message, 'error');
+        return false;
     } finally {
         hideLoader();
     }
@@ -1956,7 +1970,7 @@ function goBack() {
 }
 
 function refreshOrders() {
-    loadOrderHistory();
+    return window.MobileGestures ? MobileGestures.refresh() : loadOrderHistory();
 }
 
 function showLoader() {
@@ -2698,5 +2712,14 @@ document.addEventListener('click', async function (event) {
         const why = (error && error.message) || 'The till would not add it. Try again.';
         if (typeof showErrorPopup === 'function') showErrorPopup(why);
         else console.error('quick sale failed:', error);
+    }
+});
+
+// System Back follows the same history-screen hierarchy as the visible button.
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
+    if (document.getElementById('order-list-screen') && selectedTable !== null) {
+        event.preventDefault();
+        showTableSelectionScreen();
     }
 });

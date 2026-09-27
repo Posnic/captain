@@ -41,6 +41,8 @@
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
+    <link rel="stylesheet" href="assets/common/mobile-gestures.css">
+    <script src="assets/common/mobile-gestures.js" defer></script>
 </head>
 
 <body>
@@ -51,10 +53,10 @@
 
     <!-- Header -->
     <div class="mobile-header">
-        <button class="back-btn" onclick="handleBackButton()">
+        <button class="back-btn" aria-label="Back" onclick="handleBackButton()">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <button class="refresh-btn" onclick="refreshOrders()" id="refresh-btn" style="display: none;">
+        <button class="refresh-btn" data-mobile-refresh aria-label="Refresh" onclick="refreshOrders()" id="refresh-btn" style="display: none;">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
