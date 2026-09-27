@@ -1,3 +1,28 @@
+// Serialize complete read/modify/write operations, not only IndexedDB writes.
+// Otherwise two quick taps can save snapshots that erase each other's dishes.
+let cartMutationTail = Promise.resolve();
+function queueCartMutation(operation) {
+    const pending = cartMutationTail.then(operation);
+    cartMutationTail = pending.catch(() => {});
+    return pending;
+}
+const cartActions = new Set();
+function trackCartAction(action) {
+    const pending = (async () => action())();
+    cartActions.add(pending);
+    pending.then(() => cartActions.delete(pending), () => cartActions.delete(pending));
+    return pending;
+}
+function cartAction(action) {
+    return function (...args) {
+        return trackCartAction(() => action.apply(this, args));
+    };
+}
+async function waitForCartMutations() {
+    while (cartActions.size) await Promise.all(Array.from(cartActions));
+    await cartMutationTail;
+}
+
 const DB_NAME = "KioskDB";
 const DB_VERSION = 3;
 const STORE_NAME = "products";
@@ -687,7 +712,10 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 }
 
 
-async function validateCartWithProducts(updatedProducts) {
+function validateCartWithProducts(updatedProducts) {
+    return queueCartMutation(() => validateCartWithProductsNow(updatedProducts));
+}
+async function validateCartWithProductsNow(updatedProducts) {
     const cartData = await getCartData();
     const productMap = new Map(updatedProducts.map(p => [p.id, p])); // 🔁 Map for quick access
 
@@ -748,7 +776,10 @@ async function validateCartWithProducts(updatedProducts) {
     }
 }
 
-async function syncCartSilently(updatedProducts) {
+function syncCartSilently(updatedProducts) {
+    return queueCartMutation(() => syncCartSilentlyNow(updatedProducts));
+}
+async function syncCartSilentlyNow(updatedProducts) {
     const cartData = await getCartData();
     const productMap = new Map(updatedProducts.map(p => [p.id, p]));
 
@@ -1064,7 +1095,10 @@ function setBillTotals(totals) {
 }
 
 // ✅ Optimized remove function: No redundant IndexedDB calls
-async function removeCartItem(id) {
+function removeCartItem(id) {
+    return queueCartMutation(() => removeCartItemNow(id));
+}
+async function removeCartItemNow(id) {
     let cartData = await getCartData();
     cartData = cartData.filter(i => i.id !== id); // 🔥 Remove from IndexedDB cart
 
@@ -1078,7 +1112,10 @@ async function removeCartItem(id) {
 }
 
 // ✅ Optimized update function: Prevents multiple IndexedDB calls
-async function updateCartQuantity(id, change) {
+function updateCartQuantity(id, change) {
+    return queueCartMutation(() => updateCartQuantityNow(id, change));
+}
+async function updateCartQuantityNow(id, change) {
     const storedProducts = await getData("products");
     const storedProduct = storedProducts.find(item => item.id === id);
     let cartData = await getCartData();
@@ -1221,7 +1258,10 @@ function showCategory(category) {
 // });
 
 // ✅ Update Quantity and Save to IndexedDB
-async function updateQuantity(id, change, options) {
+function updateQuantity(id, change, options) {
+    return queueCartMutation(() => updateQuantityNow(id, change, options));
+}
+async function updateQuantityNow(id, change, options) {
     // ✅ only read needed product
     const storedProduct = await getProductById(id);
     /* What the waiter was quoted this morning, for a dish the catalogue prices
@@ -1282,10 +1322,10 @@ async function updateQuantity(id, change, options) {
             modifiers: chosen || [],
             quantity: 0
         };
-    } else if (quoted > 0) {
+    } else {
         /* Re-quoted: the second fish of the evening may cost something else,
            and the line carries the number the table was told. */
-        item.askedPrice = quoted;
+        if (quoted > 0) item.askedPrice = quoted;
         /* Only when this add actually asked. Tapping + on a dish already on
            the order keeps the extras it went on with, rather than silently
            dropping them because the second tap asked nothing. */
@@ -1574,7 +1614,9 @@ function cartShape(cart) {
             String(line.id ?? ''),
             Number(line.quantity) || 0,
             Number(line.price) || 0,
-            String(line.note ?? ''),
+            String(line.notes ?? line.note ?? ''),
+            Number(line.askedPrice) || 0,
+            line.modifiers || [],
         ])
     );
 }
@@ -1653,6 +1695,7 @@ async function loadCart() {
 
 async function checkout(transactionId) {
     try {
+        await waitForCartMutations();
         // 🔄 Get cart data from IndexedDB
         const cartItems = await getCartData();
         console.log('cartItems:', cartItems);

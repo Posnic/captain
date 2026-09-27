@@ -190,10 +190,16 @@
          * This screen's loader starts visible and is hidden once the menu is
          * drawn, so it is already here, ready to be shown again.
          */
-        function goToBill() {
+        async function goToBill() {
             const loader = document.getElementById('page-loader');
             if (loader) loader.style.display = 'flex';
-            window.location.href = 'cart.html';
+            try {
+                await waitForCartMutations();
+                window.location.href = 'cart.html';
+            } catch (error) {
+                if (loader) loader.style.display = 'none';
+                showErrorPopup('Failed to save notes. Please try again.');
+            }
         }
     </script>
 

@@ -136,6 +136,8 @@ test('a changed quantity or a changed note is a new order too', () => {
   for (const changed of [
     [{ id: 'a', quantity: 3, price: 100, note: '' }],
     [{ id: 'a', quantity: 2, price: 100, note: 'no onion' }],
+    [{ id: 'a', quantity: 2, price: 100, notes: 'Salt & pepper' }],
+    [{ id: 'a', quantity: 2, price: 100, modifiers: [{ name: 'Manchurian' }] }],
   ]) {
     const kit = keyring();
     kit.cartSaved(CART);
