@@ -96,7 +96,14 @@ public class SecureSessionPlugin extends Plugin {
         try {
             android.net.Uri uri = android.net.Uri.parse(call.getString("url", ""));
             if (!"https".equals(uri.getScheme()) || !"www.posnic.com".equals(uri.getHost()) || !"/api/mobile/authorize".equals(uri.getPath())) throw new Exception("Invalid account address");
-            getActivity().startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, uri)); call.resolve();
+            getActivity().runOnUiThread(() -> {
+                try {
+                    android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW, uri);
+                    intent.addCategory(android.content.Intent.CATEGORY_BROWSABLE);
+                    getActivity().startActivity(intent);
+                    call.resolve();
+                } catch (Exception e) { call.reject(e.getMessage()); }
+            });
         } catch (Exception e) { call.reject(e.getMessage()); }
     }
     @PluginMethod public synchronized void clear(PluginCall call) {

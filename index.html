@@ -120,7 +120,6 @@
                 <section id="captain-onboarding" aria-label="Connect to your shop">
                     <button id="connection-back" type="button" class="setup-link setup-back" hidden>Back</button>
                     <h2 class="setup-title">Connect to your shop</h2>
-                    <div class="connection-cloud"><button id="captain-cloud-login" type="button" class="setup-primary">Sign in with your account</button><p>Approve this phone in your browser.</p><button id="captain-cloud-signup" type="button" hidden>Create account</button></div>
                     <p class="setup-intro">Enter your shop address, or find it using the options below.</p>
                     <label class="setup-label" for="captain-server">Shop code or server address</label>
                     <div class="setup-address">
@@ -132,9 +131,12 @@
                         </div>
                     </div>
                     <p id="setup-wifi-hint" class="setup-hint"><strong>Shop Wi-Fi is fastest.</strong> Use a domain address when connecting over the internet.</p>
-                    <details id="connection-addresses"><summary>Connection settings</summary><p class="setup-hint">Shop Wi-Fi is fastest.</p><label class="setup-label" for="connection-lan">Local server</label><input id="connection-lan" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="http://192.168.0.12:5555/api"><label class="setup-label" for="connection-cloud">Internet server</label><input id="connection-cloud" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://azure.posnic.io/api"><button id="connection-save" type="button" class="setup-primary">Save</button><p id="connection-message" role="status"></p></details>
                     <div id="captain-results" class="setup-results"></div>
                     <button id="captain-connect" type="button" class="setup-primary">Connect to shop</button>
+                    <div class="connection-cloud"><button id="captain-cloud-login" type="button" class="setup-primary">Sign in with your account</button><p>Approve this phone in your browser.</p><button id="captain-cloud-signup" type="button" hidden>Create account</button></div>
+                    <p id="captain-note" role="status" aria-live="polite"></p>
+                    <button id="captain-cancel" type="button" class="setup-link" hidden>Cancel</button>
+                    <a id="captain-open-browser" class="setup-link" hidden target="_blank" rel="noopener noreferrer">Open browser</a>
                     <details id="captain-code-options" hidden>
                         <summary>Pair this phone</summary>
                         <p>Enter the code from Captain settings on your shop’s POS.</p>
@@ -143,9 +145,8 @@
                         <label class="setup-confirm"><input id="captain-confirm" type="checkbox"> I confirmed this shop address with my manager</label>
                         <button id="captain-pair" type="button" class="setup-primary">Pair phone</button>
                     </details>
-                    <p id="captain-note" role="status" aria-live="polite"></p>
-                    <button id="captain-cancel" type="button" class="setup-link" hidden>Cancel</button>
 
+                    <details id="connection-addresses"><summary>Connection settings</summary><p class="setup-hint">Shop Wi-Fi is fastest.</p><label class="setup-label" for="connection-lan">Local server</label><input id="connection-lan" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="http://192.168.0.12:5555/api"><label class="setup-label" for="connection-cloud">Internet server</label><input id="connection-cloud" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://azure.posnic.io/api"><button id="connection-save" type="button" class="setup-primary">Save</button><p id="connection-message" role="status"></p></details>
                 </section>
                 <details id="captain-legacy" hidden>
                 <summary>Staff sign-in</summary>

@@ -835,5 +835,6 @@
   "Ordered at": "เวลาสั่ง",
   "Quantity to serve": "จำนวนที่ต้องการเสิร์ฟ",
   "Items marked served": "ทำเครื่องหมายรายการว่าเสิร์ฟแล้ว",
-  "Could not save. Please try again.": "บันทึกไม่ได้ โปรดลองอีกครั้ง"
+  "Could not save. Please try again.": "บันทึกไม่ได้ โปรดลองอีกครั้ง",
+  "Open browser": "เปิดเบราว์เซอร์"
 }

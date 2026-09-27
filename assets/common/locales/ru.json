@@ -835,5 +835,6 @@
   "Ordered at": "Время заказа",
   "Quantity to serve": "Количество к подаче",
   "Items marked served": "Позиции отмечены как поданные",
-  "Could not save. Please try again.": "Не удалось сохранить. Попробуйте ещё раз."
+  "Could not save. Please try again.": "Не удалось сохранить. Попробуйте ещё раз.",
+  "Open browser": "Открыть браузер"
 }

@@ -687,3 +687,67 @@ test("connection details can be saved while locked without clearing the staff se
     ),
   ).toEqual([base]);
 });
+
+test("native account approval bypasses WebView CORS and can reopen after a browser launch failure", async ({ page }) => {
+  await phone(page);
+  let browserRequests = 0;
+  await page.route("https://www.posnic.com/**", route => { browserRequests++; return route.abort(); });
+  await page.evaluate(() => {
+    window.nativeAccountCalls = [];
+    window.browserAttempts = [];
+    Capacitor.Plugins.CapacitorHttp = { request: async options => {
+      window.nativeAccountCalls.push(options);
+      if (options.url.endsWith("/capabilities")) return { status: 200, data: { applications: ["captain"] } };
+      if (options.url.endsWith("/requests")) return { status: 200, data: JSON.stringify({ request: "a".repeat(43), authorizationUrl: "https://www.posnic.com/api/mobile/authorize?request=" + "a".repeat(43), expiresIn: 900 }) };
+      return { status: 202, data: { error: "authorization_pending" } };
+    } };
+    Capacitor.Plugins.SecureSession.openBrowser = async ({ url }) => {
+      window.browserAttempts.push(url);
+      if (window.browserAttempts.length === 1) throw new Error("No activity");
+    };
+  });
+  await page.locator("#captain-cloud-login").click();
+  await expect(page.locator("#captain-open-browser")).toBeVisible();
+  await expect(page.locator("#captain-note")).toContainText("Try again");
+  await page.locator("#captain-open-browser").click();
+  await expect.poll(() => page.evaluate(() => window.browserAttempts.length)).toBe(2);
+  const state = await page.evaluate(() => ({ calls: window.nativeAccountCalls, attempts: window.browserAttempts }));
+  expect(state.attempts[0]).toBe(state.attempts[1]);
+  expect(state.calls.filter(call => call.url.endsWith("/requests"))).toHaveLength(1);
+  expect(state.calls[1].data.application).toBe("captain");
+  expect(state.calls.every(call => call.disableRedirects && call.connectTimeout === 7000 && call.readTimeout === 7000)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.nativeAccountCalls.some(call => call.url.endsWith("/token"))), { timeout: 8000 }).toBe(true);
+  expect(browserRequests).toBe(0);
+  await page.locator("#captain-cancel").click();
+  await expect(page.locator("#captain-open-browser")).toBeHidden();
+  await expect(page.locator("#captain-open-browser")).not.toHaveAttribute("href");
+  await expect(page.locator("#captain-cloud-login")).toBeEnabled();
+});
+
+test("canceling a pending native account request never launches the browser later", async ({ page }) => {
+  await phone(page);
+  await page.evaluate(() => {
+    Capacitor.Plugins.CapacitorHttp = { request: () => new Promise(resolve => { window.finishAccountRequest = resolve; }) };
+  });
+  await page.locator("#captain-cloud-login").click();
+  await expect.poll(() => page.evaluate(() => typeof window.finishAccountRequest)).toBe("function");
+  await page.locator("#captain-cancel").click();
+  await expect(page.locator("#captain-cloud-login")).toBeEnabled();
+  await page.evaluate(() => window.finishAccountRequest({ status: 200, data: { applications: ["captain"] } }));
+  await expect(page.locator("#captain-note")).toHaveText("Connection cancelled.");
+  expect(await page.evaluate(() => window.openedAccount)).toBeUndefined();
+  await expect(page.locator("#captain-open-browser")).toBeHidden();
+});
+
+test("the primary action searches Wi-Fi when empty and connects when an address is entered", async ({ page }) => {
+  await phone(page);
+  await page.locator("#captain-server").fill("");
+  await expect(page.locator("#captain-connect")).toHaveText("Find shop on Wi-Fi");
+  await page.evaluate(base => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => options.collect({ base, info: { features: { captainAccessV1: true } } });
+  }, base);
+  await page.locator("#captain-connect").click();
+  await expect(page.locator("#captain-results button")).toHaveCount(1);
+  await page.locator("#captain-server").fill(base);
+  await expect(page.locator("#captain-connect")).toHaveText("Connect to shop");
+});
