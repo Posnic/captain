@@ -57,6 +57,8 @@
   }
   async function run(work) {
     if (operation) return;
+    $("captain-open-browser").hidden = true;
+    $("captain-open-browser").removeAttribute("href");
     operation = new AbortController();
     $("captain-cancel").hidden = false;
     const controls = [
@@ -77,6 +79,8 @@
       if (!operation.signal.aborted)
         note(e.message || "Could not connect. Try again.");
     } finally {
+      $("captain-open-browser").hidden = true;
+      $("captain-open-browser").removeAttribute("href");
       operation = null;
       $("captain-cancel").hidden = true;
       controls.forEach((id) => {
@@ -316,27 +320,45 @@
       );
     });
   }
+  async function accountRequest(method, path, body, signal) {
+    const origin = "https://www.posnic.com";
+    const capacitor = window.Capacitor;
+    const http = capacitor?.isNativePlatform?.()
+      ? capacitor.Plugins?.CapacitorHttp || capacitor.registerPlugin?.("CapacitorHttp")
+      : null;
+    if (!http && method === "POST") return CaptainAccess.post(origin, path, body, signal);
+    return bounded((async () => {
+      const response = http
+        ? await http.request({ url: origin + path, method,
+            headers: { "Accept": "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+            ...(body ? { data: body } : {}), responseType: "json",
+            connectTimeout: 7000, readTimeout: 7000, disableRedirects: true })
+        : await fetch(origin + path, { signal, credentials: "omit", redirect: "error" });
+      const status = response.status;
+      const data = http ? (typeof response.data === "string" ? JSON.parse(response.data) : response.data) : await response.json();
+      if (status < 200 || status >= 300) throw Object.assign(new Error(data?.error?.message || data?.message || "Could not connect. Try again."), { status });
+      return data;
+    })(), 7500, signal, "Could not connect. Try again.");
+  }
+  async function openApproval(url) {
+    try {
+      await window.Capacitor.Plugins.SecureSession.openBrowser({ url });
+    } catch {
+      // Keep the pending approval alive and offer an explicit retry.
+      note("Could not connect. Try again.");
+    }
+  }
+  function updateConnectAction() {
+    $("captain-connect").textContent = $("captain-server").value.trim()
+      ? "Connect to shop" : "Find shop on Wi-Fi";
+  }
   async function cloud(intent, signal) {
     secure();
     const origin = "https://www.posnic.com";
-    const capabilities = await bounded(
-      (async () => {
-        const reply = await fetch(origin + "/api/mobile/capabilities", {
-          signal: AbortSignal.timeout(7000),
-        });
-        return { ok: reply.ok, body: await reply.json() };
-      })(),
-      7000,
-      signal,
-      "Could not connect. Try again.",
-    );
-    if (
-      !capabilities.ok ||
-      !capabilities.body.applications?.includes("captain")
-    )
-      throw new Error(
-        "Captain cloud approval is not available on this account server yet. Use the till’s QR or local address.",
-      );
+    note("Connecting to your shop…");
+    const capabilities = await accountRequest("GET", "/api/mobile/capabilities", null, signal);
+    if (!capabilities.applications?.includes("captain"))
+      throw new Error("Captain cloud approval is not available on this account server yet. Use the till’s QR or local address.");
     const verifier = CaptainAccess.random();
     const challenge = btoa(
       String.fromCharCode(...new Uint8Array(await sha(verifier))),
@@ -344,8 +366,8 @@
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
       .replace(/=+$/, "");
-    const pending = await CaptainAccess.post(
-      origin,
+    const pending = await accountRequest(
+      "POST",
       "/api/mobile/requests",
       {
         application: "captain",
@@ -364,7 +386,11 @@
         pending.request.slice(-6).toUpperCase() +
         ". Then return here.",
     );
-    await window.Capacitor.Plugins.SecureSession.openBrowser({ url: url.href });
+    const link = $("captain-open-browser");
+    link.href = url.href;
+    link.hidden = false;
+    link.onclick = (event) => { event.preventDefault(); if (!signal.aborted) void openApproval(url.href); };
+    await openApproval(url.href);
     const until = Date.now() + Math.min(900, pending.expiresIn) * 1000;
     while (Date.now() < until && !signal.aborted) {
       await new Promise((resolve) => {
@@ -379,8 +405,8 @@
       if (signal.aborted) break;
       let grant;
       try {
-        grant = await CaptainAccess.post(
-          origin,
+        grant = await accountRequest(
+          "POST",
           "/api/mobile/token",
           { request: pending.request, codeVerifier: verifier },
           signal,
@@ -463,6 +489,7 @@
       $("connection-cloud").value = POSNIC.server.cloud || "";
       showStep(false);
       note("");
+      updateConnectAction();
       $("captain-server").select();
     },
     close() {
@@ -489,13 +516,13 @@
   };
   document.addEventListener("DOMContentLoaded", () => {
     $("captain-server").value = POSNIC.server.baseUrl || "";
+    updateConnectAction();
     $("captain-code-toggle").onclick = showCode;
     $("captain-change-shop").onclick = () => CaptainOnboarding.open();
     $("captain-connect").onclick = () => {
       const input = $("captain-server").value.trim();
       if (!input) {
-        $("captain-server").focus();
-        note("Enter a shop code or address, or use Wi-Fi search.");
+        void run(search);
         return;
       }
       void run(async (signal) => {
@@ -522,6 +549,7 @@
       }
     });
     $("captain-server").addEventListener("input", () => {
+      updateConnectAction();
       $("captain-confirm").checked = false;
     });
     $("captain-scan").onclick = () => {

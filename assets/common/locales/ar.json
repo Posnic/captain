@@ -835,5 +835,6 @@
   "Ordered at": "وقت الطلب",
   "Quantity to serve": "الكمية المراد تقديمها",
   "Items marked served": "تم تحديد الأصناف كمُقدَّمة",
-  "Could not save. Please try again.": "تعذر الحفظ. يرجى المحاولة مرة أخرى."
+  "Could not save. Please try again.": "تعذر الحفظ. يرجى المحاولة مرة أخرى.",
+  "Open browser": "فتح المتصفح"
 }

@@ -835,5 +835,6 @@
   "Ordered at": "Sipariş saati",
   "Quantity to serve": "Servis edilecek miktar",
   "Items marked served": "Ürünler servis edildi olarak işaretlendi",
-  "Could not save. Please try again.": "Kaydedilemedi. Lütfen tekrar deneyin."
+  "Could not save. Please try again.": "Kaydedilemedi. Lütfen tekrar deneyin.",
+  "Open browser": "Tarayıcıyı aç"
 }

@@ -835,5 +835,6 @@
   "Ordered at": "下單時間",
   "Quantity to serve": "上菜數量",
   "Items marked served": "餐點已標記為已上菜",
-  "Could not save. Please try again.": "無法儲存，請重試。"
+  "Could not save. Please try again.": "無法儲存，請重試。",
+  "Open browser": "開啟瀏覽器"
 }

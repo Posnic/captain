@@ -835,5 +835,6 @@
   "Ordered at": "Hora del pedido",
   "Quantity to serve": "Cantidad a servir",
   "Items marked served": "Artículos marcados como servidos",
-  "Could not save. Please try again.": "No se pudo guardar. Inténtalo de nuevo."
+  "Could not save. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
+  "Open browser": "Abrir navegador"
 }

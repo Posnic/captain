@@ -835,5 +835,6 @@
   "Ordered at": "注文日時",
   "Quantity to serve": "提供する数量",
   "Items marked served": "商品を提供済みにしました",
-  "Could not save. Please try again.": "保存できませんでした。もう一度お試しください。"
+  "Could not save. Please try again.": "保存できませんでした。もう一度お試しください。",
+  "Open browser": "ブラウザーを開く"
 }
