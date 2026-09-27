@@ -17,7 +17,7 @@
         <span class="service-quantity" translate="no">×${line.quantity}</span>
         ${editable && line.remaining > 0 ? `<div class="service-action">
           ${line.remaining > 1 ? `<input type="number" aria-label="Quantity to serve" min="0.001" max="${line.remaining}" step="any" value="${line.remaining}">` : ''}
-          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}">Mark served</button>
+          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}">Mark served</button>
         </div>` : ''}
       </div>`).join('')}</section>`).join('');
   }
@@ -37,11 +37,13 @@
     if (!message) { message = document.createElement('p'); message.className='service-result'; message.setAttribute('role','status'); container.append(message); }
     message.textContent = 'Saving…';
     try {
-      const branchId = localStorage.getItem('kiosk_selected_branch') || localStorage.getItem('branch_id');
+      // Bind service to the branch whose order was loaded. The selected kiosk
+      // value can be a shop code, not a branch ObjectId.
+      const branchId = button.dataset.serveBranch;
       const result = await POSNIC.api.post('/sales/serveKitchenItems', {branchId, saleId:button.dataset.serveSale,
         items:[{id:button.dataset.serveLine,quantity:Number(button.dataset.served)+quantity}]});
       if (result.type !== 'success' || !Array.isArray(result.data)) throw new Error(result.message || 'Could not save. Please try again.');
-      container.querySelector('.kot-items-list').innerHTML = render({_id:button.dataset.serveSale,kitchen_rounds:result.data},true);
+      container.querySelector('.kot-items-list').innerHTML = render({_id:button.dataset.serveSale,branch_id:branchId,kitchen_rounds:result.data},true);
       message.textContent = 'Items marked served';
     } catch (error) {
       message.textContent = error.message || 'Could not save. Please try again.';
