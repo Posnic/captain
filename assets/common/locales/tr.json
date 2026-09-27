@@ -836,5 +836,6 @@
   "Quantity to serve": "Servis edilecek miktar",
   "Items marked served": "Ürünler servis edildi olarak işaretlendi",
   "Could not save. Please try again.": "Kaydedilemedi. Lütfen tekrar deneyin.",
-  "Open browser": "Tarayıcıyı aç"
+  "Open browser": "Tarayıcıyı aç",
+  "Mark all served": "Tümünü servis edildi olarak işaretle"
 }

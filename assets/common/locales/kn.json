@@ -836,5 +836,6 @@
   "Quantity to serve": "ಬಡಿಸಬೇಕಾದ ಪ್ರಮಾಣ",
   "Items marked served": "ಐಟಂಗಳನ್ನು ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ",
   "Could not save. Please try again.": "ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
-  "Open browser": "ಬ್ರೌಸರ್ ತೆರೆಯಿರಿ"
+  "Open browser": "ಬ್ರೌಸರ್ ತೆರೆಯಿರಿ",
+  "Mark all served": "ಎಲ್ಲವನ್ನೂ ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ"
 }

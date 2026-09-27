@@ -836,5 +836,6 @@
   "Quantity to serve": "Te serveren aantal",
   "Items marked served": "Artikelen gemarkeerd als geserveerd",
   "Could not save. Please try again.": "Opslaan mislukt. Probeer het opnieuw.",
-  "Open browser": "Browser openen"
+  "Open browser": "Browser openen",
+  "Mark all served": "Alles als geserveerd markeren"
 }
