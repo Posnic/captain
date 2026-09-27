@@ -527,6 +527,7 @@ async function setCartItemNotesNow(id, notes) {
         item = {
             id: p.id,
             name: p.name,
+            ...window.PosnicItemText.snapshot(p),
             price: Number(p.price || 0),
             discount_price: Number(p.discount_price || 0),
             tax_price: Number(p.tax_price || 0),
