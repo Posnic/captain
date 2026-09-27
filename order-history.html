@@ -38,6 +38,7 @@
     <link href="assets/order-history/table-selection.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
+    <link rel="stylesheet" href="assets/order-history/editor.css">
 </head>
 
 <body>
@@ -133,54 +134,84 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Modify order</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <!-- Current Order Items -->
-                        <div class="col-md-6">
+                    <section id="order-editor-items">
+                        <button type="button" id="order-editor-details-open" class="editor-summary">
+                            <span><strong id="order-editor-context"></strong><small id="order-editor-meta"></small></span>
+                            <span class="editor-summary-action"><span>Order Details</span> <i class="fas fa-chevron-right" aria-hidden="true"></i></span>
+                        </button>
+                        <div class="editor-items-heading">
                             <h6>On this order</h6>
-                            <div id="current-order-items" class="order-items-list">
-                                <!-- Current items will be loaded here -->
-                            </div>
+                            <button type="button" class="btn add-items-btn" id="open-item-picker"><i class="fas fa-plus" aria-hidden="true"></i> <span>Add items</span></button>
                         </div>
-                        <!-- Add New Items -->
-                        <div class="col-md-6">
-                            <!--
-                                ONE BUTTON, AND THE REAL MENU BEHIND IT.
+                        <div id="current-order-items" class="order-items-list"></div>
+                        <div class="product-search-container" hidden><input type="text" id="product-search" placeholder="Search the menu"><div id="product-suggestions"></div></div>
+                        <div id="new-items-list" hidden></div>
+                    </section>
+                    <section id="order-editor-details" hidden>
+                        <button type="button" class="editor-back" data-editor-view="items"><i class="fas fa-arrow-left" aria-hidden="true"></i> <span>Back to the order</span></button>
+                        <h6>Order Details</h6>
+                        <div class="editor-detail-actions">
+                            <button type="button" data-editor-setting="table"><span>Move table</span><strong id="editor-table-value" translate="no"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                            <button type="button" data-editor-setting="guests"><span>Guests</span><strong id="editor-guests-value" translate="no"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                            <button type="button" data-editor-setting="type"><span>Order Type</span><strong id="editor-type-value"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                        </div>
+                    </section>
+                    <section id="order-editor-settings" hidden>
+                        <button type="button" class="editor-back" id="editor-setting-back"><i class="fas fa-arrow-left" aria-hidden="true"></i> <span>Back</span></button>
+                        <h6 id="editor-setting-title"></h6>
+                        <div id="edit-type-section"><div class="row mt-3">
+                        <div class="col-12 text-center">
+                            <label class="form-label d-block mb-2">Order Type</label>
+                            <div class="d-flex justify-content-center">
+                                <div class="btn-group" role="group" aria-label="Dine Type">
+                                    <input type="radio" class="btn-check" name="edit_dine_type" id="edit-dinein"
+                                        value="Dine-in" autocomplete="off" checked>
+                                    <label class="btn btn-outline-secondary" for="edit-dinein">Dine-in</label>
 
-                                Owner: "for adding within that screen so
-                                conjested. adding new item should have button
-                                like add item and same as first scree menu item
-                                list other so many stuff should neatly
-                                available."
-
-                                This was a search box and a suggestion list
-                                squeezed into half a column, beside the order,
-                                beside the discount fields, the dine type, the
-                                table and the cover count - on a phone. A waiter
-                                looking for a dish got a text box and a list of
-                                names, when the screen they already know has
-                                categories, prices, photographs and a stepper.
-
-                                The search box is kept, hidden, because
-                                renderProductSuggestions and the tests around it
-                                still write into it.
-                            -->
-                            <h6>Add something</h6>
-                            <button type="button" class="btn add-items-btn" id="open-item-picker">
-                                + Add items from the menu
-                            </button>
-                            <div class="product-search-container" hidden>
-                                <input type="text" id="product-search" placeholder="Search the menu"
-                                    class="form-control mb-3">
-                                <div id="product-suggestions" class="product-suggestions"></div>
-                            </div>
-                            <div id="new-items-list" class="order-items-list">
-                                <!-- New items will be added here -->
+                                    <input type="radio" class="btn-check" name="edit_dine_type" id="edit-takeaway"
+                                        value="Take away" autocomplete="off">
+                                    <label class="btn btn-outline-secondary" for="edit-takeaway">Take away</label>
+                                </div>
                             </div>
                         </div>
                     </div>
+                    </div>
+                        <div class="row mt-3" id="edit-table-section">
+                        <div class="col-12 text-center">
+                            <div class="section-title mb-2">Select Table</div>
+                            <div id="edit-table-list" class="table-list">
+                                <!-- tables will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3" id="edit-pax-section">
+                        <div class="col-12 text-center">
+                            <div class="section-title mb-2">Guests</div>
+
+                            <!-- HERO ICON (same style as discount page) -->
+                            <div id="edit_person_hero" class="person-hero"></div>
+
+                            <div class="edit-person-container">
+                                <div class="edit-person-buttons">
+                                    <button type="button" class="edit-person-btn" data-person="1">1</button>
+                                    <button type="button" class="edit-person-btn" data-person="2">2</button>
+                                    <button type="button" class="edit-person-btn" data-person="3">3</button>
+                                    <button type="button" class="edit-person-btn" data-person="4">4</button>
+                                    <button type="button" class="edit-person-btn" data-person="5">5</button>
+                                    <button type="button" class="edit-person-btn" data-person="6">6</button>
+                                </div>
+
+                                <input id="edit_person_input" type="text" inputmode="numeric" maxlength="2"
+                                    class="edit-person-input" placeholder="Other...">
+                            </div>
+                        </div>
+                    </div>
+
+                        <button type="button" id="editor-setting-apply" class="editor-apply">Apply</button>
+                    </section>
                     <div class="row mt-3" style="display: none;">
                         <div class="col-12">
                             <label class="form-label">Discount</label>
@@ -211,66 +242,16 @@
                         </div>
                     </div>
                     <!-- Dine Type -->
-                    <div class="row mt-3">
-                        <div class="col-12 text-center">
-                            <label class="form-label d-block mb-2">Order Type</label>
-                            <div class="d-flex justify-content-center">
-                                <div class="btn-group" role="group" aria-label="Dine Type">
-                                    <input type="radio" class="btn-check" name="edit_dine_type" id="edit-dinein"
-                                        value="Dine-in" autocomplete="off" checked>
-                                    <label class="btn btn-outline-secondary" for="edit-dinein">Dine-in</label>
 
-                                    <input type="radio" class="btn-check" name="edit_dine_type" id="edit-takeaway"
-                                        value="Take away" autocomplete="off">
-                                    <label class="btn btn-outline-secondary" for="edit-takeaway">Take away</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-3" id="edit-table-section">
-                        <div class="col-12 text-center">
-                            <div class="section-title mb-2">Select Table</div>
-                            <div id="edit-table-list" class="table-list">
-                                <!-- tables will be rendered here -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-3" id="edit-pax-section">
-                        <div class="col-12 text-center">
-                            <div class="section-title mb-2">Pax</div>
-
-                            <!-- HERO ICON (same style as discount page) -->
-                            <div id="edit_person_hero" class="person-hero"></div>
-
-                            <div class="edit-person-container">
-                                <div class="edit-person-buttons">
-                                    <button type="button" class="edit-person-btn" data-person="1">1</button>
-                                    <button type="button" class="edit-person-btn" data-person="2">2</button>
-                                    <button type="button" class="edit-person-btn" data-person="3">3</button>
-                                    <button type="button" class="edit-person-btn" data-person="4">4</button>
-                                    <button type="button" class="edit-person-btn" data-person="5">5</button>
-                                    <button type="button" class="edit-person-btn" data-person="6">6</button>
-                                </div>
-
-                                <input id="edit_person_input" type="text" inputmode="numeric" maxlength="2"
-                                    class="edit-person-input" placeholder="Other...">
-                            </div>
-                        </div>
-                    </div>
                 </div>
-                <div class="modal-footer">
-                    <!-- "Cancel" on a screen that also has a real Cancel Order button
-                         is the one word that must not be ambiguous here. -->
-                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Leave it as it was</button>
-                    <!-- Owner: "save changes is system language or normal languag...
-                         make changes according to that." Nobody standing at a
-                         table thinks about saving changes; they think about
-                         updating the order. -->
+                <div class="modal-footer editor-footer">
+                    <div class="editor-total"><span id="editor-item-count"></span><strong id="editor-total-value" translate="no"></strong></div>
                     <button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button>
+                    <p class="editor-save-help">Changes are sent when you update the order.</p>
                 </div>
             </div>
         </div>
-    
+
         <!-- the add-item sheet lives inside the modal so Bootstrap's focus
              trap does not steal focus back from its search box; see
              the comment on the sheet itself -->
@@ -341,8 +322,8 @@
                 </div>
             </div>
 
-            <div class="item-picker-foot">
-                <button type="button" class="btn item-picker-done" id="item-picker-done">Done</button>
+            <div class="item-picker-foot"><div class="editor-total"><span id="picker-item-count"></span><strong id="picker-total-value" translate="no"></strong></div>
+                <button type="button" class="btn item-picker-done" id="item-picker-done">Back to the order</button>
             </div>
         </div>
     </div>
@@ -429,6 +410,7 @@
          when the app is most needed. -->
     <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
     <script src="assets/order-history/script.js"></script>
+    <script src="assets/order-history/editor.js"></script>
 </body>
 
 </html>

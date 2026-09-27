@@ -741,5 +741,11 @@
   "egg": "uovo",
   "{0} min": "{0} min",
   "{0} hr": "{0} h",
-  "{0} hr {1} min": "{0} h {1} min"
+  "{0} hr {1} min": "{0} h {1} min",
+  "Add items": "Aggiungi articoli",
+  "Changes are sent when you update the order.": "Le modifiche vengono inviate quando aggiorni l’ordine.",
+  "Decrease quantity": "Riduci quantità",
+  "Discard changes?": "Scartare le modifiche?",
+  "Guests": "Coperti",
+  "Increase quantity": "Aumenta quantità"
 }

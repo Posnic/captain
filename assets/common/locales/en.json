@@ -741,5 +741,11 @@
   "egg": "egg",
   "{0} min": "{0} min",
   "{0} hr": "{0} hr",
-  "{0} hr {1} min": "{0} hr {1} min"
+  "{0} hr {1} min": "{0} hr {1} min",
+  "Add items": "Add items",
+  "Changes are sent when you update the order.": "Changes are sent when you update the order.",
+  "Decrease quantity": "Decrease quantity",
+  "Discard changes?": "Discard changes?",
+  "Guests": "Guests",
+  "Increase quantity": "Increase quantity"
 }
