@@ -54,6 +54,7 @@
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
+    <link href="assets/common/guest-bills.css" rel="stylesheet">
 </head>
 
 <body class="floor-screen">
@@ -469,7 +470,7 @@
                 </div>
                 <div class="modal-footer editor-footer">
                     <div class="editor-total"><span id="editor-item-count"></span><strong id="editor-total-value" translate="no"></strong></div>
-                    <button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button>
+                    <div class="editor-footer-actions"><button type="button" id="cancel-order-changes" class="editor-cancel">Cancel</button><button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button></div>
                     <p class="editor-save-help">Changes are sent when you update the order.</p>
                 </div>
             </div>
@@ -635,6 +636,8 @@
     <script src="assets/common/online-approvals.js"></script>
     <script src="assets/common/online-approvals-ui.js"></script>
     <script src="assets/kot/script.js"></script>
+    <script src="assets/common/guest-bill-math.js"></script>
+    <script src="assets/common/guest-bills.js"></script>
 </body>
 
 </html>

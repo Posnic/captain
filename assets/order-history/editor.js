@@ -3,7 +3,9 @@
     'use strict';
     const byId = id => document.getElementById(id);
     let view = 'items', setting = '', beforeSetting = null, initial = null;
-    let originalLines = new WeakSet(), saving = false, saved = false;
+    let originalLines = new WeakSet(), saving = false, saved = false, cancelling = false;
+    let ownsHistory = false;
+    const historyKey = 'captainOrderEditor';
     const selected = name => document.querySelector('input[name="' + name + '"]:checked');
     const order = () => orderBeingModified();
     function details() {
@@ -62,6 +64,7 @@
             byId(prefix + '-item-count').textContent = count === 1 ? '1 item' : count + ' items';
             byId(prefix + '-total-value').textContent = '₹' + Number(order().total_amount || 0).toFixed(2);
         }
+        byId('cancel-order-changes').disabled = saving;
         byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());
     }
     function begin() {
@@ -91,7 +94,15 @@
         beforeSetting = null;
         show('items');
     }
+    function cancel() {
+        if (saving) return;
+        if (initial !== null && fingerprint() !== initial && !window.confirm(window.I18N ? I18N.t('Discard changes?') : 'Discard changes?')) return;
+        cancelling = true;
+        bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
+        cancelling = false;
+    }
     document.addEventListener('click', event => {
+        if (event.target.closest('#cancel-order-changes')) cancel();
         if (event.target.closest('#order-editor-details-open')) show('details');
         const action = event.target.closest('[data-editor-setting]');
         if (action) openSetting(action.dataset.editorSetting);
@@ -102,8 +113,29 @@
     document.addEventListener('DOMContentLoaded', () => {
         const modal = byId('editOrderModal');
         if (!modal) return;
+        modal.addEventListener('show.bs.modal', () => {
+            if (ownsHistory) return;
+            history.pushState({ ...history.state, [historyKey]: true }, '', location.href);
+            ownsHistory = true;
+        });
+        window.addEventListener('popstate', () => {
+            if (!ownsHistory || !modal.classList.contains('show')) return;
+            ownsHistory = false;
+            bootstrap.Modal.getInstance(modal)?.hide();
+            // A nested step or a declined discard consumes Back without leaving the draft.
+            if (modal.classList.contains('show')) {
+                history.pushState({ ...history.state, [historyKey]: true }, '', location.href);
+                ownsHistory = true;
+            }
+        });
+        window.addEventListener('captain:back', event => {
+            if (document.querySelector('#guest-bills[open]') || !modal.classList.contains('show')) return;
+            event.preventDefault();
+            const nested = [...document.querySelectorAll('.modal.show')].filter(node => node !== modal).pop();
+            bootstrap.Modal.getInstance(nested || modal)?.hide();
+        });
         modal.addEventListener('hide.bs.modal', event => {
-            if (saved) return;
+            if (saved || cancelling) return;
             if (saving) { event.preventDefault(); return; }
             if (!byId('item-picker').hidden) { event.preventDefault(); closeItemPicker(); return; }
             if (view === 'settings') { event.preventDefault(); back(); return; }
@@ -111,6 +143,7 @@
             if (initial !== null && fingerprint() !== initial && !window.confirm(window.I18N ? I18N.t('Discard changes?') : 'Discard changes?')) event.preventDefault();
         });
         modal.addEventListener('hidden.bs.modal', () => {
+            if (ownsHistory && history.state?.[historyKey]) { ownsHistory = false; history.back(); }
             initial = null;
             setOrderBeingModified(null);
             if (!byId('orderDetailsModal')?.classList.contains('show')) currentOrderId = null;

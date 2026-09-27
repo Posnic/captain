@@ -727,8 +727,8 @@ async function selectTable(tableName, takeaway) {
                 ${
                   isTakeaway
                     ? ''
-                    : `<button type="button" class="floor-bill-btn" id="ask-for-bill"
-                         data-table="${escapeFloor(tableName)}">Print the bill</button>`
+                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                         data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>
         `;
@@ -1159,3 +1159,11 @@ function sayWhereWeAre() {
 }
 
 document.addEventListener('DOMContentLoaded', sayWhereWeAre);
+
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, #guest-bills[open]')) return;
+    if (document.getElementById('kot-sliding-panel')?.classList.contains('open')) {
+        event.preventDefault();
+        closeSlidingPanel();
+    }
+});

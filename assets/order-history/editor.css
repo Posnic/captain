@@ -55,3 +55,8 @@
   #editOrderModal .modal-body { padding-inline:16px; }
   #editOrderModal .editor-footer { padding-inline:16px; }
 }
+
+.editor-footer-actions { display:flex; gap:12px; width:100%; }
+#editOrderModal .editor-footer-actions #save-order-changes { flex:1; width:auto; }
+.editor-cancel { flex:0 0 auto; min-height:48px; padding:12px 18px; border:1px solid var(--line,#dce3eb); border-radius:12px; background:#fff; color:var(--ink,#162338); font:inherit; font-weight:600; }
+.editor-cancel:disabled { opacity:.5; }
