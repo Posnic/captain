@@ -33,3 +33,48 @@ for (const size of [{width:800,height:1280},{width:1280,height:800},{width:390,h
   await page.screenshot({path:`test-artifacts/service-rounds-${size.width}.png`});
  });
 }
+
+for (const count of [3, 201]) {
+ test(`whole-order service snapshots pending rounds, recovers and batches ${count} lines`, async ({page}) => {
+  await onTheMenu(page,'nothing');
+  const branchId='64f9a1c2e3b4d5e6f7000002';
+  const saleId='64f9a1c2e3b4d5e6f7000001';
+  const lines=Array.from({length:count},(_,i)=>({id:`line${i}`,name:`Dish ${i}`,quantity:3,served:i===0?1:0,remaining:i===0?2:3}));
+  const rounds=[{id:'old',ordered_at:'2026-09-27T08:00:00Z',items:[{id:'done',name:'Already served',quantity:1,served:1,remaining:0},...lines.slice(0,2)]},{id:'new',ordered_at:'2026-09-27T08:25:00Z',items:lines.slice(2)}];
+  await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['1']}}}));
+  await page.route('**/sales/getListKot?*',r=>r.fulfill({json:{type:'success',data:{list:[{_id:saleId,branch_id:branchId,items:[],kitchen_rounds:rounds}]}}}));
+  let fail=true;
+  const requests=[];
+  let release;
+  await page.route('**/sales/serveKitchenItems',async r=>{
+   const data=r.request().postDataJSON(); requests.push(data);
+   expect(data.branchId).toBe(branchId); expect(data.saleId).toBe(saleId);
+   expect(data.items.length).toBeLessThanOrEqual(200);
+   expect(data.items.every(item=>item.quantity===3 && item.id!=='done')).toBe(true);
+   if(fail) { await new Promise(resolve=>{release=resolve}); return r.fulfill({json:{type:'error',message:'Could not save. Please try again.'}}); }
+   for(const item of data.items) { const line=lines.find(line=>line.id===item.id); line.served=item.quantity;line.remaining=0; }
+   if(count===201 && lines.every(line=>!line.remaining)) rounds.push({id:'later',ordered_at:'2026-09-27T08:30:00Z',items:[{id:'later',name:'Added while serving',quantity:1,served:0,remaining:1}]});
+   return r.fulfill({json:{type:'success',data:rounds}});
+  });
+  await page.goto('/kot-management.html');await page.locator('.floor-card').first().click();
+  await page.locator('[data-serve-all]').click();
+  await expect.poll(()=>typeof release).toBe('function');
+  await expect(page.locator('[data-serve-all]')).toBeDisabled();
+  await expect(page.locator('[data-serve-line]').first()).toBeDisabled();
+  release();
+  await expect(page.locator('.service-result')).toContainText('Could not save');
+  await expect(page.locator('[data-serve-all]')).toBeEnabled();
+  fail=false;
+  await page.locator('[data-serve-all]').click();
+  await expect(page.locator('.service-result')).toHaveText('Items marked served');
+  expect(requests.slice(1).flatMap(request=>request.items)).toHaveLength(count);
+  if(count===201) {
+   await expect(page.locator('[data-serve-line]')).toHaveCount(1);
+   await expect(page.locator('[data-serve-line="later"]')).toBeEnabled();
+  } else {
+   await expect(page.locator('[data-serve-line]')).toHaveCount(0);
+   await expect(page.locator('[data-serve-all]')).toHaveCount(0);
+  }
+  await expect(page.locator('.service-line.is-served')).toHaveCount(count+1);
+ });
+}

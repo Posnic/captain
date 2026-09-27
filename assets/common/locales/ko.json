@@ -836,5 +836,6 @@
   "Quantity to serve": "제공할 수량",
   "Items marked served": "상품을 제공 완료로 표시했습니다",
   "Could not save. Please try again.": "저장할 수 없습니다. 다시 시도해 주세요.",
-  "Open browser": "브라우저 열기"
+  "Open browser": "브라우저 열기",
+  "Mark all served": "모두 서빙 완료로 표시"
 }

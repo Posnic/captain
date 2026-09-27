@@ -836,5 +836,6 @@
   "Quantity to serve": "Zu servierende Menge",
   "Items marked served": "Artikel als serviert markiert",
   "Could not save. Please try again.": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
-  "Open browser": "Browser öffnen"
+  "Open browser": "Browser öffnen",
+  "Mark all served": "Alle als serviert markieren"
 }

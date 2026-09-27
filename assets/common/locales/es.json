@@ -836,5 +836,6 @@
   "Quantity to serve": "Cantidad a servir",
   "Items marked served": "Artículos marcados como servidos",
   "Could not save. Please try again.": "No se pudo guardar. Inténtalo de nuevo.",
-  "Open browser": "Abrir navegador"
+  "Open browser": "Abrir navegador",
+  "Mark all served": "Marcar todo como servido"
 }

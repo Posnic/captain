@@ -32,3 +32,6 @@ body.floor-screen { height:100dvh; min-height:0; }
 
 .floor-screen .kot-page { height:100dvh; min-height:0; }
 .floor-bill-btn { min-height:48px; }
+
+.service-order-action { width:100%; justify-content:flex-end; padding-block:8px; }
+.service-order-action button { border-color:var(--primary,#2456ed); color:var(--primary,#2456ed); }

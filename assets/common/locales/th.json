@@ -836,5 +836,6 @@
   "Quantity to serve": "จำนวนที่ต้องการเสิร์ฟ",
   "Items marked served": "ทำเครื่องหมายรายการว่าเสิร์ฟแล้ว",
   "Could not save. Please try again.": "บันทึกไม่ได้ โปรดลองอีกครั้ง",
-  "Open browser": "เปิดเบราว์เซอร์"
+  "Open browser": "เปิดเบราว์เซอร์",
+  "Mark all served": "ทำเครื่องหมายว่าเสิร์ฟแล้วทั้งหมด"
 }
