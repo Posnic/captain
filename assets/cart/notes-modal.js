@@ -1,5 +1,7 @@
 // Cart Notes Modal Functionality
 let currentCartNotesProductId = null;
+let cartNotesSession = 0;
+let cartNotesSaving = false;
 
 // Wait for DOM to be ready
 $(document).ready(function () {
@@ -45,6 +47,7 @@ $(document).ready(function () {
         console.log("Product Name:", productName);
         console.log("Current Notes:", currentNotes);
 
+        cartNotesSession += 1;
         currentCartNotesProductId = productId;
 
         // Set product name and existing notes
@@ -72,25 +75,30 @@ $(document).ready(function () {
     });
 
     // Save notes
-    $("#cart-notes-save-btn").on("click", async function () {
+    $("#cart-notes-save-btn").on("click", cartAction(async function () {
         console.log("💾 Save button clicked");
 
+        if (cartNotesSaving) return;
         if (!currentCartNotesProductId) {
             console.error("❌ No product ID set");
             $("#cart-notes-modal").hide();
             return;
         }
 
+        const id = currentCartNotesProductId;
+        const session = cartNotesSession;
         const notes = $("#cart-notes-text").val().trim();
+        cartNotesSaving = true;
+        $("#cart-notes-save-btn").prop("disabled", true);
         console.log("Saving notes:", notes, "for product:", currentCartNotesProductId);
 
         try {
             // Update notes in IndexedDB
-            await setCartItemNotes(currentCartNotesProductId, notes);
+            await setCartItemNotes(id, notes);
             console.log("✅ Notes saved to IndexedDB");
 
             // Update the UI immediately without reload
-            const $cartItem = $(`#cart-item-${currentCartNotesProductId}`);
+            const $cartItem = $(`#cart-item-${id}`);
             const $notesDiv = $cartItem.find('.bill-note');
 
             if (notes) {
@@ -107,17 +115,21 @@ $(document).ready(function () {
                 $notesDiv.remove();
             }
 
-            // Close modal
-            $("#cart-notes-modal").hide();
-            $("#cart-notes-text").val("");
-            currentCartNotesProductId = null;
+            if (session === cartNotesSession) {
+                $("#cart-notes-modal").hide();
+                $("#cart-notes-text").val("");
+                currentCartNotesProductId = null;
+            }
 
             console.log("✅ Notes updated in UI");
         } catch (error) {
             console.error("❌ Error saving notes:", error);
             showErrorPopup("Failed to save notes. Please try again.");
+        } finally {
+            cartNotesSaving = false;
+            $("#cart-notes-save-btn").prop("disabled", false);
         }
-    });
+    }));
 
     // Close modal when clicking outside
     $("#cart-notes-modal").on("click", function (e) {

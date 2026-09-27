@@ -347,12 +347,6 @@ async function syncFrequentQtyFromMain(id) {
 }
 
 async function onFrequentAdd(id) {
-    // default notes (cart notes or product description)
-    const notes = await getDefaultNotesForProduct(id);
-    if (notes) {
-        await setCartItemNotes(id, notes);
-    }
-
     await updateQuantity(id, 1);
     await syncFrequentQtyFromMain(id);
 }
@@ -442,6 +436,7 @@ $(document).on("click", ".dish", function (e) {
     const productId = $card.data("id");
     const productName = $card.find(".dish-name").text().trim();
 
+    notesEditorSession += 1;
     currentNotesProductId = productId;
     currentNotesProductName = productName;
     loadExistingNotesForProduct(productId);
@@ -465,6 +460,7 @@ $(document).on("click", ".frequent-card", function (e) {
     const productId = $card.data("id");
     const productName = $card.find(".frequent-name").text().trim();
 
+    notesEditorSession += 1;
     currentNotesProductId = productId;
     currentNotesProductName = productName;
 
@@ -481,59 +477,57 @@ $(document).on("click", "#notes-cancel-btn", function () {
     currentNotesProductId = null;
 });
 
-// Apply & Add → save notes + increase quantity
-$(document).on("click", "#notes-apply-btn", async function () {
-    if (!currentNotesProductId) {
-        $("#product-notes-modal").hide();
-        return;
-    }
-
+// Capture the dish at the tap; an asynchronous save must never follow a
+// later editor selection or close a newly opened editor.
+let notesSaving = false;
+let notesEditorSession = 0;
+$(document).on("click", "#notes-apply-btn", cartAction(async function () {
+    if (!currentNotesProductId || notesSaving) return;
+    const id = currentNotesProductId;
+    const session = notesEditorSession;
     const notes = $("#product-notes-text").val().trim();
-
-    await setCartItemNotes(currentNotesProductId, notes);
-
-    // ✅ Only add quantity if item is not already in cart (qty = 0)
-    const cartData = await getCartData();
-    const existingItem = cartData.find(i => i.id === currentNotesProductId);
-    const currentQty = existingItem ? existingItem.quantity : 0;
-
-    if (currentQty === 0) {
-        // First time → add quantity 1
-        await updateQuantity(currentNotesProductId, 1);
+    notesSaving = true;
+    $("#notes-apply-btn").prop('disabled', true);
+    try {
+        await setCartItemNotes(id, notes, true);
+        await updateCart();
+        if (session === notesEditorSession) {
+            $("#product-notes-text").val("");
+            $("#product-notes-modal").hide();
+            currentNotesProductId = null;
+        }
+    } catch (error) {
+        console.error('Could not save item note', error);
+        showErrorPopup("Failed to save notes. Please try again.");
+    } finally {
+        notesSaving = false;
+        $("#notes-apply-btn").prop('disabled', false);
     }
-    // else: qty already > 0 → don't change quantity, just update notes
-
-    // 🔽 backend-ku notes update request
-    // try {
-    //     await fetch("http://YOUR_API_URL/sales/qrItemNotesUpdate", {
-    //         method: "POST",
-    //         headers: { "Content-Type": "application/json" },
-    //         body: JSON.stringify({
-    //             item_id: currentNotesProductId,
-    //             item_description: notes
-    //             // தேவையான மற்ற fields: sale_id / table_id / token_id...
-    //         })
-    //     });
-    // } catch (e) {
-    //     console.error("Failed to sync notes to backend", e);
-    // }
-
-    $("#product-notes-text").val("");
-    $("#product-notes-modal").hide();
-    currentNotesProductId = null;
-});
+}));
 // Set / update notes for a cart item
-async function setCartItemNotes(id, notes) {
+function setCartItemNotes(id, notes, addIfMissing = false) {
+    return queueCartMutation(async () => {
+        await setCartItemNotesNow(id, notes);
+        if (addIfMissing) {
+            const cart = await getCartData();
+            if (!cart.find(item => item.id === id && item.quantity > 0)) {
+                await updateQuantityNow(id, 1);
+            }
+        }
+    });
+}
+async function setCartItemNotesNow(id, notes) {
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
 
     if (!item) {
         const storedProducts = await getData("products");
         const p = storedProducts.find(x => x.id === id);
-        if (!p) return;
+        if (!p) throw new Error("Failed to save notes. Please try again.");
         item = {
             id: p.id,
             name: p.name,
+            ...window.PosnicItemText.snapshot(p),
             price: Number(p.price || 0),
             discount_price: Number(p.discount_price || 0),
             tax_price: Number(p.tax_price || 0),
@@ -1038,13 +1032,8 @@ async function addOneOff(said) {
     );
 })();
 
-$(document).on("click", ".btn-add", async function () {
+$(document).on("click", ".btn-add", cartAction(async function () {
     const id = $(this).data("id");
-
-    const notes = await getDefaultNotesForProduct(id);
-    if (notes) {
-        await setCartItemNotes(id, notes);
-    }
 
     /* Whatever the search asked for, then back to one: a quantity typed for
        one item must not silently apply to the next thing touched. */
@@ -1091,7 +1080,7 @@ $(document).on("click", ".btn-add", async function () {
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);
     }
-});
+}));
 /*
  * ONE MORE, ONE FEWER.
  *
@@ -1113,7 +1102,7 @@ $(document).on("click", ".btn-add", async function () {
  * bill bar rises with the total on it, so the answer is already on the screen
  * twice before any picture could arrive.
  */
-$(document).on("click", ".btn-increase", async function () {
+$(document).on("click", ".btn-increase", cartAction(async function () {
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
@@ -1142,9 +1131,9 @@ $(document).on("click", ".btn-increase", async function () {
     if (!allowNegativeStock && currentCartQty + 1 >= availableQty) {
         $('.btn-increase[data-id="' + productId + '"]').prop('disabled', true).addClass('disabled');
     }
-});
+}));
 
-$(document).on("click", ".btn-decrease", async function () {
+$(document).on("click", ".btn-decrease", cartAction(async function () {
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
@@ -1155,7 +1144,7 @@ $(document).on("click", ".btn-decrease", async function () {
 
     /* Going down always makes room to go back up. */
     $('.btn-increase[data-id="' + productId + '"]').prop('disabled', false).removeClass('disabled');
-});
+}));
 
 
 async function openCartSummarySheet() {
