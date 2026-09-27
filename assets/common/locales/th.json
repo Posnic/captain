@@ -741,5 +741,11 @@
   "egg": "ไข่",
   "{0} min": "{0} นาที",
   "{0} hr": "{0} ชม.",
-  "{0} hr {1} min": "{0} ชม. {1} นาที"
+  "{0} hr {1} min": "{0} ชม. {1} นาที",
+  "Add items": "เพิ่มรายการ",
+  "Changes are sent when you update the order.": "การเปลี่ยนแปลงจะถูกส่งเมื่อคุณอัปเดตออเดอร์",
+  "Decrease quantity": "ลดจำนวน",
+  "Discard changes?": "ยกเลิกการเปลี่ยนแปลงหรือไม่?",
+  "Guests": "จำนวนลูกค้า",
+  "Increase quantity": "เพิ่มจำนวน"
 }

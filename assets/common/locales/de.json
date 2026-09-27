@@ -741,5 +741,11 @@
   "egg": "Ei",
   "{0} min": "{0} Min.",
   "{0} hr": "{0} Std.",
-  "{0} hr {1} min": "{0} Std. {1} Min."
+  "{0} hr {1} min": "{0} Std. {1} Min.",
+  "Add items": "Artikel hinzufügen",
+  "Changes are sent when you update the order.": "Die Änderungen werden beim Aktualisieren der Bestellung gesendet.",
+  "Decrease quantity": "Menge verringern",
+  "Discard changes?": "Änderungen verwerfen?",
+  "Guests": "Gäste",
+  "Increase quantity": "Menge erhöhen"
 }

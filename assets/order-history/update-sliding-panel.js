@@ -1,5 +1,7 @@
 // Function to update the sliding panel KOT card in real-time when editing
 function updateSlidingPanelKotCard() {
+    // The editor owns an unsaved draft. Floor cards show only confirmed orders.
+    if (window.OrderEditor) return;
     // Only update if we're on KOT management page and editing an order
     const isKotPage = window.location.pathname.includes('kot-management.html');
     if (!isKotPage || !editingOrder || !currentOrderId) return;

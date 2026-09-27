@@ -436,8 +436,9 @@ function addProductToOrderById(productId) {
 }
 
 // Save order changes to real API
+let savingOrderChanges = false;
 async function saveOrderChanges() {
-    if (!editingOrder || !currentOrderId) return;
+    if (!editingOrder || !currentOrderId || savingOrderChanges) return;
 
     showLoader();
     const discountValue = parseFloat(
@@ -501,6 +502,10 @@ async function saveOrderChanges() {
             newTableId = '';
         }
     }
+    // Takeaway must never retain the hidden selection of its former table.
+    if (dineType === 'Take away') { newTableNo = ''; newTableId = ''; }
+    savingOrderChanges = true;
+    window.OrderEditor?.setSaving(true);
     try {
         const lines = linesForSave(editingOrder.items);
         if (lines.length === 0) {
@@ -532,6 +537,7 @@ async function saveOrderChanges() {
 
         if (data.type === 'success') {
             showToast(data.message || 'Order updated', 'success');
+            window.OrderEditor?.saved();
             
             // Close modal
             const modalElement = document.getElementById('editOrderModal');
@@ -581,6 +587,8 @@ async function saveOrderChanges() {
 
         showToast('Could not update the order: ' + error.message, 'error');
     } finally {
+        savingOrderChanges = false;
+        window.OrderEditor?.setSaving(false);
         hideLoader();
     }
 }
@@ -957,7 +965,7 @@ function modifyKot(orderId) {
     currentOrderId = orderId;
     
     // Load order data if not already loaded
-    if (!allOrders || allOrders.length === 0) {
+    if (!allOrders || !allOrders.some(order => order._id === orderId)) {
         loadOrderHistory().then(() => {
             openEditOrderModal();
         });
@@ -997,7 +1005,7 @@ function tablesFromStorage() {
             return {
                 value,
                 label: value,
-                id: (t._id && t._id.$oid) || t.table_id || '',
+                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.table_id || '',
             };
         });
     } catch (e) {
@@ -1220,17 +1228,14 @@ function renderEditTables(tables, selectedTableNo) {
     const container = document.getElementById('edit-table-list');
     if (!container) return;
 
-    if (!tables || tables.length === 0) {
-        container.innerHTML = '<div class="text-muted">No tables configured</div>';
-        return;
-    }
-
     let html = '';
+    tables = tables || [];
+    const busy = new Set((allOrders || []).filter(order => order._id !== currentOrderId && !['cancelled', 'completed'].includes(order.status)).map(tableOf));
 
     tables.forEach(t => {
-        const value = t.value;
+        const value = editorEscape(t.value);
         const radioId = `edit_table_${value}`;
-        const tableId = t.id || '';
+        const tableId = editorEscape(t.id || '');
 
         html += `
             <div class="table-item">
@@ -1240,8 +1245,8 @@ function renderEditTables(tables, selectedTableNo) {
                     name="edit_table_no"
                     value="${value}"
                     data-id="${tableId}"
-                    ${value === selectedTableNo ? 'checked' : ''}>
-                <label for="${radioId}" class="table-label">${value}</label>
+                    ${String(value) === String(selectedTableNo) ? 'checked' : ''}>
+                <label for="${radioId}" class="table-label"><span translate="no">${value}</span>${busy.has(String(t.value)) ? '<small>has an order</small>' : ''}</label>
             </div>
         `;
     });
@@ -1334,6 +1339,8 @@ function setEditPersonCount(n) {
 function initEditPersonControls(initial) {
     const buttons = document.querySelectorAll('.edit-person-btn');
     const input = document.getElementById('edit_person_input');
+    if (input?.dataset.initialized) { setEditPersonCount(initial || 1); return; }
+    if (input) input.dataset.initialized = 'true';
 
     buttons.forEach(btn => {
         btn.addEventListener('click', function () {
@@ -1470,12 +1477,12 @@ function openEditOrderModal() {
         const unit = parseFloat(item.unit_price || item.item_base_price || item.price || 0);
         item.price = isNaN(unit) ? 0 : parseFloat(unit.toFixed(2));
         if (!item.selling_price) item.selling_price = item.price;
-        if (!item.quantity && item.item_quantity) item.quantity = item.item_quantity;
-        item.quantity = parseFloat(item.quantity || 1);
+        item.quantity = lineQuantity(item);
     });
 
     renderCurrentOrderItems();
     clearNewItems();
+    window.OrderEditor?.begin();
 
     const modalElement = document.getElementById('editOrderModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
@@ -1486,6 +1493,7 @@ function openEditOrderModal() {
 
 // Handle edit order type change to show/hide table and pax sections
 function handleEditOrderTypeChange() {
+    if (window.OrderEditor) { window.OrderEditor.typeChanged(); return; }
     const orderType = document.querySelector('input[name="edit_dine_type"]:checked')?.value || 'Dine-in';
     const tableSection = document.getElementById('edit-table-section');
     const paxSection = document.getElementById('edit-pax-section');
@@ -1593,10 +1601,11 @@ function renderCurrentOrderItems() {
         return `
         <div class="order-item-card${struck(item, editingOrder)}">
             <div class="item-info" data-index="${index}">
-                <h6><span class="line-name">${item.name}</span></h6>
+                <h6><span class="line-name" translate="no">${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
                 ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ₹${totalSellingPrice.toFixed(2)}</strong></p>` : ''}
-                ${item.item_description ? `<p class="item-notes small text-muted">${item.item_description}</p>` : ""}
+                ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
             </div>
+            ${!lineIsCancelled(item, editingOrder) ? `<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
             ${lineIsCancelled(item, editingOrder)
         /*
          * A cancelled line keeps no controls.
@@ -1610,10 +1619,10 @@ function renderCurrentOrderItems() {
                 <span class="item-cancelled-mark">Cancelled</span>
             </div>`
         : `<div class="item-controls">
-                <button class="qty-btn" onclick="updateItemQuantity(${index}, -1)">-</button>
+                <button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button>
                 <span class="qty-display">${item.quantity}</span>
-                <button class="qty-btn" onclick="updateItemQuantity(${index}, 1)">+</button>
-                <button class="remove-btn" onclick="removeItem(${index})">
+                <button type="button" class="qty-btn" aria-label="Increase quantity" onclick="updateItemQuantity(${index}, 1)">+</button>
+                <button type="button" class="remove-btn" aria-label="Remove Item" onclick="removeItem(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>`}
@@ -1622,6 +1631,11 @@ function renderCurrentOrderItems() {
     }).join('');
 
     container.innerHTML = itemsHtml;
+    window.OrderEditor?.refresh();
+}
+
+function editorEscape(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
 // Click on item-info → open notes modal
@@ -1789,6 +1803,7 @@ function isAConflict(error) {
 
 async function tellThemSomebodyElseGotThere() {
     showToast('Somebody else changed this order. Showing you the latest.', 'error');
+    window.OrderEditor?.saved(); // The stale draft must close before loading the latest order.
 
     for (const id of ['editOrderModal', 'moveTableModal']) {
         const el = document.getElementById(id);
@@ -1805,7 +1820,7 @@ async function tellThemSomebodyElseGotThere() {
 function linesForSave(items) {
     return (Array.isArray(items) ? items : [])
         .map((item) => ({ item, quantity: lineQuantity(item) }))
-        .filter((row) => row.quantity > 0)
+        .filter((row) => row.quantity > 0 && !lineIsCancelled(row.item))
         .map((row) => ({
             ...row.item,
             product_id: row.item.product_id || row.item.item_id || row.item.id || null,
@@ -1869,7 +1884,7 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    const existingItem = editingOrder.items.find(item => item.product_id === productId);
+    const existingItem = editingOrder.items.find(item => item.product_id === productId && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;
@@ -1903,10 +1918,12 @@ function updateOrderTotal() {
     if (!editingOrder) return;
 
     const total = editingOrder.items.reduce((sum, item) => {
+        if (lineIsCancelled(item, editingOrder)) return sum;
         return sum + (item.quantity * item.price);
     }, 0);
 
     editingOrder.total_amount = total.toFixed(2);
+    window.OrderEditor?.refresh();
 }
 
 // Clear new items
@@ -2165,6 +2182,7 @@ function pickerCart() {
     const order = orderBeingModified();
     const items = (order && order.items) || [];
     for (const item of items) {
+        if (lineIsCancelled(item, order) || Number(item.quantity) <= 0) continue;
         const id = String(item.product_id || item.id || '');
         if (!id) continue;
         const had = cart.get(id);
@@ -2338,6 +2356,8 @@ function closeItemPicker() {
     const sheet = document.getElementById('item-picker');
     if (sheet) sheet.hidden = true;
     document.body.classList.remove('picker-open');
+    window.OrderEditor?.refresh();
+    document.getElementById('open-item-picker')?.focus({ preventScroll: true });
 }
 
 /*
@@ -2432,7 +2452,7 @@ document.addEventListener('click', function (event) {
         const id = less.getAttribute('data-id');
         const order = orderBeingModified();
         const items = (order && order.items) || [];
-        const at = items.findIndex((item) => String(item.product_id) === String(id));
+        const at = items.findIndex((item) => String(item.product_id) === String(id) && !lineIsCancelled(item, order));
         if (at > -1) {
             updateItemQuantity(at, -1);
             pickerRefreshRow(id);

@@ -741,5 +741,11 @@
   "egg": "بيض",
   "{0} min": "{0} دقيقة",
   "{0} hr": "{0} ساعة",
-  "{0} hr {1} min": "{0} ساعة و{1} دقيقة"
+  "{0} hr {1} min": "{0} ساعة و{1} دقيقة",
+  "Add items": "إضافة أصناف",
+  "Changes are sent when you update the order.": "تُرسل التغييرات عند تحديث الطلب.",
+  "Decrease quantity": "تقليل الكمية",
+  "Discard changes?": "تجاهل التغييرات؟",
+  "Guests": "الضيوف",
+  "Increase quantity": "زيادة الكمية"
 }

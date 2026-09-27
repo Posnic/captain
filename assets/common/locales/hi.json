@@ -741,5 +741,11 @@
   "egg": "अंडा",
   "{0} min": "{0} मिनट",
   "{0} hr": "{0} घंटे",
-  "{0} hr {1} min": "{0} घंटे {1} मिनट"
+  "{0} hr {1} min": "{0} घंटे {1} मिनट",
+  "Add items": "आइटम जोड़ें",
+  "Changes are sent when you update the order.": "ऑर्डर अपडेट करने पर बदलाव भेजे जाएंगे।",
+  "Decrease quantity": "मात्रा घटाएँ",
+  "Discard changes?": "बदलाव छोड़ दें?",
+  "Guests": "मेहमान",
+  "Increase quantity": "मात्रा बढ़ाएँ"
 }

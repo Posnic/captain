@@ -52,6 +52,7 @@ function lift(source, name) {
 
 // eslint-disable-next-line no-new-func
 const { lineQuantity, linesForSave } = new Function(
+  `${lift(HISTORY, 'lineIsCancelled')}\n` +
   `${lift(HISTORY, 'lineQuantity')}\n${lift(HISTORY, 'linesForSave')}\n` +
     'return { lineQuantity, linesForSave };'
 )();
@@ -71,6 +72,11 @@ const ordered = (over = {}) => ({
 /* What confirmRemoveItem does to a line the kitchen already knows about. */
 const struckOff = (over = {}) =>
   ordered({ quantity: 0, cancelled: true, cancelled_quantity: 1, ...over });
+
+test('a cancellation flag excludes a line even when its original quantity remains', () => {
+  assert.deepStrictEqual(linesForSave([ordered({ cancelled: true })]), []);
+  assert.deepStrictEqual(linesForSave([ordered({ status: 'cancelled' })]), []);
+});
 
 /* ------------------------------------------------------- one line's number */
 

@@ -741,5 +741,11 @@
   "egg": "yai",
   "{0} min": "dakika {0}",
   "{0} hr": "saa {0}",
-  "{0} hr {1} min": "saa {0} dakika {1}"
+  "{0} hr {1} min": "saa {0} dakika {1}",
+  "Add items": "Ongeza bidhaa",
+  "Changes are sent when you update the order.": "Mabadiliko hutumwa unaposasisha agizo.",
+  "Decrease quantity": "Punguza kiasi",
+  "Discard changes?": "Ungependa kutupa mabadiliko?",
+  "Guests": "Wageni",
+  "Increase quantity": "Ongeza kiasi"
 }
