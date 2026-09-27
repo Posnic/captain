@@ -482,18 +482,20 @@ let notesSaving = false;
 let notesEditorSession = 0;
 $(document).on("click", "#notes-apply-btn", cartAction(async function () {
     if (!currentNotesProductId || notesSaving) return;
+    const search = searchAtAdd();
     const id = currentNotesProductId;
     const session = notesEditorSession;
     const notes = $("#product-notes-text").val().trim();
     notesSaving = true;
     $("#notes-apply-btn").prop('disabled', true);
     try {
-        await setCartItemNotes(id, notes, true);
+        const added = await setCartItemNotes(id, notes, true);
         await updateCart();
         if (session === notesEditorSession) {
             $("#product-notes-text").val("");
             $("#product-notes-modal").hide();
             currentNotesProductId = null;
+            if (added) await prepareNextItem(search);
         }
     } catch (error) {
         console.error('Could not save item note', error);
@@ -510,7 +512,7 @@ function setCartItemNotes(id, notes, addIfMissing = false) {
         if (addIfMissing) {
             const cart = await getCartData();
             if (!cart.find(item => item.id === id && item.quantity > 0)) {
-                await updateQuantityNow(id, 1);
+                return updateQuantityNow(id, 1);
             }
         }
     });
@@ -1031,14 +1033,27 @@ async function addOneOff(said) {
     );
 })();
 
+// Clear only the search that produced this add. A slow save must not erase
+// the next query the waiter has already started typing.
+function searchAtAdd() {
+    const input = document.getElementById('product-search-input');
+    return input ? { input, query: input.value, revision: productSearchRevision } : null;
+}
+async function prepareNextItem(search) {
+    if (!search || !search.query.trim() || search.input.value !== search.query ||
+        search.revision !== productSearchRevision) return;
+    search.input.value = '';
+    search.input.focus({ preventScroll: true });
+    await applyProductFilter();
+}
+
 $(document).on("click", ".btn-add", cartAction(async function () {
     const id = $(this).data("id");
+    const search = searchAtAdd();
 
     /* Whatever the search asked for, then back to one: a quantity typed for
        one item must not silently apply to the next thing touched. */
     const quantity = window._pendingQuantity || 1;
-    window._pendingQuantity = 1;
-    showQuantityHint(1);
 
     /*
      * A DISH PRICED ON THE DAY IS ASKED ABOUT BEFORE IT GOES ON.
@@ -1074,7 +1089,8 @@ $(document).on("click", ".btn-add", cartAction(async function () {
         if (extras === null) return;
     }
 
-    await updateQuantity(id, quantity, { askedPrice, modifiers: extras });
+    const added = await updateQuantity(id, quantity, { askedPrice, modifiers: extras });
+    if (added) await prepareNextItem(search);
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);
@@ -1102,6 +1118,7 @@ $(document).on("click", ".btn-add", cartAction(async function () {
  * twice before any picture could arrive.
  */
 $(document).on("click", ".btn-increase", cartAction(async function () {
+    const search = searchAtAdd();
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
@@ -1120,7 +1137,8 @@ $(document).on("click", ".btn-increase", cartAction(async function () {
         return;
     }
 
-    await updateQuantity(productId, 1);
+    const added = await updateQuantity(productId, 1);
+    if (added) await prepareNextItem(search);
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(productId);
     }

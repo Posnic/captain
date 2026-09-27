@@ -80,6 +80,7 @@ test('adding a search result keeps focus and an intentional note tap still works
   const search = page.locator('#product-search-input');
   await search.fill('coffee');
   await page.locator('.dish[data-id="p-coffee"] .btn-add').click();
+  await expect(search).toHaveValue('');
   await expect(search).toBeFocused();
   await expect(page.locator('.dish[data-id="p-coffee"] .dish-qty')).toHaveText('1');
   await expect(page.locator('#product-notes-modal')).toBeHidden();
@@ -98,4 +99,46 @@ test('a menu reload preserves the active query and keyboard focus', async ({ pag
   await expect(search).toHaveValue('coffee');
   await expect(page.locator('#product-list .dish-name')).toHaveText(['Coffee']);
   await expect(page.locator('#product-notes-modal')).toBeHidden();
+});
+
+
+test('successive searches clear after Add and plus without carrying the previous quantity', async ({ page }) => {
+  await onTheMenu(page, 'nothing');
+  const search = page.locator('#product-search-input');
+  await search.fill('3 coffee');
+  await page.locator('.dish[data-id="p-coffee"] .btn-add').click();
+  await expect(search).toHaveValue('');
+  await expect(search).toBeFocused();
+  await expect(page.locator('.dish[data-id="p-coffee"] .dish-qty')).toHaveText('3');
+  await search.pressSequentially('dosa');
+  await page.locator('.dish[data-id="p-dosa"] .btn-add').click();
+  await expect(search).toHaveValue('');
+  await expect(page.locator('.dish[data-id="p-dosa"] .dish-qty')).toHaveText('1');
+  await search.pressSequentially('coffee');
+  await page.locator('.dish[data-id="p-coffee"] .btn-increase').click();
+  await expect(search).toHaveValue('');
+  await expect(search).toBeFocused();
+  await expect(page.locator('.dish[data-id="p-coffee"] .dish-qty')).toHaveText('4');
+});
+
+test('cancelled add retains the query and a slow add cannot erase a newer query', async ({ page }) => {
+  await onTheMenu(page, 'nothing');
+  const search = page.locator('#product-search-input');
+  await search.fill('coffee');
+  await page.evaluate(() => { POSNIC.askOptions = async () => null; });
+  await page.locator('.dish[data-id="p-coffee"] .btn-add').click();
+  await page.evaluate(() => waitForCartMutations());
+  await expect(search).toHaveValue('coffee');
+  expect(await page.evaluate(() => getCartData())).toHaveLength(0);
+  await page.evaluate(() => {
+    POSNIC.askOptions = () => new Promise(resolve => { window.finishOptions = () => resolve([]); });
+  });
+  await page.locator('.dish[data-id="p-coffee"] .btn-add').click();
+  await page.waitForFunction(() => typeof window.finishOptions === 'function');
+  await search.fill('dosa');
+  await page.evaluate(async () => { window.finishOptions(); await waitForCartMutations(); });
+  await expect(search).toHaveValue('dosa');
+  await expect(search).toBeFocused();
+  await expect(page.locator('#product-list .dish-name')).toHaveText(['Masala Dosa']);
+  expect(await page.evaluate(async () => (await getCartData()).find(i => i.id === 'p-coffee').quantity)).toBe(1);
 });

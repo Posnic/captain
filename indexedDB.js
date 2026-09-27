@@ -1407,6 +1407,7 @@ async function updateQuantityNow(id, change, options) {
     if (typeof MenuScreen !== 'undefined') {
         MenuScreen.setRow(id, item.quantity, storedProduct);
     }
+    return true;
 }
 
 /**
