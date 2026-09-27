@@ -829,5 +829,11 @@
   "🎤 Say again": "🎤 Say again",
   "👁 Read the order back": "👁 Read the order back",
   "📤 Send it to the kitchen": "📤 Send it to the kitchen",
-  "🗑 Clear the order first": "🗑 Clear the order first"
+  "🗑 Clear the order first": "🗑 Clear the order first",
+  "Served": "Served",
+  "Mark served": "Mark served",
+  "Ordered at": "Ordered at",
+  "Quantity to serve": "Quantity to serve",
+  "Items marked served": "Items marked served",
+  "Could not save. Please try again.": "Could not save. Please try again."
 }

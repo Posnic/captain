@@ -829,5 +829,11 @@
   "Cash": "現金",
   "Card": "カード",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "お支払いを受け取る前に、お客様別の会計伝票を確認してください。"
+  "Review guest bills before collecting payment.": "お支払いを受け取る前に、お客様別の会計伝票を確認してください。",
+  "Served": "提供済み",
+  "Mark served": "提供済みにする",
+  "Ordered at": "注文日時",
+  "Quantity to serve": "提供する数量",
+  "Items marked served": "商品を提供済みにしました",
+  "Could not save. Please try again.": "保存できませんでした。もう一度お試しください。"
 }

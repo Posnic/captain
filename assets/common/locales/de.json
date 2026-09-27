@@ -829,5 +829,11 @@
   "Cash": "Bargeld",
   "Card": "Karte",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Prüfen Sie die Gästerechnungen vor dem Kassieren."
+  "Review guest bills before collecting payment.": "Prüfen Sie die Gästerechnungen vor dem Kassieren.",
+  "Served": "Serviert",
+  "Mark served": "Als serviert markieren",
+  "Ordered at": "Bestellt um",
+  "Quantity to serve": "Zu servierende Menge",
+  "Items marked served": "Artikel als serviert markiert",
+  "Could not save. Please try again.": "Speichern fehlgeschlagen. Bitte erneut versuchen."
 }

@@ -829,5 +829,11 @@
   "Cash": "Numerário",
   "Card": "Cartão",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Confira as contas das pessoas antes de receber o pagamento."
+  "Review guest bills before collecting payment.": "Confira as contas das pessoas antes de receber o pagamento.",
+  "Served": "Servido",
+  "Mark served": "Marcar como servido",
+  "Ordered at": "Pedido às",
+  "Quantity to serve": "Quantidade a servir",
+  "Items marked served": "Itens marcados como servidos",
+  "Could not save. Please try again.": "Não foi possível guardar. Tente novamente."
 }

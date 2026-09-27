@@ -829,5 +829,11 @@
   "Cash": "Tunai",
   "Card": "Kad",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Semak bil tetamu sebelum menerima bayaran."
+  "Review guest bills before collecting payment.": "Semak bil tetamu sebelum menerima bayaran.",
+  "Served": "Dihidangkan",
+  "Mark served": "Tandakan dihidangkan",
+  "Ordered at": "Masa pesanan",
+  "Quantity to serve": "Kuantiti untuk dihidangkan",
+  "Items marked served": "Item ditandakan dihidangkan",
+  "Could not save. Please try again.": "Tidak dapat menyimpan. Cuba lagi."
 }

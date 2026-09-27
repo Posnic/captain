@@ -829,5 +829,11 @@
   "Cash": "现金",
   "Card": "银行卡",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "收款前请核对客人账单。"
+  "Review guest bills before collecting payment.": "收款前请核对客人账单。",
+  "Served": "已上菜",
+  "Mark served": "标记为已上菜",
+  "Ordered at": "下单时间",
+  "Quantity to serve": "上菜数量",
+  "Items marked served": "菜品已标记为已上菜",
+  "Could not save. Please try again.": "无法保存，请重试。"
 }

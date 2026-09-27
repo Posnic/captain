@@ -829,5 +829,11 @@
   "Cash": "현금",
   "Card": "카드",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "결제를 받기 전에 손님별 계산서를 확인하세요."
+  "Review guest bills before collecting payment.": "결제를 받기 전에 손님별 계산서를 확인하세요.",
+  "Served": "제공 완료",
+  "Mark served": "제공 완료로 표시",
+  "Ordered at": "주문 시간",
+  "Quantity to serve": "제공할 수량",
+  "Items marked served": "상품을 제공 완료로 표시했습니다",
+  "Could not save. Please try again.": "저장할 수 없습니다. 다시 시도해 주세요."
 }

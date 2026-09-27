@@ -829,5 +829,11 @@
   "Cash": "เงินสด",
   "Card": "บัตร",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "ตรวจสอบบิลลูกค้าก่อนรับชำระเงิน"
+  "Review guest bills before collecting payment.": "ตรวจสอบบิลลูกค้าก่อนรับชำระเงิน",
+  "Served": "เสิร์ฟแล้ว",
+  "Mark served": "ทำเครื่องหมายว่าเสิร์ฟแล้ว",
+  "Ordered at": "เวลาสั่ง",
+  "Quantity to serve": "จำนวนที่ต้องการเสิร์ฟ",
+  "Items marked served": "ทำเครื่องหมายรายการว่าเสิร์ฟแล้ว",
+  "Could not save. Please try again.": "บันทึกไม่ได้ โปรดลองอีกครั้ง"
 }

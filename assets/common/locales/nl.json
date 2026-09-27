@@ -829,5 +829,11 @@
   "Cash": "Contant",
   "Card": "Kaart",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Controleer de gastenrekeningen voordat u betalingen int."
+  "Review guest bills before collecting payment.": "Controleer de gastenrekeningen voordat u betalingen int.",
+  "Served": "Geserveerd",
+  "Mark served": "Markeer als geserveerd",
+  "Ordered at": "Besteld om",
+  "Quantity to serve": "Te serveren aantal",
+  "Items marked served": "Artikelen gemarkeerd als geserveerd",
+  "Could not save. Please try again.": "Opslaan mislukt. Probeer het opnieuw."
 }

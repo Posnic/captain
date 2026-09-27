@@ -829,5 +829,11 @@
   "Cash": "Taslimu",
   "Card": "Kadi",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Kagua bili za wageni kabla ya kupokea malipo."
+  "Review guest bills before collecting payment.": "Kagua bili za wageni kabla ya kupokea malipo.",
+  "Served": "Imehudumiwa",
+  "Mark served": "Weka alama imehudumiwa",
+  "Ordered at": "Muda wa agizo",
+  "Quantity to serve": "Kiasi cha kuhudumia",
+  "Items marked served": "Bidhaa zimewekwa alama zimehudumiwa",
+  "Could not save. Please try again.": "Imeshindwa kuhifadhi. Jaribu tena."
 }

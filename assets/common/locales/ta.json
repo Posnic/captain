@@ -829,5 +829,11 @@
   "Cash": "ரொக்கம்",
   "Card": "கார்டு",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "பணம் வசூலிக்கும் முன் விருந்தினர் பில்களைச் சரிபார்க்கவும்."
+  "Review guest bills before collecting payment.": "பணம் வசூலிக்கும் முன் விருந்தினர் பில்களைச் சரிபார்க்கவும்.",
+  "Served": "பரிமாறப்பட்டது",
+  "Mark served": "பரிமாறியதாகக் குறிக்கவும்",
+  "Ordered at": "ஆர்டர் செய்த நேரம்",
+  "Quantity to serve": "பரிமாற வேண்டிய அளவு",
+  "Items marked served": "உணவுகள் பரிமாறியதாகக் குறிக்கப்பட்டன",
+  "Could not save. Please try again.": "சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
 }

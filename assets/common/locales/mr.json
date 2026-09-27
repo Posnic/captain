@@ -829,5 +829,11 @@
   "Cash": "रोख",
   "Card": "कार्ड",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "पैसे स्वीकारण्यापूर्वी पाहुण्यांची बिले तपासा."
+  "Review guest bills before collecting payment.": "पैसे स्वीकारण्यापूर्वी पाहुण्यांची बिले तपासा.",
+  "Served": "वाढलेले",
+  "Mark served": "वाढलेले म्हणून नोंदवा",
+  "Ordered at": "ऑर्डरची वेळ",
+  "Quantity to serve": "वाढायचे प्रमाण",
+  "Items marked served": "पदार्थ वाढलेले म्हणून नोंदवले",
+  "Could not save. Please try again.": "जतन करता आले नाही. पुन्हा प्रयत्न करा."
 }

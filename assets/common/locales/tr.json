@@ -829,5 +829,11 @@
   "Cash": "Nakit",
   "Card": "Kart",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Ödeme almadan önce misafir hesaplarını kontrol edin."
+  "Review guest bills before collecting payment.": "Ödeme almadan önce misafir hesaplarını kontrol edin.",
+  "Served": "Servis edildi",
+  "Mark served": "Servis edildi olarak işaretle",
+  "Ordered at": "Sipariş saati",
+  "Quantity to serve": "Servis edilecek miktar",
+  "Items marked served": "Ürünler servis edildi olarak işaretlendi",
+  "Could not save. Please try again.": "Kaydedilemedi. Lütfen tekrar deneyin."
 }

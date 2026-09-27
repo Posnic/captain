@@ -829,5 +829,11 @@
   "Cash": "نقدًا",
   "Card": "بطاقة",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "راجع فواتير الضيوف قبل تحصيل الدفع."
+  "Review guest bills before collecting payment.": "راجع فواتير الضيوف قبل تحصيل الدفع.",
+  "Served": "تم التقديم",
+  "Mark served": "تحديد كمُقدَّم",
+  "Ordered at": "وقت الطلب",
+  "Quantity to serve": "الكمية المراد تقديمها",
+  "Items marked served": "تم تحديد الأصناف كمُقدَّمة",
+  "Could not save. Please try again.": "تعذر الحفظ. يرجى المحاولة مرة أخرى."
 }

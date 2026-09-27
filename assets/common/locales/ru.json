@@ -829,5 +829,11 @@
   "Cash": "Наличные",
   "Card": "Карта",
   "UPI": "UPI",
-  "Review guest bills before collecting payment.": "Проверьте счета гостей перед приёмом оплаты."
+  "Review guest bills before collecting payment.": "Проверьте счета гостей перед приёмом оплаты.",
+  "Served": "Подано",
+  "Mark served": "Отметить как поданное",
+  "Ordered at": "Время заказа",
+  "Quantity to serve": "Количество к подаче",
+  "Items marked served": "Позиции отмечены как поданные",
+  "Could not save. Please try again.": "Не удалось сохранить. Попробуйте ещё раз."
 }
