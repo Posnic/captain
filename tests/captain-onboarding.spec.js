@@ -576,6 +576,7 @@ test("first setup and connection settings use the same screen and save both addr
   await page.locator("#connection-back").click();
   await page.locator("#captain-change-shop").click();
   await expect(page.locator("#captain-onboarding")).toBeVisible();
+  expect(await page.evaluate(()=>sessionStorage.getItem('posnic_editing_server'))).toBe('1');
 });
 test("a verified address update retains the current staff and pending order ownership", async ({
   page,

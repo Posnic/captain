@@ -490,10 +490,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     $("captain-server").value = POSNIC.server.baseUrl || "";
     $("captain-code-toggle").onclick = showCode;
-    $("captain-change-shop").onclick = () => {
-      showStep(false);
-      note("");
-    };
+    $("captain-change-shop").onclick = () => CaptainOnboarding.open();
     $("captain-connect").onclick = () => {
       const input = $("captain-server").value.trim();
       if (!input) {
