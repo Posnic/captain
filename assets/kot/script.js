@@ -727,7 +727,7 @@ async function selectTable(tableName, takeaway) {
                 ${
                   isTakeaway
                     ? ''
-                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
                          data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>
@@ -1167,3 +1167,12 @@ window.addEventListener('captain:back', event => {
         closeSlidingPanel();
     }
 });
+
+window.addEventListener('captain:payment-recorded', () => { closeSlidingPanel(); loadTables(); });
+const captainPaymentButtons = new MutationObserver(() => {
+    const button = document.querySelector('[data-collect-table][hidden]:not([data-payment-checked])');
+    if (!button || !window.CaptainPayments) return;
+    button.dataset.paymentChecked='true';
+    CaptainPayments.available().then(enabled => { if (button.isConnected) button.hidden=!enabled; });
+});
+captainPaymentButtons.observe(document.body,{childList:true,subtree:true});
