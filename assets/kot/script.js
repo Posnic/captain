@@ -9,7 +9,7 @@ function hideLoader() {
 }
 
 function refreshPage() {
-    window.location.reload();
+    return window.MobileGestures ? MobileGestures.refresh() : loadTables();
 }
 
 function goToKotHistory() {
@@ -452,7 +452,12 @@ document.addEventListener('click', function (event) {
 });
 
 let tablesLoading = false;
-async function loadTables() {
+let tablesRequest = null;
+function loadTables() {
+    if (!tablesRequest) tablesRequest = loadTablesNow().finally(() => { tablesRequest = null; });
+    return tablesRequest;
+}
+async function loadTablesNow() {
     const container = document.getElementById('tables-list');
     const noOrdersMsg = document.getElementById('no-orders-message');
     
@@ -494,7 +499,7 @@ async function loadTables() {
                that has just said nothing is. */
             const empty = document.getElementById('floor-count');
             if (empty) empty.textContent = '';
-            return;
+            return true;
         }
 
         if (noOrdersMsg) noOrdersMsg.style.display = 'none';
@@ -562,6 +567,7 @@ async function loadTables() {
                and "3 tables open" under "Active tables" says tables twice. */
             count.textContent = open === 1 ? '1 open' : open + ' open';
         }
+        return true;
     } catch (error) {
         console.error('Error loading tables:', error);
         // Keep the last table view and let background polling recover. A
@@ -571,6 +577,7 @@ async function loadTables() {
             ? 'Tables may be out of date. Reconnecting… You can still take a new order.'
             : 'Tables are unavailable. Reconnecting… You can still take a new order.';
         status.hidden = false;
+        return false;
     } finally {
         tablesLoading = false;
         hideSectionLoader('tables-list');

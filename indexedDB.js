@@ -411,7 +411,7 @@ function updateKioskImageUI(data = {}) {
 
 
 // ✅ Fetch and Store Branch Data
-async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) {
+async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, preserveCart = false) {
     try {
         const db = await getDB();
         const existingBranches = await getData(BRANCH_STORE);
@@ -478,6 +478,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 
             // 🔴 IF NO PRODUCTS → show error, then force Choose Branch AFTER OK
             if (!Array.isArray(categories) || categories.length === 0) {
+                // Refresh failures preserve the current shop, cached menu and draft.
+                if (!redirect) return false;
                 /*
                  * AN EMPTY MENU IS NOT A REASON TO FORGET WHICH SHOP THIS IS.
                  *
@@ -684,7 +686,10 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 
             // ✅ Only validate cart + reload UI when we are actually refreshing the screen
             // ✅ Update cart + UI based on mode
-            if (refreshUI) {
+            if (preserveCart) {
+                // A deliberate menu refresh never discards the order being taken.
+                await loadProducts();
+            } else if (refreshUI) {
                 // normal flow (login / first load / manual refresh): clean cart + reload UI
                 await validateCartWithProducts(products);
                 await loadProducts();
@@ -705,6 +710,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
             }
         } else {
             console.warn("❌ No data received from API.");
+            return false;
         }
     } catch (error) {
         console.error("❌ Error updating product data:", error);

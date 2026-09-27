@@ -57,6 +57,8 @@
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
     <link href="assets/common/guest-bills.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/common/mobile-gestures.css">
+    <script src="assets/common/mobile-gestures.js" defer></script>
 </head>
 
 <body class="floor-screen">
@@ -116,7 +118,7 @@
                 aria-label="Me" title="Me">
                 <i class="fas fa-user"></i>
             </button>
-            <button class="floor-icon" onclick="refreshPage()" aria-label="Refresh" title="Refresh">
+            <button class="floor-icon" data-mobile-refresh aria-label="Refresh" onclick="refreshPage()" title="Refresh">
                 <i class="fas fa-sync-alt"></i>
             </button>
             <button class="floor-icon" onclick="goToKotHistory()" aria-label="Order history" title="Order history">
