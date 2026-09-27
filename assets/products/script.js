@@ -259,11 +259,11 @@ function renderFrequentItems(items) {
         </div>
         <div class="frequent-inner">
             <div class="frequent-img">
-                <img src="${imageUrl}" alt="${product.name}" translate="no">
+                <img src="${imageUrl}" alt="${MenuView.escape(window.ItemLanguage.name(product))}" translate="no">
             </div>
             <div class="frequent-info">
                 <div class="frequent-name" translate="no">
-                    ${product.name}
+                    ${MenuView.escape(window.ItemLanguage.name(product))}
                 </div>
                 <div class="frequent-price">₹${product.price.toFixed ? product.price.toFixed(2) : product.price}</div>
             </div>
@@ -1066,7 +1066,7 @@ $(document).on("click", ".btn-add", async function () {
     const product = await getProductById(id);
     let askedPrice = 0;
     if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(product)) {
-        askedPrice = await POSNIC.askPrice(product && product.name);
+        askedPrice = await POSNIC.askPrice(window.ItemLanguage.name(product));
         if (!askedPrice) return;
     }
 
