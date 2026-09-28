@@ -837,5 +837,7 @@
   "Items marked served": "वस्तुहरू पस्किएको चिन्ह लगाइयो",
   "Could not save. Please try again.": "सुरक्षित गर्न सकिएन। फेरि प्रयास गर्नुहोस्।",
   "Open browser": "ब्राउजर खोल्नुहोस्",
-  "Mark all served": "सबै पस्किएको चिन्ह लगाउनुहोस्"
+  "Mark all served": "सबै पस्किएको चिन्ह लगाउनुहोस्",
+  "Previous": "अघिल्लो",
+  "Next": "अर्को"
 }

@@ -837,5 +837,7 @@
   "Items marked served": "අයිතම පිළිගැන්වූ ලෙස සලකුණු කර ඇත",
   "Could not save. Please try again.": "සුරැකීමට නොහැකි විය. නැවත උත්සාහ කරන්න.",
   "Open browser": "බ්‍රවුසරය විවෘත කරන්න",
-  "Mark all served": "සියල්ල පිළිගැන්වූ ලෙස සලකුණු කරන්න"
+  "Mark all served": "සියල්ල පිළිගැන්වූ ලෙස සලකුණු කරන්න",
+  "Previous": "පෙර",
+  "Next": "ඊළඟ"
 }

@@ -837,5 +837,7 @@
   "Items marked served": "Itens marcados como servidos",
   "Could not save. Please try again.": "Não foi possível guardar. Tente novamente.",
   "Open browser": "Abrir navegador",
-  "Mark all served": "Marcar tudo como servido"
+  "Mark all served": "Marcar tudo como servido",
+  "Previous": "Anterior",
+  "Next": "Próximo"
 }

@@ -107,7 +107,10 @@
         if (total) total.textContent = '';
     }
 
+    let selectedDay = 'today', revision = 0, loadedDay = null;
     async function load(which) {
+        selectedDay = which;
+        const request = ++revision;
         const day = new Date();
         if (which === 'yesterday') day.setDate(day.getDate() - 1);
 
@@ -116,17 +119,24 @@
                 branch_id: localStorage.getItem('branch_id') || '',
                 day: stamp(day),
             });
-            draw((said && said.data) || {});
+            if (request !== revision) return false;
+            if (said?.type !== 'success' || !said.data) throw new Error('Connection failed');
+            draw(said.data);
+            loadedDay = which;
+            return true;
         } catch (error) {
             /*
              * A till that will not answer is not "you have sold nothing". The
              * difference matters on a screen about money.
              */
-            saySomethingWentWrong(
+            if (request !== revision) return false;
+            if (loadedDay !== which) saySomethingWentWrong(
                 (error && error.message) || 'The till did not answer. Try again in a moment.'
             );
+            return false;
         }
     }
+    window.refreshMySales = () => load(selectedDay);
 
     document.addEventListener('DOMContentLoaded', function () {
         const back = at('sales-back');

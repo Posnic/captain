@@ -837,5 +837,7 @@
   "Items marked served": "Ürünler servis edildi olarak işaretlendi",
   "Could not save. Please try again.": "Kaydedilemedi. Lütfen tekrar deneyin.",
   "Open browser": "Tarayıcıyı aç",
-  "Mark all served": "Tümünü servis edildi olarak işaretle"
+  "Mark all served": "Tümünü servis edildi olarak işaretle",
+  "Previous": "Önceki",
+  "Next": "Sonraki"
 }

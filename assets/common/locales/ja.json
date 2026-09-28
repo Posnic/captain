@@ -837,5 +837,7 @@
   "Items marked served": "商品を提供済みにしました",
   "Could not save. Please try again.": "保存できませんでした。もう一度お試しください。",
   "Open browser": "ブラウザーを開く",
-  "Mark all served": "すべて提供済みにする"
+  "Mark all served": "すべて提供済みにする",
+  "Previous": "前へ",
+  "Next": "次へ"
 }

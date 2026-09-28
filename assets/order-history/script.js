@@ -961,8 +961,9 @@ function viewOrderDetails(orderId) {
     // Show modal
     const modalElement = document.getElementById('orderDetailsModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
-        const modal = new bootstrap.Modal(modalElement);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         modal.show();
+        window.dispatchEvent(new Event('captain:details'));
     }
 }
 
@@ -2724,3 +2725,21 @@ window.addEventListener('captain:back', event => {
         showTableSelectionScreen();
     }
 });
+
+window.HistoryMobileDetails = {
+    root: () => document.querySelector('#orderDetailsModal.show'),
+    header: '.modal-header', body: '.modal-body',
+    current: () => currentOrderId,
+    entries: () => filteredOrders.map(order => ({id:order._id})),
+    busy: () => !!editingOrder,
+    show: entry => { viewOrderDetails(entry.id); document.querySelector('#orderDetailsModal .modal-body')?.scrollTo(0,0); },
+    refresh: async () => {
+        const id = currentOrderId;
+        if (!await loadOrderHistory({background:true})) return false;
+        if (!document.querySelector('#orderDetailsModal.show') || currentOrderId !== id) return false;
+        if (allOrders.some(order => order._id === id)) viewOrderDetails(id);
+        else bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'))?.hide();
+        return true;
+    },
+    dismiss: () => bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'))?.hide(),
+};
