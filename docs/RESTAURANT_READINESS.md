@@ -1,6 +1,6 @@
 # Captain restaurant service workflows
 
-Captain 1.3.20 requires the matching POS 1.8.4 server for courses, staff handover, manager approval and kitchen delivery reports.
+Captain 1.3.21 requires the matching POS 1.8.4 server for courses, staff handover, manager approval and kitchen delivery reports.
 
 ## Taking and changing orders
 
@@ -33,3 +33,4 @@ The iOS app registers native secure-session and local-network plugins. Sessions 
 Before operational rollout, exercise discovery and Wi-Fi/internet recovery; queue an order offline and reconnect; send to every selected printer; check paper and cancellation announcements; prepare and send held courses; partially serve and serve a whole order; modify identical dishes with different notes; review seat splits and payment configuration; test restricted cancellation/discount and handover; repeat on phone and portrait/landscape tablet. Validate camera, local network permissions, browser return and PIN/background behavior on iOS devices.
 
 Automated development checks do not replace these device, printer and service-floor checks. Hardware acceptance testing is intentionally left for the user.
+
