@@ -88,9 +88,9 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         guard status == kCCSuccess else { throw CaptainAccessError(message: "Ask your manager to reconnect this phone. Your orders are saved.") }
         return Data(output)
     }
-    private func result(_ value: [String: Any]) -> JSObject {
+    private func result(_ value: [String: Any]) -> PluginCallResultData {
         let pinSet = value["pin"] != nil
-        var out: JSObject = ["pinSet":pinSet, "locked":pinSet && !unlocked,
+        var out: PluginCallResultData = ["pinSet":pinSet, "locked":pinSet && !unlocked,
                              "attempts":max(0, 5 - (value["failures"] as? Int ?? 0))]
         if let session = value["session"] as? [String: Any] {
             out["profile"] = ["user":session["user"] ?? NSNull(),
@@ -99,7 +99,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         return out
     }
-    private func perform(_ call: CAPPluginCall, _ action: @escaping () throws -> JSObject) {
+    private func perform(_ call: CAPPluginCall, _ action: @escaping () throws -> PluginCallResultData) {
         queue.async {
             do { call.resolve(try action()) }
             catch { call.reject(error.localizedDescription) }
@@ -194,7 +194,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
 public final class CaptainLocalNetworkPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CaptainLocalNetworkPlugin"
     public let jsName = "LocalNetwork"
-    public let pluginMethods = [CAPPluginMethod(name:"getLocalIp",returnType:CAPPluginReturnPromise)]
+    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name:"getLocalIp",returnType:CAPPluginReturnPromise)]
     @objc func getLocalIp(_ call: CAPPluginCall) {
         var interfaces: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&interfaces) == 0 else { call.reject("Connect this phone to the shop Wi-Fi and try again."); return }
