@@ -142,24 +142,21 @@ test("validation and permission failures do not try another address", async () =
   }
 });
 
-test("iOS keeps its existing login when the Android vault plugin is unavailable", () => {
+test("iOS uses native secure storage and locks on background just like Android", async () => {
+  const f = fixture(), listeners = {};
   const window = {
-    Capacitor: {
-      isNativePlatform: () => true,
-      getPlatform: () => "ios",
-      registerPlugin: () => {
-        throw Error("Android only");
-      },
-    },
+    Capacitor: {isNativePlatform:()=>true,getPlatform:()=>"ios",Plugins:{SecureSession:f.plugin}},
+    localStorage:f.storage,crypto:webcrypto,fetch:async()=>({}),
+    location:{pathname:"/index.html"},
+    document:{hidden:false,addEventListener:(name,action)=>{listeners[name]=action}},
   };
   require("node:vm").runInNewContext(
-    require("node:fs").readFileSync(
-      require.resolve("../assets/common/access"),
-      "utf8",
-    ),
-    { window },
+    require("node:fs").readFileSync(require.resolve("../assets/common/access"),"utf8"),
+    {window,btoa,atob,TextEncoder,setTimeout,clearTimeout,AbortController},
   );
-  assert.equal(window.CaptainAccess, undefined);
+  await window.CaptainAccess.ready;
+  assert.equal(typeof window.CaptainAccess.session.start,"function");
+  assert.equal(typeof listeners.visibilitychange,"function");
 });
 
 test("a renewal reply arriving after sign-out cannot restore access", async () => {

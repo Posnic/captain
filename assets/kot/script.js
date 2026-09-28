@@ -824,7 +824,7 @@ async function selectTable(tableName, takeaway, options = {}) {
                     </div>
                     <div class="kot-total">
                         <span>Total:</span>
-                        <span class="total-amount">₹${total}</span>
+                        <span class="total-amount">${CaptainMoney.html(total)}</span>
                     </div>
                     <div class="kot-actions">
                         <button class="kot-action-btn btn-modify" onclick="modifyKot('${kot._id}')">
@@ -926,7 +926,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 console.log('Cancelling order:', order);
                 
-                const result = await POSNIC.api.post('/sales/updateOrder', {
+                const result = await CaptainOrderActions.save( {
                     order_id: cancelKotId,
                     items: order.items,
                     total_amount: order.sales_total || order.total_amount,

@@ -62,7 +62,7 @@
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
         for (const prefix of ['editor', 'picker']) {
             byId(prefix + '-item-count').textContent = count === 1 ? '1 item' : count + ' items';
-            byId(prefix + '-total-value').textContent = '₹' + Number(order().total_amount || 0).toFixed(2);
+            byId(prefix + '-total-value').textContent = CaptainMoney.display(order().total_amount || 0);
         }
         byId('cancel-order-changes').disabled = saving;
         byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());

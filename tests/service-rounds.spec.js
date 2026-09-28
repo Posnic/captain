@@ -78,3 +78,21 @@ for (const count of [3, 201]) {
   await expect(page.locator('.service-line.is-served')).toHaveCount(count+1);
  });
 }
+
+
+test('held food cannot be marked served; sending it preserves identity and shows its kitchen action',async({page})=>{
+ await onTheMenu(page,'nothing');
+ const branchId='64f9a1c2e3b4d5e6f7000002',saleId='64f9a1c2e3b4d5e6f7000001';
+ const rounds=[{id:'c0',ordered_at:'2026-09-27T08:00:00Z',items:[{id:'c0i0',name:'Pudding',held:true,quantity:1,remaining:1,served:0,seat:2,allergies:['milk']}]}];
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['1']}}}));
+ await page.route('**/sales/getListKot?*',r=>r.fulfill({json:{type:'success',data:{list:[{_id:saleId,branch_id:branchId,items:[],kitchen_rounds:rounds}]}}}));
+ let sent;
+ await page.route('**/sales/fireKitchenItems',r=>{sent=r.request().postDataJSON();rounds[0].items[0].held=false;return r.fulfill({json:{type:'success',data:rounds}});});
+ await page.goto('/kot-management.html');await page.locator('.floor-card').first().click();
+ await expect(page.locator('[data-serve-all]')).toHaveCount(0);await expect(page.locator('[data-serve-line]')).toHaveCount(0);
+ await expect(page.locator('.service-allergy')).toContainText('Milk');
+ await page.locator('[data-fire-line]').click();
+ await expect(page.locator('.service-result')).toHaveText('Course sent to kitchen');
+ expect(sent.items).toEqual(['c0i0']);expect(sent.branchId).toBe(branchId);
+ await expect(page.locator('[data-serve-line="c0i0"]')).toHaveCount(1);
+});

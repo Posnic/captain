@@ -113,3 +113,61 @@ test('the kitchen payload keeps all dishes and notes on their own item IDs', asy
   expect(payload.find(i => i.item_id === 'mushroom')).toMatchObject({ item_quantity: 1, item_name: 'Mushroom Manchurian', item_description: '' });
   expect(payload.find(i => i.item_id === 'soup').item_quantity).toBe(2);
 });
+
+
+test('two preparations of one dish keep independent notes, quantities and payload identities', async ({ page }) => {
+  await onTheMenu(page, 'nothing', { menu });
+  const result = await page.evaluate(async () => {
+    await updateQuantity('mushroom', 1, {modifiers:[{group:'Style',name:'Dry'}]});
+    await setCartItemNotes('mushroom','No chilli');
+    await updateQuantity('mushroom', 1, {modifiers:[{group:'Style',name:'Gravy'}]});
+    const lines = await getCartData();
+    const gravy = lines.find(line => line.modifiers[0].name === 'Gravy');
+    await setCartItemNotes(gravy.id,'Extra sauce');
+    await updateCartQuantity(gravy.id,1);
+    await syncCartSilently(await getData('products'));
+    OrderQueue.add = entry => { window.sentBody = entry.body; return false; };
+    await checkout('line-identity');
+    return {cart:await getCartData(), payload:window.sentBody.items};
+  });
+  expect(result.payload).toHaveLength(2);
+  expect(new Set(result.payload.map(line => line.line_id)).size).toBe(2);
+  expect(result.payload.every(line => line.item_id === 'mushroom')).toBe(true);
+  expect(result.payload.find(line => line.item_description === 'No chilli').item_quantity).toBe(1);
+  expect(result.payload.find(line => line.item_description === 'Extra sauce').item_quantity).toBe(2);
+});
+
+
+test('preparation sheet separates one plate and preserves seat, hold and allergy through checkout', async ({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await onTheMenu(page,'nothing',{menu});
+  await page.evaluate(async()=>{await updateQuantity('mushroom',2);});
+  await page.goto('/cart.html');
+  await page.locator('[data-preparation-cart="mushroom"]').click();
+  const dialog=page.locator('#preparation-dialog');
+  await dialog.locator('[name=seat]').fill('2');
+  await dialog.locator('[name=course]').selectOption('Main course');
+  await dialog.locator('[name=held]').check();
+  await dialog.locator('summary').click();
+  await dialog.locator('[name=allergy][value=milk]').check();
+  await dialog.locator('[name=allergy_note]').fill('Confirm with chef');
+  await dialog.locator('[name=separate]').check();
+  await page.screenshot({path:'test-artifacts/readiness-preparation-phone.png'});
+  await dialog.locator('[type=submit]').click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.bill-line')).toHaveCount(2);
+  const payload=await page.evaluate(async()=>{OrderQueue.add=entry=>{window.sentBody=entry.body;return false;};await checkout('prepared');return window.sentBody.items;});
+  const held=payload.find(line=>line.held);
+  expect(held).toMatchObject({item_id:'mushroom',item_quantity:1,seat:2,course:'Main course',allergies:['milk'],allergy_note:'Confirm with chef'});
+  expect(payload.find(line=>!line.held)).toMatchObject({item_quantity:1,seat:0,allergies:[]});
+});
+
+
+test('an older server keeps ordinary ordering and does not offer unsupported preparation controls', async ({page}) => {
+ await onTheMenu(page,'nothing',{serviceControls:false});
+ await page.locator('.dish .btn-add').first().click();
+ await page.locator('#next-btn').click();
+ await expect(page).toHaveURL(/cart\.html/);
+ await expect(page.locator('[data-preparation-cart]')).toHaveCount(0);
+ await expect(page.locator('.bill-qty').first()).toHaveText('1');
+});

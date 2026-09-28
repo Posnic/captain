@@ -86,11 +86,11 @@ test('history detail navigation respects selected table and uses one modal',asyn
 test('My sales refresh retains day and data during an outage',async({page})=>{
  await onTheMenu(page,'nothing');let fail=false;const days=[];
  await page.route('**/sales/myDay',r=>{days.push(r.request().postDataJSON().day);return r.fulfill({json:fail?{type:'error'}:{type:'success',data:{total:120,orders:2,tables:[{table:'1',total:120,orders:2}],recent:[]}}});});
- await page.goto('/my-sales.html');await expect(page.locator('#sales-total')).toHaveText('120');
+ await page.goto('/my-sales.html');await expect(page.locator('#sales-total')).toHaveText(/120\.00/);
  await page.locator('[data-day="yesterday"]').click();await expect.poll(()=>days.length).toBe(2);
  fail=true;await swipe(page,'#sales-tables');
  await expect(page.locator('#mobile-refresh-status')).toHaveAttribute('data-state','error');
- expect(days[2]).toBe(days[1]);await expect(page.locator('#sales-total')).toHaveText('120');
+ expect(days[2]).toBe(days[1]);await expect(page.locator('#sales-total')).toHaveText(/120\.00/);
  await expect(page.locator('#sales-tables')).toContainText('120');
 });
 

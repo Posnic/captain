@@ -175,7 +175,7 @@
     };
   }
 
-  const money = (amount, symbol) => escape(symbol || '₹') + (Number(amount) || 0).toFixed(2);
+  const money = (amount, symbol) => typeof CaptainMoney !== 'undefined' ? escape(symbol ? CaptainMoney.format(amount,{currency:symbol}) : CaptainMoney.display(amount)) : escape(symbol || '₹') + (Number(amount) || 0).toFixed(2);
 
   /**
    * One dish, one row.

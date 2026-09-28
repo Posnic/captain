@@ -56,6 +56,6 @@ function updateSlidingPanelKotCard() {
     // Update the total
     const totalElement = targetCard.querySelector('.total-amount');
     if (totalElement && editingOrder.total_amount) {
-        totalElement.textContent = `₹${parseFloat(editingOrder.total_amount).toFixed(2)}`;
+        totalElement.textContent = CaptainMoney.display(editingOrder.total_amount);
     }
 }

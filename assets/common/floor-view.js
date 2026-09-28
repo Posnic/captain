@@ -84,7 +84,7 @@
     const orders = Number(detail.orders) || 0;
     if (orders) parts.push(orders === 1 ? '1 order' : orders + ' orders');
     const amount = Number(detail.amount) || 0;
-    if (amount > 0) parts.push((currency || '₹') + amount.toFixed(0));
+    if (amount > 0) parts.push(typeof CaptainMoney !== 'undefined' ? CaptainMoney.display(amount) : (currency || '₹') + amount.toFixed(0));
     return parts.join(' · ');
   }
 

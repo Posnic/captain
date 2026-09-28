@@ -424,7 +424,7 @@ function renderProductSuggestions(products) {
         <div class="product-suggestion" onclick="addProductToOrderById('${product._id}')">
             <div class="product-info">
                 <h6>${product.name}</h6>
-                <p class="product-price">₹${sellingPrice}</p>
+                <p class="product-price">${CaptainMoney.html(sellingPrice)}</p>
                 <small class="text-muted">Available: ${product.available_quantity}</small>
             </div>
             <button class="add-product-btn">
@@ -535,7 +535,7 @@ async function saveOrderChanges() {
             return;
         }
 
-        const data = await POSNIC.api.post('/sales/updateOrder', {
+        const data = await CaptainOrderActions.save( {
                 order_id: currentOrderId,
                 items: lines,
                 total_amount: editingOrder.total_amount,
@@ -767,7 +767,7 @@ function renderOrders() {
                         ${formatDateTime(order.created_at)}
                     </span>
                     <span class="order-total">
-                        ₹${order.total_amount.toFixed(2)}
+                        ${CaptainMoney.html(order.total_amount)}
                     </span>
                 </div>
                 <div class="order-items-preview">
@@ -898,7 +898,7 @@ function viewOrderDetails(orderId) {
         }
                             </td>
                             <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(item.price)}</td>
                         </tr>
                     `).join('')}
                     </tbody>
@@ -906,22 +906,22 @@ function viewOrderDetails(orderId) {
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Subtotal:</th>
-                            <td style="text-align: right;">₹${subtotal.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(subtotal)}</td>
                         </tr>
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Discount:</th>
-                            <td style="text-align: right;">-₹${discount.toFixed(2)}</td>
+                            <td style="text-align: right;">-${CaptainMoney.html(discount)}</td>
                         </tr>
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Tax:</th>
-                            <td style="text-align: right;">₹${tax.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(tax)}</td>
                         </tr>
                         <tr style="border-top: 2px solid #eee;">
                             <th></th>
                             <th style="text-align: right; font-size: 1.1rem;">Total Amount:</th>
-                            <th style="text-align: right; font-size: 1.1rem;">₹${parseFloat(order.total_amount || 0).toFixed(2)}</th>
+                            <th style="text-align: right; font-size: 1.1rem;">${CaptainMoney.html(order.total_amount)}</th>
                         </tr>
                     </tfoot>
                 </table>
@@ -1204,7 +1204,7 @@ async function confirmMoveTable() {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = await POSNIC.api.post('/sales/updateOrder', {
+        const data = await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1563,7 +1563,7 @@ async function performCancelOrder(orderId) {
 
     showLoader();
     try {
-        const data = await POSNIC.api.post('/sales/updateOrder', {
+        const data = await CaptainOrderActions.save( {
             order_id: orderId,
             items: order.items,
             total_amount: order.total_amount,
@@ -1618,10 +1618,11 @@ function renderCurrentOrderItems() {
         <div class="order-item-card${struck(item, editingOrder)}">
             <div class="item-info" data-index="${index}">
                 <h6><span class="line-name" translate="no">${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
-                ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ₹${totalSellingPrice.toFixed(2)}</strong></p>` : ''}
+                ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ${CaptainMoney.html(totalSellingPrice)}</strong></p>` : ''}
                 ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
+                ${ServiceDetails.summary(item)}
             </div>
-            ${!lineIsCancelled(item, editingOrder) ? `<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
+            ${!lineIsCancelled(item, editingOrder) ? `${ServiceDetails.supported() ? `<button type="button" class="preparation-link" data-preparation-order="${index}">Preparation</button>` : ''}<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
             ${lineIsCancelled(item, editingOrder)
         /*
          * A cancelled line keeps no controls.
@@ -1900,13 +1901,14 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    const existingItem = editingOrder.items.find(item => item.product_id === productId && !lineIsCancelled(item, editingOrder));
+    const existingItem = editingOrder.items.find(item => (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
         editingOrder.items.push({
             product_id: productId,
+            line_id: crypto.randomUUID(),
             name: productName,
             selling_price: productPrice,  // Use selling_price field for consistency
             price: productPrice,

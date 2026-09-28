@@ -267,7 +267,7 @@ function renderFrequentItems(items) {
                 <div class="frequent-name" translate="no">
                     ${MenuView.escape(window.ItemLanguage.name(product))}
                 </div>
-                <div class="frequent-price">₹${product.price.toFixed ? product.price.toFixed(2) : product.price}</div>
+                <div class="frequent-price">${CaptainMoney.html(product.price)}</div>
             </div>
 
             <div class="frequent-cart-empty" id="frequent-empty-${product.id}">
@@ -1265,24 +1265,24 @@ async function renderCartSummaryIntoSheet() {
             <div class="cart-summary-chip-row">
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Subtotal</div>
-                    <div class="cart-summary-chip-value">₹${totalSubtotal.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalSubtotal)}</div>
                 </div>
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Discount</div>
-                    <div class="cart-summary-chip-value">‑₹${totalDiscount.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">‑${CaptainMoney.html(totalDiscount)}</div>
                 </div>
             </div>
 
             <div class="cart-summary-chip-row">
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Tax</div>
-                    <div class="cart-summary-chip-value">₹${totalTax.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalTax)}</div>
                 </div>
             </div>
 
             <div class="cart-summary-total">
                 <div class="cart-summary-total-label">Final Amount</div>
-                <div class="cart-summary-total-amount">₹${finalTotal.toFixed(2)}</div>
+                <div class="cart-summary-total-amount">${CaptainMoney.html(finalTotal)}</div>
             </div>
         </div>
     `;
@@ -1401,7 +1401,7 @@ async function applyProductFilter() {
     // Load cart so qty / stock status stay correct
     const storedCart = await getCartData();
     if (!isCurrent()) return;
-    const cartMap = new Map(storedCart.map(i => [i.id, i]));
+    const cartMap = cartProductMap(storedCart);
 
     const seenIds = new Set();
     const hits = [];

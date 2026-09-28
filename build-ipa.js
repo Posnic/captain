@@ -134,6 +134,7 @@ console.log(`Version ${version}`);
 if (!fs.existsSync(iosDir)) run('npx cap add ios');
 run('npx cap sync ios');
 mergeInfoPlist();
+require('./scripts/install-ios-plugins').install(root);
 
 fs.mkdirSync(outDir, { recursive: true });
 const archivePath = path.join(outDir, 'Captain.xcarchive');

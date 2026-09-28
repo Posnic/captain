@@ -21,7 +21,7 @@
     draftKey = "",
     collectEnabled = false;
   const t = (s) => (window.I18N ? I18N.t(s) : s);
-  const money = (n) => `${snapshot?.currency || ""}${(n / 100).toFixed(2)}`;
+  const money = (n) => CaptainMoney.format(CaptainMoney.fromMinor(n, CaptainMoney.snapshot(snapshot || {})), CaptainMoney.snapshot(snapshot || {}));
   const base = () => POSNIC.session?.base || POSNIC.server.baseUrl;
   function persist() {
     try {
@@ -61,7 +61,7 @@
     if (!snapshot)
       body = `<p>${busy ? "Loading..." : "Could not load the bill."}</p><button data-action="reload">Retry</button>`;
     else if (stage === "setup")
-      body = `<fieldset class="guest-bill-modes"><legend>How would you like to split?</legend><label><input type="radio" name="guest-split-mode" value="equal" ${state.plan.mode === "equal" ? "checked" : ""}><span><strong>Equal split</strong><small>Divide the total equally between guests.</small></span></label><label><input type="radio" name="guest-split-mode" value="items" ${state.plan.mode === "items" ? "checked" : ""}><span><strong>By guest / items</strong><small>Assign items to guests and share dishes.</small></span></label></fieldset><div class="guest-bill-count"><span>Guests</span><button data-action="less" aria-label="Decrease guests" ${count <= 2 ? "disabled" : ""}>−</button><strong translate="no">${count}</strong><button data-action="more" aria-label="Increase guests" ${count >= 20 ? "disabled" : ""}>+</button></div><details><summary>Guest names</summary>${state.plan.guests.map((name, i) => `<label class="guest-bill-name"><span>${esc(t("Guest {0}").replace("{0}", i + 1))}</span><input data-name="${i}" maxlength="60" value="${esc(name)}" translate="no"></label>`).join("")}</details>`;
+      body = `<fieldset class="guest-bill-modes"><legend>How would you like to split?</legend><label><input type="radio" name="guest-split-mode" value="equal" ${state.plan.mode === "equal" ? "checked" : ""}><span><strong>Equal split</strong><small>Divide the total equally between guests.</small></span></label><label><input type="radio" name="guest-split-mode" value="items" ${state.plan.mode === "items" ? "checked" : ""}><span><strong>By guest / items</strong><small>Assign items to guests and share dishes.</small></span></label></fieldset>${snapshot.lines.some(line => line.seat > 0) ? '<button type="button" data-action="by-seat">Assign by seat</button>' : ''}<div class="guest-bill-count"><span>Guests</span><button data-action="less" aria-label="Decrease guests" ${count <= 2 ? "disabled" : ""}>−</button><strong translate="no">${count}</strong><button data-action="more" aria-label="Increase guests" ${count >= 20 ? "disabled" : ""}>+</button></div><details><summary>Guest names</summary>${state.plan.guests.map((name, i) => `<label class="guest-bill-name"><span>${esc(t("Guest {0}").replace("{0}", i + 1))}</span><input data-name="${i}" maxlength="60" value="${esc(name)}" translate="no"></label>`).join("")}</details>`;
     else if (stage === "items")
       body = `<p>Choose who pays for each item. Use Share for a shared dish.</p>${snapshot.lines
         .map((line) => {
@@ -249,6 +249,14 @@
         if (a === "close") close();
         else if (a === "back") back();
         else if (a === "reload") reload();
+        else if (a === "by-seat") {
+          const seats=[...new Set(snapshot.lines.map(line=>Number(line.seat)||0).filter(Boolean))].sort((a,b)=>a-b);
+          if(seats.length<2||seats.length>20){error='Choose between 2 and 20 guests.';render();return;}
+          state.plan.mode='items';
+          state.plan.guests=seats.map(seat=>t('Seat {0}').replace('{0}',seat));
+          state.plan.allocations=Object.fromEntries(snapshot.lines.map(line=>[line.id,seats.map(seat=>!line.seat||seat===Number(line.seat)?1:0)]));
+          state.pending=null;stage='items';error='';persist();render();
+        }
         else if (a === "more" || a === "less")
           resetCount(state.plan.guests.length + (a === "more" ? 1 : -1));
         else if (a === "share-all") {

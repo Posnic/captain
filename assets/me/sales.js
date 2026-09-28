@@ -13,14 +13,7 @@
 
     const at = (id) => document.getElementById(id);
 
-    const money = (amount) => {
-        const number = Number(amount) || 0;
-        try {
-            return number.toLocaleString(undefined, { maximumFractionDigits: 2 });
-        } catch (e) {
-            return String(Math.round(number));
-        }
-    };
+    const money = amount => CaptainMoney.display(amount);
 
     const escape = (text) =>
         String(text == null ? '' : text).replace(/[&<>"]/g, (c) =>
