@@ -372,12 +372,14 @@ test('an older server refusing a password says so, rather than looking broken', 
   await expect(page.locator('#login-message')).toContainText('Invalid account');
 });
 
-test('fresh setup asks for a shop before exposing staff credentials', async ({ page }) => {
+test('fresh setup offers Wi-Fi discovery before exposing staff credentials', async ({ page }) => {
   await page.goto('/index.html');
   await expect(page.locator('#username')).toBeHidden();
   await page.locator('#captain-connect').click();
-  await expect(page.locator('#captain-note')).toContainText('Enter a shop code or address');
-  await expect(page.locator('#captain-server')).toBeFocused();
+  await expect(page.locator('#captain-note')).toContainText('Wi-Fi search works in the installed phone app');
+  await page.locator('#captain-server').fill('https://shop.example.com');
+  await expect(page.locator('#captain-connect')).toHaveText('Connect to shop');
+  await expect(page.locator('#username')).toBeHidden();
 });
 
 test('a locked-out device is told to wait, not that its password is wrong', async ({ page }) => {

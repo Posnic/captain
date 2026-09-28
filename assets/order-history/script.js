@@ -1622,7 +1622,7 @@ function renderCurrentOrderItems() {
                 ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
                 ${ServiceDetails.summary(item)}
             </div>
-            ${!lineIsCancelled(item, editingOrder) ? `<button type="button" class="preparation-link" data-preparation-order="${index}">Preparation</button><button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
+            ${!lineIsCancelled(item, editingOrder) ? `${ServiceDetails.supported() ? `<button type="button" class="preparation-link" data-preparation-order="${index}">Preparation</button>` : ''}<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
             ${lineIsCancelled(item, editingOrder)
         /*
          * A cancelled line keeps no controls.

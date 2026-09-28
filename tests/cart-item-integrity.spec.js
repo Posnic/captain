@@ -161,3 +161,13 @@ test('preparation sheet separates one plate and preserves seat, hold and allergy
   expect(held).toMatchObject({item_id:'mushroom',item_quantity:1,seat:2,course:'Main course',allergies:['milk'],allergy_note:'Confirm with chef'});
   expect(payload.find(line=>!line.held)).toMatchObject({item_quantity:1,seat:0,allergies:[]});
 });
+
+
+test('an older server keeps ordinary ordering and does not offer unsupported preparation controls', async ({page}) => {
+ await onTheMenu(page,'nothing',{serviceControls:false});
+ await page.locator('.dish .btn-add').first().click();
+ await page.locator('#next-btn').click();
+ await expect(page).toHaveURL(/cart\.html/);
+ await expect(page.locator('[data-preparation-cart]')).toHaveCount(0);
+ await expect(page.locator('.bill-qty').first()).toHaveText('1');
+});

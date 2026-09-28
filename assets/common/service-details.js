@@ -4,6 +4,11 @@
   const labels = {milk:'Milk',eggs:'Eggs',fish:'Fish',shellfish:'Shellfish',peanuts:'Peanuts','tree-nuts':'Tree nuts',wheat:'Wheat',soy:'Soy',sesame:'Sesame',celery:'Celery',mustard:'Mustard',lupin:'Lupin',sulphites:'Sulphites'};
   const esc = value => String(value ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const t = value => root.I18N?.t(value) || value;
+  const capabilityKey = branch => 'posnic.service.v1.' + (root.POSNIC?.session?.shopKey || root.POSNIC?.server?.baseUrl || '') + '.' + (branch || localStorage.getItem('branch_id') || '');
+  const capabilities = new Map();
+  function supported() {try {const key=capabilityKey();return capabilities.has(key) ? capabilities.get(key) : localStorage.getItem(key) === 'true';} catch {return false;}}
+  function remember(value,branch) {try {for (const key of [capabilityKey(branch),capabilityKey()]) {capabilities.set(key,value===true);try {localStorage.setItem(key,String(value===true));} catch {}}} catch {}}
+
   function metadata(line) {
     return {seat:Number(line.seat)||0,course:line.course||'',held:line.held===true,
       allergies:line.allergies||[],allergy_note:line.allergy_note||''};
@@ -19,7 +24,7 @@
       (allergy.length?'<p class="service-allergy"><strong>'+esc(t('Allergy'))+':</strong> '+esc(allergy.join(', '))+'</p>':'');
   }
   function open(line, save, {canSeparate=false,canHold=true}={}) {
-    if(document.getElementById('preparation-dialog')) return;
+    if(!supported() || document.getElementById('preparation-dialog')) return;
     const previous=document.activeElement;
     const dialog=document.createElement('dialog');dialog.id='preparation-dialog';
     dialog.setAttribute('aria-labelledby','preparation-title');
@@ -64,5 +69,5 @@
         {canHold:root.OrderEditor?.isAdded(line)===true});
     }
   },true);
-  root.ServiceDetails={metadata,summary,open};
+  root.ServiceDetails={metadata,summary,open,supported,remember};
 })(window);

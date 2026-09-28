@@ -333,7 +333,7 @@ test("two of them add up, and the total is not the catalogue's nothing", async (
 
   await page.locator('#next-btn').click();
   await expect(page).toHaveURL(/cart\.html$/);
-  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1700.00');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1,700.00');
 });
 
 test("an ordinary dish alongside it still totals the way it always did", async ({ page }) => {
@@ -349,7 +349,7 @@ test("an ordinary dish alongside it still totals the way it always did", async (
 
   await page.locator('#next-btn').click();
   await expect(page).toHaveURL(/cart\.html$/);
-  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1070.00');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1,070.00');
 });
 
 /* ------------------------------------------- correcting a mistyped price */
@@ -379,8 +379,8 @@ test("a price typed wrong can be typed again from the bill", async ({ page }) =>
   await page.locator('#ask-price-input').fill('8500');
   await page.locator('#ask-price-ok').click();
 
-  await expect(page.locator('.bill-each.is-askable').first()).toContainText('8500.00');
-  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹8500.00');
+  await expect(page.locator('.bill-each.is-askable').first()).toContainText('8,500.00');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹8,500.00');
 });
 
 test('the count is not touched by a correction', async ({ page }) => {
@@ -399,7 +399,7 @@ test('the count is not touched by a correction', async ({ page }) => {
   await page.locator('#ask-price-ok').click();
 
   await expect(page.locator('.bill-qty').first()).toHaveText('2');
-  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1800.00');
+  await expect(page.locator('.bill-row.is-total span').last()).toHaveText('₹1,800.00');
 });
 
 test('backing out of the correction leaves the price alone', async ({ page }) => {

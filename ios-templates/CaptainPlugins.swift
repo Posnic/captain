@@ -60,7 +60,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         if status == errSecItemNotFound { return [:] }
         guard status == errSecSuccess, let data = result as? Data,
               let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw CaptainAccessError(message: "Secure storage unavailable. Ask your manager to recover access.")
+            throw CaptainAccessError(message: "Ask your manager to reconnect this phone. Your orders are saved.")
         }
         return value
     }
@@ -72,7 +72,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         if status == errSecItemNotFound {
             status = SecItemAdd(query.merging(changes) { _, new in new } as CFDictionary, nil)
         }
-        guard status == errSecSuccess else { throw CaptainAccessError(message: "Secure storage unavailable") }
+        guard status == errSecSuccess else { throw CaptainAccessError(message: "Ask your manager to reconnect this phone. Your orders are saved.") }
     }
     private func derive(_ pin: String, _ salt: Data) throws -> Data {
         let password = Array(pin.utf8)
@@ -85,7 +85,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
                     CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), 210000, &output, 32)
             }
         }
-        guard status == kCCSuccess else { throw CaptainAccessError(message: "Secure storage unavailable") }
+        guard status == kCCSuccess else { throw CaptainAccessError(message: "Ask your manager to reconnect this phone. Your orders are saved.") }
         return Data(output)
     }
     private func result(_ value: [String: Any]) -> JSObject {
@@ -109,8 +109,8 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func save(_ call: CAPPluginCall) {
         perform(call) {
             var value = try self.read()
-            guard let session = call.getObject("session") else { throw CaptainAccessError(message:"Session missing") }
-            guard value["pin"] == nil || self.unlocked else { throw CaptainAccessError(message:"Unlock this phone first") }
+            guard let session = call.getObject("session") else { throw CaptainAccessError(message:"Ask your manager to reconnect this phone. Your orders are saved.") }
+            guard value["pin"] == nil || self.unlocked else { throw CaptainAccessError(message:"Unlock this phone first.") }
             value["session"] = session
             try self.write(value)
             return self.result(value)
@@ -122,11 +122,11 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
             let pin = call.getString("pin") ?? ""
             guard pin.range(of:"^[0-9]{4,6}$",options:.regularExpression) != nil,
                   value["session"] != nil, value["pin"] == nil || self.unlocked else {
-                throw CaptainAccessError(message:"Unlock with your current PIN first")
+                throw CaptainAccessError(message:"Unlock this phone first.")
             }
             var salt = [UInt8](repeating:0,count:32)
             guard SecRandomCopyBytes(kSecRandomDefault,salt.count,&salt) == errSecSuccess else {
-                throw CaptainAccessError(message:"Secure storage unavailable")
+                throw CaptainAccessError(message:"Ask your manager to reconnect this phone. Your orders are saved.")
             }
             value["salt"] = Data(salt).base64EncodedString()
             value["pin"] = try self.derive(pin,Data(salt)).base64EncodedString()
@@ -142,7 +142,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
             let failures = value["failures"] as? Int ?? 0
             guard let encoded = value["pin"] as? String, let expected = Data(base64Encoded:encoded),
                   let encodedSalt = value["salt"] as? String, let salt = Data(base64Encoded:encodedSalt), failures < 5 else {
-                throw CaptainAccessError(message:"Ask your manager to reconnect this phone. Orders are retained.")
+                throw CaptainAccessError(message:"Ask your manager to reconnect this phone. Your orders are saved.")
             }
             self.unlocked = false
             value["failures"] = failures + 1
@@ -160,7 +160,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @objc func removePin(_ call: CAPPluginCall) {
         perform(call) {
-            guard self.unlocked else { throw CaptainAccessError(message:"Unlock first") }
+            guard self.unlocked else { throw CaptainAccessError(message:"Unlock this phone first.") }
             var value = try self.read()
             value.removeValue(forKey:"pin"); value.removeValue(forKey:"salt"); value.removeValue(forKey:"failures")
             try self.write(value)
@@ -171,7 +171,7 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func clear(_ call: CAPPluginCall) {
         perform(call) {
             let status = SecItemDelete(self.query as CFDictionary)
-            guard status == errSecSuccess || status == errSecItemNotFound else { throw CaptainAccessError(message:"Secure storage unavailable") }
+            guard status == errSecSuccess || status == errSecItemNotFound else { throw CaptainAccessError(message:"Ask your manager to reconnect this phone. Your orders are saved.") }
             self.unlocked = false
             return [:] // The order database and identity-bound queue are untouched.
         }
@@ -180,11 +180,11 @@ public final class CaptainSecureSessionPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let text = call.getString("url"), let url = URL(string:text),
               url.scheme == "https", url.host == "www.posnic.com", url.path == "/api/mobile/authorize",
               url.user == nil, url.password == nil, url.port == nil || url.port == 443 else {
-            call.reject("Invalid account address"); return
+            call.reject("Could not connect. Try again."); return
         }
         DispatchQueue.main.async {
             UIApplication.shared.open(url,options:[:]) { opened in
-                if opened { call.resolve() } else { call.reject("Could not open browser") }
+                if opened { call.resolve() } else { call.reject("Could not connect. Try again.") }
             }
         }
     }
@@ -197,7 +197,7 @@ public final class CaptainLocalNetworkPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods = [CAPPluginMethod(name:"getLocalIp",returnType:CAPPluginReturnPromise)]
     @objc func getLocalIp(_ call: CAPPluginCall) {
         var interfaces: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&interfaces) == 0 else { call.reject("Unable to read local network address"); return }
+        guard getifaddrs(&interfaces) == 0 else { call.reject("Connect this phone to the shop Wi-Fi and try again."); return }
         defer { freeifaddrs(interfaces) }
         var cursor = interfaces
         while let current = cursor {

@@ -72,7 +72,7 @@ const responses = (products) => ({
   },
   '/items/accessQr': {
     type: 'success',
-    data: { products, kiosk_images: {}, tableorders: [], kiosk_payment: {} },
+    data: { restaurant_service_v1: true, products, kiosk_images: {}, tableorders: [], kiosk_payment: {} },
   },
   '/sales/getTablesWithActiveOrders': { type: 'success', data: { tables: [] } },
   '/sales/getFrequentItems': { type: 'success', data: [] },
@@ -90,6 +90,7 @@ const responses = (products) => ({
 export async function onTheMenu(page, heard, options = {}) {
   const products = options.menu || ONE_CATEGORY;
   const table = responses(products);
+  table['/items/accessQr'].data.restaurant_service_v1 = options.serviceControls !== false;
 
   await page.addInitScript(
     ({ url, heard }) => {

@@ -433,6 +433,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                 CaptainMoney.remember(result.data.money);
                 CaptainMoney.remember(result.data.money, branchId);
             }
+            window.ServiceDetails?.remember?.(result.data.restaurant_service_v1, branchId);
             let products = [];
 
             const categories = result.data.products;
@@ -955,7 +956,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
                       '</div>'
                     : '') +
                 (item.notes ? '<div class="bill-note" translate="no">' + billText(item.notes) + '</div>' : '') +
-                ServiceDetails.summary(item) + '<button type="button" class="preparation-link" data-preparation-cart="' + id + '">Preparation</button>' +
+                ServiceDetails.summary(item) + (ServiceDetails.supported() ? '<button type="button" class="preparation-link" data-preparation-cart="' + id + '">Preparation</button>' : '') +
                 /*
                  * TODAY'S PRICE CAN BE CORRECTED HERE.
                  *
@@ -1312,7 +1313,8 @@ function updateQuantity(id, change, options) {
 }
 async function updateQuantityNow(id, change, options) {
     // ✅ only read needed product
-    const storedProduct = await getProductById(id);
+    const storedLine = (await getCartData()).find(line => line.id === id);
+    const storedProduct = await getProductById(storedLine ? cartProductId(storedLine) : id);
     /* What the waiter was quoted this morning, for a dish the catalogue prices
        on the day. Absent for every ordinary dish, which is why nothing below
        changes for them. */
@@ -1372,6 +1374,7 @@ async function updateQuantityNow(id, change, options) {
             quantity: 0
         };
     }
+    if (quoted > 0) item.askedPrice = quoted;
     item.line_id = item.line_id || item.id;
 
     const allowNegative = storedProduct?.negative_stock === true;
