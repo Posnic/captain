@@ -837,5 +837,7 @@
   "Items marked served": "Позиции отмечены как поданные",
   "Could not save. Please try again.": "Не удалось сохранить. Попробуйте ещё раз.",
   "Open browser": "Открыть браузер",
-  "Mark all served": "Отметить всё как поданное"
+  "Mark all served": "Отметить всё как поданное",
+  "Previous": "Предыдущий",
+  "Next": "Следующий"
 }

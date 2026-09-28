@@ -837,5 +837,7 @@
   "Items marked served": "Bidhaa zimewekwa alama zimehudumiwa",
   "Could not save. Please try again.": "Imeshindwa kuhifadhi. Jaribu tena.",
   "Open browser": "Fungua kivinjari",
-  "Mark all served": "Weka alama kuwa vyote vimehudumiwa"
+  "Mark all served": "Weka alama kuwa vyote vimehudumiwa",
+  "Previous": "Iliyotangulia",
+  "Next": "Inayofuata"
 }

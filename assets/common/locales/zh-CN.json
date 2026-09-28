@@ -837,5 +837,7 @@
   "Items marked served": "菜品已标记为已上菜",
   "Could not save. Please try again.": "无法保存，请重试。",
   "Open browser": "打开浏览器",
-  "Mark all served": "标记全部已上菜"
+  "Mark all served": "标记全部已上菜",
+  "Previous": "上一个",
+  "Next": "下一个"
 }

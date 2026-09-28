@@ -595,6 +595,8 @@ function openSlidingPanel() {
 
 // Close sliding panel
 function closeSlidingPanel() {
+    floorDetailRevision++;
+    floorDetailLoading = false;
     const panel = document.getElementById('kot-sliding-panel');
     const overlay = document.getElementById('kot-panel-overlay');
     
@@ -654,7 +656,11 @@ function isTakeawayName(name) {
     return String(name || '').replace(/\s+/g, '').toLowerCase() === 'takeaway';
 }
 
-async function selectTable(tableName, takeaway) {
+let floorDetail = null, floorDetailRevision = 0, floorDetailLoading = false;
+async function selectTable(tableName, takeaway, options = {}) {
+    const revision = ++floorDetailRevision;
+    floorDetailLoading = true;
+    floorDetail = { id: String(tableName), takeaway: takeaway === true || isTakeawayName(tableName) };
     const isTakeaway = takeaway === true || isTakeawayName(tableName);
     const panelContent = document.getElementById('sliding-panel-content');
     const panelTitle = document.getElementById('panel-title');
@@ -679,10 +685,11 @@ async function selectTable(tableName, takeaway) {
     openSlidingPanel();
     
     // Clear previous content
-    panelContent.innerHTML = '';
+    if (!options.refresh) panelContent.innerHTML = '';
+    window.dispatchEvent(new Event('captain:details'));
 
     try {
-        showSectionLoader('sliding-panel-content');
+        if (!options.refresh) showSectionLoader('sliding-panel-content');
         let filters = {};
         const branchId = localStorage.getItem('branch_id') || null;
         /*
@@ -715,12 +722,14 @@ async function selectTable(tableName, takeaway) {
             `/sales/getListKot?page=1&limit=100` +
             `&filters=${encodeURIComponent(JSON.stringify(filters))}&branchId=${branchId}`);
         
-        if (data.type !== 'success' || !data.data || !data.data.list || data.data.list.length === 0) {
+        if (revision !== floorDetailRevision) return false;
+        if (data.type !== 'success' || !Array.isArray(data.data?.list)) throw new Error('Failed to load orders');
+        if (data.data.list.length === 0) {
             panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-clipboard-list"></i><p>' +
                 (isTakeaway ? 'No active takeaway orders' : 'No active orders for this table') +
                 '</p></div>';
             currentKotOrders = []; // Clear orders
-            return;
+            return true;
         }
 
         const kots = data.data.list;
@@ -830,11 +839,19 @@ async function selectTable(tableName, takeaway) {
         });
 
         panelContent.innerHTML = headerHtml + `<div class="kot-cards-container">${kotsCardsHtml}</div>`;
+        if (!options.refresh) panelContent.scrollTop = 0;
+        return true;
     } catch (error) {
+        if (revision !== floorDetailRevision) return false;
         console.error('Error loading KOT details:', error);
-        panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-exclamation-circle"></i><p>Failed to load orders. Please try again.</p></div>';
+        if (!options.refresh) panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-exclamation-circle"></i><p>Failed to load orders. Please try again.</p></div>';
+        return false;
     } finally {
-        hideSectionLoader('sliding-panel-content');
+        if (revision === floorDetailRevision) {
+            floorDetailLoading = false;
+            hideSectionLoader('sliding-panel-content');
+            window.dispatchEvent(new Event('captain:details'));
+        }
     }
 }
 
@@ -1187,3 +1204,14 @@ const captainPaymentButtons = new MutationObserver(() => {
     CaptainPayments.available().then(enabled => { if (button.isConnected) button.hidden=!enabled; });
 });
 captainPaymentButtons.observe(document.body,{childList:true,subtree:true});
+
+window.FloorMobileDetails = {
+    root: () => document.querySelector('#kot-sliding-panel.open'),
+    header: '.sliding-panel-header', body: '#sliding-panel-content',
+    current: () => floorDetail?.id,
+    entries: () => [...document.querySelectorAll('#tables-list .floor-card')].map(card => ({id:card.dataset.tableNumber, takeaway:card.dataset.takeaway === 'true'})),
+    busy: () => floorDetailLoading || !!document.querySelector('[data-serving="true"]'),
+    show: entry => selectTable(entry.id, entry.takeaway),
+    refresh: () => floorDetail && selectTable(floorDetail.id, floorDetail.takeaway, {refresh:true}),
+    dismiss: closeSlidingPanel,
+};

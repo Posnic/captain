@@ -837,5 +837,7 @@
   "Items marked served": "تم تحديد الأصناف كمُقدَّمة",
   "Could not save. Please try again.": "تعذر الحفظ. يرجى المحاولة مرة أخرى.",
   "Open browser": "فتح المتصفح",
-  "Mark all served": "تحديد الكل كمُقدَّم"
+  "Mark all served": "تحديد الكل كمُقدَّم",
+  "Previous": "السابق",
+  "Next": "التالي"
 }
