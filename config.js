@@ -977,8 +977,14 @@
           ? window.Capacitor.Plugins.LocalNetwork
           : null;
       if (plugin && typeof plugin.getLocalIp === 'function') {
-        const result = await plugin.getLocalIp();
-        add(result && result.ip);
+        let timer;
+        try {
+          const result = await Promise.race([
+            plugin.getLocalIp(),
+            new Promise(resolve => { timer = setTimeout(() => resolve(null), 1500); }),
+          ]);
+          add(result && result.ip);
+        } finally { clearTimeout(timer); }
       }
     } catch (e) {
       /* a browser: fall through to WebRTC */
@@ -1082,16 +1088,37 @@
       neighbourhood, and the general guesses. Still under sixty probes. */
   const likelyCount = () => new Set([...LIKELY_HOSTS]).size + 1 + ownHosts.length * 25;
 
-  async function scanSubnet(subnet, { hosts, ownHost, onProgress, onBatch, shouldStop, concurrency, seen, collect } = {}) {
+  function discoveryPorts() {
+    const ports = [];
+    for (const base of [server.lan, server.baseUrl]) {
+      if (!base || !server.isLanUrl(base)) continue;
+      try { const url = new URL(base); const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+        if (port > 0 && port <= 65535 && !ports.includes(port)) ports.push(port);
+      } catch {}
+    }
+    if (!ports.includes(LAN_PORT)) ports.push(LAN_PORT);
+    return ports;
+  }
+
+  async function scanSubnet(subnet, { hosts, ownHost, onProgress, onBatch, shouldStop, concurrency, seen, collect, accept, ports = discoveryPorts() } = {}) {
     const list = hosts || hostOrder(ownHost);
     const width = concurrency || SCAN_CONCURRENCY;
 
     for (let start = 0; start < list.length; start += width) {
       if (shouldStop && shouldStop()) return null;
       const batch = list.slice(start, start + width);
-      const results = await Promise.all(
-        batch.map((host) => probe(`http://${subnet}.${host}:${LAN_PORT}`, SCAN_TIMEOUT_MS, { seen }))
-      );
+      const results = (await Promise.all(batch.map(async host => {
+        const hits = [];
+        for (const port of ports) {
+          if (shouldStop && shouldStop()) return hits;
+          const hit = await probe(`http://${subnet}.${host}:${port}`, SCAN_TIMEOUT_MS, { seen });
+          if (hit && (!accept || await accept(hit))) {
+            hits.push(hit);
+            if (!collect) break;
+          }
+        }
+        return hits;
+      }))).flat();
       // A completed batch must not redraw a cancelled search or a selected till.
       if (shouldStop && shouldStop()) return null;
       if (onBatch) onBatch(batch.length);
@@ -1109,7 +1136,7 @@
        * refused handset asking once and a refused handset sweeping the subnet
        * on every attempt.
        */
-      if (!collect && seen && seen.length) return null;
+      if (!collect && !accept && seen && seen.length) return null;
     }
     return null;
   }
@@ -1121,7 +1148,7 @@
    * on every shift after the first, this returns in under a second and no sweep
    * happens at all.
    */
-  async function findOnWifi({ onProgress, shouldStop, skipKnown = false } = {}) {
+  async function findOnWifi({ onProgress, shouldStop, skipKnown = false, accept, actualNetworkOnly = false } = {}) {
     /* Refusals seen during THIS search, kept here rather than in the one
        global a sweep of sixty-four parallel probes overwrites. */
     const seen = [];
@@ -1130,17 +1157,18 @@
     if (!skipKnown && server.lan) {
       if (onProgress) onProgress(0, 0, server.lan);
       const hit = await probe(server.lan, 1500, { seen });
-      if (hit) return hit;
+      if (hit && (!accept || await accept(hit))) return hit;
       /* The address we already knew answered and said no. There is nothing a
          sweep can find that is better than that. */
-      if (seen.length) {
+      if (seen.length && !accept) {
         findOnWifi.lastRefusal = seen[0];
         return null;
       }
     }
     if (shouldStop && shouldStop()) return null;
 
-    const subnets = await localSubnets();
+    const networks = await localSubnets();
+    const subnets = actualNetworkOnly ? ownSubnets.slice() : networks;
 
     /*
      * Every network at once, not one after another.
@@ -1197,6 +1225,7 @@
             hosts,
             concurrency,
             seen,
+            accept,
             shouldStop: stop,
             onProgress: () => report(0),
             onBatch: (size) => report(size),
@@ -1204,7 +1233,7 @@
             /* The first answer ends the others: there is one till, and the
                remaining sweeps are only spending the phone's radio. A refusal
                is an answer, so it ends them too. */
-            if (hit || seen.length) stopped = true;
+            if (hit || (!accept && seen.length)) stopped = true;
             return hit;
           })
         )
@@ -1215,7 +1244,7 @@
 
     const quick = (await sweep(likely, likely.length)).find(Boolean);
     if (quick) return quick;
-    if (seen.length) {
+    if (seen.length && !accept) {
       findOnWifi.lastRefusal = seen[0];
       return null;
     }
@@ -2334,8 +2363,16 @@
         } catch { return false; }
         if (session.managed && session.request) {
           if (window.CaptainAccess?.locked || session.needsReconnect) return false;
-          try { await session.request('/captain/v1/session', {method:'GET', timeout:3000}); net.setOnline(); return true; }
-          catch (error) { if (error.code !== 'PIN_LOCKED') net.setOffline(); return false; }
+          try {
+            await session.request('/captain/v1/session', {method:'GET', timeout:3000});
+            net.setOnline();
+            if (!server.isLocal) void recoverManagedServer(manual);
+            return true;
+          } catch (error) {
+            if (error.code === 'PIN_LOCKED' || session.needsReconnect || [401,403].includes(error.status)) return false;
+            if (await recoverManagedServer(manual)) return true;
+            net.setOffline(); return false;
+          }
         }
         /* A scheduled tick that arrives mid-edit stands aside too; a manual
            check is the editor itself asking, and always runs. */
@@ -2387,6 +2424,30 @@
    * reach anything, and they look identical from the outside.
    */
   resolve.lastRefusal = null;
+
+  let recoveryFlight = null, nextRecovery = 0;
+  function recoverManagedServer(manual = false) {
+    if (recoveryFlight) return recoveryFlight;
+    if (!session.hasLocalConnection || (!manual && Date.now() < nextRecovery)) return Promise.resolve(null);
+    nextRecovery = Date.now() + SWEEP_EVERY_MS;
+    const shop = session.shopKey, user = session.user?.id;
+    const stopped = () => document.hidden || session.shopKey !== shop || session.user?.id !== user || window.CaptainAccess?.locked;
+    recoveryFlight = (async () => {
+      const hit = await findOnWifi({actualNetworkOnly:true, skipKnown:true, shouldStop:stopped,
+        accept:async candidate => {
+          if (stopped()) return false;
+          try { await session.addAddress(candidate.base); return !stopped(); }
+          catch { return false; }
+        }});
+      if (!hit || stopped()) return null;
+      server.recordShop(hit.base, shop);
+      server.adopt(hit.base);
+      await session.request('/captain/v1/session', {method:'GET',timeout:3000});
+      net.setOnline();
+      return hit.base;
+    })().catch(() => null).finally(() => { recoveryFlight = null; });
+    return recoveryFlight;
+  }
 
   /* --------------------------------------------------------------- exports */
 

@@ -792,3 +792,32 @@ test("foreground health checks wait for native session restore after a delayed l
   expect(await page.evaluate(()=>POSNIC.net.offline)).toBe(false);
   await expect(page.locator('#posnic-offline')).toBeHidden();
 });
+
+
+test("Retry finds a moved till on its custom port and never authorizes a neighbouring shop", async ({page}) => {
+  await phone(page);
+  const key='a'.repeat(64), moved='http://192.168.1.44:42590/api';
+  const authorized=[];
+  await page.route('http://192.168.1.*/**',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if (request.headers().authorization) authorized.push(request.url());
+    if (url.port!=='42590' || !['192.168.1.2','192.168.1.44'].includes(url.hostname)) return route.abort('connectionrefused');
+    if (url.pathname.endsWith('/runtime-info')) return route.fulfill({json:info});
+    if (url.pathname.endsWith('/route-proof')) {
+      expect(request.headers().authorization).toBeUndefined();
+      const proof=url.hostname==='192.168.1.44'?createHmac('sha256',key).update(request.postDataJSON().nonce).digest('hex'):'another-shop';
+      return route.fulfill({json:{proof}});
+    }
+    return route.fulfill({json:{status:true}});
+  });
+  const recovered=await page.evaluate(async ({base,key})=>{
+    POSNIC.server.pin(base);
+    await CaptainAccess.session.start({base,token:'secret-access',sessionId:'session',routeKey:key,shopKey:'shop',user:{id:'staff'},expiresIn:900});
+    return POSNIC.net.check(true);
+  },{base,key});
+  expect(recovered).toBe(true);
+  expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(moved);
+  expect(authorized.length).toBeGreaterThan(0);
+  expect(authorized.every(url=>url.startsWith(moved+'/'))).toBe(true);
+  expect(await page.evaluate(()=>CaptainAccess.session.token)).toBe('secret-access');
+});

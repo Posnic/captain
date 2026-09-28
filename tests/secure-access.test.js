@@ -831,3 +831,24 @@ test("a request interrupted by backgrounding cannot report a new foreground sess
   assert.equal(access.session.token,'access');
   assert.equal(access.session.needsReconnect,false);
 });
+
+
+test("a discovery proof finishing after a shop change cannot authorize an address for the new shop", async()=>{
+  const f=fixture(), key='a'.repeat(64), candidate='http://192.168.1.44:42590/api';
+  let release, notify;
+  const started=new Promise(resolve=>{notify=resolve;});
+  const access=createAccess(f.plugin,f.storage,async (url,options)=>{
+    const nonce=JSON.parse(options.body).nonce;
+    notify();await new Promise(resolve=>{release=resolve;});
+    return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(nonce).digest('hex')})};
+  },webcrypto);
+  await access.session.start({...f.grant,routeKey:key});
+  const pending=access.session.addAddress(candidate);
+  const rejected=assert.rejects(pending);
+  await started;
+  await access.session.start({...f.grant,shopKey:'another-shop',routeKey:'b'.repeat(64)});
+  release();await rejected;
+  assert.equal(access.session.allowsBase(candidate),false);
+  assert.equal(f.vault().shopKey,'another-shop');
+  assert.equal(f.vault().routes,undefined);
+});
