@@ -1,6 +1,6 @@
 # Captain restaurant service workflows
 
-Captain 1.3.21 requires the matching POS 1.8.4 server for courses, staff handover, manager approval and kitchen delivery reports.
+Captain 1.3.22 requires the matching POS 1.8.4 server for courses, staff handover, manager approval and kitchen delivery reports.
 
 ## Taking and changing orders
 

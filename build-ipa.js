@@ -125,6 +125,8 @@ run('npm run build');
    which build it is. See build-version.js. */
 const stamp = require('./scripts/build-version');
 const version = stamp.resolveVersion(root);
+const iosVersion = version.match(/^\d+\.\d+\.\d+/)?.[0];
+if (!iosVersion) throw new Error('iOS requires a numeric release version.');
 stamp.stampBundle(path.join(root, 'dist'), {
   version,
   commit: stamp.resolveCommit(root),
@@ -189,6 +191,8 @@ run([
   '-sdk iphoneos',
   `-archivePath "${archivePath}"`,
   'archive',
+  `MARKETING_VERSION=${iosVersion}`,
+  `CURRENT_PROJECT_VERSION=${stamp.versionCode(iosVersion)}`,
   'CODE_SIGNING_ALLOWED=NO',
   'CODE_SIGNING_REQUIRED=NO',
   'CODE_SIGN_IDENTITY=""',
