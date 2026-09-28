@@ -1646,3 +1646,17 @@ for (const stall of ['fetch', 'body']) {
     expect(await page.evaluate(() => POSNIC.discovery.probe.usedRoad)).toBeTruthy();
   });
 }
+
+
+test('a stalled native network lookup cannot hold discovery open forever', async ({page})=>{
+  await page.goto('/index.html');
+  const result=await page.evaluate(async()=>{
+    window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:()=>new Promise(()=>{})}}};
+    window.RTCPeerConnection=undefined;window.webkitRTCPeerConnection=undefined;
+    const start=Date.now();
+    const networks=await POSNIC.discovery.localSubnets();
+    return {elapsed:Date.now()-start,networks};
+  });
+  expect(result.elapsed).toBeLessThan(4000);
+  expect(result.networks).toContain('192.168.1');
+});
