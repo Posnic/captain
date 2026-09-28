@@ -20,7 +20,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const read = (...parts) => fs.readFileSync(path.join(root, ...parts), 'utf8');
 
-const IPA = read('build-ipa.js');
+const IPA = read('build-ipa.js').replace(/\r\n/g, '\n');
 const APK = read('build-apk.js');
 const ADDITIONS = read('ios-templates', 'Info.plist.additions.xml');
 

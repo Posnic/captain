@@ -751,3 +751,44 @@ test("the primary action searches Wi-Fi when empty and connects when an address 
   await page.locator("#captain-server").fill(base);
   await expect(page.locator("#captain-connect")).toHaveText("Connect to shop");
 });
+
+
+test("Try now restores a suspended native session without restarting or changing server", async ({page}) => {
+  await phone(page);
+  const requests=[];
+  await page.route('**/captain/v1/session',route=>{
+    requests.push(route.request().headers().authorization);
+    return route.fulfill({json:{status:true}});
+  });
+  await page.evaluate(async base=>{
+    POSNIC.server.pin(base);
+    await CaptainAccess.session.start({base,token:'resume-access',sessionId:'session',shopKey:'shop',user:{id:'staff'},expiresIn:900});
+    await CaptainAccess.session.suspend();
+    POSNIC.net.setOffline();
+  },base);
+  await expect(page.locator('#posnic-offline')).toBeVisible();
+  await page.getByRole('button',{name:'Try now',exact:true}).click();
+  await expect(page.locator('#posnic-offline')).toBeHidden();
+  expect(requests).toContain('Bearer resume-access');
+  expect(await page.evaluate(()=>CaptainAccess.session.active)).toBe(true);
+  expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(base);
+});
+
+test("foreground health checks wait for native session restore after a delayed lock", async ({page}) => {
+  await phone(page);
+  await page.route('**/captain/v1/session',route=>route.fulfill({json:{status:true}}));
+  await page.evaluate(async base=>{
+    POSNIC.server.pin(base);
+    await CaptainAccess.session.start({base,token:'resume-access',sessionId:'session',shopKey:'shop',user:{id:'staff'},expiresIn:900});
+    const lock=Capacitor.Plugins.SecureSession.lock;
+    Capacitor.Plugins.SecureSession.lock=async()=>{await new Promise(resolve=>setTimeout(resolve,150));return lock();};
+    Object.defineProperty(document,'hidden',{configurable:true,value:true});
+    document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document,'hidden',{configurable:true,value:false});
+    document.dispatchEvent(new Event('visibilitychange'));
+    await POSNIC.api.get('/captain/v1/session');
+  },base);
+  expect(await page.evaluate(()=>CaptainAccess.session.token)).toBe('resume-access');
+  expect(await page.evaluate(()=>POSNIC.net.offline)).toBe(false);
+  await expect(page.locator('#posnic-offline')).toBeHidden();
+});

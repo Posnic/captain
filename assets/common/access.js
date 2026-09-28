@@ -21,6 +21,22 @@
       state = result.session || {};
       return result;
     };
+    let lifecycle = Promise.resolve();
+    let suspended = false;
+    function transition(action) {
+      lifecycle = lifecycle.catch(() => {}).then(action);
+      return lifecycle;
+    }
+    async function resume() {
+      return transition(async () => {
+        await ready;
+        await writing.catch(() => {});
+        apply(await plugin.status());
+        suspended = false;
+        cooling.clear();
+        nextConnectionCheck = 0;
+      });
+    }
     let writing = Promise.resolve();
     function persist() {
       const started = generation,
@@ -490,6 +506,8 @@
           host.POSNIC?.net.setOnline();
           return result;
         } catch (error) {
+          if (start !== generation)
+            throw Object.assign(new Error("Unlock this phone first."), {code:"PIN_LOCKED"});
           last = error;
           if (error.code === "PIN_LOCKED" || error.accessRefused) throw error;
           if (
@@ -571,6 +589,7 @@
         return base === state.base || verified.has(base);
       },
       async request(path, options = {}) {
+        await session.whenReady();
         if (state.blockedAccess)
           throw Object.assign(new Error(state.blockedAccess), {
             status: 403,
@@ -582,6 +601,7 @@
           if ([401, 403].includes(error.status) || !state.connections?.length)
             throw error;
         }
+        await session.whenReady();
         void refreshConnections();
         try {
           const result = await transport(path, options);
@@ -677,8 +697,15 @@
             })().catch(() => {});
           }
       },
-      async prepare() {
+      async whenReady() {
         await ready;
+        let pending;
+        do { pending = lifecycle; await pending; } while (pending !== lifecycle);
+        if (suspended || locked)
+          throw Object.assign(new Error("Unlock this phone first."), { code: "PIN_LOCKED" });
+      },
+      async prepare() {
+        await session.whenReady();
         if (locked)
           throw Object.assign(new Error("Unlock this phone first."), {
             code: "PIN_LOCKED",
@@ -721,12 +748,17 @@
             });
         return flight;
       },
-      async suspend() {
+      suspend() {
         generation++;
-        await writing.catch(() => {});
-        await plugin.lock();
-        state = {};
-        locked = pinSet;
+        suspended = true;
+        return transition(async () => {
+          await ready;
+          await writing.catch(() => {});
+          await plugin.lock();
+          state = {};
+          locked = pinSet;
+          suspended = true;
+        });
       },
     };
     return {
@@ -745,7 +777,9 @@
         return true;
       },
       async unlock(pin) {
+        await lifecycle;
         const result = apply(await plugin.unlock({ pin }));
+        suspended = false;
         if (!locked) {
           const candidates = JSON.parse(
             storage.getItem("posnic.connection-candidates") || "[]",
@@ -776,9 +810,7 @@
       async removePin() {
         apply(await plugin.removePin());
       },
-      async resume() {
-        apply(await plugin.status());
-      },
+      resume,
     };
   }
   if (typeof module === "object" && module.exports)
@@ -809,12 +841,12 @@
         });
     }
     host.document.addEventListener("visibilitychange", () => {
-      if (host.document.hidden) void host.CaptainAccess.session.suspend();
+      if (host.document.hidden) void host.CaptainAccess.session.suspend().catch(() => {});
       else
         void host.CaptainAccess.resume().then(() => {
           if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
             host.location.href = "index.html";
-        });
+        }).catch(() => {});
     });
   }
 })(typeof window !== "undefined" ? window : globalThis);

@@ -759,3 +759,75 @@ test("parallel local requests share one refresh rotation and refusal cannot fall
     );
   }
 });
+
+
+test("foreground restore waits for an unfinished native lock before authenticated reads", async () => {
+  const f = fixture();
+  let finishLock, lockStarted;
+  const started = new Promise(resolve => { lockStarted = resolve; });
+  const originalLock = f.plugin.lock;
+  f.plugin.lock = async () => {
+    lockStarted();
+    await new Promise(resolve => { finishLock = resolve; });
+    await originalLock();
+  };
+  const calls = [];
+  const access = createAccess(f.plugin, f.storage, async (url, options) => {
+    calls.push({url, authorization:options.headers.Authorization});
+    return {ok:true,json:async()=>({status:true})};
+  }, webcrypto);
+  await access.session.start(f.grant);
+  const hiding = access.session.suspend();
+  await started;
+  const showing = access.resume();
+  const reading = access.session.request('/captain/v1/session', {method:'GET'});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls.length, 0);
+  finishLock();
+  await Promise.all([hiding, showing, reading]);
+  assert.equal(access.session.active, true);
+  assert.equal(access.session.managed, true);
+  assert.equal(calls[0].authorization, 'Bearer access');
+  assert.equal(f.vault().token, 'access');
+});
+
+test("requests while suspended do not mistake an empty session for an offline server", async () => {
+  const f=fixture(); let calls=0;
+  const access=createAccess(f.plugin,f.storage,async()=>{calls++;throw Error('unexpected network');},webcrypto);
+  await access.session.start(f.grant);
+  await access.session.suspend();
+  await assert.rejects(access.session.request('/captain/v1/session',{method:'GET'}),error=>error.code==='PIN_LOCKED');
+  assert.equal(calls,0);
+  await access.resume();
+  assert.equal(access.session.token,'access');
+});
+
+
+test("rapid background-foreground-background changes remain suspended until the final resume", async()=>{
+  const f=fixture();const access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({})}),webcrypto);
+  await access.session.start(f.grant);
+  await Promise.all([access.session.suspend(),access.resume(),access.session.suspend()]);
+  await assert.rejects(access.session.whenReady(),error=>error.code==='PIN_LOCKED');
+  await access.resume();
+  await access.session.whenReady();
+  assert.equal(access.session.token,'access');
+});
+
+
+test("a request interrupted by backgrounding cannot report a new foreground session offline", async()=>{
+  const f=fixture();let failRequest,started;
+  const sent=new Promise(resolve=>{started=resolve;});
+  const access=createAccess(f.plugin,f.storage,async()=>{
+    started();return new Promise((resolve,reject)=>{failRequest=reject;});
+  },webcrypto);
+  await access.session.start(f.grant);
+  const old=access.session.request('/captain/v1/session',{method:'GET'});
+  const rejected=assert.rejects(old,error=>error.code==='PIN_LOCKED');
+  await sent;
+  await access.session.suspend();
+  await access.resume();
+  failRequest(Error('socket closed while asleep'));
+  await rejected;
+  assert.equal(access.session.token,'access');
+  assert.equal(access.session.needsReconnect,false);
+});

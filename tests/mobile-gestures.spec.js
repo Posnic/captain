@@ -156,3 +156,22 @@ test('an empty menu refresh stays on the menu and keeps the branch and cart', as
   expect(await page.evaluate(()=>localStorage.getItem('kiosk_selected_branch'))).toBe(branch);
   expect(await page.evaluate(async()=>(await getCartData()).find(i=>i.id==='p-coffee').quantity)).toBe(1);
 });
+
+
+test('dashboard pull restores the connection before requesting fresh tables', async ({page}) => {
+  await floor(page);
+  await page.evaluate(() => {
+    window.recoverySteps=[];
+    POSNIC.net.check=async manual=>{
+      recoverySteps.push(manual?'reconnect':'automatic');
+      await new Promise(resolve=>setTimeout(resolve,50));
+      recoverySteps.push('restored');
+      return true;
+    };
+    const original=window.loadTables;
+    window.loadTables=()=>{recoverySteps.push('tables');return original();};
+  });
+  await swipe(page,'#tables-list');
+  await expect(page.locator('.floor-card')).toHaveCount(2);
+  expect(await page.evaluate(()=>recoverySteps)).toEqual(['reconnect','restored','tables']);
+});

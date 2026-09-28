@@ -1073,6 +1073,8 @@ document.addEventListener('visibilitychange', () => {
         stopKotTablePolling();
     } else {
         startKotTablePolling();
+        // Reads wait for secure-session restoration before contacting the till.
+        void loadTables().catch(() => {});
     }
 });
 
