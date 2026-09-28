@@ -79,7 +79,12 @@
         show('loading');
         const buttons = [...document.querySelectorAll('[data-mobile-refresh]')];
         buttons.forEach(button => { button.disabled = true; button.setAttribute('aria-busy', 'true'); });
-        pending = Promise.resolve().then(action).then(result => {
+        pending = Promise.resolve().then(async () => {
+            // A deliberate refresh restores the saved session before reading data.
+            // Preserve cached data when offline; never reset setup or queued orders.
+            if (window.POSNIC?.net?.check) await POSNIC.net.check(true);
+            return action();
+        }).then(result => {
             show(result === false ? 'error' : 'done');
             return result !== false;
         }, error => {

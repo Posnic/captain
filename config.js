@@ -1629,6 +1629,7 @@
     { method = 'GET', body, headers, raw = false, timeout, hedge = false } = {}
   ) {
     const authenticating = path === '/users/kioskMobileLogin' && method === 'POST';
+    if (!authenticating && session.whenReady) await session.whenReady();
     if (!authenticating && session.managed && session.request)
       return session.request(path, {method, body, headers, raw, timeout});
     if (session.prepare && !authenticating) await session.prepare();
@@ -2326,10 +2327,15 @@
       },
 
       async check(manual = false) {
+        if (!manual && document.hidden) return false;
+        try {
+          if (manual && window.CaptainAccess) await window.CaptainAccess.resume();
+          if (session.whenReady) await session.whenReady();
+        } catch { return false; }
         if (session.managed && session.request) {
           if (window.CaptainAccess?.locked || session.needsReconnect) return false;
-          try { await session.request('/captain/v1/session', {method:'GET', timeout:3000}); return true; }
-          catch { net.setOffline(); return false; }
+          try { await session.request('/captain/v1/session', {method:'GET', timeout:3000}); net.setOnline(); return true; }
+          catch (error) { if (error.code !== 'PIN_LOCKED') net.setOffline(); return false; }
         }
         /* A scheduled tick that arrives mid-edit stands aside too; a manual
            check is the editor itself asking, and always runs. */
