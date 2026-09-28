@@ -284,7 +284,7 @@
     const sum = $('#bill-total');
     if (count) count.textContent = qty === 1 ? '1 item' : qty + ' items';
 
-    const money = (currency || '₹') + (Number(total) || 0).toFixed(2);
+    const money = CaptainMoney.display(total);
     /*
      * Nudged only when the number actually MOVED.
      *

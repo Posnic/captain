@@ -429,6 +429,10 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
         console.log("🔄 API Response:", result);
 
         if (result.type === "success" && result.data) {
+            if (result.data.money && window.CaptainMoney) {
+                CaptainMoney.remember(result.data.money);
+                CaptainMoney.remember(result.data.money, branchId);
+            }
             let products = [];
 
             const categories = result.data.products;
@@ -729,7 +733,7 @@ async function validateCartWithProductsNow(updatedProducts) {
     // 🔄 Update cart items with latest product info
     const syncedCart = cartData
         .map(item => {
-            const updatedProduct = productMap.get(item.id);
+            const updatedProduct = productMap.get(cartProductId(item));
 
             /*
              * A ONE-OFF HAS NO DISH BEHIND IT, AND THAT IS NOT AN ERROR.
@@ -793,7 +797,7 @@ async function syncCartSilentlyNow(updatedProducts) {
 
     const syncedCart = cartData
         .map(item => {
-            const updatedProduct = productMap.get(item.id);
+            const updatedProduct = productMap.get(cartProductId(item));
             if (updatedProduct) {
                 return {
                     ...item,
@@ -860,7 +864,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
         if (cartData.length === 0) {
             $("#next-btn").prop("disabled", true);
             $("#cart-total,#cart-qty,#mobile-cart-count").text("0.00");
-            $("#summary-display").text('0 Items | ₹0.00');
+            $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', '0').replace('{1}', CaptainMoney.display(0)));
             setBillTotals(null);
 
             if (host) {
@@ -951,6 +955,7 @@ async function renderCart(cartData = null, skipRedirect = false) {
                       '</div>'
                     : '') +
                 (item.notes ? '<div class="bill-note" translate="no">' + billText(item.notes) + '</div>' : '') +
+                ServiceDetails.summary(item) + '<button type="button" class="preparation-link" data-preparation-cart="' + id + '">Preparation</button>' +
                 /*
                  * TODAY'S PRICE CAN BE CORRECTED HERE.
                  *
@@ -966,12 +971,12 @@ async function renderCart(cartData = null, skipRedirect = false) {
                  */
                 (askedOn(item)
                     ? '<button type="button" class="bill-each is-askable" data-bill="price" data-id="' +
-                      id + '" aria-label="Change today&#39;s price">₹' +
-                      finalUnit.toFixed(2) + ' each</button>'
-                    : '<div class="bill-each">₹' + finalUnit.toFixed(2) + ' each</div>') +
+                      id + '" aria-label="Change today&#39;s price">' +
+                      billText(I18N.t('{0} each').replace('{0}', CaptainMoney.display(finalUnit))) + '</button>'
+                    : '<div class="bill-each">' + billText(I18N.t('{0} each').replace('{0}', CaptainMoney.display(finalUnit))) + '</div>') +
                 '</div>' +
                 '<div class="bill-right">' +
-                '<span class="bill-amount">₹' + lineFinal.toFixed(2) + '</span>' +
+                '<span class="bill-amount">' + CaptainMoney.html(lineFinal) + '</span>' +
                 '<div class="bill-step">' +
                 '<button type="button" data-bill="less" data-id="' + id + '" aria-label="One fewer">&minus;</button>' +
                 '<span class="bill-qty" id="qty-' + id + '">' + qty + '</span>' +
@@ -991,9 +996,9 @@ async function renderCart(cartData = null, skipRedirect = false) {
             quantity: totalQty,
         });
 
-        $("#summary-display").text(totalQty + ' Items | ₹' + totalPrice.toFixed(2));
+        $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', totalQty).replace('{1}', CaptainMoney.display(totalPrice)));
         $('#cart-qty,#mobile-cart-count').text(totalQty);
-        $("#cart-total").text(totalPrice.toFixed(2));
+        $("#cart-total").text(CaptainMoney.display(totalPrice));
         $("#next-btn").prop("disabled", totalQty === 0);
 
         if (loader) loader.style.display = 'none';
@@ -1079,7 +1084,7 @@ function setBillTotals(totals) {
     }
     host.hidden = false;
 
-    const money = (n) => '₹' + (Number(n) || 0).toFixed(2);
+    const money = (n) => CaptainMoney.display(n);
     let rows = '';
 
     /* Subtotal is only worth a line when something happens BELOW it. With no
@@ -1126,17 +1131,17 @@ function updateCartQuantity(id, change) {
 }
 async function updateCartQuantityNow(id, change) {
     const storedProducts = await getData("products");
-    const storedProduct = storedProducts.find(item => item.id === id);
     let cartData = await getCartData();
     let totalQty = 0;
     let item = cartData.find(i => i.id === id);
     if (!item) return;
+    const storedProduct = storedProducts.find(product => product.id === cartProductId(item));
 
     const allowNegative = storedProduct?.negative_stock === true;
     const totalStock = storedProduct?.available_quantity || 0;
 
     // 🔒 Block increment if already reached available stock (only for non-negative-stock)
-    if (!allowNegative && change > 0 && item.quantity >= totalStock) {
+    if (!allowNegative && change > 0 && cartProductQuantity(cartData, cartProductId(item)) + change > totalStock) {
         return; // nothing to do
     }
 
@@ -1251,7 +1256,7 @@ async function loadProducts(shouldRender = () => true) {
         if (loader) loader.style.display = 'none';
         return;
     }
-    const cartMap = new Map(storedCart.map(i => [i.id, i]));
+    const cartMap = cartProductMap(storedCart);
 
     MenuScreen.draw(products, cartMap, {
         image: resolveLocalImageUrl,
@@ -1287,6 +1292,21 @@ function showCategory(category) {
 // });
 
 // ✅ Update Quantity and Save to IndexedDB
+function cartProductId(item) { return item.product_id || item.id; }
+function cartProductQuantity(cart, id) {
+    return cart.filter(item => cartProductId(item) === id).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+}
+function cartProductMap(cart) {
+    const result = new Map();
+    for (const item of cart) {
+        const id = cartProductId(item), previous = result.get(id);
+        result.set(id, { ...item, quantity: (previous?.quantity || 0) + (Number(item.quantity) || 0) });
+    }
+    return result;
+}
+function cartPreparation(item) {
+    return JSON.stringify([Number(item.askedPrice) || 0, (item.modifiers || []).map(value => [value.group || '', value.name || '']).sort()]);
+}
 function updateQuantity(id, change, options) {
     return queueCartMutation(() => updateQuantityNow(id, change, options));
 }
@@ -1303,6 +1323,14 @@ async function updateQuantityNow(id, change, options) {
 
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
+    if (change > 0 && (chosen || quoted > 0)) {
+        const preparation = cartPreparation({ askedPrice: quoted, modifiers: chosen || [] });
+        item = cartData.find(i => cartProductId(i) === id && cartPreparation(i) === preparation && !i.seat && !i.course && !i.held && !(i.allergies || []).length && !i.allergy_note);
+    }
+    if (change > 0 && !(chosen || quoted > 0) && item && (item.seat || item.course || item.held || item.allergies?.length || item.allergy_note)) {
+        item = cartData.find(i => cartProductId(i) === id && !i.seat && !i.course && !i.held && !i.allergies?.length && !i.allergy_note);
+    }
+    if (change < 0 && !item) item = cartData.filter(i => cartProductId(i) === id).at(-1);
     if (!storedProduct) return;
 
     if (!item) {
@@ -1311,7 +1339,8 @@ async function updateQuantityNow(id, change, options) {
         if (!product) return;
 
         item = {
-            id: product.id,
+            id: cartData.some(i => i.id === product.id) ? crypto.randomUUID() : product.id,
+            product_id: product.id,
             name: product.name,
             ...window.PosnicItemText.snapshot(product),
             /* Carried onto the LINE, because the line outlives the menu row:
@@ -1339,34 +1368,17 @@ async function updateQuantityNow(id, change, options) {
              * untouched.
              */
             askedPrice: quoted,
-            /*
-             * ONE SET OF EXTRAS PER DISH ON AN ORDER.
-             *
-             * "Two biryanis, both extra spicy" is this line with a count of
-             * two. "One with, one without" is two adds of the same dish, and
-             * this app cannot express that yet: a cart keyed by dish id in
-             * fifteen places would have to be re-keyed to hold two lots of one
-             * dish, and doing that badly breaks the one thing this app is for.
-             * The money fix ships first.
-             */
             modifiers: chosen || [],
             quantity: 0
         };
-    } else {
-        /* Re-quoted: the second fish of the evening may cost something else,
-           and the line carries the number the table was told. */
-        if (quoted > 0) item.askedPrice = quoted;
-        /* Only when this add actually asked. Tapping + on a dish already on
-           the order keeps the extras it went on with, rather than silently
-           dropping them because the second tap asked nothing. */
-        if (chosen) item.modifiers = chosen;
     }
+    item.line_id = item.line_id || item.id;
 
     const allowNegative = storedProduct?.negative_stock === true;
     const totalStock = storedProduct?.available_quantity || 0;
 
     // 🔒 Block increment if we already reached available stock (for non-negative-stock items)
-    if (!allowNegative && change > 0 && item.quantity >= totalStock) {
+    if (!allowNegative && change > 0 && cartProductQuantity(cartData, id) + change > totalStock) {
         return; // do nothing – keep quantity and stock badge as is
     }
 
@@ -1380,7 +1392,7 @@ async function updateQuantityNow(id, change, options) {
     // Update remaining stock badge on product card (for non-negative-stock items)
     if (!allowNegative) {
         const totalStock = storedProduct.available_quantity || 0;
-        const currentQty = item.quantity || 0;
+        const currentQty = cartProductQuantity(cartData.filter(i => i.id !== item.id), id) + item.quantity;
         const remaining = Math.max(totalStock - currentQty, 0);
         const stockEl = document.getElementById(`stock-${id}`);
         if (stockEl) {
@@ -1390,9 +1402,9 @@ async function updateQuantityNow(id, change, options) {
 
     // ✅ Update or remove from cart
     if (item.quantity === 0) {
-        cartData = cartData.filter(i => i.id !== id);
+        cartData = cartData.filter(i => i.id !== item.id);
     } else {
-        const index = cartData.findIndex(i => i.id === id);
+        const index = cartData.findIndex(i => i.id === item.id);
         if (index !== -1) {
             cartData[index] = item;
         } else {
@@ -1411,7 +1423,7 @@ async function updateQuantityNow(id, change, options) {
      * and the menu is the one screen where that is most of the screen.
      */
     if (typeof MenuScreen !== 'undefined') {
-        MenuScreen.setRow(id, item.quantity, storedProduct);
+        MenuScreen.setRow(id, cartProductQuantity(cartData, id), storedProduct);
     }
     return true;
 }
@@ -1476,8 +1488,8 @@ async function updateCart() {
 
 
         $("#cart-qty,#mobile-cart-count").text(totalQty);
-        $("#cart-total").text(totalPrice.toFixed(2));
-        $("#summary-display").text(`${totalQty} Items | ₹${totalPrice.toFixed(2)}`);
+        $("#cart-total").text(CaptainMoney.display(totalPrice));
+        $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', totalQty).replace('{1}', CaptainMoney.display(totalPrice)));
         $("#next-btn").prop("disabled", totalQty === 0);
 
         /* And the bar at the bottom, which rises only once there is something
@@ -1648,6 +1660,8 @@ function cartShape(cart) {
             String(line.notes ?? line.note ?? ''),
             Number(line.askedPrice) || 0,
             line.modifiers || [],
+            line.line_id || line.id,
+            [line.seat || 0, line.course || '', line.held === true, line.allergies || [], line.allergy_note || ''],
         ])
     );
 }
@@ -1699,7 +1713,7 @@ async function confirmCancelOrder() {
     // summary-display is not present on cart.html, so guard it
     const summaryEl = document.getElementById("summary-display");
     if (summaryEl) {
-        summaryEl.textContent = "0 Items | ₹0.00";
+        summaryEl.textContent = I18N.t('{0} Items | {1}').replace('{0}', '0').replace('{1}', CaptainMoney.display(0));
     }
 
     closeCancelModal(); // Close the modal
@@ -1739,7 +1753,9 @@ async function checkout(transactionId) {
         // 🧾 Prepare payload: [{ id, quantity }]
         const payload = cartItems.map(item => {
             return {
-                item_id: item.id,
+                item_id: cartProductId(item),
+                line_id: item.line_id || item.id,
+                ...ServiceDetails.metadata(item),
                 item_name: item.name || item.item_name || '',
                 item_quantity: item.quantity,
                 /*

@@ -785,7 +785,7 @@
     module.exports = { createAccess };
   if (
     host.Capacitor?.isNativePlatform?.() &&
-    (!host.Capacitor.getPlatform || host.Capacitor.getPlatform() === "android")
+    (!host.Capacitor.getPlatform || ["android", "ios"].includes(host.Capacitor.getPlatform()))
   ) {
     const plugin =
       host.Capacitor.Plugins?.SecureSession ||

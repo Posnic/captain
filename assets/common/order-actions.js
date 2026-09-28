@@ -1,0 +1,98 @@
+(function (root) {
+  'use strict';
+  const t=text=>root.I18N?.t(text)||text;
+  function ask({title,label,secret=false}) {
+    return new Promise(resolve=>{
+      const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';
+      const form=document.createElement('form'),heading=document.createElement('h2'),caption=document.createElement('label'),input=document.createElement('input'),footer=document.createElement('footer'),cancel=document.createElement('button'),submit=document.createElement('button');
+      heading.textContent=t(title);caption.textContent=t(label);input.type=secret?'password':'text';input.required=true;input.minLength=secret?4:3;input.maxLength=secret?8:200;input.autocomplete='off';
+      if(secret){input.inputMode='numeric';input.pattern='[0-9]{4,8}';}
+      caption.append(input);cancel.type='button';cancel.textContent=t('Cancel');submit.type='submit';submit.textContent=t('Continue');footer.append(cancel,submit);form.append(heading,caption,footer);dialog.append(form);document.body.append(dialog);
+      const finish=value=>{input.value='';dialog.close();dialog.remove();resolve(value);};
+      cancel.onclick=()=>finish(null);dialog.oncancel=event=>{event.preventDefault();finish(null);};form.onsubmit=event=>{event.preventDefault();if(form.reportValidity())finish(input.value.trim());};dialog.showModal();input.focus();
+    });
+  }
+  async function save(body) {
+    const request={...body};
+    for(let attempt=0;attempt<4;attempt++){
+      try{return await POSNIC.api.post('/sales/updateOrder',request);}
+      catch(error){
+        if(error.message==='Enter a reason for this change.'){
+          const reason=await ask({title:'Reason for change',label:'Reason'});
+          if(reason===null)throw new Error(t('Changes were not saved.'));
+          request.change_reason=reason;continue;
+        }
+        if(['Manager approval required: cancellation','Manager approval required: discount'].includes(error.message)){
+          const action=error.message.endsWith('cancellation')?'void_sale':'discount_apply';
+          const pin=await ask({title:'Manager approval',label:'Manager PIN',secret:true});
+          if(pin===null)throw new Error(t('Changes were not saved.'));
+          const result=await POSNIC.api.post('/authorizations/verify-pin',{pin,action,sale_id:request.order_id});
+          if(!result.data?.approval_token)throw new Error(result.message||t('Manager approval required.'));
+          request.approval_tokens={...request.approval_tokens,[action]:result.data.approval_token};continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error(t('Could not save. Please try again.'));
+  }
+  document.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-handover-sale]');if(!button||button.disabled)return;
+    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';
+    dialog.innerHTML='<form><h2>Hand over order</h2><p role="status">Loading...</p><label><span>Staff member</span><select required></select></label><footer><button type="button">Cancel</button><button type="submit" disabled>Hand over</button></footer></form>';
+    document.body.append(dialog);root.I18N?.apply(dialog);dialog.showModal();
+    const close=()=>{dialog.close();dialog.remove();button.focus();};dialog.querySelector('[type=button]').onclick=close;
+    dialog.oncancel=event=>{event.preventDefault();close();};
+    const status=dialog.querySelector('[role=status]'),submit=dialog.querySelector('[type=submit]'),select=dialog.querySelector('select');
+    try{
+      const response=await POSNIC.api.get('/sales/handoverStaff');
+      if(response.type!=='success'||!Array.isArray(response.data))throw new Error(response.message||'Could not load staff.');
+      for(const staff of response.data){const option=document.createElement('option');option.value=staff.id;option.textContent=staff.name;option.translate=false;select.append(option);}
+      status.textContent='';submit.disabled=!select.options.length;
+    }catch(error){status.textContent=t(error.message);}
+    const requestId=crypto.randomUUID();
+    dialog.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();if(!select.value)return;submit.disabled=true;
+      try{
+        const response=await POSNIC.api.post('/sales/handoverOrder',{saleId:button.dataset.handoverSale,branchId:button.dataset.handoverBranch,staffId:select.value,requestId});
+        if(response.type!=='success')throw new Error(response.message||'Could not save. Please try again.');
+        const assignee=button.closest('.service-order-options')?.querySelector('.service-assignee');if(assignee)assignee.textContent=response.data.staff.name;
+        close();
+      }catch(error){status.textContent=t(error.message);submit.disabled=false;}
+    };
+  });
+  document.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-delivery-sale]');if(!button)return;
+    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';
+    dialog.innerHTML='<h2>Kitchen delivery</h2><div class="delivery-body" role="status">Loading...</div><footer><button type="button" data-refresh>Refresh</button><button type="button" data-close>Close</button></footer>';
+    document.body.append(dialog);root.I18N?.apply(dialog);dialog.showModal();
+    const close=()=>{dialog.close();dialog.remove();button.focus();};dialog.querySelector('[data-close]').onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
+    const body=dialog.querySelector('.delivery-body'),refresh=dialog.querySelector('[data-refresh]');
+    const load=async()=>{
+      refresh.disabled=true;
+      try{
+        const response=await POSNIC.api.get('/sales/kitchenDeliveryStatus?saleId='+encodeURIComponent(button.dataset.deliverySale));
+        if(response.type!=='success')throw new Error(response.message||'Could not load delivery status.');
+        body.replaceChildren();
+        const add=(text,tag='p')=>{const element=document.createElement(tag);element.textContent=text;body.append(element);};
+        add(t('Order saved on server'));
+        add(t('Kitchen display'),'h3');
+        const displays=response.data.displays || [];
+        for(const display of displays)add(display.till+' · '+t('Last confirmed on display: {0}').replace('{0}',new Date(display.at).toLocaleString()));
+        if(!displays.some(display=>display.recent))add(t('No recent display confirmation. Check the kitchen screen.'));
+        const reports=response.data.reports || [];
+        if(!reports.length)add(t('Waiting for the desktop printer report.'));
+        for(const report of reports){
+          add(new Date(report.at).toLocaleString(),'h3');
+          for(const printer of report.printers){
+            add(printer.name+' · '+t({accepted:'Accepted by printer system',failed:'Printing failed',pending:'Printing pending',unknown:'Check printer before retrying'}[printer.state] || 'Printing pending'));
+            if(printer.reason)add(printer.reason);
+          }
+        }
+        add(t('Printer acceptance does not confirm paper output. Check the desktop printing log before reprinting.'));
+      }catch(error){body.textContent=t(error.message||'Could not load delivery status.');}
+      finally{refresh.disabled=false;}
+    };
+    refresh.onclick=load;await load();
+  });
+  root.CaptainOrderActions={save,ask};
+})(window);

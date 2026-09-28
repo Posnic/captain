@@ -8,21 +8,46 @@
   }
   function render(order, editable = false) {
     if (!Array.isArray(order.kitchen_rounds)) return '';
-    const pending = order.kitchen_rounds.some(round => round.items.some(line => line.remaining > 0));
+    const pending = order.kitchen_rounds.some(round => round.items.some(line => !line.held && line.remaining > 0));
     const all = editable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Mark all served</button></div>` : '';
-    return all + order.kitchen_rounds.map(round => `<section class="service-round">
+    const options = editable ? `<details class="service-order-options"><summary>Order options</summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Hand over order</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
+    return options + all + order.kitchen_rounds.map(round => `<section class="service-round">
       <h3><span>Ordered at</span> <time translate="no">${escape(time(round.ordered_at))}</time></h3>
+      ${round.fired_at ? `<p><span>Sent to the kitchen</span> <time translate="no">${escape(time(round.fired_at))}</time></p>` : ''}
       ${round.items.map(line => `<div class="service-line${line.remaining ? '' : ' is-served'}">
         <div class="service-dish"><strong translate="no">${escape(line.name)}</strong>
+        ${root.ServiceDetails?.summary(line) || ''}
         ${line.note ? `<p translate="no">${escape(line.note)}</p>` : ''}
         ${line.served ? `<small><span>Served</span> <span translate="no">${line.served} / ${line.quantity}${line.served_at ? ' · ' + escape(time(line.served_at)) : ''}</span></small>` : ''}</div>
         <span class="service-quantity" translate="no">×${line.quantity}</span>
-        ${editable && line.remaining > 0 ? `<div class="service-action">
+        ${editable && line.held && line.remaining > 0 ? `<div class="service-action"><button type="button" data-fire-line="${escape(line.id)}" data-fire-sale="${escape(order._id)}" data-fire-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Send to kitchen</button></div>` : ''}
+        ${editable && !line.held && line.remaining > 0 ? `<div class="service-action">
           ${line.remaining > 1 ? `<input type="number" aria-label="Quantity to serve" min="0.001" max="${line.remaining}" step="any" value="${line.remaining}">` : ''}
           <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}">Mark served</button>
         </div>` : ''}
       </div>`).join('')}</section>`).join('');
   }
+  document.addEventListener('click', async event => {
+    const button = event.target.closest('[data-fire-line]');
+    if (!button || button.disabled) return;
+    const container = button.closest('.kot-card');
+    if (!container || container.dataset.serving === 'true') return;
+    container.dataset.serving = 'true';
+    const controls = [...container.querySelectorAll('.service-action button,.service-action input')];
+    controls.forEach(control => control.disabled = true);
+    let message = container.querySelector('.service-result');
+    if (!message) {message=document.createElement('p');message.className='service-result';message.setAttribute('role','status');container.append(message);}
+    const saleId = button.dataset.fireSale, branchId = button.dataset.fireBranch;
+    button.dataset.fireRequest = button.dataset.fireRequest || crypto.randomUUID();
+    message.textContent = 'Saving…';
+    try {
+      const result = await POSNIC.api.post('/sales/fireKitchenItems',{saleId,branchId,items:[button.dataset.fireLine],requestId:button.dataset.fireRequest});
+      if(result.type!=='success'||!Array.isArray(result.data)) throw new Error(result.message||'Could not save. Please try again.');
+      container.querySelector('.kot-items-list').innerHTML=render({_id:saleId,branch_id:branchId,kitchen_rounds:result.data},true);
+      message.textContent='Course sent to kitchen';
+    } catch(error) {message.textContent=error.message||'Could not save. Please try again.';}
+    finally {delete container.dataset.serving;controls.forEach(control=>control.disabled=false);root.I18N?.apply(container);}
+  });
   document.addEventListener('click', async event => {
     const button = event.target.closest('[data-serve-sale]');
     if (!button || button.disabled) return;
