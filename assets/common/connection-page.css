@@ -62,3 +62,16 @@
 #captain-cloud-login:hover { background:var(--surface-sunk,#f1f5f9); }
 #captain-open-browser:not([hidden]) { display:inline-flex; align-items:center; min-height:48px; padding:12px 16px; border:1px solid var(--line,#cbd5e1); border-radius:10px; margin:12px 0; }
 #captain-note:not(:empty) { scroll-margin-block:20px; }
+
+/* Keep the complete domain readable on narrow phones. */
+.setup-address { flex-wrap:wrap; padding:0; border:0; background:transparent; box-shadow:none; }
+#captain-server { flex:1 0 100%; width:100%; min-height:52px; border:1px solid #cdd6e3; border-radius:12px; padding:14px; direction:ltr; }
+#captain-server:focus { border-color:#2457e7; box-shadow:0 0 0 3px #2457e714; }
+.setup-tools { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.setup-tools button { width:100%; min-height:52px; border:1px solid #dfe5ef; border-radius:10px; background:#f8fafc; }
+.setup-tools button span { font-size:11px; }
+.setup-shop { display:flex; align-items:center; gap:12px; }
+.setup-shop > div { flex:1; min-width:0; }
+.setup-shop .setup-link { flex-shrink:0; padding:8px 0; }
+
+.setup-address:focus-within { box-shadow:none; }

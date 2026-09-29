@@ -104,6 +104,7 @@ test("all local markup messages are covered except brands and address examples",
     "Posnic Cloud",
     "http://192.168.0.12:5555/api",
     "https://azure.posnic.io/api",
+    "azure.posnic.io",
   ]);
   const missing = [...fromMarkup().keys()].filter(
     (key) => !english[key] && !unchanged.has(key),

@@ -127,7 +127,7 @@
                     <p class="setup-intro">Enter your shop address, or find it using the options below.</p>
                     <label class="setup-label" for="captain-server">Shop code or server address</label>
                     <div class="setup-address">
-                        <input id="captain-server" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="e.g. myshop" aria-describedby="setup-wifi-hint">
+                        <input id="captain-server" type="text" inputmode="url" enterkeyhint="go" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="azure.posnic.io" aria-describedby="setup-wifi-hint">
                         <div class="setup-tools">
                             <button id="captain-search" type="button" aria-label="Find shop on Wi-Fi" title="Find shop on Wi-Fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg><span aria-hidden="true">Wi-Fi</span></button>
                             <button id="captain-scan" type="button" aria-label="Scan shop QR code" title="Scan shop QR code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 7h3v3H7zm7 0h3v3h-3zM7 14h3v3H7zm7 0h3v3h-3z"/></svg><span aria-hidden="true">QR</span></button>
@@ -154,11 +154,10 @@
                 </section>
                 <details id="captain-legacy" hidden>
                 <summary>Staff sign-in</summary>
-                <button id="captain-change-shop" type="button" class="setup-link setup-back">← Change shop</button>
                 <p class="setup-step">STEP 2 OF 2</p>
                 <h2 class="setup-title">Sign in</h2>
                 <p class="setup-intro">Use your staff account to start taking orders.</p>
-                <div class="setup-shop"><span>SHOP</span><strong id="captain-selected-shop"></strong></div>
+                <div class="setup-shop"><div><span>SHOP</span><strong id="captain-selected-shop"></strong></div><button id="captain-change-shop" type="button" class="setup-link">Change server</button></div>
                 <div class="mb-3">
                     <label for="username" class="form-label">Username / Email</label>
                     <input type="text" id="username" class="form-control auth-input" autocomplete="username"

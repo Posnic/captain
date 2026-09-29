@@ -512,7 +512,7 @@ test('a till that stops answering is named as the thing that is down', async ({ 
   await expect(page.locator('#posnic-offline-body')).toContainText('Posnic is running on the till');
   // Both ways out are offered.
   await expect(page.getByRole('button', { name: 'Try now' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Change server' })).toBeVisible();
+  await expect(overlay.getByRole('button', { name: 'Change server' })).toBeVisible();
 });
 
 test('the outage screen shows that it keeps trying by itself', async ({ page }) => {
@@ -1350,7 +1350,7 @@ test('CHANGE SERVER OPENS THE EDITOR, which it did not', async ({ page }) => {
   await page.goto('/index.html');
   await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
 
-  await page.getByRole('button', { name: 'Change server' }).click();
+  await page.locator('#posnic-offline').getByRole('button', { name: 'Change server' }).click();
 
   await expect(page.locator('#captain-onboarding')).toBeVisible({ timeout: 15000 });
 });
