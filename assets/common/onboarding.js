@@ -352,6 +352,26 @@
     $("captain-connect").textContent = $("captain-server").value.trim()
       ? "Connect to shop" : "Find shop on Wi-Fi";
   }
+  // Do not spend a short-lived exchange code while the browser owns the screen.
+  async function waitForForeground(signal, until) {
+    while (document.hidden && !signal.aborted && Date.now() < until) {
+      await new Promise(resolve => {
+        const done = () => {
+          clearTimeout(timer);
+          document.removeEventListener("visibilitychange", done);
+          signal.removeEventListener("abort", done);
+          resolve();
+        };
+        const timer = setTimeout(done, Math.min(1000, Math.max(0, until - Date.now())));
+        document.addEventListener("visibilitychange", done, { once: true });
+        signal.addEventListener("abort", done, { once: true });
+      });
+    }
+    if (signal.aborted) throw new Error("Connection cancelled.");
+    if (Date.now() >= until) throw new Error("Approval expired. Try again.");
+    await bounded(CaptainAccess.resume(), 7500, signal, "Could not connect. Try again.");
+    if (document.hidden) return waitForForeground(signal, until);
+  }
   async function cloud(intent, signal) {
     secure();
     const origin = "https://www.posnic.com";
@@ -403,6 +423,7 @@
         signal.addEventListener("abort", done, { once: true });
       });
       if (signal.aborted) break;
+      await waitForForeground(signal, until);
       let grant;
       try {
         grant = await accountRequest(
@@ -423,17 +444,26 @@
       const base = POSNIC.server.normalize(grant.baseUrl);
       if (!base || new URL(base).protocol !== "https:")
         throw new Error("Invalid cloud shop address.");
+      await waitForForeground(signal, until);
       // Establish the cloud identity first; local credentials are kept separately.
-      const approved = await CaptainAccess.post(
-        base,
-        "/captain/v1/pair",
-        {
-          code: grant.code,
-          device: POSNIC.thisDevice.facts(),
-          codeVerifier: verifier,
-        },
-        signal,
-      );
+      let approved;
+      try {
+        approved = await CaptainAccess.post(
+          base,
+          "/captain/v1/pair",
+          {
+            code: grant.code,
+            device: POSNIC.thisDevice.facts(),
+            codeVerifier: verifier,
+          },
+          signal,
+        );
+      } catch (error) {
+        if (error.code === "PAIR_EXPIRED")
+          throw new Error("Approval expired. Try again.");
+        throw error;
+      }
+      await waitForForeground(signal, until);
       approved.connections = [];
       approved.cloudAuthorization = {
         connectionToken: grant.connectionToken,
@@ -479,6 +509,11 @@
       return !!operation;
     },
     open() {
+      operation?.abort();
+      $("captain-code-options").hidden = true;
+      $("captain-code-options").open = false;
+      $("captain-code-toggle").setAttribute("aria-expanded", "false");
+      $("captain-connect").hidden = false;
       sessionStorage.setItem("posnic_editing_server", "1");
       POSNIC.net.stop?.();
       $("login-section").style.display = "";
@@ -549,6 +584,7 @@
       }
     });
     $("captain-server").addEventListener("input", () => {
+      sessionStorage.setItem("posnic_editing_server", "1");
       updateConnectAction();
       $("captain-confirm").checked = false;
     });

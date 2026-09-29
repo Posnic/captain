@@ -41,7 +41,8 @@ test("main Tamil journeys have no untranslated interface labels", async ({
   const report = {};
   async function collect(name) {
     await page.locator("body").waitFor();
-    await page.waitForFunction(() => window.I18N);
+    // I18N is registered in the head; the saved language is applied at DOM ready.
+    await page.waitForFunction(() => window.I18N?.language() === "ta");
     report[name] = await page.evaluate(() => {
       const values = [];
       const walker = document.createTreeWalker(

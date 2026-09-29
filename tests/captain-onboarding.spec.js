@@ -821,3 +821,94 @@ test("Retry finds a moved till on its custom port and never authorizes a neighbo
   expect(authorized.every(url=>url.startsWith(moved+'/'))).toBe(true);
   expect(await page.evaluate(()=>CaptainAccess.session.token)).toBe('secret-access');
 });
+
+
+test("approval stays pending in the browser and exchanges only after Captain returns", async ({ page }) => {
+  await phone(page);
+  let exchanges = 0, pairs = 0;
+  await page.route("https://www.posnic.com/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("capabilities")) return route.fulfill({json:{applications:["captain"]}});
+    if (path.endsWith("requests")) return route.fulfill({json:{request:"a".repeat(43), authorizationUrl:"https://www.posnic.com/api/mobile/authorize?request=approved", expiresIn:900}});
+    exchanges++;
+    return route.fulfill({json:{baseUrl:"https://azure.posnic.io/api",code,localServers:[]}});
+  });
+  await page.route("https://azure.posnic.io/**", route => {
+    pairs++;
+    return route.fulfill({json:{token:"access",sessionId:"session",expiresIn:900,shopKey:"shop",user:{id:"staff"},branches:[{branch_id:"branch",store_id:"branch"}]}});
+  });
+  await page.evaluate(() => {
+    const timeout = window.setTimeout;
+    window.setTimeout = (fn, ms, ...args) => timeout(fn, ms === 5000 ? 10 : ms, ...args);
+    Capacitor.Plugins.SecureSession.openBrowser = async () => {
+      Object.defineProperty(document,"hidden",{configurable:true,value:true});
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+  });
+  await page.locator("#captain-cloud-login").click();
+  await page.waitForTimeout(150);
+  expect(exchanges).toBe(0);
+  expect(pairs).toBe(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document,"hidden",{configurable:true,value:false});
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect.poll(() => page.evaluate(() => window.selectedCaptainBranch)).toBe("branch");
+  expect(exchanges).toBe(1);
+  expect(pairs).toBe(1);
+});
+
+test("a bare domain stays editable during discovery and supports changing server after sign-in selection", async ({ page }) => {
+  await page.setViewportSize({width:360,height:800});
+  await phone(page);
+  await page.route("https://azure.posnic.io/**", route => route.fulfill({json:info}));
+  const input = page.locator("#captain-server");
+  await expect(input).toHaveAttribute("placeholder","azure.posnic.io");
+  await input.fill("azure.posnic.io");
+  await page.evaluate(() => POSNIC.server.adopt("http://192.168.1.8:42590/api"));
+  await expect(input).toBeVisible();
+  await expect(input).toHaveValue("azure.posnic.io");
+  const box = await input.boundingBox();
+  expect(box.width).toBeGreaterThan(230);
+  await page.screenshot({path:"test-artifacts/server-domain-phone.png",fullPage:true});
+  await input.press("Enter");
+  await expect(page.locator("#captain-selected-shop")).toHaveText("azure.posnic.io");
+  await expect(page.locator("#captain-change-shop")).toHaveText("Change server");
+  await page.locator("#captain-change-shop").click();
+  await expect(input).toBeVisible();
+  await input.fill("192.168.1.8:42590");
+  await input.press("Enter");
+  await expect(page.locator("#captain-selected-shop")).toHaveText("192.168.1.8:42590");
+});
+
+
+test("expired cloud exchange offers fresh browser approval rather than reusing the spent code", async ({ page }) => {
+  await phone(page);
+  let approvals = 0, pairs = 0;
+  await page.evaluate(() => {
+    const timeout = window.setTimeout;
+    window.setTimeout = (fn, ms, ...args) => timeout(fn, ms === 5000 ? 10 : ms, ...args);
+  });
+  await page.route("https://www.posnic.com/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith("capabilities")) return route.fulfill({json:{applications:["captain"]}});
+    if (path.endsWith("requests")) {
+      approvals++;
+      return route.fulfill({json:{request:String(approvals).repeat(43),authorizationUrl:"https://www.posnic.com/api/mobile/authorize?request=fresh",expiresIn:900}});
+    }
+    return route.fulfill({json:{baseUrl:"https://azure.posnic.io/api",code:approvals===1?code:"123456ABCDEF",localServers:[]}});
+  });
+  await page.route("https://azure.posnic.io/**", route => {
+    pairs++;
+    if (pairs===1) return route.fulfill({status:401,json:{error:{code:"PAIR_EXPIRED",message:"This pairing code expired or was already used."}}});
+    expect(route.request().postDataJSON().code).toBe("123456ABCDEF");
+    return route.fulfill({json:{token:"access",sessionId:"session",expiresIn:900,shopKey:"shop",user:{id:"staff"},branches:[{branch_id:"branch",store_id:"branch"}]}});
+  });
+  await page.locator("#captain-cloud-login").click();
+  await expect(page.locator("#captain-note")).toHaveText("Approval expired. Try again.");
+  await expect(page.locator("#captain-server")).toBeEnabled();
+  await page.locator("#captain-cloud-login").click();
+  await expect.poll(() => page.evaluate(() => window.selectedCaptainBranch)).toBe("branch");
+  expect(approvals).toBe(2);
+  expect(pairs).toBe(2);
+});
