@@ -375,10 +375,11 @@ test('an older server refusing a password says so, rather than looking broken', 
 test('fresh setup offers Wi-Fi discovery before exposing staff credentials', async ({ page }) => {
   await page.goto('/index.html');
   await expect(page.locator('#username')).toBeHidden();
-  await page.locator('#captain-connect').click();
+  await page.locator('#captain-search').click();
   await expect(page.locator('#captain-note')).toContainText('Wi-Fi search works in the installed phone app');
+  await page.locator('#connection-back').click();
   await page.locator('#captain-server').fill('https://shop.example.com');
-  await expect(page.locator('#captain-connect')).toHaveText('Connect to shop');
+  await expect(page.locator('#captain-connect')).toHaveText('Continue');
   await expect(page.locator('#username')).toBeHidden();
 });
 

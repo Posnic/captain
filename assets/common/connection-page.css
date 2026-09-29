@@ -75,3 +75,17 @@
 .setup-shop .setup-link { flex-shrink:0; padding:8px 0; }
 
 .setup-address:focus-within { box-shadow:none; }
+
+/* Secondary methods never share a form with pairing or address settings. */
+#setup-heading { margin-bottom:24px; }
+#setup-heading:focus { outline:none; }
+.setup-alternatives { display:flex; align-items:center; gap:12px; margin:24px 0 0; color:#69758a; font-size:12px; }
+.setup-alternatives::before, .setup-alternatives::after { content:""; flex:1; height:1px; background:#e3e8f0; }
+.connection-cloud { margin:12px 0 0; padding:0; border:0; }
+#connection-settings { display:block; margin:12px auto 0; color:#52617a; }
+#connection-addresses { margin:0; padding:0; border:0; }
+#connection-addresses > summary { display:none; }
+#captain-code-options { margin-top:20px; }
+#captain-code { display:block; width:100%; min-height:50px; padding:12px; margin-top:8px; box-sizing:border-box; font-size:16px; }
+#captain-search-again { margin-top:16px; }
+#captain-results button { min-height:56px; padding:14px; border:1px solid #cdd6e3; border-radius:12px; background:#fff; color:#17233b; }

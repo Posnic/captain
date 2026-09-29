@@ -214,7 +214,7 @@ test("cancel releases a stuck native Wi-Fi lookup and permits retry", async ({
   await page.evaluate(() => {
     Capacitor.Plugins.LocalNetwork.getLocalIp = async () => ({ wifi: false });
   });
-  await page.locator("#captain-search").click();
+  await page.locator("#captain-search-again").click();
   await expect(page.locator("#captain-note")).toContainText("shop Wi-Fi");
 });
 test("selecting a result rejects late progress and clears the previous address confirmation", async ({
@@ -549,7 +549,7 @@ test("setup fits a small phone and keeps discovery controls reachable", async ({
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "Connection settings", exact: true })
+    .locator(".setup-settings")
     .click();
   await expect(page.locator("#captain-onboarding")).toBeVisible();
   await expect(page.locator("#serverUrlInput")).toHaveCount(0);
@@ -562,7 +562,7 @@ test("first setup and connection settings use the same screen and save both addr
   await page.locator('[aria-label="Connection settings"]').click();
   await expect(page.locator("#captain-onboarding")).toBeVisible();
   await expect(page.locator("#serverModal")).toHaveCount(0);
-  await page.locator("#connection-addresses summary").click();
+  await page.locator("#connection-settings").click();
   await page.locator("#connection-lan").fill(base);
   await page.locator("#connection-cloud").fill("https://shop.posnic.io/api");
   await page.locator("#connection-save").click();
@@ -573,6 +573,7 @@ test("first setup and connection settings use the same screen and save both addr
       cloud: POSNIC.server.cloud,
     })),
   ).toEqual({ lan: base, cloud: "https://shop.posnic.io/api" });
+  await page.locator("#connection-back").click();
   await page.locator("#connection-back").click();
   await page.locator("#captain-change-shop").click();
   await expect(page.locator("#captain-onboarding")).toBeVisible();
@@ -628,11 +629,10 @@ test("expanded connection settings fit English and Arabic on a narrow phone", as
 }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await phone(page);
+  await page.locator("#connection-settings").click();
   for (const language of ["en", "ar"]) {
     await page.selectOption("#setup-language", language);
-    await page
-      .locator("#connection-addresses")
-      .evaluate((el) => (el.open = true));
+    await expect(page.locator("#connection-lan")).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -645,9 +645,7 @@ test("expanded connection settings fit English and Arabic on a narrow phone", as
   });
   await page.selectOption("#setup-language", "en");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .locator("#connection-addresses")
-    .evaluate((el) => (el.open = false));
+  await page.locator("#connection-back").click();
   await page.screenshot({
     path: "test-builds/cloud-setup-english.png",
     fullPage: true,
@@ -739,17 +737,21 @@ test("canceling a pending native account request never launches the browser late
   await expect(page.locator("#captain-open-browser")).toBeHidden();
 });
 
-test("the primary action searches Wi-Fi when empty and connects when an address is entered", async ({ page }) => {
+test("Continue always uses the address; Wi-Fi discovery has its own view", async ({ page }) => {
   await phone(page);
   await page.locator("#captain-server").fill("");
-  await expect(page.locator("#captain-connect")).toHaveText("Find shop on Wi-Fi");
+  await expect(page.locator("#captain-connect")).toHaveText("Continue");
+  await expect(page.locator("#captain-connect")).toBeDisabled();
   await page.evaluate(base => {
     POSNIC.discovery.scanSubnet = async (_subnet, options) => options.collect({ base, info: { features: { captainAccessV1: true } } });
   }, base);
-  await page.locator("#captain-connect").click();
+  await page.locator("#captain-search").click();
+  await expect(page.locator("#captain-server")).toBeHidden();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
+  await page.locator("#connection-back").click();
   await page.locator("#captain-server").fill(base);
-  await expect(page.locator("#captain-connect")).toHaveText("Connect to shop");
+  await expect(page.locator("#captain-connect")).toHaveText("Continue");
+  await expect(page.locator("#captain-connect")).toBeEnabled();
 });
 
 
@@ -911,4 +913,61 @@ test("expired cloud exchange offers fresh browser approval rather than reusing t
   await expect.poll(() => page.evaluate(() => window.selectedCaptainBranch)).toBe("branch");
   expect(approvals).toBe(2);
   expect(pairs).toBe(2);
+});
+
+
+test("pairing and backup addresses are focused views with a lossless Back action", async ({ page }) => {
+  await phone(page);
+  await page.locator("#captain-server").fill("azure.posnic.io");
+  await page.locator("#captain-code-toggle").click();
+  await expect(page.locator("#captain-code")).toBeVisible();
+  await expect(page.locator("#captain-cloud-login")).toBeHidden();
+  await expect(page.locator("#captain-connect")).toBeHidden();
+  await expect(page.locator("#connection-lan")).toBeHidden();
+  await page.locator("#connection-back").click();
+  await expect(page.locator("#captain-server")).toHaveValue("azure.posnic.io");
+  await expect(page.locator("#captain-code")).toBeHidden();
+  await page.locator("#connection-settings").click();
+  await expect(page.locator("#connection-lan")).toBeVisible();
+  await expect(page.locator("#captain-server")).toBeHidden();
+  await expect(page.locator("#captain-cloud-login")).toBeHidden();
+  await page.locator("#connection-back").click();
+  await expect(page.locator("#captain-server")).toHaveValue("azure.posnic.io");
+  await expect(page.locator("#captain-connect")).toBeEnabled();
+});
+
+test("Back cancels discovery and late results cannot replace the address screen", async ({ page }) => {
+  await phone(page);
+  await page.locator("#captain-server").fill("azure.posnic.io");
+  await page.evaluate(() => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      window.finishDiscovery = () => options.collect({ base: "http://192.168.1.9:5555/api", info: { features: {} } });
+      await new Promise(() => {});
+    };
+  });
+  await page.locator("#captain-search").click();
+  await expect.poll(() => page.evaluate(() => typeof window.finishDiscovery)).toBe("function");
+  await page.locator("#connection-back").click();
+  await page.evaluate(() => window.finishDiscovery());
+  await expect(page.locator("#captain-server")).toHaveValue("azure.posnic.io");
+  await expect(page.locator("#captain-connect")).toBeEnabled();
+  await expect(page.locator("#captain-results")).toBeHidden();
+  await expect(page.locator("#captain-results button")).toHaveCount(0);
+});
+
+
+test("leaving a selected Wi-Fi result cancels its pending navigation", async ({ page }) => {
+  await phone(page);
+  await page.evaluate(base => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => options.collect({ base, info: { features: {} } });
+    POSNIC.discovery.probe = () => new Promise(resolve => { window.finishSelectedAddress = resolve; });
+  }, base);
+  await page.locator("#captain-search").click();
+  await page.locator("#captain-results button").click();
+  await expect.poll(() => page.evaluate(() => typeof window.finishSelectedAddress)).toBe("function");
+  await page.locator("#connection-back").click();
+  await page.evaluate(base => window.finishSelectedAddress({ base }), base);
+  await expect(page.locator("#captain-server")).toBeVisible();
+  await expect(page.locator("#username")).toBeHidden();
+  expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
 });
