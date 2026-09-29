@@ -25,7 +25,7 @@ test("all 30 languages are available before sign-in and retained offline", async
         fs.readFileSync(`assets/common/locales/${language.code}.json`, "utf8"),
       );
       await expect(page.locator("#captain-connect")).toHaveText(
-        words["Find shop on Wi-Fi"],
+        words["Continue"],
       );
     }
   }
@@ -115,7 +115,7 @@ for (const code of ["ar", "ur"]) {
       fs.readFileSync(`assets/common/locales/${code}.json`, "utf8"),
     );
     await expect(page.locator("#captain-connect")).toHaveText(
-      words["Find shop on Wi-Fi"],
+      words["Continue"],
     );
     await expect(page.locator("#captain-server")).toHaveCSS("direction", "ltr");
     expect(
