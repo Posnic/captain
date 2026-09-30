@@ -316,7 +316,7 @@ async function loadOrderHistoryNow(options, revision) {
         if (data.type === 'success') {
             historyLoaded = true;
             allOrders = data.data.orders || [];
-            if(allOrders.some(order=>order.seating_request_id)) void refreshMergePermission(revision);
+            if(allOrders.length) void refreshMergePermission(revision);
             generateTableCards(); // Generate table selection cards
             if (selectedTable !== null) {
                 // If on order list screen, filter by selected table
@@ -753,7 +753,7 @@ function renderOrders() {
             <button class="action-btn move-btn" data-move-order="${safe(order._id)}">
                 <i class="fas fa-right-left"></i> Move table
             </button>` : ''}
-            ${order.seating_request_id && canMergeOrders() ? `<button class="action-btn move-btn" data-merge-order="${safe(order._id)}">${window.I18N?.t('Merge orders') || 'Merge orders'}</button>` : ''}
+            ${canMergeOrders() && (order.seating_request_id || (mergePermission.legacy && tableOf(order) && order.dine_type !== 'Take away')) ? `<button class="action-btn move-btn" data-merge-order="${safe(order._id)}">${window.I18N?.t('Merge orders') || 'Merge orders'}</button>` : ''}
             <button class="action-btn cancel-btn" data-cancel-order="${safe(order._id)}">
                 <i class="fas fa-times"></i> Cancel order
             </button>
@@ -928,6 +928,7 @@ let moveSaving = false;
 let moveLoadVersion = 0, moveTables = [];
 let moveSelected = [], movePrimary = "", moveMode = "move", mergeChoice = null;
 let moveLegacySupported = false;
+let mergeLegacySupported = false;
 let moveClosing = false, moveReopen = null;
 const usesDurableMove = order => Boolean(order?.seating_request_id ||
     (moveLegacySupported && tableOf(order) && order?.dine_type !== 'Take away'));
@@ -939,7 +940,7 @@ async function refreshMergePermission(revision) {
     try {
         const result=await POSNIC.api.get('/captain/v1/tables');
         if(revision!==historyRevision || owner!==mergePermissionOwner())return;
-        mergePermission={owner,value:result.canMerge===true};
+        mergePermission={owner,value:result.canMerge===true,legacy:result.capabilities?.legacyTargetMerge===true};
     } catch { if(revision!==historyRevision || owner!==mergePermissionOwner())return; mergePermission={owner,value:false}; }
     if(selectedTable!==null) filterOrdersBySelectedTable();
 }
@@ -1041,6 +1042,7 @@ async function refreshMoveTables() {
     const go = document.getElementById('move-table-go');
     moveTables = [];
     moveLegacySupported = false;
+    mergeLegacySupported = false;
     moveSelected = []; movePrimary = ""; mergeChoice = null;
     document.getElementById('move-table-list').replaceChildren();
     go.disabled = true;
@@ -1062,6 +1064,7 @@ async function refreshMoveTables() {
         if (version !== moveLoadVersion || !orderBeingMoved) return;
         if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
         moveLegacySupported = result.capabilities?.legacySourceMove === true;
+        mergeLegacySupported = result.capabilities?.legacyTargetMerge === true;
         if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
         moveTables = tablesFromStorage(result.tables);
         message.textContent = '';
@@ -1143,7 +1146,8 @@ function renderMergeTables() {
     const rows=moveTables.filter(row=>row.orders.length===1 && row.orders[0].id!==order._id && row.value!==tableOf(order));
     list.innerHTML=rows.map(row=>{
         const guests=Number(order.person_count||1)+Number(row.orders[0].guests||0);
-        const eligible=!row.closing && row.seating?.table_ids?.length===1 && !row.orders[0].paid && row.max>0 && guests<=row.max;
+        const eligible=!row.closing && !['held','cleaning'].includes(row.serviceState) &&
+            (row.seating?.table_ids?.length===1 || (mergeLegacySupported && !row.seating)) && !row.orders[0].paid && row.max>0 && guests<=row.max;
         return `<button type="button" class="move-table${mergeChoice?.id===row.id?' is-chosen':''}" data-id="${esc(row.id)}" aria-pressed="${mergeChoice?.id===row.id}" ${eligible?'':'disabled'}><span class="move-table-no" translate="no">${esc(row.label)}</span><span class="move-table-note">${esc(t('Guests'))}: ${esc(guests)} · ${esc(t('Maximum seats'))}: ${esc(row.max||'—')}</span>${!eligible?`<span class="move-table-note">${esc(t(row.max>0&&guests>row.max?'Choose a table with enough seats.':'Table changed. Refresh and try again.'))}</span>`:''}</button>`;
     }).join('') || `<p>${esc(t('No orders found for this table.'))}</p>`;
     const go=document.getElementById('move-table-go');go.disabled=!mergeChoice;go.textContent=t(mergeChoice?'Merge orders':'Choose a table');
