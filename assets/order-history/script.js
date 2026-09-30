@@ -1080,7 +1080,8 @@ function ensureMoveSheet() {
                     <p id="move-table-status" role="status"></p><button type="button" id="move-table-retry" class="btn close-btn" hidden>Retry</button><div class="move-table-list" id="move-table-list"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Back</button>
+                    <button type="button" class="btn close-btn" id="move-table-cancel" hidden>Cancel</button>
                     <button type="button" class="btn action-btn edit-btn" id="move-table-go" disabled>
                         Choose a table
                     </button>
@@ -1095,7 +1096,8 @@ function ensureMoveSheet() {
         const button = event.target.closest('.move-table');
         if (button && !button.disabled) chooseMoveTable(button);
     });
-    el.querySelector('#move-table-go').addEventListener('click', confirmMoveTable);
+    el.querySelector('#move-table-go').addEventListener('click', () => confirmMoveTable());
+    el.querySelector('#move-table-cancel').addEventListener('click', () => confirmMoveTable(true));
     el.querySelector('#move-table-retry').addEventListener('click', refreshMoveTables);
 
     /* Reopened later for a different order, the last choice must not still be
@@ -1137,10 +1139,12 @@ async function refreshMoveTables() {
     document.getElementById('move-table-list').replaceChildren();
     go.disabled = true;
     retry.hidden = true;
+    document.getElementById('move-table-cancel').hidden = true;
     message.textContent = window.I18N?.t('Loading...') || 'Loading...';
     try {
     if (orderBeingMoved.seating_request_id && window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
         message.textContent = window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.';
+        document.getElementById('move-table-cancel').hidden = false;
         go.textContent = window.I18N?.t('Retry') || 'Retry';
         go.disabled = false;
         return;
@@ -1238,7 +1242,7 @@ function chooseMoveTable(button) {
     }
 }
 
-async function confirmMoveTable() {
+async function confirmMoveTable(cancelPending = false) {
     if (moveSaving) return;
     const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
     const order = orderBeingMoved;
@@ -1268,7 +1272,7 @@ async function confirmMoveTable() {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = pending ? await CaptainGroupMove.resume(order._id) : order.seating_request_id ? await CaptainGroupMove.move(order._id, {tableIds:[chosen.dataset.id],primaryId:chosen.dataset.id,guests:Number(order.person_count || 1)}) : await CaptainOrderActions.save( {
+        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, {tableIds:[chosen.dataset.id],primaryId:chosen.dataset.id,guests:Number(order.person_count || 1)}) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1282,7 +1286,7 @@ async function confirmMoveTable() {
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
         moveSaving = false;
-        showToast(pending ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
+        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : pending ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
         if (el && typeof bootstrap !== 'undefined') {

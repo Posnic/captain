@@ -38,3 +38,41 @@ test('session change after prepare cannot continue the previous staff move',asyn
  await assert.rejects(a.api.move('order-1',choice));assert.equal(a.calls.length,1);
  a.context.POSNIC.session.user.id='staff-1';assert.ok(a.api.pending('order-1'));
 });
+
+test('cancel retry survives a lost acknowledgement without preparing again',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',choice));
+ a.context.POSNIC.api.post=async(url,body)=>{
+   if(url.endsWith('prepare'))return {request_id:body.request_id,orderId:'order-1',state:'reserved'};
+   throw new Error('lost cancel reply');
+ };
+ await assert.rejects(a.api.cancel('order-1'));
+ assert.equal(a.api.pending('order-1').cancelReady,true);
+ const b=app(a.storage);
+ b.context.POSNIC.api.post=async(url,body)=>{b.calls.push(url);return {request_id:body.request_id,state:'cancelled'};};
+ assert.equal((await b.api.resume('order-1')).cancelled,true);
+ assert.deepEqual(b.calls,['/captain/v1/tables/move/cancel']);
+ assert.equal(b.api.pending('order-1'),null);
+});
+test('cancellation reconciles an already applying move without claiming it was cancelled',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',choice));
+ a.context.POSNIC.api.post=async(url,body)=>{
+   a.calls.push(url);
+   return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('prepare')?'applying':'submitting'};
+ };
+ const result=await a.api.cancel('order-1');
+ assert.equal(result.cancelled,undefined);
+ assert.equal(a.calls.some(url=>url.endsWith('cancel')),false);
+ assert.equal(a.api.pending('order-1'),null);
+});
+test('completion winning cancellation race is reconciled',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',choice));
+ a.context.POSNIC.api.post=async(url,body)=>{
+   if(url.endsWith('cancel'))throw Object.assign(new Error('applying'),{status:409});
+   return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('prepare')?'reserved':'submitting'};
+ };
+ assert.equal((await a.api.cancel('order-1')).cancelled,undefined);
+ assert.equal(a.api.pending('order-1'),null);
+});

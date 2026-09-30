@@ -284,3 +284,29 @@ test('group move resumes the saved request after reopening the screen',async({pa
  expect(prepares[1]).toEqual(prepares[0]);
  expect(await page.evaluate(()=>CaptainGroupMove.pending('ord-1'))).toBeNull();
 });
+
+test('a saved move can be cancelled and a lost cancellation reply survives reload',async({page})=>{
+ await onTheOrderList(page);
+ await page.route('**/sales/getOrderHistory',route=>route.fulfill({json:{type:'success',data:{orders:ORDERS.map(order=>order._id==='ord-1'?{...order,seating_request_id:'seating-original'}:order)}}}));
+ await page.evaluate(()=>loadOrderHistory());
+ let prepares=0, completes=0, cancels=0;
+ await page.route('**/captain/v1/tables/move/prepare',route=>{prepares++;return route.fulfill({json:{request_id:route.request().postDataJSON().request_id,orderId:'ord-1',state:'reserved'}});});
+ await page.route('**/captain/v1/tables/move/complete',route=>{completes++;return route.fulfill({status:503,json:{message:'offline'}});});
+ await page.route('**/captain/v1/tables/move/cancel',route=>{cancels++;return route.fulfill(cancels===1?{status:503,json:{message:'offline'}}:{json:{request_id:route.request().postDataJSON().request_id,state:'cancelled'}});});
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await page.locator('.move-table[data-value="12"]').click();
+ await page.locator('#move-table-go').click();
+ await expect(page.locator('#move-table-cancel')).toBeVisible();
+ await page.locator('#move-table-cancel').click();
+ await expect.poll(()=>cancels).toBe(1);
+ await expect(page.locator('#move-table-go')).toBeEnabled();
+ await page.reload();
+ await page.evaluate(()=>loadOrderHistory());
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await page.locator('#move-table-go').click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+ expect(prepares).toBe(2);
+ expect(completes).toBe(1);
+ expect(cancels).toBe(2);
+ expect(await page.evaluate(()=>CaptainGroupMove.pending('ord-1'))).toBeNull();
+});
