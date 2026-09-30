@@ -110,7 +110,8 @@
         "Internal beginClose acquires revision-guarded group close intent. Exact retries succeed; competing close IDs, order edits and moves cannot pass the same intent. Real concurrency test confirms exactly one close/move acquisition. 42 seating/repository checks and ESLint pass. Close endpoint recovery/intent projection and activation across all writers still pending; beginClose is not called by the public close route yet.",
         "Public close-table service now acquires beginClose before table/floor projection. Table view exposes claim-only pending close ID/order IDs, allowing the existing Retry screen to resume an interruption before table intent is written. 48 table/seating checks and ESLint pass. Partial-close conflict reconciliation and broad all-writer adoption still remain before combined seating activation.",
         "Close projection now rechecks payment_pending and balance atomically with each order update. A partial close keeps durable intent and occupied floor status instead of marking the table available/operation permanently failed; retry finishes remaining eligible orders without changing previously closed timestamps. 49 table/seating checks pass; ESLint has zero errors and one pre-existing test warning. Combined move public routes/UI and all-writer adoption remain required.",
-        "Authenticated /tables/move/prepare, complete and cancel routes added to paired Captain scope. Sales access and branch context are enforced; actor comes from authenticated user, never request body. Completed move enqueues sale sync. Real paired HTTP flow verifies no-auth rejection, forged actor ignored, completion/retry and cancellation preserving the prior table; targeted ESLint passes. Captain durable move UI, existing-order migration and every-writer seating adoption remain required."
+        "Authenticated /tables/move/prepare, complete and cancel routes added to paired Captain scope. Sales access and branch context are enforced; actor comes from authenticated user, never request body. Completed move enqueues sale sync. Real paired HTTP flow verifies no-auth rejection, forged actor ignored, completion/retry and cancellation preserving the prior table; targeted ESLint passes. Captain durable move UI, existing-order migration and every-writer seating adoption remain required.",
+        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending."
       ]
     },
     {
@@ -170,7 +171,9 @@
       "id": "history",
       "status": "audit-required",
       "implementation": [],
-      "verification": []
+      "verification": [
+        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending."
+      ]
     },
     {
       "id": "sales",

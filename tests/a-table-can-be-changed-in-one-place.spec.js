@@ -27,6 +27,8 @@ const TABLES = [
 const ORDERS = [
   {
     _id: 'ord-1',
+    created_date:'2026-09-30T10:00:00.000Z',
+    updated_date:'2026-09-30T10:10:00.000Z',
     order_number: 'K1',
     status: 'pending',
     dine_type: 'Dine-in',
@@ -156,6 +158,7 @@ test('the move carries the new table AND its id, with the lines untouched', asyn
   await expect.poll(() => sent).not.toBeNull();
 
   expect(sent.order_id).toBe('ord-1');
+  expect(sent.seen_at).toBe('2026-09-30T10:10:00.000Z');
   expect(sent.table_number).toBe('12');
   /* The id, which is the half the till used to drop on the floor. */
   expect(sent.table_id).toBe('tbl-twelve');
