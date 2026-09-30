@@ -552,6 +552,13 @@
       get user() {
         return state.user || profile?.user || null;
       },
+      async updateProfile(value) {
+        await ready;
+        if (locked || !state.user || String(value.id) !== String(state.user.id || state.user._id)) return false;
+        state.user = { ...state.user, name: value.name };
+        await persist();
+        return true;
+      },
       get shopKey() {
         return state.shopKey || profile?.shopKey || null;
       },

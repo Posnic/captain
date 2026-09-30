@@ -100,7 +100,7 @@
         controls();
         return pending;
     }
-    window.MobileGestures = { refresh };
+    window.MobileGestures = { refresh, setRefresh(action) { refreshAction = action; document.documentElement.classList.toggle('mobile-refresh-enabled', typeof action === 'function'); } };
     document.addEventListener('DOMContentLoaded', () => {
         const path = location.pathname;
         if (path.endsWith('kot-management.html')) refreshAction = () => loadTables();

@@ -17,6 +17,9 @@ test('route signals show measured reachability and open the shared address edito
   await page.locator('[data-route-signal=remote]').click();
   await expect(page.locator('#connection-addresses')).toBeVisible();
   await expect(page.locator('#connection-cloud')).toHaveValue(/smoke.posnic.io/);
+  await page.reload();
+  await expect(page.locator('#connection-addresses')).toBeVisible();
+  await expect(page).toHaveURL(/index.html/);
   await page.locator('#connection-back').click();
   await page.locator('#connection-back').click();
   await expect(page).toHaveURL(/kot-management/);

@@ -3,7 +3,7 @@
   let operation = null;
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
-    if (signIn) sessionStorage.removeItem("posnic_editing_server");
+    if (signIn) { sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
     $("captain-onboarding").hidden = signIn;
     $("captain-legacy").hidden = !signIn;
     $("captain-legacy").open = signIn;
@@ -19,7 +19,7 @@
   function showView(next, focus = true) {
     view = next;
     navigationVersion++;
-    if (focus) sessionStorage.setItem("posnic_editing_server", "1");
+    if (focus) { sessionStorage.setItem("posnic_editing_server", "1"); sessionStorage.setItem("posnic_connection_view", next); }
     const titles = {
       address: "Connect to your shop",
       code: "Enter pairing code",
@@ -561,6 +561,7 @@
       operation?.abort();
       POSNIC_CONNECT.stopScan();
       sessionStorage.removeItem("posnic_editing_server");
+      sessionStorage.removeItem("posnic_connection_view");
       if (POSNIC.session.active) window.location.href = "kot-management.html";
       else showStep(POSNIC.server.isConfigured);
       POSNIC.net.start();
@@ -690,7 +691,8 @@
     showView("address", false);
     showStep(
       POSNIC.server.isConfigured &&
-        !sessionStorage.getItem("posnic_change_server"),
+        !sessionStorage.getItem("posnic_change_server") &&
+        !sessionStorage.getItem("posnic_editing_server"),
     );
   });
 })();

@@ -11,6 +11,7 @@
     <script src="assets/jquery-3.6.0.min.js"></script>
     <script src="assets/common/access.js"></script>
     <script src="assets/common/money.js"></script>
+    <script src="assets/common/table-details.js"></script>
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
@@ -246,6 +247,12 @@
             }
 
             const personCount = parseInt(document.getElementById('person_count').value || '0', 10) || 0;
+            const chosenTable = CaptainTables.cached(tableNo);
+            if (orderType === 'Dine-in' && chosenTable && !CaptainTables.fits(chosenTable,personCount)) {
+                showErrorPopup('Choose a table with enough seats.');
+                return;
+            }
+
 
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
@@ -428,6 +435,7 @@
                 `;
                 
                 container.innerHTML = html;
+            CaptainTables.updateChoices(document.getElementById('person_count').value);
                 
                 // Setup input validation
                 const manualInput = document.getElementById('manual_table_input');
@@ -509,7 +517,7 @@
             const newOccupiedKey = JSON.stringify(
                 [...occupiedTables].sort().map((name) => name + ':' + openOn(name))
             ) + '|' + tableOrderLimit;
-            const newTableordersKey = JSON.stringify(tableorders.map(t => t.tableorder_id || t.tableorder_value));
+            const newTableordersKey = JSON.stringify(tableorders.map(t => [t.id || t.tableorder_id || t.tableorder_value,t.capacity,t.max_capacity,t.area,t.shape,t.service_state]));
             if (isPollingUpdate && previousTableMode === 'list') {
                 if (newOccupiedKey === previousOccupiedTablesKey && newTableordersKey === previousTableordersKey) {
                     return; // No changes, skip DOM update
@@ -532,7 +540,7 @@
             tableorders.forEach((t, index) => {
                 const value = (t.tableorder_value ?? (index + 1)).toString();
                 const id = `table_${value}`;
-                const isOccupied = isFull(value);
+                const isOccupied = isFull(value) || ['held','cleaning'].includes(t.service_state);
                 const openHere = openOn(value);
                 /* Under "at most N" a table can be busy and still take another
                    order, and a waiter has no way to know how close it is. The
@@ -550,10 +558,11 @@
                             id="${id}"
                             name="table_no"
                             value="${value}"
-                            data-id="${t.id}"
+                            data-id="${CaptainTables.esc(t.id || t.tableorder_id || '')}"
+                            data-capacity="${CaptainTables.metadata(t).max}" data-occupied="${isOccupied}" data-service-state="${CaptainTables.esc(t.service_state || '')}"
                             ${isOccupied ? 'disabled' : ''}>
                         <label for="${id}" class="table-label ${isOccupied ? 'disabled' : ''}"
-                            title="${isOccupied ? 'This table is full' : ''}">${value}${countBadge}</label>
+                            title="${CaptainTables.esc(window.I18N?.t(t.service_state === 'cleaning' ? 'Cleaning' : t.service_state === 'held' ? 'Held' : isOccupied ? 'This table is full' : '') || '')}">${CaptainTables.esc(value)}${countBadge}${['held','cleaning'].includes(t.service_state) ? `<small>${CaptainTables.esc(window.I18N?.t(t.service_state === 'held' ? 'Held' : 'Cleaning') || t.service_state)}</small>` : ''}<small class="table-seat-info">${CaptainTables.esc(CaptainTables.description(t))}</small></label>
                     </div>
                 `;
             });
@@ -578,6 +587,7 @@
             `;
 
             container.innerHTML = html;
+            CaptainTables.updateChoices(document.getElementById('person_count').value);
             
             // ✅ Restore previous selection if still valid
             if (selectedValue) {
@@ -877,6 +887,7 @@
             if (less) less.disabled = val <= 1;
             const more = document.getElementById('pax_more');
             if (more) more.disabled = val >= 99;
+            window.CaptainTables?.updateChoices(val);
 
             // highlight small buttons (1..6 only)
             const container = document.getElementById('person_icon_container');

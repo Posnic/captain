@@ -852,3 +852,15 @@ test("a discovery proof finishing after a shop change cannot authorize an addres
   assert.equal(f.vault().shopKey,'another-shop');
   assert.equal(f.vault().routes,undefined);
 });
+
+test("profile refresh only changes the current user's display name and persists it", async () => {
+ const f=fixture();const access=createAccess(f.plugin,f.storage,async()=>{},webcrypto);
+ await access.session.start(f.grant);
+ const user=access.session.user;
+ assert.equal(await access.session.updateProfile({id:'another-user',name:'Wrong person'}),false);
+ assert.deepEqual(access.session.user,user);
+ assert.equal(await access.session.updateProfile({id:user.id||user._id,name:'Updated name',role:'admin'}),true);
+ assert.deepEqual(access.session.user,{...user,name:'Updated name'});
+ const restored=createAccess(f.plugin,f.storage,async()=>{},webcrypto);await restored.ready;
+ assert.equal(restored.session.user.name,'Updated name');
+});

@@ -126,6 +126,8 @@ export default defineConfig({
         'access-denied': path.resolve(ROOT, 'access-denied.html'),
         'number-card': path.resolve(ROOT, 'number-card.html'),
         me: path.resolve(ROOT, 'me.html'),
+        tables: path.resolve(ROOT, 'tables.html'),
+        branchDetails: path.resolve(ROOT, 'branch-details.html'),
         'my-sales': path.resolve(ROOT, 'my-sales.html')
       }
     }

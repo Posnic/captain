@@ -16,9 +16,17 @@
     },
     {
       "id": "new",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "discount.html",
+        "assets/common/table-details.js",
+        "assets/order-history/script.js",
+        "POS/api/src/repositories/sale.repository.js"
+      ],
+      "verification": [
+        "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
+        "Seat/move confirmation and combined-table flow remain."
+      ]
     },
     {
       "id": "menu",
@@ -52,9 +60,17 @@
     },
     {
       "id": "move",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "discount.html",
+        "assets/common/table-details.js",
+        "assets/order-history/script.js",
+        "POS/api/src/repositories/sale.repository.js"
+      ],
+      "verification": [
+        "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
+        "Seat/move confirmation and combined-table flow remain."
+      ]
     },
     {
       "id": "guests",
@@ -305,15 +321,33 @@
     },
     {
       "id": "table-settings",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "tables.html",
+        "assets/table/manage.js",
+        "POS/api/src/services/captain-tables.js",
+        "POS/frontend/modals/tableorder.html"
+      ],
+      "verification": [
+        "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
+        "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
+        "Adjacency configuration and complete table closure lifecycle remain."
+      ]
     },
     {
       "id": "table-edit",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "tables.html",
+        "assets/table/manage.js",
+        "POS/api/src/services/captain-tables.js",
+        "POS/frontend/modals/tableorder.html"
+      ],
+      "verification": [
+        "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
+        "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
+        "Adjacency configuration and complete table closure lifecycle remain."
+      ]
     },
     {
       "id": "seat-confirm",
@@ -347,15 +381,33 @@
     },
     {
       "id": "table-status",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "tables.html",
+        "assets/table/manage.js",
+        "POS/api/src/services/captain-tables.js",
+        "POS/frontend/modals/tableorder.html"
+      ],
+      "verification": [
+        "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
+        "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
+        "Adjacency configuration and complete table closure lifecycle remain."
+      ]
     },
     {
       "id": "table-conflict",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "tables.html",
+        "assets/table/manage.js",
+        "POS/api/src/services/captain-tables.js",
+        "POS/frontend/modals/tableorder.html"
+      ],
+      "verification": [
+        "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
+        "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
+        "Adjacency configuration and complete table closure lifecycle remain."
+      ]
     },
     {
       "id": "close-order",
@@ -433,11 +485,15 @@
       "id": "branch-details",
       "status": "in-progress",
       "implementation": [
-        "POS/frontend/modules/branchEdit.html",
-        "POS/api/src/utils/branch-upi.js"
+        "branch-details.html",
+        "assets/me/branch-details.js",
+        "POS/api/src/services/captain-branch-details.js",
+        "POS/frontend/modals/branchEdit.html"
       ],
       "verification": [
-        "Local targeted tests passed; complete application acceptance pending."
+        "Authorized UPI save, stale edit recovery and Back browser checks passed.",
+        "API role and tenant checks, validation, clear and optimistic update tests passed.",
+        "General branch details and full visual acceptance remain."
       ]
     },
     {

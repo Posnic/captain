@@ -1021,7 +1021,9 @@ function tablesFromStorage() {
             return {
                 value,
                 label: value,
-                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.table_id || '',
+                ...CaptainTables.metadata(t),
+                description: CaptainTables.description(t),
+                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.id || t.tableorder_id || t.table_id || '',
             };
         });
     } catch (e) {
@@ -1155,13 +1157,15 @@ function renderMoveTables() {
     container.innerHTML = tables
         .map((t) => {
             const isHere = t.value === now;
+            const tooSmall = t.max > 0 && Number(order.person_count || 1) > t.max;
             return `
             <button type="button"
                 class="move-table${isHere ? ' is-here' : ''}${busy.has(t.value) ? ' is-busy' : ''}"
-                data-value="${t.value}"
-                data-id="${t.id}"
-                ${isHere ? 'disabled' : ''}>
-                <span class="move-table-no">${t.label}</span>
+                data-value="${CaptainTables.esc(t.value)}"
+                data-id="${CaptainTables.esc(t.id)}"
+                ${isHere || tooSmall ? 'disabled' : ''}>
+                <span class="move-table-no">${CaptainTables.esc(t.label)}</span>
+                <span class="move-table-note">${CaptainTables.esc(t.description)}</span>
                 ${isHere ? '<span class="move-table-note">here now</span>' : ''}
                 ${!isHere && busy.has(t.value) ? '<span class="move-table-note">has an order</span>' : ''}
             </button>`;

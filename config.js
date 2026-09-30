@@ -552,6 +552,12 @@
       get token() {
         return state.token || null;
       },
+      updateProfile(value) {
+        if (!state.user || String(value.id) !== String(state.user.id || state.user._id)) return false;
+        state.user = { ...state.user, name: value.name };
+        save(STORE_SESSION, state);
+        return true;
+      },
       get shopKey() {
         return state.shopKey || null;
       },
