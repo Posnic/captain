@@ -218,3 +218,29 @@ for (const status of [409,503]) test(`email failure ${status} preserves original
   await expect(page.locator('.profile-detail').first()).toContainText('staff@example.test');
   await expect(page.locator('#profile-name')).toHaveValue('Draft name');
 });
+
+
+for (const [width,language] of [[320,'ta'],[768,'ar']]) test(`contact screens fit ${width}px in ${language}`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await open(page);
+  await page.evaluate(language=>I18N.use(language),language);
+  await page.route('**/captain/v1/profile',route=>route.fulfill({json:{id:'user-1',name:'Staff',email:'restaurant.floor.supervisor.with.long.address@example.test',phone:'+919000000000'}}));
+  await page.reload();
+  await page.locator('#me-profile').click();
+  await expect(page.locator('[data-profile-email]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const row = await page.locator('.profile-detail').first().evaluate(el=>{
+    const label=el.querySelector('span').getBoundingClientRect();
+    const value=el.querySelector('strong').getBoundingClientRect();
+    const button=el.querySelector('button').getBoundingClientRect();
+    return {labelBottom:label.bottom,valueTop:value.top,buttonWidth:button.width,buttonHeight:button.height};
+  });
+  expect(row.valueTop).toBeGreaterThanOrEqual(row.labelBottom);
+  expect(row.buttonWidth).toBeGreaterThanOrEqual(88);
+  expect(row.buttonHeight).toBeGreaterThanOrEqual(48);
+  await page.screenshot({path:`test-artifacts/profile-${language}-${width}.png`,fullPage:true});
+  await page.locator('[data-profile-email]').click();
+  await expect(page.locator('#phone-number')).toHaveAttribute('dir','ltr');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:`test-artifacts/email-${language}-${width}.png`,fullPage:true});
+});
