@@ -582,9 +582,14 @@
     },
     {
       "id": "item",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/common/service-details.js",
+        "assets/common/service-details.css"
+      ],
+      "verification": [
+        "Preparation sheet protects unsaved changes on native Back/Escape/Cancel, prevents dismissal or edits while saving, and retains drafts on save failure. Shared light/dark styling applied to preparation and order-action dialogs. 12 cart-integrity/preparation browser checks pass, including dark layouts at 320/768px; 577 unit checks and production build pass. Full item-screen acceptance remains."
+      ]
     },
     {
       "id": "service-hours",

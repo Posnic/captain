@@ -36,17 +36,30 @@
       ${canSeparate?'<label class="preparation-check"><input type="checkbox" name="separate"><span>Apply to one item only</span></label>':''}
       <p class="preparation-error" role="alert"></p></div><footer><button type="button" data-close>Cancel</button><button type="submit">Apply</button></footer></form>`;
     document.body.append(dialog);
-    const close=()=>{dialog.close();dialog.remove();previous?.focus({preventScroll:true});};
+    const form = dialog.querySelector('form');
+    const fingerprint = () => JSON.stringify([...new FormData(form)]);
+    const initial = fingerprint();
+    let saving = false;
+    const finish = () => {dialog.close();dialog.remove();window.removeEventListener('captain:back', nativeBack, true);previous?.focus({preventScroll:true});};
+    const close = () => {
+      if (saving || (fingerprint() !== initial && !confirm(t('Discard changes?')))) return;
+      finish();
+    };
+    const nativeBack = event => {event.preventDefault();event.stopImmediatePropagation();close();};
+    window.addEventListener('captain:back', nativeBack, true);
     dialog.querySelectorAll('[data-close]').forEach(button=>button.onclick=close);
     dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
     dialog.querySelector('form').onsubmit=async event=>{
-      event.preventDefault();const form=event.currentTarget;
+      event.preventDefault();if(saving)return;const form=event.currentTarget;
       if(!form.reportValidity())return;
       const value=new FormData(form), next={seat:Number(value.get('seat')),course:String(value.get('course')||''),held:canHold?value.has('held'):line.held===true,
         allergies:value.getAll('allergy'),allergy_note:String(value.get('allergy_note')||'').trim()};
-      const buttons=[...dialog.querySelectorAll('button')];buttons.forEach(button=>button.disabled=true);
-      try{await save(next,value.has('separate'));close();}
-      catch(error){dialog.querySelector('[role=alert]').textContent=t(error.message||'Could not save. Please try again.');buttons.forEach(button=>button.disabled=false);}
+      saving = true;
+      const controls=[...dialog.querySelectorAll('button,input,select,textarea')];controls.forEach(control=>control.disabled=true);
+      dialog.setAttribute('aria-busy','true');
+      try{await save(next,value.has('separate'));finish();}
+      catch(error){dialog.querySelector('[role=alert]').textContent=t(error.message||'Could not save. Please try again.');}
+      finally {saving=false;dialog.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=false);}
     };
     root.I18N?.apply(dialog);dialog.showModal();
   }
