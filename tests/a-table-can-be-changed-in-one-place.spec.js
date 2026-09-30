@@ -183,3 +183,17 @@ test('a takeaway has no table to move it to, and is not offered one', async ({ p
   await expect(takeaway).toHaveCount(1);
   expect(await takeaway.locator('.move-btn').count()).toBe(0);
 });
+
+test('held, cleaning and undersized tables are unavailable before confirming a move',async({page})=>{
+ await onTheOrderList(page);
+ await page.evaluate(()=>{localStorage.setItem('kiosk_tableorders',JSON.stringify([
+  {tableorder_value:'4',capacity:4,max_capacity:4},
+  {tableorder_value:'12',capacity:4,max_capacity:4,service_state:'cleaning'},
+  {tableorder_value:'15',capacity:4,max_capacity:4,service_state:'held'},
+  {tableorder_value:'16',capacity:1,max_capacity:1},
+  {tableorder_value:'17',capacity:2,max_capacity:2}
+ ]));moveOrder('ord-1');});
+ for(const value of ['4','12','15','16'])await expect(page.locator(`.move-table[data-value="${value}"]`)).toBeDisabled();
+ await expect(page.locator('.move-table[data-value="17"]')).toBeEnabled();
+ await expect(page.locator('.move-table[data-value="12"]')).toContainText('Cleaning');
+});
