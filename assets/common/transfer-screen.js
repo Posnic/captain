@@ -8,6 +8,7 @@
  const owner=()=>JSON.stringify([root.POSNIC.session?.shopKey,root.POSNIC.session?.user?.id,localStorage.getItem('branch_id'),root.POSNIC.session?.base]);
  const money=n=>new Intl.NumberFormat(root.I18N?.language?.()||'en',{style:'currency',currency:preview.currencyCode,minimumFractionDigits:preview.currencyDigits,maximumFractionDigits:preview.currencyDigits}).format(n/10**preview.currencyDigits);
  function close(){generation++;dialog.close();}
+ function back(){if(busy||stage==='items'||stage==='recovery'){close();return;}stage=stage==='review'?'tables':'items';render();}
  function render(error=''){
   const pending=root.CaptainItemTransfer.pending(order._id);
   let body='';
@@ -16,7 +17,7 @@
   if(stage==='review')body=`<section><h3>${t('Items')}</h3>${preview.destination.rounds.map(line=>`<div class="transfer-review-line"><p translate="no">${esc(line.name)} × ${line.quantity}</p>${line.note?`<small translate="no">${esc(line.note)}</small>`:''}${line.served?`<small>${t('Served')}: ${line.served}</small>`:''}</div>`).join('')}<p>${t('Table')} <b translate="no">${destination.tableIds.map(id=>esc(tables.find(row=>row.id===id)?.tableorder_value||id)).join(', ')}</b></p><p>${t('Main table')}: <b translate="no">${esc(tables.find(row=>row.id===destination.primaryId)?.tableorder_value||'')}</b></p><p>${t('Guests')}: ${destination.guests}</p><p>${t('Total')}: <strong translate="no">${esc(money(preview.destination.totalMinor))}</strong></p></section><section class="transfer-source"><h3>${t('Table')} <span translate="no">${esc(order.table_number||order.kiosk_table_no||'')}</span></h3><p>${t('Total')}: <strong translate="no">${esc(money(preview.source.totalMinor))}</strong></p></section>`;
   if(stage==='recovery')body=`<p>${t('Reconnect to the server that authorized this phone. Orders are retained.')}</p>`;
   dialog.innerHTML=`<header><button type="button" data-back>${t('Back')}</button><h2>${t('Transfer items')}</h2></header><form><main>${body}<p role="alert">${esc(error)}</p></main><footer><button type="submit" ${busy?'disabled':''}>${t(busy?'Loading':pending?'Retry':stage==='review'?'Save':'Continue')}</button></footer></form>`;
-  dialog.querySelector('[data-back]').onclick=()=>{if(busy||stage==='items'||stage==='recovery'){close();return;}stage=stage==='review'?'tables':'items';render();};
+  dialog.querySelector('[data-back]').onclick=back;
   if(stage==='tables'){
    const primary=dialog.querySelector('#transfer-primary');
    const sync=()=>{
@@ -54,13 +55,18 @@
     if(result.state==='completed'){close();window.showToast?.(t('Order updated'),'success');await window.loadOrderHistory?.();await window.loadTables?.();return;}
    }
    if(valid()){busy=false;render();}
-  }catch(error){if(valid()){busy=false;if(root.CaptainItemTransfer.pending(order._id))stage='recovery';render(error.message||t('Connection failed'));}}
+  }catch(error){if(valid()){busy=false;if(root.CaptainItemTransfer.pending(order._id))stage='recovery';else if(stage==='recovery'){stage='items';items=null;destination=null;preview=null;}render(error.message||t('Connection failed'));}}
   finally{if(current===generation)busy=false;}
  }
  root.CaptainTransferScreen={register(value){registered.set(owner()+':'+value._id,value);},open(value){
   generation++;busy=false;order=value;identity=owner();items=null;destination=null;preview=null;tables=[];
-  if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();close();});}
+  if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();back();});}
   stage=root.CaptainItemTransfer.pending(order._id)?'recovery':'items';render();dialog.showModal();
  }};
+ window.addEventListener('captain:back',event=>{
+  if(!dialog?.open||event.defaultPrevented||document.querySelector('#posnic-lock.is-open'))return;
+  const open=[...document.querySelectorAll('dialog[open]')];if(open.at(-1)!==dialog)return;
+  event.preventDefault();event.stopImmediatePropagation();back();
+ },true);
  document.addEventListener('click',event=>{const button=event.target.closest('[data-transfer-order]');if(!button)return;const current=registered.get(owner()+':'+button.dataset.transferOrder)||(typeof allOrders!=='undefined'?allOrders.find(row=>row._id===button.dataset.transferOrder):null);if(current)root.CaptainTransferScreen.open(current);});
 })(globalThis);

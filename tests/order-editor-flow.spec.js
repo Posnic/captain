@@ -525,3 +525,50 @@ test('transfer main table survives Back and review fits phone and RTL tablet',as
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:'test-artifacts/transfer-review-tablet-rtl.png'});
 });
+
+
+test('native Back exits a transfer and reopens the same interrupted request for Retry',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ const source='a'.repeat(24),table='b'.repeat(24),target='c'.repeat(24),requests=[];
+ await page.route('**/captain/v1/tables/transfer/complete',route=>{const body=route.request().postDataJSON();requests.push(body);return requests.length===1?route.fulfill({status:503,json:{error:{message:'Please retry.'}}}):route.fulfill({json:{requestId:body.requestId,sourceId:source,destinationId:target,sourceClosed:false,state:'completed'}});});
+ await page.route('**/captain/v1/tables/transfer/status',route=>route.fulfill({json:{requestId:route.request().postDataJSON().requestId,state:'unknown'}}));
+ await page.evaluate(async({source,table})=>{
+  try{await CaptainItemTransfer.complete(source,{revision:'d'.repeat(64),items:[{id:'c0i0',quantity:1,servedQuantity:0}],destination:{tableIds:[table],primaryId:table,guests:1}});}catch{}
+  CaptainTransferScreen.open({_id:source,kitchen_rounds:[]});
+ },{source,table});
+ const dialog=page.locator('.transfer-screen');await expect(dialog.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>!window.dispatchEvent(new Event('captain:back',{cancelable:true})))).toBe(true);
+ await expect(dialog).not.toBeVisible();
+ await page.evaluate(source=>CaptainTransferScreen.open({_id:source,kitchen_rounds:[]}),source);
+ await dialog.getByRole('button',{name:'Retry',exact:true}).click();await expect(dialog).not.toBeVisible();
+ expect(requests).toHaveLength(2);expect(requests[1]).toEqual(requests[0]);
+ expect(await page.evaluate(source=>CaptainItemTransfer.pending(source),source)).toBeNull();
+});
+test('native Back walks transfer steps and respects the lock overlay',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[]}}));
+ await page.evaluate(()=>CaptainTransferScreen.open({_id:'a'.repeat(24),kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:1,served:0}]}]}));
+ const dialog=page.locator('.transfer-screen');await dialog.locator('[data-quantity]').fill('1');await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(dialog.locator('#transfer-guests')).toBeVisible();
+ await page.evaluate(()=>{const lock=document.createElement('div');lock.id='posnic-lock';lock.className='is-open';document.body.append(lock);window.dispatchEvent(new Event('captain:back',{cancelable:true}));lock.remove();});
+ await expect(dialog.locator('#transfer-guests')).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(dialog.locator('[data-quantity]')).toHaveValue('1');
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(dialog).not.toBeVisible();
+});
+
+
+test('confirmed transfer cancellation returns recovery to editable items',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ const source='a'.repeat(24),table='b'.repeat(24);let reads=0;
+ await page.route('**/captain/v1/tables/transfer/complete',route=>route.fulfill({status:409,json:{error:{message:'Please retry.'}}}));
+ await page.route('**/captain/v1/tables/transfer/status',route=>route.fulfill({json:{requestId:route.request().postDataJSON().requestId,sourceId:source,state:++reads===1?'pending':'cancelled'}}));
+ await page.evaluate(async({source,table})=>{
+  try{await CaptainItemTransfer.complete(source,{revision:'d'.repeat(64),items:[{id:'c0i0',quantity:1,servedQuantity:0}],destination:{tableIds:[table],primaryId:table,guests:1}});}catch{}
+  CaptainTransferScreen.open({_id:source,kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:1,served:0}]}]});
+ },{source,table});
+ const dialog=page.locator('.transfer-screen');await dialog.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(dialog.locator('[data-quantity]')).toBeVisible();await expect(dialog.getByRole('button',{name:'Continue',exact:true})).toBeEnabled();
+ expect(await page.evaluate(source=>CaptainItemTransfer.pending(source),source)).toBeNull();
+});
