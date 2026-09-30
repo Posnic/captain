@@ -1031,6 +1031,7 @@
     "unit": "590 Captain unit checks passed.",
     "build": "Captain production build passed with all 17 pages covered by startup smoke tests.",
     "floor": "Six floor header/filter/layout checks passed after updating stale selectors.",
-    "device": "Microphone, camera, OS resume and physical printer acceptance are not yet verified on real devices."
+    "device": "Microphone, camera, OS resume and physical printer acceptance are not yet verified on real devices.",
+    "legacyMoveIntegration": "Authorized move preparation now enrolls the older source sale through a stable child request. Cancellation recovers interrupted child enrollment; cancellation before preparation records a parent tombstone without enrolling the sale. Repeated completion, original sale/item/payment invariants, branch and staff-handover boundaries pass. 108 seating/restructure checks and changed-file lint pass. Captain legacy-order UI routing, destination enrollment, remaining all-writer cover concurrency and production item transfers remain pending; not released."
   }
 }
