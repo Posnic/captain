@@ -1546,7 +1546,7 @@ function openEditOrderModal() {
     // Normalize item fields — handle both legacy and KOT-inserted items
     editingOrder.items.forEach(item => {
         const unit = parseFloat(item.unit_price || item.item_base_price || item.price || 0);
-        item.price = isNaN(unit) ? 0 : parseFloat(unit.toFixed(2));
+        item.price = Number.isFinite(unit) ? unit : 0;
         if (!item.selling_price) item.selling_price = item.price;
         item.quantity = lineQuantity(item);
     });
@@ -1995,7 +1995,7 @@ function updateOrderTotal() {
         return sum + (item.quantity * item.price);
     }, 0);
 
-    editingOrder.total_amount = total.toFixed(2);
+    editingOrder.total_amount = CaptainMoney.fromMinor(CaptainMoney.toMinor(total, CaptainMoney.current()), CaptainMoney.current());
     window.OrderEditor?.refresh();
 }
 

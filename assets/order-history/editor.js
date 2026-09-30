@@ -58,6 +58,24 @@
         byId('edit-table-section').style.display = '';
         byId('edit-pax-section').style.display = '';
     }
+    function reviewTotal(value) {
+        const current = order();
+        if (!originalOrder || !current) return Number(current?.total_amount || 0);
+        const financialLines = items => JSON.stringify((items || []).map(item => [
+            item.line_id || item.product_id || item.item_id || item.id || item._id,
+            Number(item.quantity ?? item.item_quantity ?? 0), Number(item.price ?? item.unit_price ?? 0),
+            !!item.cancelled, !!item.return, item.status
+        ]));
+        // The server supplies the exact pre-discount taxable basis for allocated
+        // bills. Use its confirmed amounts while only discount/notes change.
+        if (current.transfer_allocated !== true || !Number.isFinite(Number(originalOrder.discount_basis)) ||
+            financialLines(current.items) !== financialLines(originalOrder.items)) return Number(current.total_amount || 0);
+        const policy = CaptainMoney.current();
+        const before = CaptainMoney.toMinor(originalOrder.total_amount,policy) + CaptainMoney.toMinor(originalOrder.extra_discount || 0,policy);
+        const requested = value.discountType === 'percent' ? Number(originalOrder.discount_basis)*Number(value.discount)/100 : Number(value.discount);
+        if (!Number.isFinite(requested) || requested < 0) return Number(current.total_amount || 0);
+        return CaptainMoney.fromMinor(before-Math.min(before,CaptainMoney.toMinor(requested,policy)),policy);
+    }
     function refresh() {
         if (!byId('order-editor-items') || !order()) return;
         const value = details(), dineIn = value.type === 'Dine-in';
@@ -75,7 +93,7 @@
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
         for (const prefix of ['editor', 'picker']) {
             byId(prefix + '-item-count').textContent = count === 1 ? '1 item' : count + ' items';
-            byId(prefix + '-total-value').textContent = CaptainMoney.display(order().total_amount || 0);
+            byId(prefix + '-total-value').textContent = CaptainMoney.display(reviewTotal(value));
         }
         byId('cancel-order-changes').disabled = saving;
         byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());

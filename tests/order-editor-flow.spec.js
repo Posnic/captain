@@ -361,3 +361,30 @@ test('discount step fits a narrow phone and uses the shop currency',async({page}
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
  await page.screenshot({path:'test-artifacts/editor-discount-320.png'});
 });
+
+
+test('allocated discount review uses confirmed tax-inclusive total without compounding edits',async({page})=>{
+ const posts=await editor(page,'order-history.html',{total_amount:95,subtotal:100,tax:5,discount:10,
+   extra_discount:10,extra_discount_type:'amount',transfer_allocated:true,discount_basis:100});
+ await expect(page.locator('#editor-total-value')).toHaveText('₹95.00');
+ for(const [value,type,total] of [['15','amount','₹90.00'],['20','percent','₹85.00'],['0','amount','₹105.00']]){
+   await setting(page,'discount');
+   await page.locator(`label[for="edit-discount-${type}"]`).click();
+   await page.locator('#edit-discount-value').fill(value);
+   await page.locator('#edit-discount-description').fill('Customer requested');
+   await apply(page);
+   await expect(page.locator('#editor-total-value')).toHaveText(total);
+ }
+ expect(posts).toHaveLength(0);
+});
+
+
+test('opening and editing preserves stored unit-price precision',async({page})=>{
+ const posts=await editor(page,'order-history.html',{total_amount:1.234,items:[{product_id:'p-biryani',name:'Chicken Biryani',quantity:1,price:1.234,unit_price:1.234}]});
+ await page.evaluate(()=>CaptainMoney.remember({currencyCode:'KWD',currencySymbol:'KD'}));
+ await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts[0].items[0].price).toBe(1.234);
+ expect(Number(posts[0].total_amount)).toBe(2.468);
+});
