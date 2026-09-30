@@ -20,5 +20,6 @@ test('branch UPI validates receiving details, saves to the server and supports B
 test('a changed payee keeps the draft until staff choose to refresh',async({page})=>{
  const server=await open(page);await page.locator('#branch-upi-id').fill('draft@bank');server.conflict();await page.locator('button[type=submit]').click();
  await expect(page.locator('#branch-message')).toContainText('Settings changed');await expect(page.locator('#branch-upi-id')).toHaveValue('draft@bank');
- page.once('dialog',dialog=>dialog.accept());await page.locator('#branch-retry').click();await expect(page.locator('#branch-upi-id')).toHaveValue('cashier@bank');
+ await page.locator('#branch-retry').click();
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();await expect(page.locator('#branch-upi-id')).toHaveValue('cashier@bank');
 });

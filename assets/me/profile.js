@@ -31,7 +31,14 @@
     if (busy) return true;
     if (current === "phone-code") { phoneCode = page.querySelector("#phone-code").value; showPhone(); return true; }
     if (current === "phone") { phonePassword = ""; renderProfile(nameDraft); return true; }
-    if (dirty() && !confirm(t("Discard changes?"))) return true;
+    if (dirty()) {
+      void CaptainConfirm.discard().then(confirmed => { if (confirmed) leave(); });
+      return true;
+    }
+    leave();
+    return true;
+  }
+  function leave() {
     clearInterval(phoneTimer);
     phonePassword = "";
     generation++;
@@ -39,7 +46,6 @@
     home.hidden = false;
     current = "";
     window.CaptainMe?.render();
-    return true;
   }
   function field(label, id, type, value = "", autocomplete = "off") {
     return `<label class="profile-field">${esc(t(label))}<input class="ui-field" id="${id}" name="${id}" type="${type}" value="${esc(value)}" autocomplete="${autocomplete}" required></label>`;

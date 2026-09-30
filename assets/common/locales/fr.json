@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Échec de l’enregistrement. Veuillez réenregistrer.",
   "Playback completed": "Lecture terminée",
   "Customer left": "Le client est parti",
-  "Ready": "Prêt"
+  "Ready": "Prêt",
+  "Keep editing": "Continuer la modification",
+  "Discard changes": "Abandonner les modifications"
 }

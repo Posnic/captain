@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "පටිගත කිරීම අසාර්ථක විය. කරුණාකර නැවත පටිගත කරන්න.",
   "Playback completed": "වාදනය අවසන්",
   "Customer left": "පාරිභෝගිකයා පිටව ගියා",
-  "Ready": "සූදානම්"
+  "Ready": "සූදානම්",
+  "Keep editing": "සංස්කරණය කරගෙන යන්න",
+  "Discard changes": "වෙනස්කම් ඉවත දමන්න"
 }

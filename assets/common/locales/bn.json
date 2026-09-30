@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "রেকর্ডিং ব্যর্থ হয়েছে। আবার রেকর্ড করুন।",
   "Playback completed": "বাজানো শেষ হয়েছে",
   "Customer left": "ক্রেতা চলে গেছেন",
-  "Ready": "প্রস্তুত"
+  "Ready": "প্রস্তুত",
+  "Keep editing": "সম্পাদনা চালিয়ে যান",
+  "Discard changes": "পরিবর্তন বাতিল করুন"
 }

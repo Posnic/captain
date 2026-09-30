@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "录音失败。请重新录制。",
   "Playback completed": "播放完毕",
   "Customer left": "顾客已离开",
-  "Ready": "已备好"
+  "Ready": "已备好",
+  "Keep editing": "继续编辑",
+  "Discard changes": "放弃更改"
 }

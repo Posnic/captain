@@ -3,9 +3,9 @@
  const at=id=>document.getElementById(id),t=value=>window.I18N?.t(value)||value;
  let details,busy=false,dirty=false,generation=0;
  const message=value=>at('branch-message').textContent=t(value);
- function back(){if(busy)return;if(dirty&&!confirm(t('Discard changes?')))return;generation++;location.href=new URLSearchParams(location.search).get('source')==='payments'?'payment-settings.html':'me.html#preferences';}
+ async function back(){if(busy)return;if(dirty&&!await CaptainConfirm.discard())return;generation++;location.href=new URLSearchParams(location.search).get('source')==='payments'?'payment-settings.html':'me.html#preferences';}
  async function load(){
-  if(busy)return;if(dirty&&!confirm(t('Discard changes?')))return;
+  if(busy)return;if(dirty&&!await CaptainConfirm.discard())return;
   const ticket=++generation;at('branch-details-form').hidden=true;message('Loading...');at('branch-retry').hidden=true;
   try{
    const result=await POSNIC.api.get('/captain/v1/branch-details');if(ticket!==generation)return;

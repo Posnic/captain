@@ -41,11 +41,11 @@
     const initial = fingerprint();
     let saving = false;
     const finish = () => {dialog.close();dialog.remove();window.removeEventListener('captain:back', nativeBack, true);previous?.focus({preventScroll:true});};
-    const close = () => {
-      if (saving || (fingerprint() !== initial && !confirm(t('Discard changes?')))) return;
+    const close = async () => {
+      if (saving || (fingerprint() !== initial && !await CaptainConfirm.discard())) return;
       finish();
     };
-    const nativeBack = event => {event.preventDefault();event.stopImmediatePropagation();close();};
+    const nativeBack = event => {if(CaptainConfirm.active)return;event.preventDefault();event.stopImmediatePropagation();close();};
     window.addEventListener('captain:back', nativeBack, true);
     dialog.querySelectorAll('[data-close]').forEach(button=>button.onclick=close);
     dialog.addEventListener('cancel',event=>{event.preventDefault();close();});

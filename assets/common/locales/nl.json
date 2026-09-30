@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Opname mislukt. Neem opnieuw op.",
   "Playback completed": "Afspelen voltooid",
   "Customer left": "Gast is vertrokken",
-  "Ready": "Gereed"
+  "Ready": "Gereed",
+  "Keep editing": "Verder bewerken",
+  "Discard changes": "Wijzigingen verwerpen"
 }

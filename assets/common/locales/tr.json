@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Kayıt başarısız oldu. Lütfen tekrar kaydedin.",
   "Playback completed": "Çalma tamamlandı",
   "Customer left": "Müşteri ayrıldı",
-  "Ready": "Hazır"
+  "Ready": "Hazır",
+  "Keep editing": "Düzenlemeye devam et",
+  "Discard changes": "Değişiklikleri sil"
 }

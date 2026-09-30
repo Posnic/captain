@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "ರೆಕಾರ್ಡಿಂಗ್ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ರೆಕಾರ್ಡ್ ಮಾಡಿ.",
   "Playback completed": "ಪ್ಲೇ ಮಾಡುವುದು ಪೂರ್ಣಗೊಂಡಿದೆ",
   "Customer left": "ಗ್ರಾಹಕರು ಹೊರಟುಹೋದರು",
-  "Ready": "ಸಿದ್ಧ"
+  "Ready": "ಸಿದ್ಧ",
+  "Keep editing": "ತಿದ್ದುಪಡಿ ಮುಂದುವರಿಸಿ",
+  "Discard changes": "ಬದಲಾವಣೆಗಳನ್ನು ತ್ಯಜಿಸಿ"
 }

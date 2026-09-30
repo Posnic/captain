@@ -75,13 +75,13 @@
         initial = fingerprint();
         show('items');
     }
-    function openSetting(name) {
+    async function openSetting(name) {
         if (saving) return;
         if (order()?.seating_request_id && ['table','type'].includes(name)) {
             const pending = CaptainGroupMove.pending(order()._id);
             if (pending) name = pending.body.dineType ? 'type' : 'table';
             if (initial !== null && fingerprint() !== initial) {
-                if (!confirm(window.I18N?.t('Discard changes?') || 'Discard changes?')) return;
+                if (!await CaptainConfirm.discard()) return;
                 setOrderBeingModified(JSON.parse(JSON.stringify(originalOrder)));
                 restore(JSON.parse(initial).details);
                 renderCurrentOrderItems();
@@ -163,9 +163,9 @@
         beforeSetting = null;
         show('items');
     }
-    function cancel() {
+    async function cancel() {
         if (saving) return;
-        if (initial !== null && fingerprint() !== initial && !window.confirm(window.I18N ? I18N.t('Discard changes?') : 'Discard changes?')) return;
+        if (initial !== null && fingerprint() !== initial && !await CaptainConfirm.discard()) return;
         cancelling = true;
         bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
         cancelling = false;
@@ -209,7 +209,10 @@
             if (!byId('item-picker').hidden) { event.preventDefault(); closeItemPicker(); return; }
             if (view === 'settings') { event.preventDefault(); back(); return; }
             if (view === 'details') { event.preventDefault(); show('items'); return; }
-            if (initial !== null && fingerprint() !== initial && !window.confirm(window.I18N ? I18N.t('Discard changes?') : 'Discard changes?')) event.preventDefault();
+            if (initial !== null && fingerprint() !== initial) {
+                event.preventDefault();
+                void cancel();
+            }
         });
         modal.addEventListener('hidden.bs.modal', () => {
             if (ownsHistory && history.state?.[historyKey]) { ownsHistory = false; history.back(); }

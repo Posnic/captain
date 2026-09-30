@@ -32,8 +32,10 @@ test('conflict preserves the draft until staff explicitly refresh',async({page})
  const server=await open(page);await page.locator('[data-table]').click();await page.locator('[data-action=edit-table]').click();await page.locator('#capacity').fill('6');server.conflict();
  await page.locator('button[type=submit]').click();await expect(page.locator('#table-management-message')).toContainText('Table changed');
  await expect(page.locator('#capacity')).toHaveValue('6');
- page.once('dialog',dialog=>dialog.dismiss());await page.locator('#tables-refresh').click();await expect(page.locator('#capacity')).toHaveValue('6');
- page.once('dialog',dialog=>dialog.accept());await page.locator('#tables-refresh').click();await expect(page.locator('[data-table]')).toContainText('Seat capacity: 5');
+ await page.locator('#tables-refresh').click();
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();await expect(page.locator('#capacity')).toHaveValue('6');
+ await page.locator('#tables-refresh').click();
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();await expect(page.locator('[data-table]')).toContainText('Seat capacity: 5');
 });
 
 test('table management fits a narrow phone and a portrait tablet',async({page})=>{

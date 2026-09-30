@@ -113,8 +113,8 @@
       )
       .join("")}</div>`;
   }
-  function reviewClose() {
-    if (dirty && !confirm(t("Discard changes?"))) return;
+  async function reviewClose() {
+    if (dirty && !await CaptainConfirm.discard()) return;
     if (selected.seating) {
       const primary = rows.find(row => row.id === selected.seating.primary_id);
       if (!primary) { say("Table changed. Refresh and try again."); return; }
@@ -124,11 +124,11 @@
     closeRequest ||= {id:selected.id,version:selected.version,request_id:selected.closing?.request_id || crypto.randomUUID(),orderIds:selected.closing?.orderIds || selected.orders.map(order=>order.id)};
     at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.seating?.labels?.join(" + ") || selected.tableorder_value)}</h3><p>${esc(t("Close paid orders and mark this table for cleaning."))}</p><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
   }
-  function back() {
+  async function back() {
     if (busy) return;
     if (closeReview) {if(fromFloor){location.href="kot-management.html";return;}closeReview=false;edit(selected);return;}
     if (selected) {
-      if (dirty && !confirm(t("Discard changes?"))) return;
+      if (dirty && !await CaptainConfirm.discard()) return;
       if(editingSettings && selected.id){edit(selected);return;}
       list();
       say("");
@@ -172,9 +172,9 @@
   }
   document.addEventListener("DOMContentLoaded", () => {
     at("tables-back").onclick = back;
-    at("tables-refresh").onclick = () => {
+    at("tables-refresh").onclick = async () => {
       if (selected) {
-        if (dirty && !confirm(t("Discard changes?"))) return;
+        if (dirty && !await CaptainConfirm.discard()) return;
         selected = null;
         dirty = false;
       }

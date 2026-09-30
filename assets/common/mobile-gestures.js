@@ -147,7 +147,7 @@
         document.addEventListener('touchstart', event => {
             suppressClickUntil = 0; // A fresh tap is intentional, not the prior swipe's click.
             reset();
-            if (event.touches.length === 1 && !event.target.closest('button')) {
+            if (event.touches?.length === 1 && !event.target.closest('button')) {
                 const menuHead = event.target.closest('#menu-index .ui-sheet-head, #menu-index .mobile-sheet-handle');
                 const summaryHead = event.target.closest('#cart-summary-sheet .cart-sheet-handle, #cart-summary-sheet .cart-sheet-header');
                 const sheet = menuHead ? menuHead.closest('.ui-sheet') : summaryHead?.closest('.cart-sheet');
@@ -159,7 +159,7 @@
                 }
             }
             const adapter = details();
-            if (adapter && !adapter.busy() && !navigating && !pending && !editing() && event.touches.length === 1 &&
+            if (adapter && !adapter.busy() && !navigating && !pending && !editing() && event.touches?.length === 1 &&
                 adapter.root().contains(event.target) && !horizontalScroller(event.target,adapter.root()) && window.getSelection()?.isCollapsed !== false && !event.target.closest('button, a, input, textarea, select, [contenteditable="true"]')) {
                 const touch = event.touches[0];
                 if (touch.clientX < 24 || touch.clientX > innerWidth - 24) return;
@@ -167,7 +167,7 @@
                     root:adapter.root(), id:adapter.current(), head:!!event.target.closest(adapter.header)};
                 return;
             }
-            if (!refreshAction || pending || event.touches.length !== 1 || overlayOpen() || editing() ||
+            if (!refreshAction || pending || event.touches?.length !== 1 || overlayOpen() || editing() ||
                 event.target.closest('button:not([data-view-order]), input, textarea, select, [contenteditable="true"]') || !atTop(event.target)) return;
             const touch = event.touches[0];
             if (touch.clientX < 24 || touch.clientX > innerWidth - 24) return;
@@ -176,7 +176,7 @@
         document.addEventListener('touchmove', event => {
             if (!gesture) return;
             if (gesture.adapter) {
-                if (event.touches.length !== 1 || details() !== gesture.adapter || gesture.adapter.busy() || editing() || gesture.adapter.current() !== gesture.id) { reset(); return; }
+                if (event.touches?.length !== 1 || details() !== gesture.adapter || gesture.adapter.busy() || editing() || gesture.adapter.current() !== gesture.id) { reset(); return; }
                 const touch = event.touches[0], dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y;
                 if (!gesture.axis && Math.max(Math.abs(dx),Math.abs(dy)) > 12) gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'x' : 'y';
                 if (gesture.axis === 'x') {
@@ -190,7 +190,7 @@
                 }
                 return;
             }
-            if (event.touches.length !== 1 || (!gesture.sheet && (overlayOpen() || editing() || !atTop(gesture.target)))) { reset(); return; }
+            if (event.touches?.length !== 1 || (!gesture.sheet && (overlayOpen() || editing() || !atTop(gesture.target)))) { reset(); return; }
             const touch = event.touches[0];
             const dx = touch.clientX - gesture.x, dy = touch.clientY - gesture.y;
             if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) || dy < -8) { reset(); return; }

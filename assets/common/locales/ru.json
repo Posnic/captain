@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Не удалось записать. Повторите запись.",
   "Playback completed": "Воспроизведение завершено",
   "Customer left": "Гость ушёл",
-  "Ready": "Готово"
+  "Ready": "Готово",
+  "Keep editing": "Продолжить редактирование",
+  "Discard changes": "Отменить изменения"
 }

@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "రికార్డింగ్ విఫలమైంది. దయచేసి మళ్లీ రికార్డ్ చేయండి.",
   "Playback completed": "ప్లే చేయడం పూర్తయింది",
   "Customer left": "కస్టమర్ వెళ్లిపోయారు",
-  "Ready": "సిద్ధం"
+  "Ready": "సిద్ధం",
+  "Keep editing": "సవరణ కొనసాగించండి",
+  "Discard changes": "మార్పులను విస్మరించండి"
 }

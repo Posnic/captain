@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "रेकर्डिङ असफल भयो। कृपया फेरि रेकर्ड गर्नुहोस्।",
   "Playback completed": "बजाएर सकियो",
   "Customer left": "ग्राहक गइसक्नुभयो",
-  "Ready": "तयार"
+  "Ready": "तयार",
+  "Keep editing": "सम्पादन जारी राख्नुहोस्",
+  "Discard changes": "परिवर्तनहरू त्याग्नुहोस्"
 }

@@ -79,12 +79,12 @@ test('guest edits can be applied and discarded without losing item edits',async(
  await page.locator('.edit-person-btn[data-person="4"]').click();
  await apply(page);
  await expect(page.locator('#order-editor-meta')).toContainText('4');
- page.once('dialog',dialog=>dialog.dismiss());
  await page.locator('#editOrderModal .modal-header .btn-close').click();
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();
  await expect(page.locator('#editOrderModal')).toBeVisible();
  await expect(page.locator('.qty-display')).toHaveText('3');
- page.once('dialog',dialog=>dialog.accept());
  await page.locator('#editOrderModal .modal-header .btn-close').click();
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  await page.evaluate(()=>editOrder('order-1'));
  await expect(page.locator('.qty-display')).toHaveText('2');

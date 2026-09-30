@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "റെക്കോർഡിങ് പരാജയപ്പെട്ടു. വീണ്ടും റെക്കോർഡ് ചെയ്യുക.",
   "Playback completed": "പ്ലേ ചെയ്തു കഴിഞ്ഞു",
   "Customer left": "ഉപഭോക്താവ് പോയി",
-  "Ready": "തയ്യാർ"
+  "Ready": "തയ്യാർ",
+  "Keep editing": "തിരുത്തൽ തുടരുക",
+  "Discard changes": "മാറ്റങ്ങൾ ഉപേക്ഷിക്കുക"
 }

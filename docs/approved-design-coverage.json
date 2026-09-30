@@ -139,24 +139,26 @@
     },
     {
       "id": "guests",
-      "status": "in-progress",
+      "status": "implemented-needs-complete-flow-review",
       "implementation": [
         "assets/order-history/editor.js",
         "POS/api/src/services/seating-claims.js"
       ],
       "verification": [
-        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness."
+        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness.",
+        "Claimed orders now support guest count changes and a separate durable dine-in/takeaway transition without resubmitting items. 62 POS seating checks and three Captain transition browser journeys pass. Pending transitions retain their issuer and immutable request on retry."
       ]
     },
     {
       "id": "type",
-      "status": "in-progress",
+      "status": "implemented-needs-complete-flow-review",
       "implementation": [
         "assets/order-history/editor.js",
         "POS/api/src/services/seating-claims.js"
       ],
       "verification": [
-        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness."
+        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness.",
+        "Claimed orders now support guest count changes and a separate durable dine-in/takeaway transition without resubmitting items. 62 POS seating checks and three Captain transition browser journeys pass. Pending transitions retain their issuer and immutable request on retry."
       ]
     },
     {
@@ -629,11 +631,13 @@
       "id": "discard",
       "status": "implemented-needs-complete-flow-review",
       "implementation": [
-        "assets/order-history/editor.js",
-        "assets/common/account.js"
+        "assets/common/confirm.js",
+        "assets/common/confirm.css",
+        "tests/discard-design.spec.js"
       ],
       "verification": [
-        "Dirty order edits require confirmation before discard; sign-out confirms loss of the cart. Shared styled discard treatment still requires review."
+        "Shared themed dialog replaces browser confirm in order edits, preparation, profile, table configuration, branch UPI and payment settings. Keep editing is focused by default; native Back/Escape preserves the draft; repeated taps cannot register duplicate destructive continuations. Both new labels exist in all 30 catalogs. Narrow Tamil and Arabic/tablet browser checks pass; broader navigation checks running.",
+        "All 63 affected order/preparation/profile/table/branch/payment browser journeys pass. Seven dialog layout/gesture checks pass, including duplicate-tap prevention and synthesized touch events. Full unit suite: 590 pass. Production build passes."
       ]
     },
     {
@@ -812,10 +816,16 @@
       "implementation": [
         "assets/common/order-actions.js",
         "assets/me/profile.js",
-        "POS/api/src/utils/branch-access.js"
+        "POS/api/src/utils/branch-access.js",
+        "access-denied.html",
+        "assets/common/access-denied.js",
+        "assets/common/access-denied.css",
+        "tests/permission-design.spec.js"
       ],
       "verification": [
-        "Role checks and manager approval surfaces exist; server authorization remains authoritative. Broad complete-flow review remains."
+        "Role checks and manager approval surfaces exist; server authorization remains authoritative. Broad complete-flow review remains.",
+        "Standalone legacy access-denied screen replaced with shared themed permission page and safe same-app Back/Home actions; no session or draft clearing. Visual/navigation verification in progress.",
+        "Three real-browser flows pass for Tamil phone, Arabic dark tablet and direct Home recovery. Rendered screenshots inspected; pending/draft storage retained. RTL Back arrow now mirrors direction."
       ]
     },
     {
@@ -925,7 +935,7 @@
     },
     {
       "id": "branch-details",
-      "status": "in-progress",
+      "status": "implemented-needs-complete-flow-review",
       "implementation": [
         "branch-details.html",
         "assets/me/branch-details.js",
@@ -935,7 +945,7 @@
       "verification": [
         "Authorized UPI save, stale edit recovery and Back browser checks passed.",
         "API role and tenant checks, validation, clear and optimistic update tests passed.",
-        "General branch details and full visual acceptance remain."
+        "Rechecked the approved branch-details mockup: it requests branch name context, receiving name and UPI ID, all implemented. Broader branch configuration was not part of this mockup. Shared discard confirmation added for unsaved payee edits."
       ]
     },
     {
@@ -965,8 +975,8 @@
   ],
   "remainingPriorities": [
     "Implement production partial-item transfer and occupied-table merge with preserved pricing, kitchen rounds/service identity, tenant scope and idempotent recovery",
-    "Finish claimed-table guest-count/order-type editing integration; retain drafts on conflicts",
-    "Complete any remaining common discard/permission/recovery visual gaps and branch details coverage",
+    "Audit payment-versus-seating transition concurrency before exposing occupied-table merges; preserve issuing-server authority for reservation journals",
+    "Finish complete-flow review of the shared discard/permission/recovery screens and remaining coverage ledger entries",
     "Complete repository-wide browser/API integration, all-language/RTL and phone/tablet verification",
     "Merge verified supporting POS/API changes and Captain implementation; release Captain, build POS installer locally only",
     "Real-device microphone/camera/resume and physical multi-printer acceptance remain for end-user testing"

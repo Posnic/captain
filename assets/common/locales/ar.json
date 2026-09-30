@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "فشل التسجيل. يرجى التسجيل مرة أخرى.",
   "Playback completed": "اكتمل التشغيل",
   "Customer left": "غادر العميل",
-  "Ready": "جاهز"
+  "Ready": "جاهز",
+  "Keep editing": "متابعة التعديل",
+  "Discard changes": "تجاهل التغييرات"
 }

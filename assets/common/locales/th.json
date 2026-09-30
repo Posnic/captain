@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "บันทึกเสียงไม่สำเร็จ โปรดบันทึกอีกครั้ง",
   "Playback completed": "เล่นจบแล้ว",
   "Customer left": "ลูกค้าออกไปแล้ว",
-  "Ready": "พร้อม"
+  "Ready": "พร้อม",
+  "Keep editing": "แก้ไขต่อ",
+  "Discard changes": "ละทิ้งการเปลี่ยนแปลง"
 }

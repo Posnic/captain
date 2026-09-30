@@ -3,6 +3,8 @@ import { onTheMenu } from './support/shop.js';
 
 for (const event of ['scroll', 'touchstart', 'mouseover']) {
   test(`search keeps focus when ${event} occurs`, async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
     await onTheMenu(page, 'nothing');
     const search = page.locator('#product-search-input');
     await search.fill('co');
@@ -14,6 +16,7 @@ for (const event of ['scroll', 'touchstart', 'mouseover']) {
     await search.pressSequentially('ffee');
     await expect(search).toHaveValue('coffee');
     await expect(page.locator('#product-notes-modal')).toBeHidden();
+    expect(errors).toEqual([]);
   });
 }
 

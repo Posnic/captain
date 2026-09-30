@@ -181,12 +181,12 @@ test('preparation Back keeps unsaved allergy details until discard is confirmed'
  const dialog=page.locator('#preparation-dialog');
  await dialog.locator('summary').click();
  await dialog.locator('[name=allergy_note]').fill('Ask chef about peanuts');
- page.once('dialog',dialog=>dialog.dismiss());
  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();
  await expect(dialog.locator('[name=allergy_note]')).toHaveValue('Ask chef about peanuts');
  await expect(page).toHaveURL(/cart.html/);
- page.once('dialog',dialog=>dialog.accept());
  await page.keyboard.press('Escape');
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();
  await expect(dialog).toHaveCount(0);
  await expect(page.locator('[data-preparation-cart="mushroom"]')).toBeFocused();
  const cart=await page.evaluate(()=>getCartData());

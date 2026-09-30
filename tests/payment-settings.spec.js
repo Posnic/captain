@@ -44,8 +44,8 @@ test('settings refusal never displays an editable branch switch',async({page})=>
 test('unsaved payment choices can be kept when leaving for branch details',async({page})=>{
   await setup(page);await page.goto('/payment-settings.html');
   await page.locator('#payment-settings-enabled').check();
-  page.once('dialog',dialog=>dialog.dismiss());
   await page.locator('a[href^="branch-details"]').click();
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();
   await expect(page).toHaveURL(/payment-settings.html$/);
   await expect(page.locator('#payment-settings-enabled')).toBeChecked();
 });

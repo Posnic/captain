@@ -40,12 +40,6 @@ for (const action of ['header', 'cancel', 'native', 'browser']) {
     await page.locator('a[href="#account"]').click();
     await page.locator('#me-profile').click();
     await page.locator('#profile-name').fill('Unsaved captain');
-    let accept = false;
-    const dialogs = [];
-    page.on('dialog', async dialog => {
-      dialogs.push(dialog.message());
-      await (accept ? dialog.accept() : dialog.dismiss());
-    });
     const leave = async () => {
       if (action === 'header') await page.locator('#me-back').click();
       else if (action === 'cancel') await page.locator('[data-profile-back]').click();
@@ -53,15 +47,15 @@ for (const action of ['header', 'cancel', 'native', 'browser']) {
       else await page.goBack();
     };
     await leave();
-    await expect.poll(() => dialogs.length).toBe(1);
+    await expect(page.locator('#captain-discard h2')).toHaveText('Discard changes?');
+    await page.locator('#captain-discard [data-confirm-action=keep]').click();
     await expect(page.locator('#profile-name')).toHaveValue('Unsaved captain');
     await expect(page.locator('.me-title')).toHaveText('Profile details');
     await expect(page).toHaveURL(/#account$/);
-    accept = true;
     // Use the visible Back button after a declined browser history traversal.
     await page.locator('#me-back').click();
+    await page.locator('#captain-discard [data-confirm-action=discard]').click();
     await expect(page.locator('#me-password')).toBeVisible();
-    expect(dialogs).toEqual(['Discard changes?', 'Discard changes?']);
   });
 }
 
@@ -74,11 +68,11 @@ test('failed password save preserves the draft and cancel requires confirmation'
   await page.locator('#confirmPassword').fill('new-secret-123');
   await page.locator('#profile-form button[type=submit]').click();
   await expect(page.locator('#profile-message')).toHaveText('The current password is incorrect.');
-  page.once('dialog', dialog => dialog.dismiss());
   await page.locator('#me-back').click();
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();
   await expect(page.locator('#newPassword')).toHaveValue('new-secret-123');
-  page.once('dialog', dialog => dialog.accept());
   await page.locator('[data-profile-back]').click();
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();
   await expect(page.locator('#me-password')).toBeVisible();
 });
 

@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Recording failed. Please record again.",
   "Playback completed": "Playback completed",
   "Customer left": "Customer left",
-  "Ready": "Ready"
+  "Ready": "Ready",
+  "Keep editing": "Keep editing",
+  "Discard changes": "Discard changes"
 }

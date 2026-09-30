@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Error al grabar. Vuelve a grabar.",
   "Playback completed": "Reproducción finalizada",
   "Customer left": "El cliente se fue",
-  "Ready": "Listo"
+  "Ready": "Listo",
+  "Keep editing": "Seguir editando",
+  "Discard changes": "Descartar cambios"
 }

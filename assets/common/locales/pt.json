@@ -987,5 +987,7 @@
   "Recording failed. Please record again.": "Falha na gravação. Grave novamente.",
   "Playback completed": "Reprodução concluída",
   "Customer left": "O cliente foi embora",
-  "Ready": "Pronto"
+  "Ready": "Pronto",
+  "Keep editing": "Continuar a editar",
+  "Discard changes": "Descartar alterações"
 }

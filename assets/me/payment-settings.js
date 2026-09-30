@@ -12,8 +12,8 @@
     at("payment-settings-save").disabled = busy || (enabled && !hasMethod);
     at("payment-settings-method-error").hidden = !enabled || hasMethod;
   }
-  function back() {
-    if (busy || (dirty && !confirm(t("Discard changes?")))) return;
+  async function back() {
+    if (busy || (dirty && !await CaptainConfirm.discard())) return;
     generation++;
     location.href = "me.html#preferences";
   }
@@ -45,8 +45,11 @@
     at("payment-settings-cancel").onclick = back;
     at("payment-settings-retry").onclick = load;
     const form = at("payment-settings-form");
-    form.querySelector('a[href^="branch-details"]').addEventListener("click", event => {
-      if (busy || (dirty && !confirm(t("Discard changes?")))) event.preventDefault();
+    form.querySelector('a[href^="branch-details"]').addEventListener("click", async event => {
+      event.preventDefault();
+      const destination = event.currentTarget.href;
+      if (busy || (dirty && !await CaptainConfirm.discard())) return;
+      location.href = destination;
     });
     form.addEventListener("change", () => { dirty = true; paint(); });
     form.addEventListener("submit", async event => {
