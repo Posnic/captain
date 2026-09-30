@@ -954,5 +954,6 @@
   "Pending orders": "Bekleyen siparişler",
   "No pending orders": "Bekleyen sipariş yok",
   "Sound alerts": "Sesli uyarılar",
-  "Vibration": "Titreşim"
+  "Vibration": "Titreşim",
+  "Choose at least one payment method.": "En az bir ödeme yöntemi seçin."
 }

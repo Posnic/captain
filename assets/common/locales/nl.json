@@ -954,5 +954,6 @@
   "Pending orders": "Wachtende bestellingen",
   "No pending orders": "Geen wachtende bestellingen",
   "Sound alerts": "Geluidsmeldingen",
-  "Vibration": "Trillen"
+  "Vibration": "Trillen",
+  "Choose at least one payment method.": "Kies ten minste één betaalmethode."
 }

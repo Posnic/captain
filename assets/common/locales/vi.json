@@ -954,5 +954,6 @@
   "Pending orders": "Đơn hàng đang chờ",
   "No pending orders": "Không có đơn hàng đang chờ",
   "Sound alerts": "Thông báo âm thanh",
-  "Vibration": "Rung"
+  "Vibration": "Rung",
+  "Choose at least one payment method.": "Chọn ít nhất một phương thức thanh toán."
 }

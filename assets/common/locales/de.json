@@ -954,5 +954,6 @@
   "Pending orders": "Ausstehende Bestellungen",
   "No pending orders": "Keine ausstehenden Bestellungen",
   "Sound alerts": "Akustische Hinweise",
-  "Vibration": "Vibration"
+  "Vibration": "Vibration",
+  "Choose at least one payment method.": "Wählen Sie mindestens eine Zahlungsart."
 }

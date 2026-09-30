@@ -954,5 +954,6 @@
   "Pending orders": "الطلبات المعلّقة",
   "No pending orders": "لا توجد طلبات معلّقة",
   "Sound alerts": "التنبيهات الصوتية",
-  "Vibration": "الاهتزاز"
+  "Vibration": "الاهتزاز",
+  "Choose at least one payment method.": "اختر طريقة دفع واحدة على الأقل."
 }

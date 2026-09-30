@@ -954,5 +954,6 @@
   "Pending orders": "অপেক্ষমাণ অর্ডার",
   "No pending orders": "কোনো অপেক্ষমাণ অর্ডার নেই",
   "Sound alerts": "শব্দ সতর্কতা",
-  "Vibration": "কম্পন"
+  "Vibration": "কম্পন",
+  "Choose at least one payment method.": "অন্তত একটি পেমেন্ট পদ্ধতি বেছে নিন।"
 }

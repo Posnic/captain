@@ -3,7 +3,7 @@
  const at=id=>document.getElementById(id),t=value=>window.I18N?.t(value)||value;
  let details,busy=false,dirty=false,generation=0;
  const message=value=>at('branch-message').textContent=t(value);
- function back(){if(busy)return;if(dirty&&!confirm(t('Discard changes?')))return;generation++;location.href='me.html';}
+ function back(){if(busy)return;if(dirty&&!confirm(t('Discard changes?')))return;generation++;location.href=new URLSearchParams(location.search).get('source')==='payments'?'payment-settings.html':'me.html#preferences';}
  async function load(){
   if(busy)return;if(dirty&&!confirm(t('Discard changes?')))return;
   const ticket=++generation;at('branch-details-form').hidden=true;message('Loading...');at('branch-retry').hidden=true;

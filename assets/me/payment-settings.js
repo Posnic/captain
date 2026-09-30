@@ -1,0 +1,74 @@
+/* These are branch settings; the server checks the manager's permission. */
+(function () {
+  "use strict";
+  const at = id => document.getElementById(id), t = text => window.I18N?.t(text) || text;
+  let busy = false, dirty = false, generation = 0;
+  function message(text) { at("payment-settings-message").textContent = t(text); }
+  function paint() {
+    const enabled = at("payment-settings-enabled").checked;
+    at("payment-settings-options").hidden = !enabled;
+    at("payment-settings-cashier").hidden = enabled;
+    const hasMethod = !!document.querySelector('input[name="method"]:checked');
+    at("payment-settings-save").disabled = busy || (enabled && !hasMethod);
+    at("payment-settings-method-error").hidden = !enabled || hasMethod;
+  }
+  function back() {
+    if (busy || (dirty && !confirm(t("Discard changes?")))) return;
+    generation++;
+    location.href = "me.html#preferences";
+  }
+  async function load() {
+    if (busy) return;
+    const ticket = ++generation;
+    at("payment-settings-form").hidden = true;
+    at("payment-settings-retry").hidden = true;
+    message("Loading...");
+    try {
+      const value = await POSNIC.api.get("/captain/v1/payment-settings");
+      if (ticket !== generation) return;
+      if (typeof value.enabled !== "boolean" || !Array.isArray(value.methods) || typeof value.printReceipt !== "boolean") throw new Error("invalid_settings");
+      at("payment-settings-enabled").checked = value.enabled;
+      at("payment-settings-print").checked = value.printReceipt;
+      document.querySelectorAll('input[name="method"]').forEach(input => { input.checked = value.methods.includes(input.value); });
+      dirty = false;
+      paint();
+      at("payment-settings-form").hidden = false;
+      message("");
+    } catch (error) {
+      if (ticket !== generation) return;
+      message(error.status === 403 ? "Permission is required." : "Connection failed");
+      at("payment-settings-retry").hidden = error.status === 403;
+    }
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    at("payment-settings-back").onclick = back;
+    at("payment-settings-cancel").onclick = back;
+    at("payment-settings-retry").onclick = load;
+    const form = at("payment-settings-form");
+    form.querySelector('a[href^="branch-details"]').addEventListener("click", event => {
+      if (busy || (dirty && !confirm(t("Discard changes?")))) event.preventDefault();
+    });
+    form.addEventListener("change", () => { dirty = true; paint(); });
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (busy || at("payment-settings-save").disabled) return;
+      const value = { enabled: at("payment-settings-enabled").checked, printReceipt: at("payment-settings-print").checked, methods: [...document.querySelectorAll('input[name="method"]:checked')].map(input => input.value) };
+      busy = true;
+      form.querySelectorAll("input,button").forEach(input => { input.disabled = true; });
+      message("Loading...");
+      try {
+        const result = await POSNIC.api.post("/captain/v1/payment-settings", value);
+        if (result.saved !== true) throw new Error("unconfirmed_save");
+        dirty = false;
+        message("Saved");
+      } catch (error) { message(error.status === 403 ? "Permission is required." : "Could not save. Please try again."); }
+      finally {
+        busy = false;
+        form.querySelectorAll("input,button").forEach(input => { input.disabled = false; });
+        paint();
+      }
+    });
+    void load();
+  });
+  window.addEventListener("captain:back", event => { event.preventDefault(); back(); });
+})();

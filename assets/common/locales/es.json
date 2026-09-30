@@ -954,5 +954,6 @@
   "Pending orders": "Pedidos pendientes",
   "No pending orders": "No hay pedidos pendientes",
   "Sound alerts": "Alertas sonoras",
-  "Vibration": "Vibración"
+  "Vibration": "Vibración",
+  "Choose at least one payment method.": "Elige al menos un método de pago."
 }

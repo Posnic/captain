@@ -954,5 +954,6 @@
   "Pending orders": "送信待ちの注文",
   "No pending orders": "送信待ちの注文はありません",
   "Sound alerts": "通知音",
-  "Vibration": "バイブレーション"
+  "Vibration": "バイブレーション",
+  "Choose at least one payment method.": "支払い方法を少なくとも1つ選択してください。"
 }

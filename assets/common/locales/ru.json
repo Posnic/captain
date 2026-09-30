@@ -954,5 +954,6 @@
   "Pending orders": "Ожидающие заказы",
   "No pending orders": "Нет ожидающих заказов",
   "Sound alerts": "Звуковые уведомления",
-  "Vibration": "Вибрация"
+  "Vibration": "Вибрация",
+  "Choose at least one payment method.": "Выберите хотя бы один способ оплаты."
 }
