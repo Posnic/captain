@@ -15,6 +15,35 @@ test('profile edits persist through the API and Back returns to the account page
   await expect(page.locator('#me-who')).toHaveText('Floor captain');
   await expect(page.locator('#me-password')).toBeVisible();
 });
+
+test('stalled profile loading offers retry and ignores an expired response',async({page})=>{
+  await open(page);
+  await page.clock.install();
+  await page.evaluate(()=>{POSNIC.api.get=()=>new Promise(resolve=>{window.finishOldProfile=resolve;});});
+  await page.locator('#me-profile').click();
+  await expect(page.locator('.profile-page [role=status]')).toHaveText('Loading...');
+  await page.clock.fastForward(20001);
+  await expect(page.locator('[data-profile-retry]')).toBeVisible();
+  await page.evaluate(()=>{POSNIC.api.get=async()=>({id:'user-1',name:'Current staff',email:'staff@example.test'});});
+  await page.locator('[data-profile-retry]').click();
+  await expect(page.locator('#profile-name')).toHaveValue('Current staff');
+  await page.locator('#profile-name').fill('Unsaved name');
+  await page.evaluate(()=>window.finishOldProfile({id:'user-1',name:'Old name'}));
+  await expect(page.locator('#profile-name')).toHaveValue('Unsaved name');
+});
+
+test('Back leaves a loading profile and its late response cannot replace the password screen',async({page})=>{
+  await open(page);
+  await page.evaluate(()=>{POSNIC.api.get=()=>new Promise(resolve=>{window.finishOldProfile=resolve;});});
+  await page.locator('#me-profile').click();
+  await page.locator('#me-back').click();
+  await expect(page.locator('#me-password')).toBeVisible();
+  await page.locator('#me-password').click();
+  await page.locator('#currentPassword').fill('Keep this draft');
+  await page.evaluate(()=>window.finishOldProfile({id:'user-1',name:'Old name'}));
+  await expect(page.locator('#currentPassword')).toHaveValue('Keep this draft');
+  await expect(page.locator('#profile-name')).toHaveCount(0);
+});
 test('password validation preserves typing and a successful change keeps saved orders on the phone',async({page})=>{
   await open(page);const posts=[];
   await page.route('**/captain/v1/password',route=>{posts.push(route.request().postDataJSON());return route.fulfill({json:{saved:true,reauthenticate:true}})});

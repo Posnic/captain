@@ -69,14 +69,21 @@
   }
   async function load() {
     const requestGeneration = ++generation;
+    let timer;
+    page.innerHTML = `<p role="status">${esc(t("Loading..."))}</p>`;
     try {
-      const loaded = await POSNIC.api.get("/captain/v1/profile");
+      const loaded = await Promise.race([
+        Promise.resolve().then(() => POSNIC.api.get("/captain/v1/profile")),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('profile_timeout')), 20000); }),
+      ]);
       if (current !== "profile" || requestGeneration !== generation) return;
       profile = loaded;
       renderProfile();
     } catch {
       if (current !== "profile" || requestGeneration !== generation) return;
       page.innerHTML = `<p role="status">${esc(t("Connection failed"))}</p><button type="button" class="profile-primary" data-profile-retry>${esc(t("Retry"))}</button>`;
+    } finally {
+      clearTimeout(timer);
     }
   }
   function renderProfile(name = profile.name) {
