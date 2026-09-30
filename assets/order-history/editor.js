@@ -5,6 +5,9 @@
     let view = 'items', setting = '', beforeSetting = null, initial = null, originalOrder = null;
     let originalLines = new WeakSet(), saving = false, saved = false, cancelling = false;
     let ownsHistory = false;
+    let settingLoad = 0, legacyGuestSupported = false;
+    const identity = () => JSON.stringify([POSNIC.session?.shopKey, POSNIC.session?.user?.id, localStorage.getItem('branch_id'), POSNIC.session?.base || POSNIC.server?.baseUrl]);
+    const durableGuests = () => !!(order()?.seating_request_id || legacyGuestSupported || (order() && CaptainGuestUpdate.pending(order()._id)));
     const historyKey = 'captainOrderEditor';
     const selected = name => document.querySelector('input[name="' + name + '"]:checked');
     const order = () => orderBeingModified();
@@ -28,6 +31,7 @@
         setEditPersonCount(value.guests);
     }
     function show(next) {
+        settingLoad++;
         view = next;
         for (const name of ['items', 'details', 'settings']) byId('order-editor-' + name).hidden = name !== next;
         document.querySelector('#editOrderModal .editor-footer').hidden = next !== 'items';
@@ -68,6 +72,7 @@
         byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());
     }
     function begin() {
+        legacyGuestSupported = false; settingLoad++;
         saved = false; saving = false; beforeSetting = null;
         originalOrder = JSON.parse(JSON.stringify(order()));
         document.querySelectorAll('#edit-type-section input, #edit-table-section input, #edit-pax-section input, #edit-pax-section button').forEach(input => input.disabled=false);
@@ -77,7 +82,20 @@
     }
     async function openSetting(name) {
         if (saving) return;
-        if (order() && (name === 'table' || (order().seating_request_id && ['type','guests'].includes(name)))) {
+        if (name === 'guests' && order() && !durableGuests()) {
+            const revision = ++settingLoad, current = order(), owner = identity();
+            const button = document.querySelector('[data-editor-setting="guests"]');
+            button.disabled = true;
+            try {
+                const result = await POSNIC.api.get('/captain/v1/tables');
+                if (revision !== settingLoad || order() !== current || identity() !== owner || !byId('editOrderModal').classList.contains('show')) return;
+                legacyGuestSupported = result.capabilities?.legacyGuestUpdate === true;
+            } catch (error) {
+                if (revision === settingLoad && order() === current) showToast(window.I18N?.t('Connection failed') || 'Connection failed', 'error');
+                return;
+            } finally { button.disabled = false; }
+        }
+        if (order() && (name === 'table' || (name === 'guests' && durableGuests()) || (order().seating_request_id && name === 'type'))) {
             const pending = CaptainGroupMove.pending(order()._id);
             if (pending) name = pending.body.dineType ? 'type' : 'table';
             if (CaptainGuestUpdate.pending(order()._id)) name = 'guests';
@@ -106,7 +124,7 @@
             }
             byId('editor-setting-apply').textContent = window.I18N?.t(pending ? 'Retry' : 'Save') || (pending ? 'Retry' : 'Save');
             document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input => input.disabled=!!pending);
-        } else if (order()?.seating_request_id && name === 'guests') {
+        } else if (name === 'guests' && durableGuests()) {
             const pending = CaptainGuestUpdate.pending(order()._id);
             if (pending) setEditPersonCount(pending.body.guests);
             byId('editor-setting-apply').textContent = window.I18N?.t(pending ? 'Retry' : 'Save') || (pending ? 'Retry' : 'Save');
@@ -128,7 +146,7 @@
         if (value.type === 'Dine-in' && value.tableRadio === 'edit_table_manual_radio' && !/^[A-Z0-9]{1,6}$/.test(value.table)) {
             showToast('Table must be 1–6 letters/numbers (A–Z, 0–9).', 'error'); return;
         }
-        if (setting === 'guests' && order()?.seating_request_id) {
+        if (setting === 'guests' && durableGuests()) {
             const current = order(), controls = [...byId('editOrderModal').querySelectorAll('button,input,select')];
             const disabled = controls.map(control => control.disabled);
             saving=true; controls.forEach(control=>control.disabled=true);

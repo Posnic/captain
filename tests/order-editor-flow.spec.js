@@ -22,7 +22,46 @@ async function setting(page, name) {
 async function apply(page) {
   await page.locator('#editor-setting-apply').click();
 }
+test('Back during guest capability discovery ignores the late response',async({page})=>{
+ await editor(page);
+ let answer;
+ const waiting = new Promise(resolve=>{answer=resolve;});
+ let requested;
+ const started = new Promise(resolve=>{requested=resolve;});
+ await page.route('**/captain/v1/tables',async route=>{requested();await waiting;await route.fulfill({json:{tables:[],capabilities:{legacyGuestUpdate:true}}});});
+ await setting(page,'guests');await started;
+ await expect(page.locator('[data-editor-setting="guests"]')).toBeDisabled();
+ await page.locator('[data-editor-view="items"]').click();
+ answer();
+ await expect(page.locator('[data-editor-setting="guests"]')).toBeEnabled();
+ await expect(page.locator('#order-editor-items')).toBeVisible();
+ await expect(page.locator('#order-editor-settings')).toBeHidden();
+});
+
+test('failed guest capability discovery keeps Back available and creates no pending update',async({page})=>{
+ await editor(page);
+ await page.route('**/captain/v1/tables',route=>route.fulfill({status:503,json:{message:'Connection failed'}}));
+ await setting(page,'guests');
+ await expect(page.locator('[data-editor-setting="guests"]')).toBeEnabled();
+ await expect(page.locator('#order-editor-details')).toBeVisible();
+ expect(await page.evaluate(()=>CaptainGuestUpdate.pending('order-1'))).toBeNull();
+ await page.locator('[data-editor-view="items"]').click();
+ await expect(page.locator('#order-editor-items')).toBeVisible();
+});
 for (const where of ['order-history.html','kot-management.html']) {
+ test(`older guest changes save separately on capable servers on ${where}`,async({page})=>{
+  const posts=await editor(page,where), requests=[];
+  await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[],capabilities:{legacyGuestUpdate:true}}}));
+  await page.route('**/captain/v1/tables/guests',route=>{
+   const body=route.request().postDataJSON();requests.push(body);return route.fulfill({json:{...body,state:'completed'}});
+  });
+  await setting(page,'guests');
+  await expect(page.locator('#editor-setting-apply')).toHaveText('Save');
+  await page.locator('.edit-person-btn[data-person="3"]').click();await apply(page);
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(requests).toHaveLength(1);expect(requests[0]).toMatchObject({orderId:'order-1',guests:3});
+  expect(requests[0].items).toBeUndefined();expect(posts).toHaveLength(0);
+ });
  test(`claimed guest changes save separately without resending dishes on ${where}`,async({page})=>{
   const posts=await editor(page,where,{seating_request_id:'initial-seating'}), requests=[];
   await page.route('**/captain/v1/tables/guests',route=>{
@@ -38,8 +77,9 @@ for (const where of ['order-history.html','kot-management.html']) {
   expect(requests[0].items).toBeUndefined();expect(posts).toHaveLength(0);
  });
 }
-test('a failed guest save keeps the original count and request through Back and Retry',async({page})=>{
- const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating'}), requests=[];
+for (const claimed of [true,false])test(`a failed guest save keeps the original count and request through Back and Retry (claimed=${claimed})`,async({page})=>{
+ const posts=await editor(page,'order-history.html',claimed?{seating_request_id:'initial-seating'}:{}), requests=[];
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[],capabilities:{legacyGuestUpdate:true}}}));
  await page.route('**/captain/v1/tables/guests',route=>{
   const body=route.request().postDataJSON();requests.push(body);
   return requests.length===1?route.fulfill({status:503,json:{error:{message:'Please retry.'}}}):route.fulfill({json:{...body,state:'completed'}});
