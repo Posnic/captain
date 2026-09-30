@@ -966,5 +966,8 @@
   "Check the verification code.": "確認コードを確認してください。",
   "Request a new verification code.": "新しい確認コードをリクエストしてください。",
   "Enter a phone number with country code.": "国番号を含む電話番号を入力してください。",
-  "Could not send the code. Check SMS settings or try again later.": "コードを送信できませんでした。SMS設定を確認するか、後でもう一度お試しください。"
+  "Could not send the code. Check SMS settings or try again later.": "コードを送信できませんでした。SMS設定を確認するか、後でもう一度お試しください。",
+  "Enter a valid email address.": "有効なメールアドレスを入力してください。",
+  "This email address is unavailable.": "このメールアドレスは使用できません。",
+  "Could not send the code. Check email settings or try again later.": "コードを送信できませんでした。メール設定を確認するか、後でもう一度お試しください。"
 }

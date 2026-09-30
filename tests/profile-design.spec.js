@@ -178,3 +178,43 @@ test('Back resumes an existing phone code without another SMS and changing numbe
   await expect(page.locator('#phone-code')).toHaveValue('123');
   expect(sends).toBe(1);
 });
+
+
+async function emailScreen(page) {
+  await open(page);
+  await page.locator('#me-profile').click();
+  await page.locator('#profile-name').fill('Draft name');
+  await page.locator('[data-profile-email]').click();
+  await page.locator('#phone-password').fill('staff-password');
+}
+test('email change verifies normalized address and retains profile name draft',async({page})=>{
+  await emailScreen(page);
+  const posts=[];
+  await page.route('**/captain/v1/profile/email/*',route=>{
+    posts.push(route.request().postDataJSON());
+    return route.fulfill({json:route.request().url().endsWith('/start')?challenge:{saved:true,email:'new@example.test'}});
+  });
+  await expect(page.locator('#phone-number')).toHaveAttribute('type','email');
+  await page.locator('#phone-number').fill('NEW@EXAMPLE.TEST');
+  await page.locator('[data-phone-send]').click();
+  await page.locator('#phone-code').fill('123456');
+  await page.locator('[data-profile-back]').click();
+  await page.locator('[data-phone-send]').click();
+  await expect(page.locator('#phone-code')).toHaveValue('123456');
+  await page.locator('#phone-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('Saved');
+  await expect(page.locator('.profile-detail').first()).toContainText('new@example.test');
+  await expect(page.locator('#profile-name')).toHaveValue('Draft name');
+  expect(posts).toEqual([{email:'new@example.test',currentPassword:'staff-password'},{challenge:'phone-challenge',code:'123456'}]);
+});
+for (const status of [409,503]) test(`email failure ${status} preserves original profile and editable draft`,async({page})=>{
+  await emailScreen(page);
+  await page.route('**/captain/v1/profile/email/start',route=>route.fulfill({status,json:{message:'failure'}}));
+  await page.locator('#phone-number').fill('new@example.test');
+  await page.locator('[data-phone-send]').click();
+  await expect(page.locator('#profile-message')).toContainText(status===409?'unavailable':'email settings');
+  await expect(page.locator('#phone-number')).toHaveValue('new@example.test');
+  await page.locator('[data-profile-back]').click();
+  await expect(page.locator('.profile-detail').first()).toContainText('staff@example.test');
+  await expect(page.locator('#profile-name')).toHaveValue('Draft name');
+});

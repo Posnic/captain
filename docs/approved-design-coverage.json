@@ -225,12 +225,14 @@
       "implementation": [
         "assets/me/profile.js",
         "POS/api/src/services/captain-profile.js",
-        "POS/api/src/services/captain-email.js"
+        "POS/api/src/services/captain-email.js",
+        "tests/profile-design.spec.js"
       ],
       "verification": [
         "Local targeted tests passed; complete application acceptance pending.",
         "Unsaved profile/password edits require discard confirmation through header, Cancel and native Back; declined browser Back restores the account route and editor title. Failed password saves retain typing. 19 account/profile browser checks, 577 unit checks and the 30-language production build pass. Full account verification flows remain outstanding.",
-        "Email verification API routes implemented with password confirmation, shop SMTP/platform delivery, expiry/resend/attempt limits, duplicate-address checks and stale request protection. Ten database checks, one paired HTTP roundtrip and targeted ESLint pass. Captain email editor/code UI, translations, sign-in/recovery review and real email delivery remain required."
+        "Email verification API routes implemented with password confirmation, shop SMTP/platform delivery, expiry/resend/attempt limits, duplicate-address checks and stale request protection. Ten database checks, one paired HTTP roundtrip and targeted ESLint pass. Captain email editor/code UI, translations, sign-in/recovery review and real email delivery remain required.",
+        "Email Change UI now shares contact verification, password confirmation, per-channel cooldown, code resume and profile-draft preservation. Three email browser checks plus three phone regressions pass; 577 unit checks and production build pass. Three messages translated across all 30 languages. Real delivery, sign-in/recovery review and full device/visual acceptance remain pending."
       ]
     },
     {

@@ -966,5 +966,8 @@
   "Check the verification code.": "सत्यापन कोड जाँचें।",
   "Request a new verification code.": "नए सत्यापन कोड का अनुरोध करें।",
   "Enter a phone number with country code.": "देश कोड के साथ फ़ोन नंबर दर्ज करें।",
-  "Could not send the code. Check SMS settings or try again later.": "कोड भेजा नहीं जा सका। SMS सेटिंग जाँचें या बाद में फिर से कोशिश करें।"
+  "Could not send the code. Check SMS settings or try again later.": "कोड भेजा नहीं जा सका। SMS सेटिंग जाँचें या बाद में फिर से कोशिश करें।",
+  "Enter a valid email address.": "एक मान्य ईमेल पता दर्ज करें।",
+  "This email address is unavailable.": "यह ईमेल पता उपलब्ध नहीं है।",
+  "Could not send the code. Check email settings or try again later.": "कोड भेजा नहीं जा सका। ईमेल सेटिंग जाँचें या बाद में फिर से कोशिश करें।"
 }

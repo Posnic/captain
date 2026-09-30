@@ -966,5 +966,8 @@
   "Enter a phone number with country code.": "Geben Sie eine Telefonnummer mit Ländervorwahl ein.",
   "Request a new verification code.": "Fordern Sie einen neuen Bestätigungscode an.",
   "Resend code": "Code erneut senden",
-  "Send verification code": "Bestätigungscode senden"
+  "Send verification code": "Bestätigungscode senden",
+  "Enter a valid email address.": "Geben Sie eine gültige E-Mail-Adresse ein.",
+  "This email address is unavailable.": "Diese E-Mail-Adresse ist nicht verfügbar.",
+  "Could not send the code. Check email settings or try again later.": "Der Code konnte nicht gesendet werden. Überprüfen Sie die E-Mail-Einstellungen oder versuchen Sie es später erneut."
 }

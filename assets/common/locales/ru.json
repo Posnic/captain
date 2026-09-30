@@ -966,5 +966,8 @@
   "Enter a phone number with country code.": "Введите номер телефона с кодом страны.",
   "Request a new verification code.": "Запросите новый код подтверждения.",
   "Resend code": "Отправить код повторно",
-  "Send verification code": "Отправить код подтверждения"
+  "Send verification code": "Отправить код подтверждения",
+  "Enter a valid email address.": "Введите действительный адрес электронной почты.",
+  "This email address is unavailable.": "Этот адрес электронной почты недоступен.",
+  "Could not send the code. Check email settings or try again later.": "Не удалось отправить код. Проверьте настройки электронной почты или повторите попытку позже."
 }

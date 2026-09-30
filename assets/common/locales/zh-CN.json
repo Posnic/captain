@@ -966,5 +966,8 @@
   "Check the verification code.": "请检查验证码。",
   "Request a new verification code.": "请获取新的验证码。",
   "Enter a phone number with country code.": "请输入包含国家代码的电话号码。",
-  "Could not send the code. Check SMS settings or try again later.": "无法发送验证码。请检查短信设置或稍后重试。"
+  "Could not send the code. Check SMS settings or try again later.": "无法发送验证码。请检查短信设置或稍后重试。",
+  "Enter a valid email address.": "请输入有效的电子邮箱地址。",
+  "This email address is unavailable.": "此电子邮箱地址不可用。",
+  "Could not send the code. Check email settings or try again later.": "无法发送验证码。请检查邮件设置或稍后重试。"
 }

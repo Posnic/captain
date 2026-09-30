@@ -966,5 +966,8 @@
   "Check the verification code.": "ಪರಿಶೀಲನಾ ಕೋಡ್ ಪರಿಶೀಲಿಸಿ.",
   "Request a new verification code.": "ಹೊಸ ಪರಿಶೀಲನಾ ಕೋಡ್ ವಿನಂತಿಸಿ.",
   "Enter a phone number with country code.": "ದೇಶದ ಕೋಡ್ ಜೊತೆಗೆ ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ.",
-  "Could not send the code. Check SMS settings or try again later.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. SMS ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
+  "Could not send the code. Check SMS settings or try again later.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. SMS ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+  "Enter a valid email address.": "ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸ ನಮೂದಿಸಿ.",
+  "This email address is unavailable.": "ಈ ಇಮೇಲ್ ವಿಳಾಸ ಲಭ್ಯವಿಲ್ಲ.",
+  "Could not send the code. Check email settings or try again later.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಇಮೇಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
 }

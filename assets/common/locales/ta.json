@@ -966,5 +966,8 @@
   "Check the verification code.": "சரிபார்ப்புக் குறியீட்டைச் சரிபார்க்கவும்.",
   "Request a new verification code.": "புதிய சரிபார்ப்புக் குறியீட்டைக் கோரவும்.",
   "Enter a phone number with country code.": "நாட்டுக் குறியீட்டுடன் தொலைபேசி எண்ணை உள்ளிடவும்.",
-  "Could not send the code. Check SMS settings or try again later.": "குறியீட்டை அனுப்ப முடியவில்லை. SMS அமைப்புகளைச் சரிபார்க்கவும் அல்லது பின்னர் மீண்டும் முயற்சிக்கவும்."
+  "Could not send the code. Check SMS settings or try again later.": "குறியீட்டை அனுப்ப முடியவில்லை. SMS அமைப்புகளைச் சரிபார்க்கவும் அல்லது பின்னர் மீண்டும் முயற்சிக்கவும்.",
+  "Enter a valid email address.": "சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.",
+  "This email address is unavailable.": "இந்த மின்னஞ்சல் முகவரியைப் பயன்படுத்த முடியாது.",
+  "Could not send the code. Check email settings or try again later.": "குறியீட்டை அனுப்ப முடியவில்லை. மின்னஞ்சல் அமைப்புகளைச் சரிபார்க்கவும் அல்லது பின்னர் மீண்டும் முயற்சிக்கவும்."
 }

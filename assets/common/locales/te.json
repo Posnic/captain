@@ -966,5 +966,8 @@
   "Check the verification code.": "ధృవీకరణ కోడ్‌ను తనిఖీ చేయండి.",
   "Request a new verification code.": "కొత్త ధృవీకరణ కోడ్‌ను అభ్యర్థించండి.",
   "Enter a phone number with country code.": "దేశ కోడ్‌తో ఫోన్ నంబర్‌ను నమోదు చేయండి.",
-  "Could not send the code. Check SMS settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. SMS సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి."
+  "Could not send the code. Check SMS settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. SMS సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి.",
+  "Enter a valid email address.": "చెల్లుబాటు అయ్యే ఇమెయిల్ చిరునామాను నమోదు చేయండి.",
+  "This email address is unavailable.": "ఈ ఇమెయిల్ చిరునామా అందుబాటులో లేదు.",
+  "Could not send the code. Check email settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. ఇమెయిల్ సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి."
 }

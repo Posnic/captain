@@ -966,5 +966,8 @@
   "Check the verification code.": "인증 코드를 확인하세요.",
   "Request a new verification code.": "새 인증 코드를 요청하세요.",
   "Enter a phone number with country code.": "국가 코드를 포함한 전화번호를 입력하세요.",
-  "Could not send the code. Check SMS settings or try again later.": "코드를 보내지 못했습니다. SMS 설정을 확인하거나 나중에 다시 시도하세요."
+  "Could not send the code. Check SMS settings or try again later.": "코드를 보내지 못했습니다. SMS 설정을 확인하거나 나중에 다시 시도하세요.",
+  "Enter a valid email address.": "유효한 이메일 주소를 입력하세요.",
+  "This email address is unavailable.": "이 이메일 주소는 사용할 수 없습니다.",
+  "Could not send the code. Check email settings or try again later.": "코드를 보내지 못했습니다. 이메일 설정을 확인하거나 나중에 다시 시도하세요."
 }

@@ -966,5 +966,8 @@
   "Check the verification code.": "تصدیقی کوڈ چیک کریں۔",
   "Request a new verification code.": "نئے تصدیقی کوڈ کی درخواست کریں۔",
   "Enter a phone number with country code.": "ملکی کوڈ کے ساتھ فون نمبر درج کریں۔",
-  "Could not send the code. Check SMS settings or try again later.": "کوڈ نہیں بھیجا جا سکا۔ SMS کی ترتیبات چیک کریں یا بعد میں دوبارہ کوشش کریں۔"
+  "Could not send the code. Check SMS settings or try again later.": "کوڈ نہیں بھیجا جا سکا۔ SMS کی ترتیبات چیک کریں یا بعد میں دوبارہ کوشش کریں۔",
+  "Enter a valid email address.": "درست ای میل پتہ درج کریں۔",
+  "This email address is unavailable.": "یہ ای میل پتہ دستیاب نہیں ہے۔",
+  "Could not send the code. Check email settings or try again later.": "کوڈ نہیں بھیجا جا سکا۔ ای میل کی ترتیبات چیک کریں یا بعد میں دوبارہ کوشش کریں۔"
 }

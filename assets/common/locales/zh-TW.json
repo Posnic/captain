@@ -966,5 +966,8 @@
   "Check the verification code.": "請檢查驗證碼。",
   "Request a new verification code.": "請索取新的驗證碼。",
   "Enter a phone number with country code.": "請輸入包含國碼的電話號碼。",
-  "Could not send the code. Check SMS settings or try again later.": "無法傳送驗證碼。請檢查簡訊設定或稍後再試。"
+  "Could not send the code. Check SMS settings or try again later.": "無法傳送驗證碼。請檢查簡訊設定或稍後再試。",
+  "Enter a valid email address.": "請輸入有效的電子郵件地址。",
+  "This email address is unavailable.": "此電子郵件地址無法使用。",
+  "Could not send the code. Check email settings or try again later.": "無法傳送驗證碼。請檢查電子郵件設定或稍後再試。"
 }

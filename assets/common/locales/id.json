@@ -966,5 +966,8 @@
   "Check the verification code.": "Periksa kode verifikasi.",
   "Request a new verification code.": "Minta kode verifikasi baru.",
   "Enter a phone number with country code.": "Masukkan nomor telepon beserta kode negara.",
-  "Could not send the code. Check SMS settings or try again later.": "Tidak dapat mengirim kode. Periksa pengaturan SMS atau coba lagi nanti."
+  "Could not send the code. Check SMS settings or try again later.": "Tidak dapat mengirim kode. Periksa pengaturan SMS atau coba lagi nanti.",
+  "Enter a valid email address.": "Masukkan alamat email yang valid.",
+  "This email address is unavailable.": "Alamat email ini tidak tersedia.",
+  "Could not send the code. Check email settings or try again later.": "Tidak dapat mengirim kode. Periksa pengaturan email atau coba lagi nanti."
 }

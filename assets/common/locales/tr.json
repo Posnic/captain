@@ -966,5 +966,8 @@
   "Enter a phone number with country code.": "Ülke koduyla birlikte bir telefon numarası girin.",
   "Request a new verification code.": "Yeni bir doğrulama kodu isteyin.",
   "Resend code": "Kodu yeniden gönder",
-  "Send verification code": "Doğrulama kodu gönder"
+  "Send verification code": "Doğrulama kodu gönder",
+  "Enter a valid email address.": "Geçerli bir e-posta adresi girin.",
+  "This email address is unavailable.": "Bu e-posta adresi kullanılamıyor.",
+  "Could not send the code. Check email settings or try again later.": "Kod gönderilemedi. E-posta ayarlarını kontrol edin veya daha sonra tekrar deneyin."
 }
