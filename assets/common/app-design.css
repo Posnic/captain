@@ -43,3 +43,5 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 
 .me-head .me-title{flex:1;min-width:0;}
 .table-management,.table-management *{box-sizing:border-box;}
+
+.floor-all-tables{margin-inline-start:auto;flex-shrink:0;}

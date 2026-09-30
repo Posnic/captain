@@ -6,7 +6,9 @@
     canManage = false,
     selected = null,
     busy = false,
-    dirty = false;
+    dirty = false, editingSettings = false, closeReview = false, closeRequest = null;
+  const parameters = new URLSearchParams(location.search), fromFloor = parameters.get("source") === "floor";
+  let requestedTable = parameters.get("table");
   const at = (id) => document.getElementById(id);
   const status = (row) =>
     t(
@@ -39,6 +41,7 @@
       );
       list();
       say("");
+      if(requestedTable){const target=rows.find(row=>row.tableorder_value===requestedTable);requestedTable=null;if(target){edit(target);if(target.closing || (target.orders?.length&&target.orders.every(order=>order.paid)))reviewClose();}}
       return true;
     } catch {
       say("Connection failed");
@@ -49,6 +52,7 @@
   }
   function list() {
     selected = null;
+    closeReview = false; closeRequest = null;
     dirty = false;
     at("tables-refresh").hidden = false;
     at("table-management-content").innerHTML =
@@ -57,7 +61,8 @@
   function field(label, id, value, type = "text") {
     return `<label class="profile-field">${esc(t(label))}<input id="${id}" name="${id}" class="ui-field" type="${type}" value="${esc(value)}" ${type === "number" ? 'min="1" max="1000" step="1"' : ""}></label>`;
   }
-  function edit(row) {
+  function edit(row, settings = false) {
+    editingSettings = canManage && (settings || !row);
     selected = row || {
       tableorder_value: "",
       capacity: 0,
@@ -69,10 +74,10 @@
     dirty = false;
     at("tables-refresh").hidden = true;
     say("");
-    at("table-management-content").innerHTML = canManage
-      ? `<form id="table-edit-form">${field("Table", "tableorder_value", selected.tableorder_value)}${field("Seat capacity", "capacity", selected.capacity || "", "number")}${field("Maximum seats", "max_capacity", selected.max_capacity || "", "number")}${field("Dining area", "area", selected.area)}<label class="profile-field">${esc(t("Table shape"))}<select class="ui-field" name="shape">${["square", "round", "rectangle"].map((shape) => `<option value="${shape}" ${selected.shape === shape ? "selected" : ""}>${esc(t(shape[0].toUpperCase() + shape.slice(1)))}</option>`).join("")}</select></label><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="submit" class="profile-primary">${esc(t("Save"))}</button></div></form>${stateButtons()}`
-      : `<h2 translate="no">${esc(selected.tableorder_value)}</h2><p translate="no">${esc(CaptainTables.description(selected))}</p><p>${esc(status(selected))}</p>${stateButtons()}`;
-    if (canManage) {
+    at("table-management-content").innerHTML = editingSettings
+      ? `<form id="table-edit-form">${field("Table", "tableorder_value", selected.tableorder_value)}${field("Seat capacity", "capacity", selected.capacity || "", "number")}${field("Maximum seats", "max_capacity", selected.max_capacity || "", "number")}${field("Dining area", "area", selected.area)}<label class="profile-field">${esc(t("Table shape"))}<select class="ui-field" name="shape">${["square", "round", "rectangle"].map((shape) => `<option value="${shape}" ${selected.shape === shape ? "selected" : ""}>${esc(t(shape[0].toUpperCase() + shape.slice(1)))}</option>`).join("")}</select></label><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="submit" class="profile-primary">${esc(t("Save"))}</button></div></form>`
+      : `<h2 translate="no">${esc(selected.tableorder_value)}</h2><p translate="no">${esc(CaptainTables.description(selected))}</p><p>${esc(status(selected))}</p>${stateButtons()}${canManage ? `<div class="table-status-actions"><button type="button" class="profile-secondary" data-action="edit-table">${esc(t("Change"))}</button></div>` : ""}`;
+    if (editingSettings) {
       at("tableorder_value").required = true;
       at("tableorder_value").maxLength = 6;
       at("tableorder_value").pattern = "[A-Za-z0-9]{1,6}";
@@ -80,7 +85,10 @@
     }
   }
   function stateButtons() {
-    if (!selected?.id || selected.status === "occupied") return "";
+    if (!selected?.id) return "";
+    if (selected.closing || (selected.orders?.length && selected.orders.every(order=>order.paid)))
+      return `<div class="table-status-actions"><button type="button" class="profile-primary" data-action="close-review">${esc(t(selected.closing ? "Retry" : "Close order"))}</button></div>`;
+    if (selected.status === "occupied") return `<p class="me-note">${esc(t("Record the remaining payment first."))}</p>`;
     return `<div class="table-status-actions">${[
       "available",
       "cleaning",
@@ -93,13 +101,21 @@
       )
       .join("")}</div>`;
   }
+  function reviewClose() {
+    if (dirty && !confirm(t("Discard changes?"))) return;
+    dirty=false;closeReview=true;
+    closeRequest ||= {id:selected.id,version:selected.version,request_id:selected.closing?.request_id || crypto.randomUUID(),orderIds:selected.closing?.orderIds || selected.orders.map(order=>order.id)};
+    at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.tableorder_value)}</h3><p>${esc(t("Close paid orders and mark this table for cleaning."))}</p><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
+  }
   function back() {
     if (busy) return;
+    if (closeReview) {if(fromFloor){location.href="kot-management.html";return;}closeReview=false;edit(selected);return;}
     if (selected) {
       if (dirty && !confirm(t("Discard changes?"))) return;
+      if(editingSettings && selected.id){edit(selected);return;}
       list();
       say("");
-    } else location.href = "me.html";
+    } else location.href = fromFloor ? "kot-management.html" : "me.html";
   }
   async function save(body, stateChange = false) {
     if (busy) return;
@@ -110,11 +126,15 @@
       .forEach((el) => (el.disabled = true));
     try {
       await POSNIC.api.post(
-        "/captain/v1/tables" + (stateChange ? "/state" : ""),
+        "/captain/v1/tables" + (stateChange === "close" ? "/close" : stateChange ? "/state" : ""),
         body,
       );
+      if(stateChange === "close" && fromFloor){location.href="kot-management.html";return;}
       selected = null;
+      closeReview = false;closeRequest = null;
       dirty = false;
+      at("table-management-content").innerHTML="";
+      at("tables-refresh").hidden=false;
       busy = false;
       await load();
     } catch (error) {
@@ -157,7 +177,10 @@
       if (button.dataset.table)
         edit(rows.find((row) => row.id === button.dataset.table));
       if (button.dataset.action === "add") edit(null);
+      if (button.dataset.action === "edit-table") edit(selected,true);
       if (button.dataset.action === "back") back();
+      if (button.dataset.action === "close-review") reviewClose();
+      if (button.dataset.action === "close-confirm") void save(closeRequest,"close");
       if (button.dataset.status)
         void save(
           {

@@ -447,6 +447,7 @@ document.addEventListener('click', async function (event) {
 document.addEventListener('click', function (event) {
     const card = event.target.closest && event.target.closest('.floor-card');
     if (!card) return;
+    if (card.dataset.awaitingClose === 'true') return;
     event.preventDefault();
     selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
 });
@@ -524,13 +525,15 @@ async function loadTablesNow() {
             : tables.map((name) => ({ table_number: name, minutes: null }));
 
         const card = (name, detail, extraClass) => {
-            const minutes = detail ? detail.minutes : null;
+            const awaitingClose = detail?.awaiting_close === true;
+            const minutes = awaitingClose ? null : detail ? detail.minutes : null;
             const age = FloorView.age(minutes);
             const said = FloorView.saidAs(minutes);
             const meta = FloorView.summary(detail);
             const safe = escapeFloor(name);
 
-            return '<a href="#/kot/' + encodeURIComponent(name) + '"' +
+            return '<a href="' + (awaitingClose ? 'tables.html?source=floor&table=' + encodeURIComponent(name) : '#/kot/' + encodeURIComponent(name)) + '"' +
+                (awaitingClose ? ' data-awaiting-close="true"' : '') +
                 ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
                 (age ? ' data-age="' + age + '"' : '') +
                 /* WHAT IT IS, NOT WHAT IT SAYS. The takeaway card used to be
@@ -539,6 +542,7 @@ async function loadTablesNow() {
                 (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
                 ' data-table-number="' + safe + '">' +
                 '<div class="floor-name">' + safe + '</div>' +
+                (awaitingClose ? '<div class="floor-meta">' + escapeFloor(window.I18N?.t('Paid') || 'Paid') + ' · ' + escapeFloor(window.I18N?.t('Close order') || 'Close order') + '</div>' : '') +
                 (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
                 (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
                 '</a>';
