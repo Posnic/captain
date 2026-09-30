@@ -47,28 +47,47 @@
   }
   document.addEventListener('click',async event=>{
     const button=event.target.closest('[data-handover-sale]');if(!button||button.disabled)return;
-    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';
-    dialog.innerHTML='<form><h2>Hand over order</h2><p role="status">Loading...</p><label><span>Staff member</span><select required></select></label><footer><button type="button">Cancel</button><button type="submit" disabled>Hand over</button></footer></form>';
+    if(document.querySelector('[data-handover-dialog]'))return;
+    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';dialog.dataset.handoverDialog='';
+    dialog.innerHTML='<form><h2>Hand over order</h2><p role="status">Loading...</p><button type="button" data-retry hidden>Retry</button><label><span>Staff member</span><select required disabled></select></label><footer><button type="button" data-close>Cancel</button><button type="submit" disabled>Hand over</button></footer></form>';
     document.body.append(dialog);root.I18N?.apply(dialog);dialog.showModal();
-    const close=()=>{dialog.close();dialog.remove();button.focus();};dialog.querySelector('[type=button]').onclick=close;
-    dialog.oncancel=event=>{event.preventDefault();close();};
+    let saving=false,loading=false,closed=false,request=null;
+    const finish=()=>{closed=true;window.removeEventListener('captain:back',nativeBack,true);dialog.close();dialog.remove();button.focus();};
+    const close=()=>{if(!saving)finish();};
+    const nativeBack=event=>{event.preventDefault();event.stopImmediatePropagation();close();};
+    window.addEventListener('captain:back',nativeBack,true);
+    const cancel=dialog.querySelector('[data-close]'),retry=dialog.querySelector('[data-retry]');
+    cancel.onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
     const status=dialog.querySelector('[role=status]'),submit=dialog.querySelector('[type=submit]'),select=dialog.querySelector('select');
-    try{
-      const response=await POSNIC.api.get('/sales/handoverStaff');
-      if(response.type!=='success'||!Array.isArray(response.data))throw new Error(response.message||'Could not load staff.');
-      for(const staff of response.data){const option=document.createElement('option');option.value=staff.id;option.textContent=staff.name;option.translate=false;select.append(option);}
-      status.textContent='';submit.disabled=!select.options.length;
-    }catch(error){status.textContent=t(error.message);}
-    const requestId=crypto.randomUUID();
-    dialog.querySelector('form').onsubmit=async event=>{
-      event.preventDefault();if(!select.value)return;submit.disabled=true;
+    select.onchange=()=>{submit.disabled=!select.value;};
+    const load=async()=>{
+      if(loading||closed)return;loading=true;retry.hidden=true;status.textContent=t('Loading...');
       try{
-        const response=await POSNIC.api.post('/sales/handoverOrder',{saleId:button.dataset.handoverSale,branchId:button.dataset.handoverBranch,staffId:select.value,requestId});
-        if(response.type!=='success')throw new Error(response.message||'Could not save. Please try again.');
-        const assignee=button.closest('.service-order-options')?.querySelector('.service-assignee');if(assignee)assignee.textContent=response.data.staff.name;
-        close();
-      }catch(error){status.textContent=t(error.message);submit.disabled=false;}
+        const response=await POSNIC.api.get('/sales/handoverStaff');
+        if(closed)return;
+        if(response.type!=='success'||!Array.isArray(response.data))throw new Error(response.message||'Could not load staff.');
+        select.replaceChildren();
+        const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent=t('Choose a staff member.');select.append(placeholder);
+        for(const staff of response.data){const option=document.createElement('option');option.value=staff.id;option.textContent=staff.name;option.translate=false;select.append(option);}
+        select.disabled=!response.data.length;submit.disabled=true;
+        status.textContent=response.data.length?'':t('Choose an active staff member in this branch.');retry.hidden=!!response.data.length;
+      }catch(error){if(!closed){status.textContent=t(error.message||'Could not load staff.');retry.hidden=false;}}
+      finally{loading=false;}
     };
+    retry.onclick=load;
+    dialog.querySelector('form').onsubmit=async event=>{
+      event.preventDefault();if(saving||!select.value)return;
+      if(!request||request.staffId!==select.value)request={saleId:button.dataset.handoverSale,branchId:button.dataset.handoverBranch,staffId:select.value,requestId:crypto.randomUUID()};
+      saving=true;submit.disabled=true;select.disabled=true;cancel.disabled=true;dialog.setAttribute('aria-busy','true');status.textContent=t('Saving…');
+      try{
+        const response=await POSNIC.api.post('/sales/handoverOrder',request);
+        if(response.type!=='success'||!response.data?.staff)throw new Error(response.message||'Could not save. Please try again.');
+        const assignee=button.closest('.service-order-options')?.querySelector('.service-assignee');if(assignee)assignee.textContent=response.data.staff.name;
+        finish();
+      }catch(error){status.textContent=t(error.message||'Could not save. Please try again.');}
+      finally{saving=false;submit.disabled=false;select.disabled=false;cancel.disabled=false;dialog.removeAttribute('aria-busy');}
+    };
+    await load();
   });
   document.addEventListener('click',async event=>{
     const button=event.target.closest('[data-delivery-sale]');if(!button)return;
