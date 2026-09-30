@@ -911,5 +911,20 @@
   "{0} each": "{0} each",
   "Kitchen display": "Kitchen display",
   "Last confirmed on display: {0}": "Last confirmed on display: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "No recent display confirmation. Check the kitchen screen."
+  "No recent display confirmation. Check the kitchen screen.": "No recent display confirmation. Check the kitchen screen.",
+  "Message kitchen": "Message kitchen",
+  "General message": "General message",
+  "No table or order required": "No table or order required",
+  "Record voice note": "Record voice note",
+  "Discard recording": "Discard recording",
+  "Voice notes play after the current kitchen announcement.": "Voice notes play after the current kitchen announcement.",
+  "Kitchen messages": "Kitchen messages",
+  "Stop recording": "Stop recording",
+  "Recording…": "Recording…",
+  "Queued for playback": "Queued for playback",
+  "Voice note saved on this phone": "Voice note saved on this phone",
+  "Tap to record, then review and send.": "Tap to record, then review and send.",
+  "Microphone unavailable. Check app permissions.": "Microphone unavailable. Check app permissions.",
+  "Recording failed. Please record again.": "Recording failed. Please record again.",
+  "Playback completed": "Playback completed"
 }

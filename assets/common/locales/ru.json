@@ -911,5 +911,20 @@
   "{0} each": "по {0}",
   "Kitchen display": "Кухонный экран",
   "Last confirmed on display: {0}": "Последнее подтверждение на экране: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Нет недавнего подтверждения с экрана. Проверьте кухонный экран."
+  "No recent display confirmation. Check the kitchen screen.": "Нет недавнего подтверждения с экрана. Проверьте кухонный экран.",
+  "Message kitchen": "Написать на кухню",
+  "General message": "Общее сообщение",
+  "No table or order required": "Стол или заказ не требуется",
+  "Record voice note": "Записать голосовое сообщение",
+  "Discard recording": "Удалить запись",
+  "Voice notes play after the current kitchen announcement.": "Голосовые сообщения воспроизводятся после текущего объявления на кухне.",
+  "Kitchen messages": "Сообщения для кухни",
+  "Stop recording": "Остановить запись",
+  "Recording…": "Идёт запись…",
+  "Queued for playback": "В очереди на воспроизведение",
+  "Voice note saved on this phone": "Голосовое сообщение сохранено на этом телефоне",
+  "Tap to record, then review and send.": "Нажмите для записи, затем проверьте и отправьте.",
+  "Microphone unavailable. Check app permissions.": "Микрофон недоступен. Проверьте разрешения приложения.",
+  "Recording failed. Please record again.": "Не удалось записать. Повторите запись.",
+  "Playback completed": "Воспроизведение завершено"
 }

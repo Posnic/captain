@@ -911,5 +911,20 @@
   "{0} each": "{0} per stuk",
   "Kitchen display": "Keukenscherm",
   "Last confirmed on display: {0}": "Laatst bevestigd op het scherm: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Geen recente bevestiging van het scherm. Controleer het keukenscherm."
+  "No recent display confirmation. Check the kitchen screen.": "Geen recente bevestiging van het scherm. Controleer het keukenscherm.",
+  "Message kitchen": "Bericht naar de keuken",
+  "General message": "Algemeen bericht",
+  "No table or order required": "Geen tafel of bestelling nodig",
+  "Record voice note": "Spraakbericht opnemen",
+  "Discard recording": "Opname verwijderen",
+  "Voice notes play after the current kitchen announcement.": "Spraakberichten worden na de huidige keukenomroep afgespeeld.",
+  "Kitchen messages": "Keukenberichten",
+  "Stop recording": "Opname stoppen",
+  "Recording…": "Bezig met opnemen…",
+  "Queued for playback": "In wachtrij voor afspelen",
+  "Voice note saved on this phone": "Spraakbericht opgeslagen op deze telefoon",
+  "Tap to record, then review and send.": "Tik om op te nemen, controleer daarna en verstuur.",
+  "Microphone unavailable. Check app permissions.": "Microfoon niet beschikbaar. Controleer de app-machtigingen.",
+  "Recording failed. Please record again.": "Opname mislukt. Neem opnieuw op.",
+  "Playback completed": "Afspelen voltooid"
 }

@@ -911,5 +911,20 @@
   "🎤 Say again": "🎤 නැවත කියන්න",
   "👁 Read the order back": "👁 ඇණවුම කියවා අසන්න",
   "📤 Send it to the kitchen": "📤 මුළුතැන්ගෙයට යවන්න",
-  "🗑 Clear the order first": "🗑 පළමුව ඇණවුම හිස් කරන්න"
+  "🗑 Clear the order first": "🗑 පළමුව ඇණවුම හිස් කරන්න",
+  "Message kitchen": "මුළුතැන්ගෙයට පණිවිඩයක් යවන්න",
+  "General message": "සාමාන්‍ය පණිවිඩය",
+  "No table or order required": "මේසයක් හෝ ඇණවුමක් අවශ්‍ය නැත",
+  "Record voice note": "හඬ පණිවිඩයක් පටිගත කරන්න",
+  "Discard recording": "පටිගත කිරීම මකන්න",
+  "Voice notes play after the current kitchen announcement.": "මුළුතැන්ගෙයේ වත්මන් නිවේදනය අවසන් වූ පසු හඬ පණිවිඩ වාදනය වේ.",
+  "Kitchen messages": "මුළුතැන්ගෙයි පණිවිඩ",
+  "Stop recording": "පටිගත කිරීම නවත්වන්න",
+  "Recording…": "පටිගත වෙමින්…",
+  "Queued for playback": "වාදනය සඳහා පෝලිමේ ඇත",
+  "Voice note saved on this phone": "හඬ පණිවිඩය මෙම දුරකථනයේ සුරකින ලදී",
+  "Tap to record, then review and send.": "පටිගත කිරීමට තට්ටු කරන්න, ඉන්පසු පරීක්ෂා කර යවන්න.",
+  "Microphone unavailable. Check app permissions.": "මයික්‍රෆෝනය ලබාගත නොහැක. යෙදුමේ අවසර පරීක්ෂා කරන්න.",
+  "Recording failed. Please record again.": "පටිගත කිරීම අසාර්ථක විය. කරුණාකර නැවත පටිගත කරන්න.",
+  "Playback completed": "වාදනය අවසන්"
 }

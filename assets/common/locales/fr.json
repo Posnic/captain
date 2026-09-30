@@ -911,5 +911,20 @@
   "{0} each": "{0} chacun",
   "Kitchen display": "Écran de cuisine",
   "Last confirmed on display: {0}": "Dernière confirmation sur l’écran : {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Aucune confirmation récente de l’écran. Vérifiez l’écran de cuisine."
+  "No recent display confirmation. Check the kitchen screen.": "Aucune confirmation récente de l’écran. Vérifiez l’écran de cuisine.",
+  "Message kitchen": "Envoyer un message à la cuisine",
+  "General message": "Message général",
+  "No table or order required": "Aucune table ni commande requise",
+  "Record voice note": "Enregistrer un message vocal",
+  "Discard recording": "Supprimer l’enregistrement",
+  "Voice notes play after the current kitchen announcement.": "Les messages vocaux sont diffusés après l’annonce en cours en cuisine.",
+  "Kitchen messages": "Messages à la cuisine",
+  "Stop recording": "Arrêter l’enregistrement",
+  "Recording…": "Enregistrement…",
+  "Queued for playback": "En attente de lecture",
+  "Voice note saved on this phone": "Message vocal enregistré sur ce téléphone",
+  "Tap to record, then review and send.": "Appuyez pour enregistrer, puis vérifiez et envoyez.",
+  "Microphone unavailable. Check app permissions.": "Microphone indisponible. Vérifiez les autorisations de l’application.",
+  "Recording failed. Please record again.": "Échec de l’enregistrement. Veuillez réenregistrer.",
+  "Playback completed": "Lecture terminée"
 }

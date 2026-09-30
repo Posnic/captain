@@ -911,5 +911,20 @@
   "🎤 Say again": "🎤 ફરી કહો",
   "👁 Read the order back": "👁 ઓર્ડર વાંચી સંભળાવો",
   "📤 Send it to the kitchen": "📤 રસોડામાં મોકલો",
-  "🗑 Clear the order first": "🗑 પહેલાં ઓર્ડર સાફ કરો"
+  "🗑 Clear the order first": "🗑 પહેલાં ઓર્ડર સાફ કરો",
+  "Message kitchen": "રસોડાને સંદેશ મોકલો",
+  "General message": "સામાન્ય સંદેશ",
+  "No table or order required": "ટેબલ કે ઓર્ડરની જરૂર નથી",
+  "Record voice note": "વૉઇસ મેસેજ રેકોર્ડ કરો",
+  "Discard recording": "રેકોર્ડિંગ કાઢી નાખો",
+  "Voice notes play after the current kitchen announcement.": "રસોડાની હાલની જાહેરાત પૂરી થયા પછી વૉઇસ મેસેજ વગાડવામાં આવશે.",
+  "Kitchen messages": "રસોડાના સંદેશા",
+  "Stop recording": "રેકોર્ડિંગ બંધ કરો",
+  "Recording…": "રેકોર્ડ થઈ રહ્યું છે…",
+  "Queued for playback": "વગાડવા માટે કતારમાં",
+  "Voice note saved on this phone": "વૉઇસ મેસેજ આ ફોનમાં સાચવ્યો",
+  "Tap to record, then review and send.": "રેકોર્ડ કરવા ટૅપ કરો, પછી તપાસીને મોકલો.",
+  "Microphone unavailable. Check app permissions.": "માઇક્રોફોન ઉપલબ્ધ નથી. ઍપની પરવાનગીઓ તપાસો.",
+  "Recording failed. Please record again.": "રેકોર્ડિંગ નિષ્ફળ ગયું. કૃપા કરીને ફરી રેકોર્ડ કરો.",
+  "Playback completed": "વગાડવાનું પૂર્ણ થયું"
 }

@@ -911,5 +911,20 @@
   "{0} each": "每份 {0}",
   "Kitchen display": "厨房显示屏",
   "Last confirmed on display: {0}": "最近一次显示确认：{0}",
-  "No recent display confirmation. Check the kitchen screen.": "近期没有显示确认。请检查厨房屏幕。"
+  "No recent display confirmation. Check the kitchen screen.": "近期没有显示确认。请检查厨房屏幕。",
+  "Message kitchen": "给厨房发消息",
+  "General message": "一般消息",
+  "No table or order required": "无需关联餐桌或订单",
+  "Record voice note": "录制语音消息",
+  "Discard recording": "丢弃录音",
+  "Voice notes play after the current kitchen announcement.": "语音消息将在当前厨房播报结束后播放。",
+  "Kitchen messages": "厨房消息",
+  "Stop recording": "停止录音",
+  "Recording…": "正在录音…",
+  "Queued for playback": "已加入播放队列",
+  "Voice note saved on this phone": "语音消息已保存在此手机上",
+  "Tap to record, then review and send.": "点击录音，然后确认并发送。",
+  "Microphone unavailable. Check app permissions.": "麦克风不可用。请检查应用权限。",
+  "Recording failed. Please record again.": "录音失败。请重新录制。",
+  "Playback completed": "播放完毕"
 }

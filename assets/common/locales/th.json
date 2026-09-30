@@ -911,5 +911,20 @@
   "{0} each": "รายการละ {0}",
   "Kitchen display": "จอแสดงผลในครัว",
   "Last confirmed on display: {0}": "ยืนยันการแสดงผลล่าสุด: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "ไม่มีการยืนยันการแสดงผลเมื่อเร็ว ๆ นี้ ตรวจสอบหน้าจอในครัว"
+  "No recent display confirmation. Check the kitchen screen.": "ไม่มีการยืนยันการแสดงผลเมื่อเร็ว ๆ นี้ ตรวจสอบหน้าจอในครัว",
+  "Message kitchen": "ส่งข้อความถึงครัว",
+  "General message": "ข้อความทั่วไป",
+  "No table or order required": "ไม่จำเป็นต้องระบุโต๊ะหรือคำสั่งซื้อ",
+  "Record voice note": "บันทึกข้อความเสียง",
+  "Discard recording": "ลบเสียงที่บันทึก",
+  "Voice notes play after the current kitchen announcement.": "ข้อความเสียงจะเล่นหลังจากประกาศในครัวที่กำลังเล่นอยู่จบลง",
+  "Kitchen messages": "ข้อความถึงครัว",
+  "Stop recording": "หยุดบันทึกเสียง",
+  "Recording…": "กำลังบันทึกเสียง…",
+  "Queued for playback": "อยู่ในคิวรอเล่น",
+  "Voice note saved on this phone": "บันทึกข้อความเสียงไว้ในโทรศัพท์นี้แล้ว",
+  "Tap to record, then review and send.": "แตะเพื่อบันทึกเสียง จากนั้นตรวจสอบและส่ง",
+  "Microphone unavailable. Check app permissions.": "ไม่สามารถใช้ไมโครโฟนได้ โปรดตรวจสอบสิทธิ์ของแอป",
+  "Recording failed. Please record again.": "บันทึกเสียงไม่สำเร็จ โปรดบันทึกอีกครั้ง",
+  "Playback completed": "เล่นจบแล้ว"
 }
