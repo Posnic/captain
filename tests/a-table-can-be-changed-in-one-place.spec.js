@@ -305,7 +305,7 @@ test('a saved move can be cancelled and a lost cancellation reply survives reloa
  await page.evaluate(()=>moveOrder('ord-1'));
  await page.locator('#move-table-go').click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
- expect(prepares).toBe(2);
+ expect(prepares).toBe(1);
  expect(completes).toBe(1);
  expect(cancels).toBe(2);
  expect(await page.evaluate(()=>CaptainGroupMove.pending('ord-1'))).toBeNull();

@@ -47,7 +47,7 @@ test('cancel retry survives a lost acknowledgement without preparing again',asyn
    throw new Error('lost cancel reply');
  };
  await assert.rejects(a.api.cancel('order-1'));
- assert.equal(a.api.pending('order-1').cancelReady,true);
+ assert.equal(a.api.pending('order-1').cancel,true);
  const b=app(a.storage);
  b.context.POSNIC.api.post=async(url,body)=>{b.calls.push(url);return {request_id:body.request_id,state:'cancelled'};};
  assert.equal((await b.api.resume('order-1')).cancelled,true);
@@ -59,11 +59,12 @@ test('cancellation reconciles an already applying move without claiming it was c
  await assert.rejects(a.api.move('order-1',choice));
  a.context.POSNIC.api.post=async(url,body)=>{
    a.calls.push(url);
+   if(url.endsWith('cancel'))throw Object.assign(new Error('applying'),{status:409});
    return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('prepare')?'applying':'submitting'};
  };
  const result=await a.api.cancel('order-1');
  assert.equal(result.cancelled,undefined);
- assert.equal(a.calls.some(url=>url.endsWith('cancel')),false);
+ assert.equal(a.calls.some(url=>url.endsWith('cancel')),true);
  assert.equal(a.api.pending('order-1'),null);
 });
 test('completion winning cancellation race is reconciled',async()=>{
@@ -71,8 +72,30 @@ test('completion winning cancellation race is reconciled',async()=>{
  await assert.rejects(a.api.move('order-1',choice));
  a.context.POSNIC.api.post=async(url,body)=>{
    if(url.endsWith('cancel'))throw Object.assign(new Error('applying'),{status:409});
-   return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('prepare')?'reserved':'submitting'};
+   return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('prepare')?'applying':'submitting'};
  };
  assert.equal((await a.api.cancel('order-1')).cancelled,undefined);
  assert.equal(a.api.pending('order-1'),null);
+});
+
+test('cancel before preparation sends the order identity without preparing a destination',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',choice));
+ a.context.POSNIC.api.post=async(url,body)=>{a.calls.push({url,body});return {request_id:body.request_id,state:'cancelled'};};
+ assert.equal((await a.api.cancel('order-1')).cancelled,true);
+ assert.equal(a.calls.length,1);
+ assert.equal(a.calls[0].url,'/captain/v1/tables/move/cancel');
+ assert.equal(a.calls[0].body.orderId,'order-1');
+});
+test('a generic cancellation conflict cannot complete a still reserved move',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',choice));
+ a.context.POSNIC.api.post=async(url,body)=>{
+   a.calls.push(url);
+   if(url.endsWith('cancel'))throw Object.assign(new Error('revision changed'),{status:409});
+   return {request_id:body.request_id,orderId:'order-1',state:'reserved'};
+ };
+ await assert.rejects(a.api.cancel('order-1'));
+ assert.equal(a.calls.some(url=>url.endsWith('complete')),false);
+ assert.equal(a.api.pending('order-1').cancel,true);
 });
