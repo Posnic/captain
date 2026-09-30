@@ -88,6 +88,7 @@ async function phoneScreen(page) {
   await page.locator('#me-profile').click();
   await page.locator('#profile-name').fill('Draft name');
   await page.locator('[data-profile-phone]').click();
+  await page.locator('#phone-password').fill('staff-password');
 }
 const challenge = {challenge:'phone-challenge',expiresAt:'2099-01-01T00:00:00Z',retryAfter:60};
 
@@ -107,7 +108,7 @@ test('phone verification saves only after confirmation and preserves the name dr
   await expect(page.locator('#profile-message')).toHaveText('Saved');
   await expect(page.locator('#profile-name')).toHaveValue('Draft name');
   await expect(page.locator('.profile-detail').last()).toContainText('+919111111111');
-  expect(posts).toEqual([{phone:'+919111111111'},{challenge:'phone-challenge',code:'012345'}]);
+  expect(posts).toEqual([{phone:'+919111111111',currentPassword:'staff-password'},{challenge:'phone-challenge',code:'012345'}]);
 });
 
 test('expired code can be resent, invalid code keeps typing, and native Back steps out', async ({page}) => {
@@ -136,12 +137,24 @@ test('expired code can be resent, invalid code keeps typing, and native Back ste
   await expect(page.locator('.profile-detail').last()).toContainText('+919000000000');
 });
 
-for(const status of [404,503]) test(`phone start failure ${status} preserves the number`,async({page})=>{
+for(const status of [400,404,503]) test(`phone start failure ${status} preserves the number`,async({page})=>{
   await phoneScreen(page);
   await page.route('**/captain/v1/profile/phone/start',route=>route.fulfill({status,json:{message:'Unavailable'}}));
   await page.locator('#phone-number').fill('+919111111111');
   await page.locator('[data-phone-send]').click();
-  await expect(page.locator('#profile-message')).toContainText(status===404?'too old':'SMS settings');
+  await expect(page.locator('#profile-message')).toContainText(status===400?'current password is incorrect':status===404?'too old':'SMS settings');
   await expect(page.locator('#phone-number')).toHaveValue('+919111111111');
   await expect(page.locator('[data-phone-send]')).toBeEnabled();
+});
+
+
+for (const width of [320,768]) test(`phone change fits ${width}px and clears password when leaving`,async({page})=>{
+  await page.setViewportSize({width,height:900});
+  await phoneScreen(page);
+  await expect(page.locator('#phone-password')).toHaveAttribute('autocomplete','current-password');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.locator('[data-profile-back]').click();
+  await page.locator('[data-profile-phone]').click();
+  await expect(page.locator('#phone-password')).toHaveValue('');
+  await expect(page.locator('#phone-number')).toHaveValue('+919000000000');
 });

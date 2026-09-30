@@ -19,7 +19,7 @@
     current = "",
     busy = false,
     profile,
-    generation = 0, nameDraft = "", phoneNumber = "", phoneChallenge = null, resendAt = 0, phoneTimer;
+    generation = 0, nameDraft = "", phoneNumber = "", phoneChallenge = null, resendAt = 0, phoneTimer, phonePassword = "";
   function dirty() {
     if (["phone", "phone-code"].includes(current)) return (page.querySelector("#phone-number")?.value ?? phoneNumber) !== String(profile?.phone || "") || nameDraft !== String(profile?.name || "");
     if (current === "password") return [...page.querySelectorAll("input")].some(input => input.value !== "");
@@ -30,9 +30,10 @@
     if (!current) return false;
     if (busy) return true;
     if (current === "phone-code") { showPhone(); return true; }
-    if (current === "phone") { renderProfile(nameDraft); return true; }
+    if (current === "phone") { phonePassword = ""; renderProfile(nameDraft); return true; }
     if (dirty() && !confirm(t("Discard changes?"))) return true;
     clearInterval(phoneTimer);
+    phonePassword = "";
     generation++;
     page.hidden = true;
     home.hidden = false;
@@ -91,7 +92,7 @@
     clearInterval(phoneTimer);
     current = code ? "phone-code" : "phone";
     document.querySelector(".me-title").textContent = t(code ? "Code" : "Phone number");
-    page.innerHTML = `<form id="phone-form">${code ? `<p translate="no" dir="ltr">${esc(phoneNumber)}</p>${field("Code", "phone-code", "text", "", "one-time-code")}` : `${field("Phone number", "phone-number", "tel", phoneNumber, "tel")}<p class="me-note">${esc(t("Enter a phone number with country code."))}</p>`}<p id="profile-message" role="status"></p><div class="profile-actions"><button type="button" class="profile-secondary" data-profile-back>${esc(t("Back"))}</button><button type="submit" class="profile-primary" ${code ? '' : 'data-phone-send'}>${esc(t(code ? "Continue" : "Send verification code"))}</button></div>${code ? `<button type="button" class="profile-secondary phone-resend" data-phone-resend>${esc(t("Resend code"))}</button>` : ''}</form>`;
+    page.innerHTML = `<form id="phone-form">${code ? `<p translate="no" dir="ltr">${esc(phoneNumber)}</p>${field("Code", "phone-code", "text", "", "one-time-code")}` : `${field("Phone number", "phone-number", "tel", phoneNumber, "tel")}${field("Current password", "phone-password", "password", phonePassword, "current-password")}<p class="me-note">${esc(t("Enter a phone number with country code."))}</p>`}<p id="profile-message" role="status"></p><div class="profile-actions"><button type="button" class="profile-secondary" data-profile-back>${esc(t("Back"))}</button><button type="submit" class="profile-primary" ${code ? '' : 'data-phone-send'}>${esc(t(code ? "Continue" : "Send verification code"))}</button></div>${code ? `<button type="button" class="profile-secondary phone-resend" data-phone-resend>${esc(t("Resend code"))}</button>` : ''}</form>`;
     const input = page.querySelector('input');
     input.dir = 'ltr';
     if (code) { input.inputMode = 'numeric'; input.pattern = '[0-9]{6}'; input.maxLength = 6; }
@@ -106,7 +107,8 @@
     if (!verifying && current === 'phone') phoneNumber = page.querySelector('#phone-number').value.replace(/[ ()-]/g, '');
     const message = page.querySelector('#profile-message');
     if (!verifying && !/^\+[1-9]\d{7,14}$/.test(phoneNumber)) { message.textContent = t('Enter a phone number with country code.'); return; }
-    const body = verifying ? {challenge:phoneChallenge.challenge,code:page.querySelector('#phone-code').value} : {phone:phoneNumber};
+    if (!verifying && current === 'phone') phonePassword = page.querySelector('#phone-password').value;
+    const body = verifying ? {challenge:phoneChallenge.challenge,code:page.querySelector('#phone-code').value} : {phone:phoneNumber,currentPassword:phonePassword};
     busy = true;
     page.querySelectorAll('button,input').forEach(node => node.disabled = true);
     message.textContent = t('Loading...');
@@ -114,6 +116,7 @@
       const result = await POSNIC.api.post('/captain/v1/profile/phone/' + (verifying ? 'verify' : 'start'), body);
       if (verifying) {
         if (result.saved !== true || result.phone !== phoneNumber) throw new Error('unconfirmed');
+        phonePassword = "";
         profile.phone = result.phone;
         try { await POSNIC.session.updateProfile?.(profile); } catch { /* The server has saved the verified phone. */ }
         renderProfile(nameDraft);
@@ -127,7 +130,7 @@
     } catch (error) {
       if (error.status === 429) resendAt = Date.now() + 60000;
       if (verifying && error.status === 409) resendAt = 0;
-      message.textContent = t(error.status === 404 ? 'This shop’s server is too old for this screen. Update POSNIC on the till.' : error.status === 400 ? 'Check the verification code.' : error.status === 409 ? 'Request a new verification code.' : error.status === 429 ? 'Resend code' : verifying ? 'Could not save. Please try again.' : 'Could not send the code. Check SMS settings or try again later.');
+      message.textContent = t(error.status === 404 ? 'This shop’s server is too old for this screen. Update POSNIC on the till.' : error.status === 400 ? (verifying ? 'Check the verification code.' : 'The current password is incorrect.') : error.status === 409 ? 'Request a new verification code.' : error.status === 429 ? 'Resend code' : verifying ? 'Could not save. Please try again.' : 'Could not send the code. Check SMS settings or try again later.');
     } finally {
       busy = false;
       page.querySelectorAll('button,input').forEach(node => node.disabled = false);
@@ -207,7 +210,7 @@
       .addEventListener("click", () => show("password"));
     page.addEventListener("submit", submit);
     page.addEventListener("click", (event) => {
-      if (event.target.closest("[data-profile-phone]") && !busy) { nameDraft = page.querySelector('#profile-name').value; phoneNumber = profile.phone || ''; phoneChallenge = null; showPhone(); }
+      if (event.target.closest("[data-profile-phone]") && !busy) { nameDraft = page.querySelector('#profile-name').value; phoneNumber = profile.phone || ''; phoneChallenge = null; phonePassword = ''; showPhone(); }
       if (event.target.closest("[data-phone-resend]")) void phoneSubmit(true);
       if (event.target.closest("[data-profile-back]")) back();
       if (event.target.closest("[data-profile-retry]")) void load();
