@@ -94,3 +94,10 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 [dir=rtl] .seat-head .route-signal{transform:scaleX(-1);}
 
 .seat-screen .table-section-center[hidden],.seat-screen .person-count-section[hidden]{display:none!important;}
+
+.table-neighbours { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.table-neighbours legend { font-weight: 600; font-size: 1rem; margin-bottom: 8px; }
+.table-neighbours label { display: flex; align-items: center; gap: 12px; padding: 12px; min-height: 48px; border-bottom: 1px solid var(--border, #dce3ed); cursor: pointer; }
+.table-neighbours input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--primary, #2563eb); }
+.table-neighbours span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.table-neighbours small { color: var(--muted, #64748b); }

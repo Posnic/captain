@@ -949,5 +949,6 @@
   "🎤 Say again": "🎤 もう一度話す",
   "👁 Read the order back": "👁 注文を読み返す",
   "📤 Send it to the kitchen": "📤 厨房へ送信",
-  "🗑 Clear the order first": "🗑 先に注文を空にする"
+  "🗑 Clear the order first": "🗑 先に注文を空にする",
+  "Can combine with": "結合できるテーブル"
 }

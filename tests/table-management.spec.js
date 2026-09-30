@@ -58,3 +58,23 @@ test('unpaid orders cannot be closed from table controls',async({page})=>{
  const {posts}=await open(page,false,{status:'occupied',orders:[{id:'unpaid-order',paid:false}]});await page.locator('[data-table]').click();
  await expect(page.locator('[data-action=close-review]')).toHaveCount(0);await expect(page.locator('#table-management-content')).toContainText('Record the remaining payment first.');expect(posts).toHaveLength(0);
 });
+
+
+test('manager selects neighbouring table identities and can clear them', async ({page}) => {
+ await onTheMenu(page, 'nothing');
+ let row={...initial,adjacent_table_ids:[]}; const posts=[];
+ const neighbour={...initial,id:'table-2',tableorder_value:'T2'};
+ await page.route('**/captain/v1/tables', async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{canManage:true,tables:[row,neighbour]}});
+  const body=route.request().postDataJSON();posts.push(body);row={...row,...body,version:row.version+1};return route.fulfill({json:row});
+ });
+ await page.goto('/tables.html');
+ async function edit(){await page.locator('[data-table="table-1"]').click();await page.locator('[data-action=edit-table]').click();}
+ await edit();
+ await expect(page.locator('input[name=adjacent_table_ids]')).toHaveCount(1);
+ await page.getByRole('checkbox', {name:/T2/}).check();await page.locator('button[type=submit]').click();
+ await expect(page.locator('[data-table="table-1"]')).toBeVisible();expect(posts[0].adjacent_table_ids).toEqual(['table-2']);
+ await edit();await expect(page.getByRole('checkbox', {name:/T2/})).toBeChecked();
+ await page.getByRole('checkbox', {name:/T2/}).uncheck();await page.locator('button[type=submit]').click();
+ await expect(page.locator('[data-table="table-1"]')).toBeVisible();expect(posts[1].adjacent_table_ids).toEqual([]);
+});

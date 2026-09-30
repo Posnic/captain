@@ -61,6 +61,11 @@
   function field(label, id, value, type = "text") {
     return `<label class="profile-field">${esc(t(label))}<input id="${id}" name="${id}" class="ui-field" type="${type}" value="${esc(value)}" ${type === "number" ? 'min="1" max="1000" step="1"' : ""}></label>`;
   }
+  function neighbouringTables() {
+    const candidates = rows.filter(row => row.id !== selected.id);
+    if (!candidates.length) return "";
+    return `<fieldset class="table-neighbours"><legend>${esc(t("Can combine with"))}</legend>${candidates.map(row => `<label><input type="checkbox" name="adjacent_table_ids" value="${esc(row.id)}" ${(selected.adjacent_table_ids || []).includes(row.id) ? "checked" : ""}><span translate="no"><strong>${esc(row.tableorder_value)}</strong><small>${esc(CaptainTables.description(row))}</small></span></label>`).join("")}</fieldset>`;
+  }
   function edit(row, settings = false) {
     editingSettings = canManage && (settings || !row);
     selected = row || {
@@ -75,7 +80,7 @@
     at("tables-refresh").hidden = true;
     say("");
     at("table-management-content").innerHTML = editingSettings
-      ? `<form id="table-edit-form">${field("Table", "tableorder_value", selected.tableorder_value)}${field("Seat capacity", "capacity", selected.capacity || "", "number")}${field("Maximum seats", "max_capacity", selected.max_capacity || "", "number")}${field("Dining area", "area", selected.area)}<label class="profile-field">${esc(t("Table shape"))}<select class="ui-field" name="shape">${["square", "round", "rectangle"].map((shape) => `<option value="${shape}" ${selected.shape === shape ? "selected" : ""}>${esc(t(shape[0].toUpperCase() + shape.slice(1)))}</option>`).join("")}</select></label><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="submit" class="profile-primary">${esc(t("Save"))}</button></div></form>`
+      ? `<form id="table-edit-form">${field("Table", "tableorder_value", selected.tableorder_value)}${field("Seat capacity", "capacity", selected.capacity || "", "number")}${field("Maximum seats", "max_capacity", selected.max_capacity || "", "number")}${field("Dining area", "area", selected.area)}<label class="profile-field">${esc(t("Table shape"))}<select class="ui-field" name="shape">${["square", "round", "rectangle"].map((shape) => `<option value="${shape}" ${selected.shape === shape ? "selected" : ""}>${esc(t(shape[0].toUpperCase() + shape.slice(1)))}</option>`).join("")}</select></label>${neighbouringTables()}<div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="submit" class="profile-primary">${esc(t("Save"))}</button></div></form>`
       : `<h2 translate="no">${esc(selected.tableorder_value)}</h2><p translate="no">${esc(CaptainTables.description(selected))}</p><p>${esc(status(selected))}</p>${stateButtons()}${canManage ? `<div class="table-status-actions"><button type="button" class="profile-secondary" data-action="edit-table">${esc(t("Change"))}</button></div>` : ""}`;
     if (editingSettings) {
       at("tableorder_value").required = true;
@@ -193,7 +198,8 @@
     });
     at("table-management-content").addEventListener("submit", (event) => {
       event.preventDefault();
-      const fields = Object.fromEntries(new FormData(event.target));
+      const form = new FormData(event.target);
+      const fields = { ...Object.fromEntries(form), adjacent_table_ids: form.getAll("adjacent_table_ids") };
       void save({ ...fields, id: selected.id, version: selected.version });
     });
     MobileGestures.setRefresh(load);

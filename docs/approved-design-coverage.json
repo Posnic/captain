@@ -333,7 +333,8 @@
       "verification": [
         "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
         "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
-        "Adjacency configuration and complete table closure lifecycle remain."
+        "Adjacency configuration and complete table closure lifecycle remain.",
+        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages."
       ]
     },
     {
@@ -348,7 +349,8 @@
       "verification": [
         "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
         "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
-        "Adjacency configuration and complete table closure lifecycle remain."
+        "Adjacency configuration and complete table closure lifecycle remain.",
+        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages."
       ]
     },
     {
@@ -373,9 +375,15 @@
     },
     {
       "id": "combine",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/table/manage.js",
+        "POS/api/src/utils/table-details.js",
+        "POS/api/src/services/captain-tables.js"
+      ],
+      "verification": [
+        "Neighbour configuration implemented and validated. Actual combined seating, shared occupancy, release and POS settings UI remain unimplemented."
+      ]
     },
     {
       "id": "transfer",
