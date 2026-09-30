@@ -33,12 +33,24 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 const pages = () => fs.readdirSync(ROOT).filter((name) => name.endsWith('.html'));
+const coversViewport = html => {
+  const meta = html.match(/<meta\b[^>]*\bname\s*=\s*["']viewport["'][^>]*>/i);
+  const content = meta?.[0].match(/\bcontent\s*=\s*(["'])(.*?)\1/is);
+  return Boolean(content && /(?:^|,)\s*viewport-fit\s*=\s*cover\s*(?:,|$)/i.test(content[2]));
+};
+
+test('viewport detection accepts formatted attributes but still requires cover', () => {
+  assert.ok(coversViewport('<meta\n name="viewport"\n content="width=device-width, viewport-fit=cover"\n/>'));
+  assert.ok(coversViewport("<meta content='viewport-fit=cover,width=device-width' name='viewport'>"));
+  assert.ok(!coversViewport('<meta name="viewport" content="width=device-width">'));
+  assert.ok(!coversViewport('<meta name="viewport" content="viewport-fit=contain">'));
+  assert.ok(!coversViewport('<meta name="description" content="viewport-fit=cover">'));
+});
 
 test('every page asks the phone where its clock is', () => {
   const blind = pages().filter((name) => {
     const html = fs.readFileSync(path.join(ROOT, name), 'utf8');
-    const meta = html.match(/<meta name="viewport" content="([^"]+)"/i);
-    return !meta || !/viewport-fit\s*=\s*cover/i.test(meta[1]);
+    return !coversViewport(html);
   });
 
   assert.deepStrictEqual(
