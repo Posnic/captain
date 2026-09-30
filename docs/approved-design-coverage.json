@@ -382,7 +382,7 @@
         "POS/api/src/services/captain-tables.js"
       ],
       "verification": [
-        "Neighbour configuration implemented and validated. Actual combined seating, shared occupancy, release and POS settings UI remain unimplemented."
+        "Neighbour configuration implemented in Captain and desktop POS. Desktop form supports multiple selections, clearing and safe label rendering; form tests and asset build passed. Actual combined seating, shared occupancy and release remain unimplemented."
       ]
     },
     {
