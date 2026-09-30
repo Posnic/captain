@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 注文を読み返す",
   "📤 Send it to the kitchen": "📤 厨房へ送信",
   "🗑 Clear the order first": "🗑 先に注文を空にする",
-  "Can combine with": "結合できるテーブル"
+  "Can combine with": "結合できるテーブル",
+  "Pending orders": "送信待ちの注文",
+  "No pending orders": "送信待ちの注文はありません"
 }

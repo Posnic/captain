@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 回读订单",
   "📤 Send it to the kitchen": "📤 发送至厨房",
   "🗑 Clear the order first": "🗑 先清空订单",
-  "Can combine with": "可拼接的餐桌"
+  "Can combine with": "可拼接的餐桌",
+  "Pending orders": "待发送订单",
+  "No pending orders": "没有待发送订单"
 }

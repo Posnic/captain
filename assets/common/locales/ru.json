@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 Прочитать заказ",
   "📤 Send it to the kitchen": "📤 Отправить на кухню",
   "🗑 Clear the order first": "🗑 Сначала очистить заказ",
-  "Can combine with": "Можно объединить с"
+  "Can combine with": "Можно объединить с",
+  "Pending orders": "Ожидающие заказы",
+  "No pending orders": "Нет ожидающих заказов"
 }

@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 Siparişi tekrar oku",
   "📤 Send it to the kitchen": "📤 Mutfağa gönder",
   "🗑 Clear the order first": "🗑 Önce siparişi temizle",
-  "Can combine with": "Birleştirilebilecek masalar"
+  "Can combine with": "Birleştirilebilecek masalar",
+  "Pending orders": "Bekleyen siparişler",
+  "No pending orders": "Bekleyen sipariş yok"
 }

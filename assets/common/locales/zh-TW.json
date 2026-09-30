@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 回讀訂單",
   "📤 Send it to the kitchen": "📤 傳送至廚房",
   "🗑 Clear the order first": "🗑 先清空訂單",
-  "Can combine with": "可併桌的餐桌"
+  "Can combine with": "可併桌的餐桌",
+  "Pending orders": "待傳送訂單",
+  "No pending orders": "沒有待傳送訂單"
 }

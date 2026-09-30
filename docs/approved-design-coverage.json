@@ -136,9 +136,18 @@
     },
     {
       "id": "pending",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "pending.html",
+        "assets/common/order-queue-ui.js",
+        "assets/common/app-design.css",
+        "me.html"
+      ],
+      "verification": [
+        "Dedicated pending-orders page replaces the inline accordion. Compact floor entry and Me navigation, safe return routes, tablet grid and shared light/dark theme implemented.",
+        "Browser checks cover offline persistence, deliberate rejected-order retry, stalled fetch/body recovery, 320/768px layouts, owner-private item details, native Back event and touch pull-to-refresh retaining the original request ID. Six translated offline ordering journeys pass.",
+        "573 unit tests pass. Production build passes with 30 languages and 954 messages. Full native-device acceptance and complete-app release remain."
+      ]
     },
     {
       "id": "more",

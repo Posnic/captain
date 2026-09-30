@@ -101,3 +101,14 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 .table-neighbours input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--primary, #2563eb); }
 .table-neighbours span { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
 .table-neighbours small { color: var(--muted, #64748b); }
+
+/* Pending orders have a full page; the floor only carries a compact link. */
+.pending-orders-list { display: grid; gap: 16px; }
+.pending-order-card { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-sunk); color: var(--ink-soft); overflow-wrap: anywhere; }
+.pending-order-card strong { display: block; }
+.pending-order-card p { margin: 12px 0 0; }
+.pending-order-card button { margin-top: 12px; }
+.pending-orders-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 20px 0; }
+.pending-orders-notice { background: var(--surface-sunk); color: var(--ink-soft); }
+.pending-orders-list > p { grid-column: 1 / -1; }
+@media (min-width: 720px) { .pending-orders-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

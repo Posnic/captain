@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 Bacakan ulang pesanan",
   "📤 Send it to the kitchen": "📤 Kirim ke dapur",
   "🗑 Clear the order first": "🗑 Kosongkan pesanan terlebih dahulu",
-  "Can combine with": "Dapat digabung dengan"
+  "Can combine with": "Dapat digabung dengan",
+  "Pending orders": "Pesanan tertunda",
+  "No pending orders": "Tidak ada pesanan tertunda"
 }

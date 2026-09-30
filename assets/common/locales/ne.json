@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 अर्डर पढेर सुनाउनुहोस्",
   "📤 Send it to the kitchen": "📤 भान्सामा पठाउनुहोस्",
   "🗑 Clear the order first": "🗑 पहिले अर्डर खाली गर्नुहोस्",
-  "Can combine with": "यी टेबलसँग जोड्न सकिन्छ"
+  "Can combine with": "यी टेबलसँग जोड्न सकिन्छ",
+  "Pending orders": "विचाराधीन अर्डरहरू",
+  "No pending orders": "कुनै विचाराधीन अर्डर छैन"
 }

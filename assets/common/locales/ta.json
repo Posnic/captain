@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 ஆர்டரை வாசித்துக் காட்டு",
   "📤 Send it to the kitchen": "📤 சமையலறைக்கு அனுப்பு",
   "🗑 Clear the order first": "🗑 முதலில் ஆர்டரை அழி",
-  "Can combine with": "இணைக்கக்கூடிய மேசைகள்"
+  "Can combine with": "இணைக்கக்கூடிய மேசைகள்",
+  "Pending orders": "அனுப்பக் காத்திருக்கும் ஆர்டர்கள்",
+  "No pending orders": "அனுப்பக் காத்திருக்கும் ஆர்டர்கள் இல்லை"
 }

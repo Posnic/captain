@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 Bestellung vorlesen",
   "📤 Send it to the kitchen": "📤 An die Küche senden",
   "🗑 Clear the order first": "🗑 Zuerst die Bestellung leeren",
-  "Can combine with": "Kombinierbar mit"
+  "Can combine with": "Kombinierbar mit",
+  "Pending orders": "Ausstehende Bestellungen",
+  "No pending orders": "Keine ausstehenden Bestellungen"
 }

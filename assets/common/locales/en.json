@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 Read the order back",
   "📤 Send it to the kitchen": "📤 Send it to the kitchen",
   "🗑 Clear the order first": "🗑 Clear the order first",
-  "Can combine with": "Can combine with"
+  "Can combine with": "Can combine with",
+  "Pending orders": "Pending orders",
+  "No pending orders": "No pending orders"
 }

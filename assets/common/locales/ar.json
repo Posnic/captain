@@ -950,5 +950,7 @@
   "👁 Read the order back": "👁 اقرأ الطلب بصوت عالٍ",
   "📤 Send it to the kitchen": "📤 أرسل إلى المطبخ",
   "🗑 Clear the order first": "🗑 امسح الطلب أولاً",
-  "Can combine with": "يمكن ضمها إلى"
+  "Can combine with": "يمكن ضمها إلى",
+  "Pending orders": "الطلبات المعلّقة",
+  "No pending orders": "لا توجد طلبات معلّقة"
 }
