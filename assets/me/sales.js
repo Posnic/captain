@@ -45,6 +45,9 @@
         const total = at('sales-total');
         const count = at('sales-count');
         const cancelled = at('sales-cancelled');
+        const hasPaid = typeof data.paid_total === 'number' && Number.isFinite(data.paid_total) && data.paid_total >= 0;
+        at('sales-paid-row').hidden = !hasPaid;
+        at('sales-paid').textContent = hasPaid ? money(data.paid_total) : '';
 
         if (total) total.textContent = money(data.total);
         if (count) {
@@ -99,6 +102,8 @@
 
         const total = at('sales-total');
         if (total) total.textContent = '';
+        at('sales-paid-row').hidden = true;
+        at('sales-paid').textContent = '';
         at('sales-count').textContent = '';
         at('sales-cancelled').textContent = '';
         at('sales-cancelled').hidden = true;

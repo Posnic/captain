@@ -201,3 +201,9 @@ body:has(#help-back) .me-row { box-sizing: border-box; text-align: start; flex-w
 .sales-page .me-row-read .me-row-value { flex: 0 0 auto; max-width: 100%; }
 .sales-page .me-row-value bdi { white-space: nowrap; }
 .sales-page .sales-total-note, .sales-page .me-row-sub, .sales-page .me-heading { color: var(--ink-soft); }
+
+.sales-paid { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 16px; margin: 16px 0 0; text-align: start; }
+.sales-paid[hidden] { display: none; }
+.sales-paid strong { overflow-wrap: anywhere; }
+
+.sales-page .sales-total-value { font-size: clamp(22px,4.4vw,34px); white-space: nowrap; }
