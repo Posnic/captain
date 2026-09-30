@@ -572,3 +572,30 @@ test('confirmed transfer cancellation returns recovery to editable items',async(
  await expect(dialog.locator('[data-quantity]')).toBeVisible();await expect(dialog.getByRole('button',{name:'Continue',exact:true})).toBeEnabled();
  expect(await page.evaluate(source=>CaptainItemTransfer.pending(source),source)).toBeNull();
 });
+
+
+test('browser Back walks transfer steps without navigating or changing the order',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ await page.waitForFunction(()=>!history.state?.captainOrderEditor);
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[]}}));
+ const url=page.url();
+ await page.evaluate(()=>CaptainTransferScreen.open({_id:'a'.repeat(24),kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:1,served:0}]}]}));
+ const dialog=page.locator('.transfer-screen');await dialog.locator('[data-quantity]').fill('1');await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(dialog.locator('#transfer-guests')).toBeVisible();
+ await page.evaluate(()=>history.back());
+ await expect(dialog.locator('[data-quantity]')).toHaveValue('1');expect(page.url()).toBe(url);
+ await page.evaluate(()=>history.back());await expect(dialog).not.toBeVisible();expect(page.url()).toBe(url);
+ expect(await page.evaluate(()=>history.state?.captainTransfer||false)).toBe(false);
+});
+test('closing transfer removes its history entry and rapid reopen keeps a working Back',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ await page.waitForFunction(()=>!history.state?.captainOrderEditor);
+ await page.evaluate(()=>{
+  const order={_id:'a'.repeat(24),kitchen_rounds:[]};CaptainTransferScreen.open(order);
+  window.dispatchEvent(new Event('captain:back',{cancelable:true}));CaptainTransferScreen.open(order);
+ });
+ const dialog=page.locator('.transfer-screen');await expect(dialog).toBeVisible();
+ await page.waitForFunction(()=>history.state?.captainTransfer);
+ await page.evaluate(()=>history.back());await expect(dialog).not.toBeVisible();
+ expect(await page.evaluate(()=>history.state?.captainTransfer||false)).toBe(false);
+});

@@ -4,10 +4,17 @@
  const t=s=>root.I18N?.t(s)||s;
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const registered=new Map();
+ const historyKey='captainTransfer';
+ let ownsHistory=false,cleaningHistory=false,queuedOrder=null;
  let dialog,order,stage,items,tables,preview,destination,busy=false,generation=0,identity;
  const owner=()=>JSON.stringify([root.POSNIC.session?.shopKey,root.POSNIC.session?.user?.id,localStorage.getItem('branch_id'),root.POSNIC.session?.base]);
  const money=n=>new Intl.NumberFormat(root.I18N?.language?.()||'en',{style:'currency',currency:preview.currencyCode,minimumFractionDigits:preview.currencyDigits,maximumFractionDigits:preview.currencyDigits}).format(n/10**preview.currencyDigits);
- function close(){generation++;dialog.close();}
+ function ownHistory(){history.pushState({...history.state,[historyKey]:true},'',location.href);ownsHistory=true;}
+ function close(){
+  generation++;dialog.close();
+  if(ownsHistory&&history.state?.[historyKey]){ownsHistory=false;cleaningHistory=true;history.back();}
+  else ownsHistory=false;
+ }
  function back(){if(busy||stage==='items'||stage==='recovery'){close();return;}stage=stage==='review'?'tables':'items';render();}
  function render(error=''){
   const pending=root.CaptainItemTransfer.pending(order._id);
@@ -58,11 +65,21 @@
   }catch(error){if(valid()){busy=false;if(root.CaptainItemTransfer.pending(order._id))stage='recovery';else if(stage==='recovery'){stage='items';items=null;destination=null;preview=null;}render(error.message||t('Connection failed'));}}
   finally{if(current===generation)busy=false;}
  }
- root.CaptainTransferScreen={register(value){registered.set(owner()+':'+value._id,value);},open(value){
+ function open(value){
+  if(cleaningHistory){queuedOrder=value;return;}
   generation++;busy=false;order=value;identity=owner();items=null;destination=null;preview=null;tables=[];
   if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();back();});}
-  stage=root.CaptainItemTransfer.pending(order._id)?'recovery':'items';render();dialog.showModal();
- }};
+  stage=root.CaptainItemTransfer.pending(order._id)?'recovery':'items';render();if(!dialog.open)dialog.showModal();if(!ownsHistory)ownHistory();
+ }
+ root.CaptainTransferScreen={register(value){registered.set(owner()+':'+value._id,value);},open};
+ window.addEventListener('popstate',event=>{
+  if(cleaningHistory){cleaningHistory=false;event.stopImmediatePropagation();if(queuedOrder){const next=queuedOrder;queuedOrder=null;open(next);}return;}
+  if(!ownsHistory||!dialog?.open)return;
+  event.stopImmediatePropagation();ownsHistory=false;
+  const dialogs=[...document.querySelectorAll('dialog[open]')];
+  if(!document.querySelector('#posnic-lock.is-open')&&dialogs.at(-1)===dialog)back();
+  if(dialog.open)ownHistory();
+ },true);
  window.addEventListener('captain:back',event=>{
   if(!dialog?.open||event.defaultPrevented||document.querySelector('#posnic-lock.is-open'))return;
   const open=[...document.querySelectorAll('dialog[open]')];if(open.at(-1)!==dialog)return;
