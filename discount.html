@@ -66,6 +66,7 @@
 <body class="seat-screen">
     <div class="discount-page">
         <div class="seat-head">
+            <button type="button" class="route-signal" onclick="goBackToKot()" aria-label="Back">←</button>
             <span class="seat-head-title">New order</span>
         </div>
 
@@ -110,17 +111,10 @@
                     placeholder="Reason for discount (optional)"></textarea>
             </div>
 
-            <div class="table-section-center">
-                <div class="section-title">Table</div>
-                <div class="table-list">
-                    <!-- JS will fill here -->
-                </div>
-            </div>
-
             <!-- Person Count -->
             <!-- Person Count -->
             <div class="person-count-section">
-                <div class="section-title">Pax</div>
+                <div class="section-title">Guests</div>
 
                 <!--
                     TWO TAPS, AND NO KEYBOARD.
@@ -159,17 +153,15 @@
                 <input type="hidden" id="person_count" value="1">
             </div>
 
-            <div class="btn-footer">
-                <button type="button" class="btn btn-next" onclick="goBackToKot()"
-                    style="border: 1px solid #ddd !important;background: #ff7a3c;color: #fff;">
-                    ← Back
-                </button>
-
-                <div class="discount-cart-summary">
-                    <button class="header-btn" onclick="openOrderHistory()" title="Order History">
-                        <i class="fas fa-history"></i>
-                    </button>
+            <div class="table-section-center">
+                <div class="section-title">Choose a table</div>
+                <div id="seat-area-filter" class="seat-area-filter" hidden></div>
+                <div class="table-list">
+                    <!-- JS will fill here -->
                 </div>
+            </div>
+
+            <div class="btn-footer">
                 <button type="button" class="btn btn-next" onclick="goToProductsWithTableCheck()">
                     Next →
                 </button>
@@ -185,7 +177,9 @@
         </div>
     </div>
     <script>
-        function goToProductsWithTableCheck() {
+        let seatingInProgress = false;
+        async function goToProductsWithTableCheck() {
+            if(seatingInProgress)return;
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -254,6 +248,17 @@
             }
 
 
+            if(orderType === 'Dine-in') {
+                seatingInProgress=true;
+                let confirmed=false;
+                try {confirmed=await CaptainTables.confirmSeating({table:chosenTable || {tableorder_value:tableNo},guests:personCount});}
+                finally {seatingInProgress=false;}
+                if(!confirmed)return;
+                if((tableRadio && tableRadio.disabled) || (CaptainTables.cached(tableNo) && !CaptainTables.fits(CaptainTables.cached(tableNo),personCount))) {
+                    showErrorPopup('Choose a table with enough seats.');return;
+                }
+            }
+
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
             localStorage.setItem('kiosk_discount_percentage', percentage);
@@ -261,7 +266,7 @@
             localStorage.setItem('kiosk_discount_description', description);
 
             // Only store table/pax if Dine-in OR if they were selected
-            if (orderType === 'Dine-in' || tableNo) {
+            if (orderType === 'Dine-in') {
                 localStorage.setItem('kiosk_table_no', tableNo);
                 localStorage.setItem('kiosk_table_id', tableId);
             } else {
@@ -269,7 +274,7 @@
                 localStorage.setItem('kiosk_table_id', '');
             }
 
-            if (orderType === 'Dine-in' || personCount > 0) {
+            if (orderType === 'Dine-in') {
                 localStorage.setItem('kiosk_person_count', personCount);
             } else {
                 localStorage.setItem('kiosk_person_count', '0');
@@ -436,6 +441,7 @@
                 
                 container.innerHTML = html;
             CaptainTables.updateChoices(document.getElementById('person_count').value);
+            CaptainTables.areaFilter();
                 
                 // Setup input validation
                 const manualInput = document.getElementById('manual_table_input');
@@ -553,7 +559,7 @@
                     : '';
 
                 html += `
-                    <div class="table-item ${isOccupied ? 'table-occupied' : ''}">
+                    <div class="table-item ${isOccupied ? 'table-occupied' : ''}" data-dining-area="${CaptainTables.esc(t.area || '')}">
                         <input type="radio" class="table-radio"
                             id="${id}"
                             name="table_no"
@@ -588,6 +594,7 @@
 
             container.innerHTML = html;
             CaptainTables.updateChoices(document.getElementById('person_count').value);
+            CaptainTables.areaFilter();
             
             // ✅ Restore previous selection if still valid
             if (selectedValue) {
@@ -821,32 +828,12 @@
             handleOrderTypeChange();
         }
 
-        // Handle order type change to auto-select/deselect table and pax
+        // Choosing a mode stays on this page until the explicit Next action.
         function handleOrderTypeChange() {
-            const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
-
-            if (orderType === 'Dine-in') {
-                // Auto-select first table if available
-                const firstTable = document.querySelector('input[name="table_no"]');
-                if (firstTable && !document.querySelector('input[name="table_no"]:checked')) {
-                    firstTable.checked = true;
-                }
-
-                // Ensure pax is at least 1
-                const personCount = parseInt(document.getElementById('person_count').value || '0', 10);
-                if (personCount === 0) {
-                    setPersonCount(1);
-                }
-            } else {
-                // Takeaway mode - go directly to products page
-                localStorage.setItem('orderType', 'Take away');
-                localStorage.setItem('kiosk_table_no', '');
-                localStorage.setItem('kiosk_table_id', '');
-                localStorage.setItem('kiosk_person_count', '0');
-                
-                // Navigate to products page immediately
-                window.location.href = 'products.html';
-            }
+            const dineIn=document.getElementById('order_type_dinein').checked;
+            document.querySelector('.table-section-center').hidden=!dineIn;
+            document.querySelector('.person-count-section').hidden=!dineIn;
+            if(dineIn && !(Number(document.getElementById('person_count').value)>0))setPersonCount(1);
         }
 
         // Call after DOM loaded
@@ -1067,6 +1054,7 @@
         function goBackToKot() {
             window.location.href = 'kot-management.html';
         }
+        window.addEventListener('captain:back', event => {if(document.querySelector('#seat-confirmation[open]'))return;event.preventDefault();goBackToKot();});
     </script>
 </body>
 

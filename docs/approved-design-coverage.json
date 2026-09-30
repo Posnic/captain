@@ -24,8 +24,10 @@
         "POS/api/src/repositories/sale.repository.js"
       ],
       "verification": [
-        "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
-        "Seat/move confirmation and combined-table flow remain."
+        "Guest-first phone flow and side-by-side tablet layout verified at 320 and 768 pixels.",
+        "Dining-area filter preserves focus. RTL mode selector and explicit takeaway Next passed.",
+        "Fixed-height inner scrolling removed; no horizontal overflow.",
+        "Combined-table seating remains."
       ]
     },
     {
@@ -351,9 +353,17 @@
     },
     {
       "id": "seat-confirm",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "discount.html",
+        "assets/common/table-details.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Dine-in review preserves selection on cancellation; native Back closes review first; confirmation retains table and guests.",
+        "Extra-chair guidance and area filtering passed browser checks.",
+        "Combined-table seating remains part of the broader unfinished flow."
+      ]
     },
     {
       "id": "move-confirm",
