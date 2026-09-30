@@ -19,7 +19,7 @@
     current = "",
     busy = false,
     profile,
-    generation = 0, nameDraft = "", phoneNumber = "", phoneChallenge = null, resendAt = 0, phoneTimer, phonePassword = "";
+    generation = 0, nameDraft = "", phoneNumber = "", phoneChallenge = null, resendAt = 0, phoneTimer, phonePassword = "", phoneCode = "";
   function dirty() {
     if (["phone", "phone-code"].includes(current)) return (page.querySelector("#phone-number")?.value ?? phoneNumber) !== String(profile?.phone || "") || nameDraft !== String(profile?.name || "");
     if (current === "password") return [...page.querySelectorAll("input")].some(input => input.value !== "");
@@ -29,7 +29,7 @@
   function back() {
     if (!current) return false;
     if (busy) return true;
-    if (current === "phone-code") { showPhone(); return true; }
+    if (current === "phone-code") { phoneCode = page.querySelector("#phone-code").value; showPhone(); return true; }
     if (current === "phone") { phonePassword = ""; renderProfile(nameDraft); return true; }
     if (dirty() && !confirm(t("Discard changes?"))) return true;
     clearInterval(phoneTimer);
@@ -80,11 +80,20 @@
     page.innerHTML = `<form id="profile-form">${field("Name", "profile-name", "text", name, "name")}<div class="profile-detail"><span>${esc(t("Email"))}</span><strong translate="no">${esc(profile.email || "—")}</strong></div><div class="profile-detail"><span>${esc(t("Phone number"))}</span><strong translate="no">${esc(profile.phone || "—")}</strong><button type="button" class="profile-secondary" data-profile-phone>${esc(t("Change"))}</button></div>${actions()}</form>`;
     page.querySelector("input").maxLength = 100;
   }
+  const normalizePhone = value => String(value || '').replace(/[ ()-]/g, '');
+  function canResumePhone() {
+    return current === 'phone' && phoneChallenge && !phoneChallenge.invalid &&
+      Date.parse(phoneChallenge.expiresAt) > Date.now() &&
+      normalizePhone(page.querySelector('#phone-number')?.value) === phoneChallenge.phone;
+  }
   function phoneClock() {
     const button = page.querySelector('[data-phone-send],[data-phone-resend]');
     if (!button) return;
-    const seconds = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
-    const label = button.hasAttribute('data-phone-send') ? 'Send verification code' : 'Resend code';
+    const resume = canResumePhone();
+    const password = page.querySelector('#phone-password');
+    if (password) password.required = !resume;
+    const seconds = resume ? 0 : Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+    const label = resume ? 'Continue' : button.hasAttribute('data-phone-send') ? 'Send verification code' : 'Resend code';
     button.textContent = t(label) + (seconds ? ` (${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')})` : '');
     button.disabled = busy || seconds > 0;
   }
@@ -92,7 +101,7 @@
     clearInterval(phoneTimer);
     current = code ? "phone-code" : "phone";
     document.querySelector(".me-title").textContent = t(code ? "Code" : "Phone number");
-    page.innerHTML = `<form id="phone-form">${code ? `<p translate="no" dir="ltr">${esc(phoneNumber)}</p>${field("Code", "phone-code", "text", "", "one-time-code")}` : `${field("Phone number", "phone-number", "tel", phoneNumber, "tel")}${field("Current password", "phone-password", "password", phonePassword, "current-password")}<p class="me-note">${esc(t("Enter a phone number with country code."))}</p>`}<p id="profile-message" role="status"></p><div class="profile-actions"><button type="button" class="profile-secondary" data-profile-back>${esc(t("Back"))}</button><button type="submit" class="profile-primary" ${code ? '' : 'data-phone-send'}>${esc(t(code ? "Continue" : "Send verification code"))}</button></div>${code ? `<button type="button" class="profile-secondary phone-resend" data-phone-resend>${esc(t("Resend code"))}</button>` : ''}</form>`;
+    page.innerHTML = `<form id="phone-form">${code ? `<p translate="no" dir="ltr">${esc(phoneNumber)}</p>${field("Code", "phone-code", "text", phoneCode, "one-time-code")}` : `${field("Phone number", "phone-number", "tel", phoneNumber, "tel")}${field("Current password", "phone-password", "password", phonePassword, "current-password")}<p class="me-note">${esc(t("Enter a phone number with country code."))}</p>`}<p id="profile-message" role="status"></p><div class="profile-actions"><button type="button" class="profile-secondary" data-profile-back>${esc(t("Back"))}</button><button type="submit" class="profile-primary" ${code ? '' : 'data-phone-send'}>${esc(t(code ? "Continue" : "Send verification code"))}</button></div>${code ? `<button type="button" class="profile-secondary phone-resend" data-phone-resend>${esc(t("Resend code"))}</button>` : ''}</form>`;
     const input = page.querySelector('input');
     input.dir = 'ltr';
     if (code) { input.inputMode = 'numeric'; input.pattern = '[0-9]{6}'; input.maxLength = 6; }
@@ -103,6 +112,7 @@
   async function phoneSubmit(resend = false) {
     if (busy) return;
     const verifying = current === 'phone-code' && !resend;
+    if (!resend && canResumePhone()) { phoneNumber = phoneChallenge.phone; showPhone(true); return; }
     if (!verifying && Date.now() < resendAt) return;
     if (!verifying && current === 'phone') phoneNumber = page.querySelector('#phone-number').value.replace(/[ ()-]/g, '');
     const message = page.querySelector('#profile-message');
@@ -123,13 +133,14 @@
         page.querySelector('#profile-message').textContent = t('Saved');
       } else {
         if (typeof result.challenge !== 'string' || !result.challenge || !Number.isFinite(Date.parse(result.expiresAt))) throw new Error('unconfirmed');
-        phoneChallenge = result;
+        phoneCode = "";
+        phoneChallenge = { ...result, phone: phoneNumber };
         resendAt = Date.now() + Math.max(60, Number(result.retryAfter) || 60) * 1000;
         showPhone(true);
       }
     } catch (error) {
       if (error.status === 429) resendAt = Date.now() + 60000;
-      if (verifying && error.status === 409) resendAt = 0;
+      if (verifying && error.status === 409) { resendAt = 0; phoneChallenge.invalid = true; }
       message.textContent = t(error.status === 404 ? 'This shop’s server is too old for this screen. Update POSNIC on the till.' : error.status === 400 ? (verifying ? 'Check the verification code.' : 'The current password is incorrect.') : error.status === 409 ? 'Request a new verification code.' : error.status === 429 ? 'Resend code' : verifying ? 'Could not save. Please try again.' : 'Could not send the code. Check SMS settings or try again later.');
     } finally {
       busy = false;
@@ -209,8 +220,9 @@
       .getElementById("me-password")
       .addEventListener("click", () => show("password"));
     page.addEventListener("submit", submit);
+    page.addEventListener("input", event => { if (event.target.id === "phone-number") phoneClock(); });
     page.addEventListener("click", (event) => {
-      if (event.target.closest("[data-profile-phone]") && !busy) { nameDraft = page.querySelector('#profile-name').value; phoneNumber = profile.phone || ''; phoneChallenge = null; phonePassword = ''; showPhone(); }
+      if (event.target.closest("[data-profile-phone]") && !busy) { nameDraft = page.querySelector('#profile-name').value; phoneNumber = profile.phone || ''; phoneChallenge = null; phoneCode = ''; phonePassword = ''; showPhone(); }
       if (event.target.closest("[data-phone-resend]")) void phoneSubmit(true);
       if (event.target.closest("[data-profile-back]")) back();
       if (event.target.closest("[data-profile-retry]")) void load();

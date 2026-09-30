@@ -158,3 +158,23 @@ for (const width of [320,768]) test(`phone change fits ${width}px and clears pas
   await expect(page.locator('#phone-password')).toHaveValue('');
   await expect(page.locator('#phone-number')).toHaveValue('+919000000000');
 });
+
+
+test('Back resumes an existing phone code without another SMS and changing number respects cooldown',async({page})=>{
+  await phoneScreen(page);
+  let sends=0;
+  await page.route('**/captain/v1/profile/phone/start',route=>{sends++;return route.fulfill({json:challenge});});
+  await page.locator('#phone-number').fill('+919111111111');
+  await page.locator('[data-phone-send]').click();
+  await page.locator('#phone-code').fill('123');
+  await page.locator('[data-profile-back]').click();
+  await expect(page.locator('[data-phone-send]')).toHaveText('Continue');
+  await expect(page.locator('[data-phone-send]')).toBeEnabled();
+  await page.locator('#phone-number').fill('+919222222222');
+  await expect(page.locator('[data-phone-send]')).toBeDisabled();
+  await expect(page.locator('[data-phone-send]')).toContainText('Send verification code');
+  await page.locator('#phone-number').fill('+91 91111 11111');
+  await page.locator('[data-phone-send]').click();
+  await expect(page.locator('#phone-code')).toHaveValue('123');
+  expect(sends).toBe(1);
+});
