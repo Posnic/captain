@@ -150,7 +150,7 @@
     }
     window.refreshMySales = () => load(selectedDay);
     window.addEventListener('captain:back', event => {
-        if (event.defaultPrevented) return;
+        if (event.defaultPrevented || document.querySelector('dialog[open], #posnic-lock.is-open')) return;
         event.preventDefault();
         location.href = 'me.html';
     });

@@ -34,5 +34,5 @@
     void retry();
     window.addEventListener('posnic:offline',paint);window.addEventListener('posnic:online',()=>{confirmed=true;paint();});window.addEventListener('posnic:server-changed',()=>{routeRevision++;confirmed=false;flight=null;at('help-retry').disabled=false;paint();});
   });
-  window.addEventListener('captain:back',event=>{event.preventDefault();location.href='me.html';});
+  window.addEventListener('captain:back',event=>{if(event.defaultPrevented || document.querySelector('dialog[open], #posnic-lock.is-open'))return;event.preventDefault();location.href='me.html';});
 })();

@@ -1197,7 +1197,7 @@ function sayWhereWeAre() {
 document.addEventListener('DOMContentLoaded', sayWhereWeAre);
 
 window.addEventListener('captain:back', event => {
-    if (event.defaultPrevented || document.querySelector('.modal.show, #guest-bills[open]')) return;
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open], #posnic-lock.is-open')) return;
     if (document.getElementById('kot-sliding-panel')?.classList.contains('open')) {
         event.preventDefault();
         closeSlidingPanel();

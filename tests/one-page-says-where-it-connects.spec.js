@@ -75,18 +75,21 @@ test("a new phone offers every connection method without an account or network c
   await page.evaluate(() => openServerModal());
   for (const id of [
     "captain-cloud-login",
-    "captain-server",
+    "captain-address-toggle",
     "captain-search",
     "captain-scan",
     "captain-code-toggle",
   ])
     await expect(page.locator("#" + id)).toBeVisible();
+  await page.locator("#captain-address-toggle").click();
+  await expect(page.locator("#captain-server")).toBeVisible();
   await expect(page.locator("#captain-cancel")).toBeHidden();
 });
 test("an outage cannot cover the connection editor or start a competing search", async ({
   page,
 }) => {
   await settings(page);
+  await page.locator("#captain-address-toggle").click();
   await page.evaluate(() => POSNIC.net.setOffline());
   await expect(page.locator("#captain-server")).toBeVisible();
   await expect(page.locator("#posnic-offline")).toBeHidden();

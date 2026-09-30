@@ -129,7 +129,7 @@
             }
         });
         window.addEventListener('captain:back', event => {
-            if (document.querySelector('#guest-bills[open]') || !modal.classList.contains('show')) return;
+            if (event.defaultPrevented || document.querySelector('dialog[open], #posnic-lock.is-open') || !modal.classList.contains('show')) return;
             event.preventDefault();
             const nested = [...document.querySelectorAll('.modal.show')].filter(node => node !== modal).pop();
             bootstrap.Modal.getInstance(nested || modal)?.hide();

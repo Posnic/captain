@@ -98,9 +98,16 @@
     },
     {
       "id": "edit-order",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "order-history.html",
+        "assets/order-history/editor.js",
+        "assets/order-history/editor.css",
+        "tests/order-editor-flow.spec.js"
+      ],
+      "verification": [
+        "Separate item review, details/settings and menu picker are implemented; editor and profile/bill suite passed 34 browser checks. Claimed-table guest/type changes still need server integration review."
+      ]
     },
     {
       "id": "move",
@@ -132,15 +139,25 @@
     },
     {
       "id": "guests",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/order-history/editor.js",
+        "POS/api/src/services/seating-claims.js"
+      ],
+      "verification": [
+        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness."
+      ]
     },
     {
       "id": "type",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/order-history/editor.js",
+        "POS/api/src/services/seating-claims.js"
+      ],
+      "verification": [
+        "Separate settings screens exist. Claimed-table orders currently require coordinated seating changes; direct guest/type edits are rejected by forEdit and need integration before readiness."
+      ]
     },
     {
       "id": "cancel",
@@ -167,21 +184,38 @@
     },
     {
       "id": "split",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/guest-bills.js",
+        "tests/guest-bills.spec.js"
+      ],
+      "verification": [
+        "Equal/item/shared splits and offline preparation verified. Draft identity now includes shop, staff, branch and table; route changes retain the same draft. Native Back preserves the underlying order. Nine browser checks pass, including staff isolation and request deduplication."
+      ]
     },
     {
       "id": "guest-bills",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/guest-bills.js",
+        "POS/api/src/services/guest-bill.service.js",
+        "tests/guest-bills.spec.js"
+      ],
+      "verification": [
+        "Individual guest previews, cashier print handoff and exact total preservation verified in the nine split-bill browser checks."
+      ]
     },
     {
       "id": "pay",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/captain-payments.js",
+        "POS/api/src/services/captain-payments.js",
+        "tests/captain-payments.spec.js"
+      ],
+      "verification": [
+        "Payment entry, explicit review, confirmation and receipt implemented. Cash change, manually verified UPI and retained idempotent retry covered by targeted browser and API checks."
+      ]
     },
     {
       "id": "receipt",
@@ -369,9 +403,16 @@
     },
     {
       "id": "recover",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/common/onboarding.js",
+        "assets/common/lock.js",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Sign-in Help offers password or browser-account recovery with manager guidance; original staff input remains. Native Back and narrow phone/tablet dark theme verified at 320 and 900 pixels."
+      ]
     },
     {
       "id": "language",
@@ -436,63 +477,124 @@
     },
     {
       "id": "setup",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/common/onboarding.js",
+        "assets/index/setup.css",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Shared first-time and Change server flow verified with separate method, address, discovery, pairing and backup address views. Combined setup/recovery suite had 43 passes and two obsolete start-view assertions; corrected method-entry assertions then passed with the seven connection tests."
+      ]
     },
     {
       "id": "address",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/common/onboarding.js",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Bare domain remains editable during discovery; Continue verifies that address; failure and cancelled requests cannot replace the selected shop."
+      ]
     },
     {
       "id": "found",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/onboarding.js",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Multiple discovered shops require explicit selection. Discovery results arriving after Back cannot replace the current view."
+      ]
     },
     {
       "id": "connection-error",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/onboarding.js",
+        "config.js",
+        "tests/captain-onboarding.spec.js",
+        "tests/help-recovery.spec.js"
+      ],
+      "verification": [
+        "Outage preserves setup access, rejects stale replies and supports suspended-session recovery and authenticated moved-server discovery."
+      ]
     },
     {
       "id": "signin",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/index/script.js",
+        "assets/common/app-design.css",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Staff sign-in is separate from verified shop selection, with Change server and recovery. Phone/tablet dark-theme views inspected."
+      ]
     },
     {
       "id": "approval",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/onboarding.js",
+        "assets/common/access.js",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Browser approval exchanges on return to Captain, recovers an expired exchange once, and supports browser-launch retry. Targeted browser suite passes; live account/device acceptance remains."
+      ]
     },
     {
       "id": "qr",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/common/connect.js",
+        "assets/common/onboarding.js"
+      ],
+      "verification": [
+        "QR camera and structured pairing integration present. Real camera acceptance remains."
+      ]
     },
     {
       "id": "pair",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/onboarding.js",
+        "assets/common/access.js",
+        "tests/captain-onboarding.spec.js"
+      ],
+      "verification": [
+        "Pairing proof, cancelled requests, identity isolation and local/remote address handling are implemented and covered by onboarding browser checks."
+      ]
     },
     {
       "id": "branch",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "index.html",
+        "assets/index/script.js",
+        "assets/common/onboarding.js"
+      ],
+      "verification": [
+        "Authenticated branch selection and single-branch shortcut implemented; full visual/native acceptance remains."
+      ]
     },
     {
       "id": "set-pin",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/lock.js",
+        "tests/pin-design.spec.js"
+      ],
+      "verification": [
+        "Shared PIN setup and confirmation, failed storage retry and native Back verified in three phone/tablet browser checks."
+      ]
     },
     {
       "id": "help",
@@ -513,15 +615,26 @@
     },
     {
       "id": "signout",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/account.js",
+        "assets/me/script.js",
+        "tests/a-place-for-everything-that-is-not-an-order.spec.js"
+      ],
+      "verification": [
+        "Explicit confirmation with Cancel/native Back preserves the session. Identity and pending-order guards are rechecked before sign-out; storage-read failures cannot discard an unknown cart. The 28-check account/bill/PIN/navigation suite passes."
+      ]
     },
     {
       "id": "discard",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/order-history/editor.js",
+        "assets/common/account.js"
+      ],
+      "verification": [
+        "Dirty order edits require confirmation before discard; sign-out confirms loss of the cart. Shared styled discard treatment still requires review."
+      ]
     },
     {
       "id": "table-settings",
@@ -695,45 +808,87 @@
     },
     {
       "id": "permission",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/order-actions.js",
+        "assets/me/profile.js",
+        "POS/api/src/utils/branch-access.js"
+      ],
+      "verification": [
+        "Role checks and manager approval surfaces exist; server authorization remains authoritative. Broad complete-flow review remains."
+      ]
     },
     {
       "id": "offline",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/order-queue.js",
+        "assets/common/order-queue-ui.js",
+        "assets/kot/dashboard.js",
+        "tests/offline-first.spec.js"
+      ],
+      "verification": [
+        "Persistent pending orders, own-staff gray floor cards and connection recovery are implemented; complete offline/device acceptance remains."
+      ]
     },
     {
       "id": "session-expired",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/access.js",
+        "assets/common/lock.js",
+        "config.js",
+        "tests/secure-access.test.js"
+      ],
+      "verification": [
+        "Session renewal/recovery retains saved orders and requires authenticated renewal after offline authorization expires. Complete device acceptance remains."
+      ]
     },
     {
       "id": "overview",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/navigation.js",
+        "me.html"
+      ],
+      "verification": [
+        "Mockup screen directory maps to real floor/history/pending/account navigation rather than a customer-facing demo directory."
+      ]
     },
     {
       "id": "categories",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/menu-view.js",
+        "assets/products/meal-menu.js",
+        "tests/menu-jump-and-notes.spec.js"
+      ],
+      "verification": [
+        "Category navigation and meal-period browsing use the real menu. Complete-app acceptance remains."
+      ]
     },
     {
       "id": "search-demo",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/products/script.js",
+        "assets/common/menu-view.js",
+        "tests/menu-basket.spec.js"
+      ],
+      "verification": [
+        "Real text/code search, preserved focus and clearing after adding an item implemented; phone/tablet basket flow verified."
+      ]
     },
     {
       "id": "search-empty",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/products/script.js",
+        "tests/an-empty-search-is-not-an-empty-menu.spec.js"
+      ],
+      "verification": [
+        "Search empty state is separate from an unavailable menu; regression browser coverage exists."
+      ]
     },
     {
       "id": "item",
@@ -748,15 +903,25 @@
     },
     {
       "id": "service-hours",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/serving-periods.js",
+        "assets/products/meal-menu.js"
+      ],
+      "verification": [
+        "Assigned meal periods and branch time zone drive current suggestions; cached/resume and overnight handling verified."
+      ]
     },
     {
       "id": "gestures",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/mobile-gestures.js",
+        "tests/mobile-gestures.spec.js"
+      ],
+      "verification": [
+        "Pull-to-refresh and ordered detail navigation with visible controls implemented. Keyboard, nested scroll and editing gestures are protected; native-device acceptance remains."
+      ]
     },
     {
       "id": "branch-details",
@@ -799,14 +964,12 @@
     }
   ],
   "remainingPriorities": [
-    "Finish screen-by-screen visual replacement, preserving working ordering APIs",
-    "Complete profile email/phone verification and account preferences flows",
-    "Table metadata and capacity-aware seating/moves, combined tables, transfers, merges, cleaning lifecycle with POS controls",
-    "Meal suggestions, category/search/customization and detail/round layouts",
-    "Bill review, individual payments, receipts and order closure",
-    "Shared setup, branch selection, offline/session recovery and pending order screens",
-    "All languages, gestures, phone/tablet and RTL checks",
-    "Build APK and POS installer for user testing after integration verification"
+    "Implement production partial-item transfer and occupied-table merge with preserved pricing, kitchen rounds/service identity, tenant scope and idempotent recovery",
+    "Finish claimed-table guest-count/order-type editing integration; retain drafts on conflicts",
+    "Complete any remaining common discard/permission/recovery visual gaps and branch details coverage",
+    "Complete repository-wide browser/API integration, all-language/RTL and phone/tablet verification",
+    "Merge verified supporting POS/API changes and Captain implementation; release Captain, build POS installer locally only",
+    "Real-device microphone/camera/resume and physical multi-printer acceptance remain for end-user testing"
   ],
   "releaseBaseline": "v1.3.29",
   "developmentBranch": "codex/captain-upi-collection",

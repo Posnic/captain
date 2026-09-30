@@ -84,6 +84,12 @@ test('SIGNING OUT ENDS THE SESSION, not just the menu', async ({ page }) => {
 
   await page.locator('a[href="#account"]').click();
   await page.locator('#me-sign-out').click();
+  await expect(page.locator('#account-signout')).toBeVisible();
+  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+  await expect(page.locator('#account-signout')).toHaveCount(0);
+  expect(await page.evaluate(()=>POSNIC.session.active)).toBe(true);
+  await page.locator('#me-sign-out').click();
+  await page.locator('[data-confirm-signout]').click();
   await expect(page).toHaveURL(/index\.html$/);
 
   /* The sign-in page is still loading its scripts when the URL changes, and

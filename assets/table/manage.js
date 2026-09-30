@@ -218,6 +218,7 @@
     void load();
   });
   window.addEventListener("captain:back", (event) => {
+    if(event.defaultPrevented || document.querySelector("dialog[open], #posnic-lock.is-open")) return;
     event.preventDefault();
     back();
   });

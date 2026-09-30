@@ -212,3 +212,29 @@ for (const code of ["ta", "ur"]) {
     });
   });
 }
+
+test('same-shop route switching retains a prepared split; another staff member cannot send it', async ({page}) => {
+  const posts=await setup(page);
+  await page.locator('#guest-bills [data-action=more]').click();
+  await next(page);
+  await page.locator('#guest-bills header [data-action=close]').click();
+  await page.evaluate(()=>Object.defineProperty(POSNIC.session,'base',{configurable:true,get:()=> 'https://backup.posnic.io/api'}));
+  await page.evaluate(()=>GuestBills.open('T1'));
+  await expect(page.locator('.guest-bill-review')).toHaveCount(3);
+  await page.evaluate(()=>Object.defineProperty(POSNIC.session,'user',{configurable:true,get:()=>({id:'another-staff'})}));
+  await next(page);
+  await expect(page.locator('#guest-bills')).toBeHidden();
+  expect(posts).toHaveLength(0);
+  await page.evaluate(()=>GuestBills.open('T1'));
+  await expect(page.locator('.guest-bill-modes')).toBeVisible();
+  await next(page);
+  await expect(page.locator('.guest-bill-review')).toHaveCount(2);
+});
+
+test('native Back from split review returns to split setup without dismissing the order beneath it', async ({page})=>{
+  await setup(page);
+  await next(page);
+  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+  await expect(page.locator('.guest-bill-modes')).toBeVisible();
+  await expect(page.locator('#guest-bills')).toBeVisible();
+});

@@ -981,3 +981,24 @@ test("leaving a selected Wi-Fi result cancels its pending navigation", async ({ 
   await expect(page.locator("#username")).toBeHidden();
   expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
 });
+
+for (const width of [320, 900]) test(`sign-in recovery keeps staff input and native Back at ${width}px`, async ({page}) => {
+  await phone(page);
+  await page.setViewportSize({width,height:850});
+  await page.emulateMedia({colorScheme:'dark'});
+  await fillAddress(page,base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toBeVisible();
+  await page.locator('#username').fill('staff-name');
+  await page.locator('#captain-login-help').click();
+  await expect(page.locator('#captain-recovery')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:`test-artifacts/recovery-${width}.png`,fullPage:true});
+  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+  await expect(page.locator('#captain-recovery')).toHaveCount(0);
+  await expect(page.locator('#username')).toHaveValue('staff-name');
+  await page.locator('#captain-login-help').click();
+  await page.locator('[data-recovery=password]').click();
+  await expect(page.locator('#password')).toBeFocused();
+  await page.screenshot({path:`test-artifacts/signin-dark-${width}.png`,fullPage:true});
+});

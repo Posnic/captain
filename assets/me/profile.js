@@ -229,7 +229,7 @@
     });
   });
   window.addEventListener("captain:back", (event) => {
-    if (current && !event.defaultPrevented) {
+    if (current && !event.defaultPrevented && !document.querySelector("dialog[open], #posnic-lock.is-open")) {
       event.preventDefault();
       back();
     }

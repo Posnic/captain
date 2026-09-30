@@ -187,7 +187,7 @@
         location.href = ["products.html", "cart.html", "kot-management.html", "order-history.html", "me.html", "help.html", "my-sales.html"].includes(previous) ? previous : "kot-management.html";
       };
       document.getElementById("pending-back").onclick = back;
-      window.addEventListener("captain:back", event => { event.preventDefault(); back(); });
+      window.addEventListener("captain:back", event => { if(event.defaultPrevented || document.querySelector("dialog[open], #posnic-lock.is-open")) return; event.preventDefault(); back(); });
       window.MobileGestures?.setRefresh(() => flush(true));
     }
     render();

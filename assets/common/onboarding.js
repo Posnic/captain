@@ -592,9 +592,30 @@
       return true;
     },
   };
+  function recoveryHelp() {
+    if (document.getElementById("captain-recovery")) return;
+    const dialog = document.createElement("dialog");
+    dialog.id = "captain-recovery";
+    dialog.className = "captain-action-dialog";
+    dialog.setAttribute("aria-labelledby", "captain-recovery-title");
+    dialog.innerHTML = '<h2 id="captain-recovery-title">Help</h2><p>Ask your manager to reconnect this phone. Your orders are saved.</p><div class="recovery-actions"><button type="button" data-recovery="password">Use my password instead</button><button type="button" data-recovery="account">Sign in with your account</button><button type="button" data-recovery="back">Back</button></div>';
+    const close = () => {window.removeEventListener("captain:back", back, true);dialog.close();dialog.remove();$("captain-login-help").focus();};
+    const back = event => {event.preventDefault();event.stopImmediatePropagation();close();};
+    dialog.addEventListener("cancel", back);
+    window.addEventListener("captain:back", back, true);
+    dialog.addEventListener("click", event => {
+      const action = event.target.closest("[data-recovery]")?.dataset.recovery;
+      if (!action) return;
+      close();
+      if (action === "password") $("password").focus();
+      if (action === "account") {CaptainOnboarding.open();$("captain-cloud-login").click();}
+    });
+    document.body.append(dialog);window.I18N?.apply(dialog);dialog.showModal();
+  }
   document.addEventListener("DOMContentLoaded", () => {
     $("captain-server").value = POSNIC.server.baseUrl || "";
     updateConnectAction();
+    $("captain-login-help").onclick = recoveryHelp;
     $("captain-code-toggle").onclick = showCode;
     $("captain-change-shop").onclick = () => CaptainOnboarding.open();
     $("captain-connect").onclick = () => {
