@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "Không thể gửi mã. Hãy kiểm tra cài đặt SMS hoặc thử lại sau.",
   "Enter a valid email address.": "Nhập địa chỉ email hợp lệ.",
   "This email address is unavailable.": "Không thể sử dụng địa chỉ email này.",
-  "Could not send the code. Check email settings or try again later.": "Không thể gửi mã. Hãy kiểm tra cài đặt email hoặc thử lại sau."
+  "Could not send the code. Check email settings or try again later.": "Không thể gửi mã. Hãy kiểm tra cài đặt email hoặc thử lại sau.",
+  "Main table": "Bàn chính"
 }

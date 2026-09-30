@@ -969,5 +969,6 @@
   "Send verification code": "إرسال رمز التحقق",
   "Enter a valid email address.": "أدخل عنوان بريد إلكتروني صالحًا.",
   "This email address is unavailable.": "عنوان البريد الإلكتروني هذا غير متاح.",
-  "Could not send the code. Check email settings or try again later.": "تعذر إرسال الرمز. تحقق من إعدادات البريد الإلكتروني أو حاول مرة أخرى لاحقًا."
+  "Could not send the code. Check email settings or try again later.": "تعذر إرسال الرمز. تحقق من إعدادات البريد الإلكتروني أو حاول مرة أخرى لاحقًا.",
+  "Main table": "الطاولة الرئيسية"
 }

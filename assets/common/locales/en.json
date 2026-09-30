@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "Could not send the code. Check SMS settings or try again later.",
   "Enter a valid email address.": "Enter a valid email address.",
   "This email address is unavailable.": "This email address is unavailable.",
-  "Could not send the code. Check email settings or try again later.": "Could not send the code. Check email settings or try again later."
+  "Could not send the code. Check email settings or try again later.": "Could not send the code. Check email settings or try again later.",
+  "Main table": "Main table"
 }

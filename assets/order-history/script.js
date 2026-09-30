@@ -1250,7 +1250,7 @@ function renderGroupMoveTables() {
         </button>`;
     }).join('');
     if(moveSelected.length){
-        container.insertAdjacentHTML('beforeend',`<label>${esc(t('Table'))}<select id="move-primary" class="form-select">${moveSelected.map(id=>`<option value="${esc(id)}" ${id===movePrimary?'selected':''}>${esc(moveTables.find(row=>row.id===id).label)}</option>`).join('')}</select></label>`);
+        container.insertAdjacentHTML('beforeend',`<label class="move-table-primary"><span id="move-primary-label">${esc(t('Main table'))}</span><select aria-labelledby="move-primary-label" id="move-primary" class="form-select">${moveSelected.map(id=>`<option value="${esc(id)}" ${id===movePrimary?'selected':''}>${esc(moveTables.find(row=>row.id===id).label)}</option>`).join('')}</select></label>`);
         container.querySelector('#move-primary').addEventListener('change',event=>{movePrimary=event.target.value;renderGroupMoveTables();});
     }
     const message=document.getElementById('move-table-status');

@@ -1347,7 +1347,7 @@ tr.is-cancelled {
 
 .move-table-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   gap: 8px;
 }
 
@@ -1372,7 +1372,7 @@ tr.is-cancelled {
 }
 
 .move-table-note {
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
   opacity: 0.7;
   text-align: center;
 }
@@ -1395,4 +1395,21 @@ tr.is-cancelled {
   border-color: #0d6efd;
   border-width: 2px;
   background: #eef5ff;
+}
+
+.move-table-primary {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 8px;
+}
+#moveTableModal .move-table-primary select {
+  min-height: 48px !important;
+  width: 100%;
+  font-size: 1rem;
+}
+.move-table {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

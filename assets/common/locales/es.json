@@ -969,5 +969,6 @@
   "Send verification code": "Enviar código de verificación",
   "Enter a valid email address.": "Introduce una dirección de correo electrónico válida.",
   "This email address is unavailable.": "Esta dirección de correo electrónico no está disponible.",
-  "Could not send the code. Check email settings or try again later.": "No se pudo enviar el código. Comprueba la configuración del correo electrónico o inténtalo de nuevo más tarde."
+  "Could not send the code. Check email settings or try again later.": "No se pudo enviar el código. Comprueba la configuración del correo electrónico o inténtalo de nuevo más tarde.",
+  "Main table": "Mesa principal"
 }

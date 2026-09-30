@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "Tidak dapat menghantar kod. Semak tetapan SMS atau cuba lagi kemudian.",
   "Enter a valid email address.": "Masukkan alamat e-mel yang sah.",
   "This email address is unavailable.": "Alamat e-mel ini tidak tersedia.",
-  "Could not send the code. Check email settings or try again later.": "Tidak dapat menghantar kod. Semak tetapan e-mel atau cuba lagi kemudian."
+  "Could not send the code. Check email settings or try again later.": "Tidak dapat menghantar kod. Semak tetapan e-mel atau cuba lagi kemudian.",
+  "Main table": "Meja utama"
 }

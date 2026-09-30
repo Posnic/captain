@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "കോഡ് അയയ്ക്കാനായില്ല. SMS ക്രമീകരണങ്ങൾ പരിശോധിക്കുക അല്ലെങ്കിൽ പിന്നീട് വീണ്ടും ശ്രമിക്കുക.",
   "Enter a valid email address.": "സാധുവായ ഇമെയിൽ വിലാസം നൽകുക.",
   "This email address is unavailable.": "ഈ ഇമെയിൽ വിലാസം ലഭ്യമല്ല.",
-  "Could not send the code. Check email settings or try again later.": "കോഡ് അയയ്ക്കാനായില്ല. ഇമെയിൽ ക്രമീകരണങ്ങൾ പരിശോധിക്കുക അല്ലെങ്കിൽ പിന്നീട് വീണ്ടും ശ്രമിക്കുക."
+  "Could not send the code. Check email settings or try again later.": "കോഡ് അയയ്ക്കാനായില്ല. ഇമെയിൽ ക്രമീകരണങ്ങൾ പരിശോധിക്കുക അല്ലെങ്കിൽ പിന്നീട് വീണ്ടും ശ്രമിക്കുക.",
+  "Main table": "പ്രധാന മേശ"
 }

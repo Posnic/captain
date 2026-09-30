@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "कोड पाठवता आला नाही. SMS सेटिंग्ज तपासा किंवा नंतर पुन्हा प्रयत्न करा.",
   "Enter a valid email address.": "वैध ईमेल पत्ता प्रविष्ट करा.",
   "This email address is unavailable.": "हा ईमेल पत्ता उपलब्ध नाही.",
-  "Could not send the code. Check email settings or try again later.": "कोड पाठवता आला नाही. ईमेल सेटिंग्ज तपासा किंवा नंतर पुन्हा प्रयत्न करा."
+  "Could not send the code. Check email settings or try again later.": "कोड पाठवता आला नाही. ईमेल सेटिंग्ज तपासा किंवा नंतर पुन्हा प्रयत्न करा.",
+  "Main table": "मुख्य टेबल"
 }

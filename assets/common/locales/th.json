@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "ไม่สามารถส่งรหัสได้ ตรวจสอบการตั้งค่า SMS หรือลองอีกครั้งในภายหลัง",
   "Enter a valid email address.": "ป้อนที่อยู่อีเมลที่ถูกต้อง",
   "This email address is unavailable.": "ไม่สามารถใช้ที่อยู่อีเมลนี้ได้",
-  "Could not send the code. Check email settings or try again later.": "ไม่สามารถส่งรหัสได้ ตรวจสอบการตั้งค่าอีเมลหรือลองอีกครั้งในภายหลัง"
+  "Could not send the code. Check email settings or try again later.": "ไม่สามารถส่งรหัสได้ ตรวจสอบการตั้งค่าอีเมลหรือลองอีกครั้งในภายหลัง",
+  "Main table": "โต๊ะหลัก"
 }

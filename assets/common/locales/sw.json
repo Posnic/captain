@@ -969,5 +969,6 @@
   "Send verification code": "Tuma msimbo wa uthibitishaji",
   "Enter a valid email address.": "Weka anwani halali ya barua pepe.",
   "This email address is unavailable.": "Anwani hii ya barua pepe haipatikani.",
-  "Could not send the code. Check email settings or try again later.": "Imeshindikana kutuma msimbo. Kagua mipangilio ya barua pepe au ujaribu tena baadaye."
+  "Could not send the code. Check email settings or try again later.": "Imeshindikana kutuma msimbo. Kagua mipangilio ya barua pepe au ujaribu tena baadaye.",
+  "Main table": "Meza kuu"
 }

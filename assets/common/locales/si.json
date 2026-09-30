@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "කේතය යැවීමට නොහැකි විය. SMS සැකසුම් පරීක්ෂා කරන්න හෝ පසුව නැවත උත්සාහ කරන්න.",
   "Enter a valid email address.": "වලංගු ඊමේල් ලිපිනයක් ඇතුළත් කරන්න.",
   "This email address is unavailable.": "මෙම ඊමේල් ලිපිනය ලබා ගත නොහැක.",
-  "Could not send the code. Check email settings or try again later.": "කේතය යැවීමට නොහැකි විය. ඊමේල් සැකසුම් පරීක්ෂා කරන්න හෝ පසුව නැවත උත්සාහ කරන්න."
+  "Could not send the code. Check email settings or try again later.": "කේතය යැවීමට නොහැකි විය. ඊමේල් සැකසුම් පරීක්ෂා කරන්න හෝ පසුව නැවත උත්සාහ කරන්න.",
+  "Main table": "ප්‍රධාන මේසය"
 }

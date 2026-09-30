@@ -312,6 +312,7 @@ test('a saved move can be cancelled and a lost cancellation reply survives reloa
 });
 
 test('a group move selects neighbouring seats and sends the chosen primary table',async({page})=>{
+ await page.setViewportSize({width:320,height:740});
  await onTheOrderList(page);
  await page.route('**/sales/getOrderHistory',route=>route.fulfill({json:{type:'success',data:{orders:ORDERS.map(order=>order._id==='ord-1'?{...order,person_count:4,seating_request_id:'seating-original'}:order)}}}));
  await page.evaluate(()=>loadOrderHistory());
@@ -330,6 +331,16 @@ test('a group move selects neighbouring seats and sends the chosen primary table
  await page.locator('.move-table[data-value="21"]').click();
  await expect(page.locator('#move-table-go')).toBeEnabled();
  await page.locator('#move-primary').selectOption('table-b');
+ await expect(page.getByLabel('Main table',{exact:true})).toBeVisible();
+ for(const width of [320,768]){
+   await page.setViewportSize({width,height:900});
+   const bounds=await page.locator('#moveTableModal .modal-content').boundingBox();
+   expect(bounds.x).toBeGreaterThanOrEqual(0);
+   expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
+   const select=await page.locator('#move-primary').boundingBox();
+   expect(select.height).toBeGreaterThanOrEqual(48);
+   await page.screenshot({path:`output/group-move-${width}.png`,fullPage:true});
+ }
  await page.locator('#move-table-go').click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
  expect(prepared.tableIds).toEqual(['table-a','table-b']);

@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "コードを送信できませんでした。SMS設定を確認するか、後でもう一度お試しください。",
   "Enter a valid email address.": "有効なメールアドレスを入力してください。",
   "This email address is unavailable.": "このメールアドレスは使用できません。",
-  "Could not send the code. Check email settings or try again later.": "コードを送信できませんでした。メール設定を確認するか、後でもう一度お試しください。"
+  "Could not send the code. Check email settings or try again later.": "コードを送信できませんでした。メール設定を確認するか、後でもう一度お試しください。",
+  "Main table": "メインテーブル"
 }

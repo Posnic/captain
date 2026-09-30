@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. SMS సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి.",
   "Enter a valid email address.": "చెల్లుబాటు అయ్యే ఇమెయిల్ చిరునామాను నమోదు చేయండి.",
   "This email address is unavailable.": "ఈ ఇమెయిల్ చిరునామా అందుబాటులో లేదు.",
-  "Could not send the code. Check email settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. ఇమెయిల్ సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి."
+  "Could not send the code. Check email settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. ఇమెయిల్ సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి.",
+  "Main table": "ప్రధాన టేబుల్"
 }

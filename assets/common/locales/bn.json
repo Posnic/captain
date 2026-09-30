@@ -969,5 +969,6 @@
   "Could not send the code. Check SMS settings or try again later.": "কোড পাঠানো যায়নি। SMS সেটিংস পরীক্ষা করুন অথবা পরে আবার চেষ্টা করুন।",
   "Enter a valid email address.": "একটি বৈধ ইমেল ঠিকানা লিখুন।",
   "This email address is unavailable.": "এই ইমেল ঠিকানাটি উপলব্ধ নয়।",
-  "Could not send the code. Check email settings or try again later.": "কোড পাঠানো যায়নি। ইমেল সেটিংস পরীক্ষা করুন অথবা পরে আবার চেষ্টা করুন।"
+  "Could not send the code. Check email settings or try again later.": "কোড পাঠানো যায়নি। ইমেল সেটিংস পরীক্ষা করুন অথবা পরে আবার চেষ্টা করুন।",
+  "Main table": "প্রধান টেবিল"
 }

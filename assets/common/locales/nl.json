@@ -969,5 +969,6 @@
   "Send verification code": "Verificatiecode verzenden",
   "Enter a valid email address.": "Voer een geldig e-mailadres in.",
   "This email address is unavailable.": "Dit e-mailadres is niet beschikbaar.",
-  "Could not send the code. Check email settings or try again later.": "De code kon niet worden verzonden. Controleer de e-mailinstellingen of probeer het later opnieuw."
+  "Could not send the code. Check email settings or try again later.": "De code kon niet worden verzonden. Controleer de e-mailinstellingen of probeer het later opnieuw.",
+  "Main table": "Hoofdtafel"
 }

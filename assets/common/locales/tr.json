@@ -969,5 +969,6 @@
   "Send verification code": "Doğrulama kodu gönder",
   "Enter a valid email address.": "Geçerli bir e-posta adresi girin.",
   "This email address is unavailable.": "Bu e-posta adresi kullanılamıyor.",
-  "Could not send the code. Check email settings or try again later.": "Kod gönderilemedi. E-posta ayarlarını kontrol edin veya daha sonra tekrar deneyin."
+  "Could not send the code. Check email settings or try again later.": "Kod gönderilemedi. E-posta ayarlarını kontrol edin veya daha sonra tekrar deneyin.",
+  "Main table": "Ana masa"
 }
