@@ -132,3 +132,26 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 #payment-settings-form .me-row > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 #payment-settings-form input[type="checkbox"] { flex: 0 0 22px; width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
 #payment-settings-form .me-note { color: var(--ink-soft); }
+
+/* One basket renderer: sheet on phones, persistent review beside a tablet menu. */
+.menu-basket-lines { list-style: none; padding: 0; margin: 0; }
+.menu-basket-lines li { display: flex; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.menu-basket-lines li > div { min-width: 0; overflow-wrap: anywhere; }
+.menu-basket-lines li > span { flex-shrink: 0; }
+.menu-basket-lines p { margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; }
+.menu-basket-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 0; }
+#cart-summary-sheet .cart-sheet-panel { background: var(--surface); color: var(--ink); max-height: calc(100dvh - 80px - env(safe-area-inset-top)); display: flex; flex-direction: column; }
+#cart-summary-sheet .cart-sheet-title { color: var(--ink); }
+#cart-summary-sheet .cart-sheet-subtitle { color: var(--ink-soft); }
+#cart-summary-sheet .cart-sheet-body { max-height: none; min-height: 0; overflow: auto; }
+@media (min-width: 900px) {
+  body:has(#cart-summary-sheet) .content-wrapper { margin-inline-end: 340px; }
+  #cart-summary-sheet { display: block; pointer-events: auto; inset: 0 0 0 auto; width: 340px; z-index: 25; }
+  #cart-summary-sheet .cart-sheet-backdrop, #cart-summary-sheet .cart-sheet-close, #cart-summary-sheet .cart-sheet-handle { display: none; }
+  #cart-summary-sheet .cart-sheet-panel { inset: 0; height: 100%; max-height: none; box-sizing: border-box; border-radius: 0; border-inline-start: 1px solid var(--line); box-shadow: none; transform: none; animation: none; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+  body:has(#cart-summary-sheet) .bill-bar { inset-inline-start: auto; width: 340px; box-sizing: border-box; }
+  body:has(#cart-summary-sheet) .menu-index-btn { inset-inline-end: 360px; bottom: 24px; }
+  [dir="rtl"] #cart-summary-sheet { inset: 0 auto 0 0; }
+}
+
+button.bill-what { background: transparent; color: var(--ink); border: 0; padding: 0; text-align: start; min-height: 44px; }

@@ -32,9 +32,18 @@
     },
     {
       "id": "menu",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "products.html",
+        "assets/products/script.js",
+        "indexedDB.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Bill summary now shows selected item lines, each item note and the same unit-price totals as checkout, replacing totals-only chips. The same renderer is a phone sheet and a persistent side basket on displays at least 900px wide.",
+        "Real-browser flow verifies add/search-clear, notes attached to the right item, escaped note content, live totals, retained search focus, resizing to phone, and opening/closing through the real footer control. Phone and tablet screenshots inspected; 574 unit tests pass.",
+        "Meal-period suggestions, remaining item/category design audit, native gesture acceptance and complete-app release remain."
+      ]
     },
     {
       "id": "cart",

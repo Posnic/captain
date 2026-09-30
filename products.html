@@ -177,10 +177,10 @@
         than spending a strip of a small screen on "0 items - ₹0.00".
     -->
     <div class="bill-bar" id="bill-bar">
-        <div class="bill-what">
+        <button type="button" class="bill-what" aria-label="Bill Summary" onclick="openCartSummarySheet()">
             <span class="bill-count" id="bill-count">0 items</span>
             <span class="bill-total" id="bill-total">₹0.00</span>
-        </div>
+        </button>
         <!-- The spinner goes up before the navigation, because the gap between
              tapping this and the bill page starting to load is part of the wait
              too, and nothing else covers it. -->

@@ -1174,6 +1174,7 @@ async function openCartSummarySheet() {
 
     await renderCartSummaryIntoSheet();
 
+    if (matchMedia('(min-width: 900px)').matches) return;
     sheet.classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -1197,96 +1198,40 @@ document.addEventListener('click', (e) => {
     }
 });
 
-async function renderCartSummaryIntoSheet() {
+let cartSummaryGeneration = 0;
+async function renderCartSummaryIntoSheet(snapshot) {
+    const ticket = ++cartSummaryGeneration;
     const bodyEl = document.getElementById('cart-sheet-body');
     const subtitleEl = document.getElementById('cart-sheet-subtitle');
     if (!bodyEl || !subtitleEl) return;
-
-    let cart = [];
-    try {
-        cart = await getCartData();   // from indexedDB.js
-    } catch (e) {
-        console.error('Failed to read cart for summary', e);
+    let cart;
+    try { cart = snapshot || await getCartData(); }
+    catch { if (ticket === cartSummaryGeneration) subtitleEl.textContent = 'Could not load the bill.'; return; }
+    if (ticket !== cartSummaryGeneration) return;
+    const lines = Array.isArray(cart) ? cart.filter(item => Number(item.quantity) > 0) : [];
+    const quantity = lines.reduce((sum,item) => sum + Number(item.quantity),0);
+    subtitleEl.textContent = quantity === 1 ? '1 item' : `${quantity} items`;
+    bodyEl.replaceChildren();
+    if (!lines.length) {
+        const empty = document.createElement('p'); empty.textContent = 'No items in cart.'; bodyEl.append(empty); return;
     }
-
-    if (!Array.isArray(cart) || cart.length === 0) {
-        subtitleEl.textContent = 'Cart is empty';
-        bodyEl.innerHTML = '<p style="font-size:13px;color:#777;">No items in cart.</p>';
-        return;
+    const list = document.createElement('ul'); list.className = 'menu-basket-lines';
+    for (const item of lines) {
+        const row = document.createElement('li');
+        const details = document.createElement('div');
+        const name = document.createElement('strong'); name.translate = false;
+        name.textContent = `${item.quantity} × ${window.ItemLanguage?.name(item) || item.name || ''}`;
+        details.append(name);
+        if (item.notes) { const note = document.createElement('p'); note.translate = false; note.textContent = item.notes; details.append(note); }
+        const amount = document.createElement('span'); amount.translate = false;
+        amount.textContent = CaptainMoney.display(Number(item.quantity) * unitPrice(item));
+        row.append(details,amount); list.append(row);
     }
-
-    let itemCount = 0;
-    let totalQty = 0;
-    let totalSubtotal = 0;        // gross price
-    let totalDiscount = 0;
-    let totalTax = 0;
-    let finalTotal = 0;
-
-    for (const item of cart) {
-        const qty = Number(item.quantity || 0);
-        if (qty <= 0) continue;
-
-        itemCount += 1;
-        totalQty += qty;
-        const subtotal = Number(item.subtotal || 0);
-        const discountPrice = Number(item.discount_price || 0);
-        const taxPrice = Number(item.tax_price || 0);
-
-        const lineSubtotal = subtotal * qty;
-        const lineDiscount = discountPrice * qty;
-        const lineTax = taxPrice * qty;
-
-        totalSubtotal += lineSubtotal;
-        totalDiscount += lineDiscount;
-        totalTax += lineTax;
-
-        // if you already store final (after discount+tax) per item, use it
-        if (typeof item.final_price !== 'undefined') {
-            finalTotal += Number(item.final_price || 0) * qty;
-        } else {
-            finalTotal += lineSubtotal - lineDiscount + lineTax;
-        }
-    }
-
-    subtitleEl.textContent = `${itemCount} item${itemCount !== 1 ? 's' : ''} · ${totalQty} qty`;
-
-    bodyEl.innerHTML = `
-        <div class="cart-summary-row">
-            <div class="cart-summary-chip-row">
-                <div class="cart-summary-chip">
-                    <div class="cart-summary-chip-label">Items</div>
-                    <div class="cart-summary-chip-value">${itemCount}</div>
-                </div>
-                <div class="cart-summary-chip">
-                    <div class="cart-summary-chip-label">Total Qty</div>
-                    <div class="cart-summary-chip-value">${totalQty}</div>
-                </div>
-            </div>
-
-            <div class="cart-summary-chip-row">
-                <div class="cart-summary-chip">
-                    <div class="cart-summary-chip-label">Subtotal</div>
-                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalSubtotal)}</div>
-                </div>
-                <div class="cart-summary-chip">
-                    <div class="cart-summary-chip-label">Discount</div>
-                    <div class="cart-summary-chip-value">‑${CaptainMoney.html(totalDiscount)}</div>
-                </div>
-            </div>
-
-            <div class="cart-summary-chip-row">
-                <div class="cart-summary-chip">
-                    <div class="cart-summary-chip-label">Tax</div>
-                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalTax)}</div>
-                </div>
-            </div>
-
-            <div class="cart-summary-total">
-                <div class="cart-summary-total-label">Final Amount</div>
-                <div class="cart-summary-total-amount">${CaptainMoney.html(finalTotal)}</div>
-            </div>
-        </div>
-    `;
+    const total = document.createElement('div'); total.className = 'menu-basket-total';
+    const label = document.createElement('strong'); label.textContent = 'Total';
+    const amount = document.createElement('strong'); amount.translate = false;
+    amount.textContent = CaptainMoney.display(lines.reduce((sum,item)=>sum+Number(item.quantity)*unitPrice(item),0));
+    total.append(label,amount); bodyEl.append(list,total);
 }
 
 /*
@@ -1652,4 +1597,9 @@ window.addEventListener('captain:back', event => {
     if (search && search.value) {
         event.preventDefault(); search.value = ''; applyProductFilter();
     }
+});
+
+matchMedia('(min-width: 900px)').addEventListener('change', () => {
+    closeCartSummarySheet();
+    void renderCartSummaryIntoSheet();
 });

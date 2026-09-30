@@ -1498,6 +1498,7 @@ async function updateCart() {
         /* And the bar at the bottom, which rises only once there is something
            on the bill worth crossing the screen for. */
         if (typeof MenuScreen !== 'undefined') MenuScreen.bill(totalQty, totalPrice);
+        if (typeof renderCartSummaryIntoSheet === 'function') void renderCartSummaryIntoSheet(storedCart);
     } catch (error) {
         console.error("❌ Error updating cart:", error);
     }
