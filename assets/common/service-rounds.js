@@ -10,7 +10,7 @@
     if (!Array.isArray(order.kitchen_rounds)) return '';
     const pending = order.kitchen_rounds.some(round => round.items.some(line => !line.held && line.remaining > 0));
     const all = editable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Mark all served</button></div>` : '';
-    const options = editable && root.ServiceDetails?.supported() ? `<details class="service-order-options"><summary>Order options</summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Hand over order</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
+    const options = editable && root.ServiceDetails?.supported(order.branch_id) ? `<details class="service-order-options"><summary>Order options</summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Hand over order</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
     return options + all + order.kitchen_rounds.map(round => `<section class="service-round">
       <h3><span>Ordered at</span> <time translate="no">${escape(time(round.ordered_at))}</time></h3>
       ${round.fired_at ? `<p><span>Sent to the kitchen</span> <time translate="no">${escape(time(round.fired_at))}</time></p>` : ''}
@@ -26,6 +26,26 @@
           <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}">Mark served</button>
         </div>` : ''}
       </div>`).join('')}</section>`).join('');
+  }
+  function updateRounds(container, saleId, branchId, rounds, changedLines) {
+    const list = container.querySelector('.kot-items-list');
+    const optionsOpen = list.querySelector('.service-order-options')?.open;
+    const assignedName = list.querySelector('.service-assignee')?.textContent || '';
+    const quantities = new Map();
+    list.querySelectorAll('[data-serve-line]').forEach(button => {
+      const input = button.parentElement.querySelector('input');
+      if (input && !changedLines.has(button.dataset.serveLine)) quantities.set(button.dataset.serveLine, input.value);
+    });
+    list.innerHTML = render({_id:saleId, branch_id:branchId, kitchen_rounds:rounds, assigned_staff:{name:assignedName}}, true);
+    const options = list.querySelector('.service-order-options');
+    if (options) options.open = Boolean(optionsOpen);
+    list.querySelectorAll('[data-serve-line]').forEach(button => {
+      const input = button.parentElement.querySelector('input');
+      const value = quantities.get(button.dataset.serveLine);
+      // Keep another item's partial-quantity draft only while it remains valid.
+      if (input && value !== undefined && Number(value) > 0 && Number(value) <= Number(input.max)) input.value = value;
+    });
+    root.I18N?.apply(list);
   }
   document.addEventListener('click', async event => {
     const button = event.target.closest('[data-fire-line]');
@@ -43,7 +63,7 @@
     try {
       const result = await POSNIC.api.post('/sales/fireKitchenItems',{saleId,branchId,items:[button.dataset.fireLine],requestId:button.dataset.fireRequest});
       if(result.type!=='success'||!Array.isArray(result.data)) throw new Error(result.message||'Could not save. Please try again.');
-      container.querySelector('.kot-items-list').innerHTML=render({_id:saleId,branch_id:branchId,kitchen_rounds:result.data},true);
+      updateRounds(container,saleId,branchId,result.data,new Set([button.dataset.fireLine]));
       message.textContent='Course sent to kitchen';
     } catch(error) {message.textContent=error.message||'Could not save. Please try again.';}
     finally {delete container.dataset.serving;controls.forEach(control=>control.disabled=false);root.I18N?.apply(container);}
@@ -88,7 +108,8 @@
     } catch (error) {
       message.textContent = error.message || 'Could not save. Please try again.';
     } finally {
-      if (confirmed) container.querySelector('.kot-items-list').innerHTML = render({_id:saleId,branch_id:branchId,kitchen_rounds:confirmed},true);
+      if (confirmed) updateRounds(container,saleId,branchId,confirmed,new Set(items.map(item => item.id)));
+      root.I18N?.apply(container);
       controls.forEach(control => { control.disabled = false; });
       delete container.dataset.serving;
     }

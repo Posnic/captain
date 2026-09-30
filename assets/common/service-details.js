@@ -6,7 +6,7 @@
   const t = value => root.I18N?.t(value) || value;
   const capabilityKey = branch => 'posnic.service.v1.' + (root.POSNIC?.session?.shopKey || root.POSNIC?.server?.baseUrl || '') + '.' + (branch || localStorage.getItem('branch_id') || '');
   const capabilities = new Map();
-  function supported() {try {const key=capabilityKey();return capabilities.has(key) ? capabilities.get(key) : localStorage.getItem(key) === 'true';} catch {return false;}}
+  function supported(branch) {try {const key=capabilityKey(branch);return capabilities.has(key) ? capabilities.get(key) : localStorage.getItem(key) === 'true';} catch {return false;}}
   function remember(value,branch) {try {for (const key of [capabilityKey(branch),capabilityKey()]) {capabilities.set(key,value===true);try {localStorage.setItem(key,String(value===true));} catch {}}} catch {}}
 
   function metadata(line) {
