@@ -1006,10 +1006,10 @@ window.modifyKot = modifyKot;
  * the same string: two readings of one list is how a table's id goes missing
  * on one screen and not on the other.
  */
-function tablesFromStorage() {
+function tablesFromStorage(rows) {
     let raw = null;
     try {
-        raw = localStorage.getItem('kiosk_tableorders');
+        raw = Array.isArray(rows) ? JSON.stringify(rows) : localStorage.getItem('kiosk_tableorders');
     } catch (e) {
         return [];
     }
@@ -1023,7 +1023,9 @@ function tablesFromStorage() {
                 label: value,
                 ...CaptainTables.metadata(t),
                 description: CaptainTables.description(t),
-                serviceState: t.service_state,
+                serviceState: t.status || t.service_state,
+                orders: t.orders || [],
+                closing: Boolean(t.closing),
                 id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.id || t.tableorder_id || t.table_id || '',
             };
         });
@@ -1048,6 +1050,7 @@ function tablesFromStorage() {
  */
 let orderBeingMoved = null;
 let moveSaving = false;
+let moveLoadVersion = 0, moveTables = [];
 
 /*
  * BUILT HERE, not written into a page.
@@ -1074,7 +1077,7 @@ function ensureMoveSheet() {
                 </div>
                 <div class="modal-body">
                     <div class="move-table-now" id="move-table-now"></div>
-                    <div class="move-table-list" id="move-table-list"></div>
+                    <p id="move-table-status" role="status"></p><button type="button" id="move-table-retry" class="btn close-btn" hidden>Retry</button><div class="move-table-list" id="move-table-list"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
@@ -1093,12 +1096,14 @@ function ensureMoveSheet() {
         if (button && !button.disabled) chooseMoveTable(button);
     });
     el.querySelector('#move-table-go').addEventListener('click', confirmMoveTable);
+    el.querySelector('#move-table-retry').addEventListener('click', refreshMoveTables);
 
     /* Reopened later for a different order, the last choice must not still be
        sitting there ready to move this one. */
     el.addEventListener('hide.bs.modal', event => { if (moveSaving) event.preventDefault(); });
     el.addEventListener('hidden.bs.modal', () => {
         orderBeingMoved = null;
+        moveLoadVersion++;
         const go = document.getElementById('move-table-go');
         if (go) {
             go.disabled = true;
@@ -1116,10 +1121,36 @@ function moveOrder(orderId) {
 
     ensureMoveSheet();
     orderBeingMoved = order;
-    renderMoveTables();
+    void refreshMoveTables();
 
     const el = ensureMoveSheet();
     if (typeof bootstrap !== 'undefined') new bootstrap.Modal(el).show();
+}
+
+async function refreshMoveTables() {
+    if (moveSaving || !orderBeingMoved) return;
+    const version = ++moveLoadVersion;
+    const message = document.getElementById('move-table-status');
+    const retry = document.getElementById('move-table-retry');
+    const go = document.getElementById('move-table-go');
+    moveTables = [];
+    document.getElementById('move-table-list').replaceChildren();
+    go.disabled = true;
+    retry.hidden = true;
+    message.textContent = window.I18N?.t('Loading...') || 'Loading...';
+    try {
+        const result = await POSNIC.api.get('/captain/v1/tables');
+        if (version !== moveLoadVersion || !orderBeingMoved) return;
+        if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
+        moveTables = tablesFromStorage(result.tables);
+        message.textContent = '';
+        renderMoveTables();
+    } catch {
+        if (version !== moveLoadVersion || !orderBeingMoved) return;
+        message.textContent = window.I18N?.t('Connection failed') || 'Connection failed';
+        retry.textContent = window.I18N?.t('Retry') || 'Retry';
+        retry.hidden = false;
+    }
 }
 
 /** Where the order is now, however the till spelled it. */
@@ -1151,7 +1182,8 @@ function renderMoveTables() {
             .filter(Boolean)
     );
 
-    const tables = tablesFromStorage();
+    const tables = moveTables;
+    for (const table of tables) if (table.orders.some(row => row.id !== order._id)) busy.add(table.value);
     if (!tables.length) {
         container.innerHTML =
             '<div class="text-muted">No tables configured. Whoever set up the till adds them.</div>';
@@ -1161,8 +1193,9 @@ function renderMoveTables() {
     container.innerHTML = tables
         .map((t) => {
             const isHere = t.value === now;
-            const tooSmall = t.max > 0 && Number(order.person_count || 1) > t.max;
-            const unavailable = ['held','cleaning'].includes(t.serviceState);
+            const otherGuests = t.orders.filter(row => row.id !== order._id).reduce((sum,row) => sum + (Number(row.guests) || 0),0);
+            const tooSmall = t.max > 0 && Number(order.person_count || 1) + otherGuests > t.max;
+            const unavailable = t.closing || ['held','cleaning'].includes(t.serviceState);
             return `
             <button type="button"
                 class="move-table${isHere ? ' is-here' : ''}${busy.has(t.value) ? ' is-busy' : ''}"
@@ -1172,7 +1205,8 @@ function renderMoveTables() {
                 <span class="move-table-no">${CaptainTables.esc(t.label)}</span>
                 ${t.description ? `<span class="move-table-note">${CaptainTables.esc(t.description)}</span>` : ''}
                 ${isHere ? '<span class="move-table-note">here now</span>' : ''}
-                ${unavailable ? `<span class="move-table-note">${CaptainTables.esc(window.I18N?.t(t.serviceState === 'cleaning' ? 'Cleaning' : 'Held') || t.serviceState)}</span>` : ''}
+                ${unavailable ? `<span class="move-table-note">${CaptainTables.esc(window.I18N?.t(t.closing ? 'Occupied' : t.serviceState === 'cleaning' ? 'Cleaning' : 'Held') || t.serviceState)}</span>` : ''}
+                ${tooSmall ? `<span class="move-table-note">${CaptainTables.esc(window.I18N?.t('Choose a table with enough seats.') || 'Choose a table with enough seats.')}</span>` : ''}
                 ${!isHere && busy.has(t.value) ? '<span class="move-table-note">has an order</span>' : ''}
             </button>`;
         })

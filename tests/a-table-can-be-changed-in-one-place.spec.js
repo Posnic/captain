@@ -74,6 +74,7 @@ async function onTheOrderList(page) {
     route.fulfill({ json: { type: 'success', data: { orders: ORDERS } } })
   );
 
+  await page.route('**/captain/v1/tables', async route => route.fulfill({json:{tables:await page.evaluate(()=>JSON.parse(localStorage.getItem('kiosk_tableorders') || '[]'))}}));
   await page.goto('/order-history.html');
   await page.waitForFunction(() => typeof moveOrder === 'function');
   await page.evaluate(
@@ -102,6 +103,7 @@ test('the floor is shown, with where it is now and what is already working', asy
   await page.evaluate(() => moveOrder('ord-1'));
 
   await expect(page.locator('#move-table-now')).toHaveText('Now on table 4');
+  await expect(page.locator('#move-table-list .move-table')).toHaveCount(3);
   expect(await offered(page)).toEqual([
     ['4', 'here now'],
     ['12', ''],
@@ -216,6 +218,37 @@ test('pending move cannot be dismissed or submitted twice and failure restores s
  release();
  await expect(page.locator('#move-table-go')).toBeEnabled();
  await expect(page.locator('.move-table[data-value="12"]')).toHaveClass(/is-chosen/);
+ await page.locator('#moveTableModal [data-bs-dismiss]').last().click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+});
+
+
+test('live move choices replace cache and account for guests already seated',async({page})=>{
+ await onTheOrderList(page);
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[
+  {id:'new-small',tableorder_value:'20',capacity:4,max_capacity:4,status:'occupied',orders:[{id:'other',guests:3}]},
+  {id:'new-room',tableorder_value:'21',capacity:6,max_capacity:6,status:'occupied',orders:[{id:'other2',guests:3}]},
+  {id:'closing',tableorder_value:'22',capacity:6,status:'occupied',closing:{request_id:'closing'}}
+ ]}}));
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await expect(page.locator('.move-table')).toHaveCount(3);
+ await expect(page.locator('.move-table[data-value="12"]')).toHaveCount(0);
+ await expect(page.locator('.move-table[data-value="20"]')).toBeDisabled();
+ await expect(page.locator('.move-table[data-value="21"]')).toBeEnabled();
+ await expect(page.locator('.move-table[data-value="22"]')).toBeDisabled();
+});
+
+test('failed table refresh leaves no stale choices and Retry restores current floor',async({page})=>{
+ await onTheOrderList(page);
+ let failed=true;
+ await page.route('**/captain/v1/tables',route=>route.fulfill(failed?{status:503,json:{message:'offline'}}:{json:{tables:[{id:'fresh',tableorder_value:'30',capacity:4}]}}));
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await expect(page.locator('#move-table-retry')).toBeVisible();
+ await expect(page.locator('.move-table')).toHaveCount(0);
+ await expect(page.locator('#move-table-go')).toBeDisabled();
+ failed=false;
+ await page.locator('#move-table-retry').click();
+ await expect(page.locator('.move-table[data-value="30"]')).toBeEnabled();
  await page.locator('#moveTableModal [data-bs-dismiss]').last().click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
 });

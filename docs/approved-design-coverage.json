@@ -99,7 +99,8 @@
       "verification": [
         "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
         "Seat/move confirmation and combined-table flow remain.",
-        "Move sheet now guards duplicate saves, destination changes and dismissal during requests, with restored selection and controls after failure. Seven move browser checks pass (table ID/line preservation, held/cleaning/capacity restrictions, failure recovery), alongside 577 unit checks and production build. Combined-seating protocol, live destination freshness and full visual acceptance remain required."
+        "Move sheet now guards duplicate saves, destination changes and dismissal during requests, with restored selection and controls after failure. Seven move browser checks pass (table ID/line preservation, held/cleaning/capacity restrictions, failure recovery), alongside 577 unit checks and production build. Combined-seating protocol, live destination freshness and full visual acceptance remain required.",
+        "Destination list now loads from authenticated tables API on every opening, with Retry and cancellation after load failure; late responses are scoped to the open sheet. Capacity includes other orders guests, and closing/held/cleaning tables are disabled. Nine move browser checks and 577 unit checks pass; production build passes. Moves require the tables API. Atomic server-side combined-seating and concurrent destination enforcement remain required."
       ]
     },
     {
