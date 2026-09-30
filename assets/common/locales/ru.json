@@ -993,5 +993,7 @@
   "Pause recording": "Приостановить запись",
   "Resume recording": "Продолжить запись",
   "Play recording": "Воспроизвести запись",
-  "Pause playback": "Приостановить воспроизведение"
+  "Pause playback": "Приостановить воспроизведение",
+  "Merge orders": "Объединить заказы",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Оба счёта перемещаются на выбранный стол. Позиции не отправляются на кухню повторно."
 }

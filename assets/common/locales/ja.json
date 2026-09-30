@@ -993,5 +993,7 @@
   "Pause recording": "録音を一時停止",
   "Resume recording": "録音を再開",
   "Play recording": "録音を再生",
-  "Pause playback": "再生を一時停止"
+  "Pause playback": "再生を一時停止",
+  "Merge orders": "注文をまとめる",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "両方の伝票を選択したテーブルに移します。商品は厨房に再送信されません。"
 }

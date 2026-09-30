@@ -993,5 +993,7 @@
   "Pause recording": "रिकॉर्डिंग रोकें",
   "Resume recording": "रिकॉर्डिंग जारी रखें",
   "Play recording": "रिकॉर्डिंग चलाएँ",
-  "Pause playback": "प्लेबैक रोकें"
+  "Pause playback": "प्लेबैक रोकें",
+  "Merge orders": "ऑर्डर मिलाएँ",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "दोनों बिल चुनी हुई टेबल पर जाएँगे। आइटम रसोई में दोबारा नहीं भेजे जाएँगे।"
 }

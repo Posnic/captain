@@ -138,3 +138,22 @@ test('an interrupted move cannot be replayed against another issuing server',asy
  assert.equal(b.calls.length,2);
  assert.equal(b.api.pending('order-1'),null);
 });
+
+
+test('merge retry retains target identity and uses the dedicated preparation route',async()=>{
+ const a=app();a.context.POSNIC.api.post=async()=>{throw new Error('offline');};
+ await assert.rejects(a.api.move('order-1',{...choice,targetOrderId:'target-order'}));
+ const entry=a.api.pending('order-1');
+ a.context.POSNIC.api.post=async(url,body)=>{a.calls.push({url,body});return {request_id:body.request_id,orderId:'order-1',mergeTargetId:'target-order',state:url.endsWith('complete')?'submitting':'reserved'};};
+ await a.api.resume('order-1');
+ assert.equal(a.calls[0].url,'/captain/v1/tables/merge/prepare');
+ assert.equal(a.calls[0].body.targetOrderId,'target-order');
+ assert.equal(a.calls[1].body.request_id,entry.body.request_id);
+ assert.equal(a.api.pending('order-1'),null);
+});
+
+test('merge cannot finish if the server acknowledges another destination order',async()=>{
+ const a=app();a.context.POSNIC.api.post=async(url,body)=>{a.calls.push({url,body});return {request_id:body.request_id,orderId:'order-1',mergeTargetId:'wrong-target',state:'reserved'};};
+ await assert.rejects(a.api.move('order-1',{...choice,targetOrderId:'target-order'}));
+ assert.equal(a.calls.length,1);assert.ok(a.api.pending('order-1'));
+});

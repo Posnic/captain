@@ -993,5 +993,7 @@
   "Pause recording": "Kaydı duraklat",
   "Resume recording": "Kayda devam et",
   "Play recording": "Kaydı oynat",
-  "Pause playback": "Oynatmayı duraklat"
+  "Pause playback": "Oynatmayı duraklat",
+  "Merge orders": "Siparişleri birleştir",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Her iki hesap seçilen masaya taşınır. Ürünler mutfağa tekrar gönderilmez."
 }

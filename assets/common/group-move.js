@@ -18,7 +18,7 @@
     const existing=read(order);
     if(existing)return existing;
     const owner=identity();
-    const entry={owner,issuer:issuer(),body:{orderId:order,request_id:crypto.randomUUID(),tableIds:selection.tableIds,primaryId:selection.primaryId,guests:selection.guests,...(selection.dineType ? {dineType:selection.dineType} : {})}};
+    const entry={owner,issuer:issuer(),body:{orderId:order,request_id:crypto.randomUUID(),tableIds:selection.tableIds,primaryId:selection.primaryId,guests:selection.guests,...(selection.targetOrderId ? {targetOrderId:selection.targetOrderId} : {}),...(selection.dineType ? {dineType:selection.dineType} : {})}};
     localStorage.setItem(key(owner,order),JSON.stringify(entry));
     return entry;
   }
@@ -49,15 +49,15 @@
           return {type:'success',cancelled:true};
         }
       }
-      const prepared=await root.POSNIC.api.post('/captain/v1/tables/move/prepare',entry.body);
+      const prepared=await root.POSNIC.api.post(entry.body.targetOrderId ? '/captain/v1/tables/merge/prepare' : '/captain/v1/tables/move/prepare',entry.body);
       same();
-      if(prepared.request_id!==entry.body.request_id || prepared.orderId!==entry.body.orderId)throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
+      if(prepared.request_id!==entry.body.request_id || prepared.orderId!==entry.body.orderId || (entry.body.targetOrderId && prepared.mergeTargetId!==entry.body.targetOrderId))throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
       // A reservation conflict is not permission to finish a cancelled move.
       // Only reconcile a move the server confirms has already begun applying.
       if (cancellationConflict && !['applying','submitting'].includes(prepared.state))throw cancellationConflict;
       const result=await root.POSNIC.api.post('/captain/v1/tables/move/complete',{request_id:entry.body.request_id});
       same();
-      if(result.request_id!==entry.body.request_id || result.orderId!==entry.body.orderId || result.state!=='submitting' || (entry.body.dineType && result.dineType!==entry.body.dineType))throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
+      if(result.request_id!==entry.body.request_id || result.orderId!==entry.body.orderId || result.state!=='submitting' || (entry.body.targetOrderId && result.mergeTargetId!==entry.body.targetOrderId) || (entry.body.dineType && result.dineType!==entry.body.dineType))throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
       localStorage.removeItem(storageKey);
       return {type:'success',tableIds:result.tableIds,dineType:result.dineType};
     })();

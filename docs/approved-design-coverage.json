@@ -762,11 +762,17 @@
       "status": "in-progress",
       "implementation": [
         "POS/api/src/services/captain-restructure-lock.js",
-        "POS/api/tests/unit/services/captain-restructure-lock.test.js"
+        "POS/api/tests/unit/services/captain-restructure-lock.test.js",
+        "assets/common/group-move.js",
+        "assets/order-history/script.js",
+        "tests/occupied-merge.spec.js",
+        "POS/api/src/services/captain-seating.js",
+        "POS/api/src/services/seating-claims.js"
       ],
       "verification": [
         "Durable tenant/staff-scoped restructuring reservations now exclude payments and edits, support cancellation tombstones and retain the fence during interrupted application. Reservation journals cannot be recorded as payments or presented as final bills. Transfer/merge write projections and Captain screens are still not implemented.",
-        "Kitchen ready/collect/serve updates now respect restructuring reservations while ordinary billing still permits service. Preview revisions and reservation snapshots include kitchen work, preventing stale readiness/pickup state. 51 kitchen, transfer-planning and reservation checks pass. Changed-file lint has zero errors; the large existing sale repository reports 89 warnings. POS commit 3f578409. Production transfer/merge projections and screens remain outstanding."
+        "Kitchen ready/collect/serve updates now respect restructuring reservations while ordinary billing still permits service. Preview revisions and reservation snapshots include kitchen work, preventing stale readiness/pickup state. 51 kitchen, transfer-planning and reservation checks pass. Changed-file lint has zero errors; the large existing sale repository reports 89 warnings. POS commit 3f578409. Production transfer/merge projections and screens remain outstanding.",
+        "Occupied-table merge API and selection/confirmation screen implemented for orders already enrolled in seating claims, with one existing destination check. Server requires merge permission, fences both checks, validates combined capacity and keeps original item/round/price identities intact. Existing table bill/payment readers aggregate both checks after the move; source table enters cleaning. Cancellation, lost-response retry and permission revocation are covered. Paired profiles lack roles, so entry visibility uses the authenticated tables capability instead. 94 related API/database checks, 14 move/merge journal units and 13 affected browser checks pass; three final merge layout/entry checks pass. All 30 languages and production build pass; changed-code lint and POS attribution pass. POS commit 29a13bde. Not fully rolled out: legacy/unclaimed order enrollment, shared-table guest-edit concurrency and partial-item transfer still require work."
       ]
     },
     {
@@ -997,8 +1003,8 @@
     }
   ],
   "remainingPriorities": [
-    "Implement production partial-item transfer and occupied-table merge with preserved pricing, kitchen rounds/service identity, tenant scope and idempotent recovery",
-    "Audit payment-versus-seating transition concurrency before exposing occupied-table merges; preserve issuing-server authority for reservation journals",
+    "Implement production partial-item transfer with preserved pricing, kitchen rounds/service identity, tenant scope and idempotent recovery",
+    "Complete seating enrollment for existing/unclaimed orders and all writers, and audit shared-table guest-edit capacity concurrency before calling occupied-table merge fully rolled out; preserve issuing-server authority for journals",
     "Finish complete-flow review of the shared discard/permission/recovery screens and remaining coverage ledger entries",
     "Complete repository-wide browser/API integration, all-language/RTL and phone/tablet verification",
     "Merge verified supporting POS/API changes and Captain implementation; release Captain, build POS installer locally only",

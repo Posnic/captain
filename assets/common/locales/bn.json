@@ -993,5 +993,7 @@
   "Pause recording": "রেকর্ডিং বিরতি দিন",
   "Resume recording": "রেকর্ডিং চালিয়ে যান",
   "Play recording": "রেকর্ডিং শুনুন",
-  "Pause playback": "প্লেব্যাক বিরতি দিন"
+  "Pause playback": "প্লেব্যাক বিরতি দিন",
+  "Merge orders": "অর্ডার একত্র করুন",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "দুটি বিলই নির্বাচিত টেবিলে যাবে। আইটেমগুলি রান্নাঘরে আবার পাঠানো হবে না।"
 }

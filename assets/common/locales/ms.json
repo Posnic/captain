@@ -993,5 +993,7 @@
   "Pause recording": "Jeda rakaman",
   "Resume recording": "Sambung rakaman",
   "Play recording": "Mainkan rakaman",
-  "Pause playback": "Jeda main balik"
+  "Pause playback": "Jeda main balik",
+  "Merge orders": "Gabungkan pesanan",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Kedua-dua bil dipindahkan ke meja yang dipilih. Item tidak dihantar semula ke dapur."
 }

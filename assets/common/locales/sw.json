@@ -993,5 +993,7 @@
   "Pause recording": "Sitisha kurekodi kwa muda",
   "Resume recording": "Endelea kurekodi",
   "Play recording": "Cheza rekodi",
-  "Pause playback": "Sitisha uchezaji kwa muda"
+  "Pause playback": "Sitisha uchezaji kwa muda",
+  "Merge orders": "Unganisha maagizo",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Bili zote mbili zinahamishiwa kwenye meza iliyochaguliwa. Bidhaa hazitumwi jikoni tena."
 }

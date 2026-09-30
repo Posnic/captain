@@ -1413,3 +1413,5 @@ tr.is-cancelled {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+#moveTableModal .move-table:disabled { opacity: .5; cursor: not-allowed; }

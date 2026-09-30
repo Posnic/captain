@@ -993,5 +993,7 @@
   "Pause recording": "Jeda rekaman",
   "Resume recording": "Lanjutkan rekaman",
   "Play recording": "Putar rekaman",
-  "Pause playback": "Jeda pemutaran"
+  "Pause playback": "Jeda pemutaran",
+  "Merge orders": "Gabungkan pesanan",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Kedua tagihan dipindahkan ke meja yang dipilih. Item tidak dikirim ulang ke dapur."
 }

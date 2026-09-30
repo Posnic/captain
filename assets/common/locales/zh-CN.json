@@ -993,5 +993,7 @@
   "Pause recording": "暂停录音",
   "Resume recording": "继续录音",
   "Play recording": "播放录音",
-  "Pause playback": "暂停播放"
+  "Pause playback": "暂停播放",
+  "Merge orders": "合并订单",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "两张账单将转到所选餐桌。菜品不会再次发送到厨房。"
 }

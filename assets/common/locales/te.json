@@ -993,5 +993,7 @@
   "Pause recording": "రికార్డింగ్‌ను పాజ్ చేయండి",
   "Resume recording": "రికార్డింగ్‌ను కొనసాగించండి",
   "Play recording": "రికార్డింగ్‌ను ప్లే చేయండి",
-  "Pause playback": "ప్లేబ్యాక్‌ను పాజ్ చేయండి"
+  "Pause playback": "ప్లేబ్యాక్‌ను పాజ్ చేయండి",
+  "Merge orders": "ఆర్డర్లను కలపండి",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "రెండు బిల్లులు ఎంచుకున్న టేబుల్‌కు మారతాయి. ఐటమ్‌లు వంటగదికి మళ్లీ పంపబడవు."
 }

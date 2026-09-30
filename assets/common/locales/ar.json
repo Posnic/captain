@@ -993,5 +993,7 @@
   "Pause recording": "إيقاف التسجيل مؤقتًا",
   "Resume recording": "استئناف التسجيل",
   "Play recording": "تشغيل التسجيل",
-  "Pause playback": "إيقاف التشغيل مؤقتًا"
+  "Pause playback": "إيقاف التشغيل مؤقتًا",
+  "Merge orders": "دمج الطلبات",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "تُنقل الفاتورتان إلى الطاولة المختارة. لا تُرسل الأصناف إلى المطبخ مرة أخرى."
 }

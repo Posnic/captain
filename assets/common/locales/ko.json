@@ -993,5 +993,7 @@
   "Pause recording": "녹음 일시 정지",
   "Resume recording": "녹음 재개",
   "Play recording": "녹음 재생",
-  "Pause playback": "재생 일시 정지"
+  "Pause playback": "재생 일시 정지",
+  "Merge orders": "주문 합치기",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "두 계산서를 선택한 테이블로 옮깁니다. 품목은 주방에 다시 전송되지 않습니다."
 }

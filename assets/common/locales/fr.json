@@ -993,5 +993,7 @@
   "Pause recording": "Mettre l’enregistrement en pause",
   "Resume recording": "Reprendre l’enregistrement",
   "Play recording": "Écouter l’enregistrement",
-  "Pause playback": "Mettre la lecture en pause"
+  "Pause playback": "Mettre la lecture en pause",
+  "Merge orders": "Regrouper les commandes",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Les deux additions passent à la table sélectionnée. Les articles ne sont pas renvoyés en cuisine."
 }

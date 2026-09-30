@@ -993,5 +993,7 @@
   "Pause recording": "റെക്കോർഡിംഗ് താൽക്കാലികമായി നിർത്തുക",
   "Resume recording": "റെക്കോർഡിംഗ് തുടരുക",
   "Play recording": "റെക്കോർഡിംഗ് പ്ലേ ചെയ്യുക",
-  "Pause playback": "പ്ലേബാക്ക് താൽക്കാലികമായി നിർത്തുക"
+  "Pause playback": "പ്ലേബാക്ക് താൽക്കാലികമായി നിർത്തുക",
+  "Merge orders": "ഓർഡറുകൾ ഒന്നിപ്പിക്കുക",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "രണ്ട് ബില്ലുകളും തിരഞ്ഞെടുത്ത മേശയിലേക്ക് മാറ്റും. ഇനങ്ങൾ അടുക്കളയിലേക്ക് വീണ്ടും അയയ്ക്കില്ല."
 }

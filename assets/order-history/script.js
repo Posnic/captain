@@ -316,6 +316,7 @@ async function loadOrderHistoryNow(options, revision) {
         if (data.type === 'success') {
             historyLoaded = true;
             allOrders = data.data.orders || [];
+            if(allOrders.some(order=>order.seating_request_id)) void refreshMergePermission(revision);
             generateTableCards(); // Generate table selection cards
             if (selectedTable !== null) {
                 // If on order list screen, filter by selected table
@@ -752,6 +753,7 @@ function renderOrders() {
             <button class="action-btn move-btn" data-move-order="${safe(order._id)}">
                 <i class="fas fa-right-left"></i> Move table
             </button>` : ''}
+            ${order.seating_request_id && canMergeOrders() ? `<button class="action-btn move-btn" data-merge-order="${safe(order._id)}">${window.I18N?.t('Merge orders') || 'Merge orders'}</button>` : ''}
             <button class="action-btn cancel-btn" data-cancel-order="${safe(order._id)}">
                 <i class="fas fa-times"></i> Cancel order
             </button>
@@ -764,11 +766,12 @@ function renderOrders() {
 }
 
 document.addEventListener('click', event => {
-    const button=event.target.closest('[data-view-order],[data-edit-order],[data-move-order],[data-cancel-order]');
+    const button=event.target.closest('[data-view-order],[data-edit-order],[data-move-order],[data-merge-order],[data-cancel-order]');
     if (!button) return;
     if (button.dataset.viewOrder) viewOrderDetails(button.dataset.viewOrder);
     if (button.dataset.editOrder) editOrder(button.dataset.editOrder);
     if (button.dataset.moveOrder) moveOrder(button.dataset.moveOrder);
+    if (button.dataset.mergeOrder) moveOrder(button.dataset.mergeOrder, "merge");
     if (button.dataset.cancelOrder) cancelOrder(button.dataset.cancelOrder);
 });
 
@@ -895,6 +898,7 @@ function tablesFromStorage(rows) {
                 description: CaptainTables.description(t),
                 serviceState: t.status || t.service_state,
                 orders: t.orders || [],
+                seating: t.seating || null,
                 adjacent: (t.adjacent_table_ids || []).map(String),
                 closing: Boolean(t.closing),
                 id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.id || t.tableorder_id || t.table_id || '',
@@ -922,7 +926,19 @@ function tablesFromStorage(rows) {
 let orderBeingMoved = null;
 let moveSaving = false;
 let moveLoadVersion = 0, moveTables = [];
-let moveSelected = [], movePrimary = "";
+let moveSelected = [], movePrimary = "", moveMode = "move", mergeChoice = null;
+let mergePermission = null;
+const mergePermissionOwner = () => JSON.stringify([window.POSNIC?.session?.shopKey,window.POSNIC?.session?.user?.id,localStorage.getItem('branch_id')]);
+function canMergeOrders() { return mergePermission?.owner === mergePermissionOwner() && mergePermission.value; }
+async function refreshMergePermission(revision) {
+    const owner=mergePermissionOwner();
+    try {
+        const result=await POSNIC.api.get('/captain/v1/tables');
+        if(revision!==historyRevision || owner!==mergePermissionOwner())return;
+        mergePermission={owner,value:result.canMerge===true};
+    } catch { if(revision!==historyRevision || owner!==mergePermissionOwner())return; mergePermission={owner,value:false}; }
+    if(selectedTable!==null) filterOrdersBySelectedTable();
+}
 
 /*
  * BUILT HERE, not written into a page.
@@ -988,13 +1004,15 @@ function ensureMoveSheet() {
     return el;
 }
 
-function moveOrder(orderId) {
+function moveOrder(orderId, mode = "move") {
     if (moveSaving) return;
     const order = (allOrders || []).find((o) => o._id === orderId);
     if (!order) return;
 
     ensureMoveSheet();
     orderBeingMoved = order;
+    moveMode = mode; mergeChoice = null;
+    ensureMoveSheet().querySelector(".modal-title").textContent = window.I18N?.t(mode === "merge" ? "Merge orders" : "Move to another table") || (mode === "merge" ? "Merge orders" : "Move to another table");
     void refreshMoveTables();
 
     const el = ensureMoveSheet();
@@ -1008,7 +1026,7 @@ async function refreshMoveTables() {
     const retry = document.getElementById('move-table-retry');
     const go = document.getElementById('move-table-go');
     moveTables = [];
-    moveSelected = []; movePrimary = "";
+    moveSelected = []; movePrimary = ""; mergeChoice = null;
     document.getElementById('move-table-list').replaceChildren();
     go.disabled = true;
     retry.hidden = true;
@@ -1016,6 +1034,9 @@ async function refreshMoveTables() {
     message.textContent = window.I18N?.t('Loading...') || 'Loading...';
     try {
     if (orderBeingMoved.seating_request_id && window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
+        const pending=CaptainGroupMove.pending(orderBeingMoved._id);
+        moveMode=pending.body.targetOrderId ? 'merge' : 'move';
+        ensureMoveSheet().querySelector('.modal-title').textContent=window.I18N?.t(moveMode==='merge'?'Merge orders':'Move to another table') || (moveMode==='merge'?'Merge orders':'Move to another table');
         message.textContent = window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.';
         document.getElementById('move-table-cancel').hidden = false;
         go.textContent = window.I18N?.t('Retry') || 'Retry';
@@ -1025,6 +1046,7 @@ async function refreshMoveTables() {
         const result = await POSNIC.api.get('/captain/v1/tables');
         if (version !== moveLoadVersion || !orderBeingMoved) return;
         if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
+        if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
         moveTables = tablesFromStorage(result.tables);
         message.textContent = '';
         renderMoveTables();
@@ -1065,6 +1087,7 @@ function renderMoveTables() {
             .filter(Boolean)
     );
 
+    if (moveMode === "merge") { renderMergeTables(); return; }
     if (order.seating_request_id) { renderGroupMoveTables(); return; }
     const tables = moveTables;
     for (const table of tables) if (table.orders.some(row => row.id !== order._id)) busy.add(table.value);
@@ -1097,6 +1120,21 @@ function renderMoveTables() {
         .join('');
 }
 
+function renderMergeTables() {
+    const esc=CaptainTables.esc, t=value=>window.I18N?.t(value)||value;
+    const order=orderBeingMoved, list=document.getElementById('move-table-list');
+    document.getElementById('move-table-status').textContent=t('Both bills move to the selected table. Items are not sent to the kitchen again.');
+    const rows=moveTables.filter(row=>row.orders.length===1 && row.orders[0].id!==order._id && row.value!==tableOf(order));
+    list.innerHTML=rows.map(row=>{
+        const guests=Number(order.person_count||1)+Number(row.orders[0].guests||0);
+        const eligible=!row.closing && row.seating?.table_ids?.length===1 && !row.orders[0].paid && row.max>0 && guests<=row.max;
+        return `<button type="button" class="move-table${mergeChoice?.id===row.id?' is-chosen':''}" data-id="${esc(row.id)}" aria-pressed="${mergeChoice?.id===row.id}" ${eligible?'':'disabled'}><span class="move-table-no" translate="no">${esc(row.label)}</span><span class="move-table-note">${esc(t('Guests'))}: ${esc(guests)} · ${esc(t('Maximum seats'))}: ${esc(row.max||'—')}</span>${!eligible?`<span class="move-table-note">${esc(t(row.max>0&&guests>row.max?'Choose a table with enough seats.':'Table changed. Refresh and try again.'))}</span>`:''}</button>`;
+    }).join('') || `<p>${esc(t('No orders found for this table.'))}</p>`;
+    const go=document.getElementById('move-table-go');go.disabled=!mergeChoice;go.textContent=t(mergeChoice?'Merge orders':'Choose a table');
+}
+function mergeSelection() {
+    return {tableIds:[mergeChoice.id],primaryId:mergeChoice.id,guests:Number(orderBeingMoved.person_count||1),targetOrderId:mergeChoice.orders[0].id};
+}
 function groupMoveSelection() {
     return CaptainGroupMove.selection(moveTables, moveSelected, movePrimary, Number(orderBeingMoved.person_count || 1));
 }
@@ -1140,6 +1178,7 @@ function chooseMoveTable(button) {
     if (moveSaving || button.disabled) return;
     const list = document.getElementById('move-table-list');
     if (!list) return;
+    if(moveMode === 'merge') { mergeChoice=moveTables.find(row=>row.id===button.dataset.id); renderMergeTables(); return; }
     if (orderBeingMoved.seating_request_id) {
         const id=button.dataset.id;
         moveSelected=moveSelected.includes(id)?moveSelected.filter(value=>value!==id):[...moveSelected,id];
@@ -1169,7 +1208,7 @@ async function confirmMoveTable(cancelPending = false) {
         return;
     }
     if (!order || (!pending && (!chosen || chosen.disabled))) return;
-    if (!pending && order.seating_request_id && !groupMoveSelection().valid) return;
+    if (!pending && order.seating_request_id && (moveMode === 'merge' ? !mergeChoice : !groupMoveSelection().valid)) return;
     moveSaving = true;
     const sheet = document.getElementById('moveTableModal');
     const controls = [...sheet.querySelectorAll('button,select')].map(button => ({button, disabled:button.disabled}));
@@ -1188,7 +1227,7 @@ async function confirmMoveTable(cancelPending = false) {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, groupMoveSelection()) : await CaptainOrderActions.save( {
+        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, moveMode === 'merge' ? mergeSelection() : groupMoveSelection()) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,

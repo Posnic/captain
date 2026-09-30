@@ -993,5 +993,7 @@
   "Pause recording": "பதிவை இடைநிறுத்து",
   "Resume recording": "பதிவைத் தொடரவும்",
   "Play recording": "பதிவை இயக்கு",
-  "Pause playback": "இயக்கத்தை இடைநிறுத்து"
+  "Pause playback": "இயக்கத்தை இடைநிறுத்து",
+  "Merge orders": "ஆர்டர்களை இணை",
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "இரண்டு பில்களும் தேர்ந்தெடுத்த மேசைக்கு மாற்றப்படும். உணவுகள் சமையலறைக்கு மீண்டும் அனுப்பப்படாது."
 }
