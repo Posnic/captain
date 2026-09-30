@@ -224,11 +224,13 @@
       "status": "in-progress",
       "implementation": [
         "assets/me/profile.js",
-        "POS/api/src/services/captain-profile.js"
+        "POS/api/src/services/captain-profile.js",
+        "POS/api/src/services/captain-email.js"
       ],
       "verification": [
         "Local targeted tests passed; complete application acceptance pending.",
-        "Unsaved profile/password edits require discard confirmation through header, Cancel and native Back; declined browser Back restores the account route and editor title. Failed password saves retain typing. 19 account/profile browser checks, 577 unit checks and the 30-language production build pass. Full account verification flows remain outstanding."
+        "Unsaved profile/password edits require discard confirmation through header, Cancel and native Back; declined browser Back restores the account route and editor title. Failed password saves retain typing. 19 account/profile browser checks, 577 unit checks and the 30-language production build pass. Full account verification flows remain outstanding.",
+        "Email verification API routes implemented with password confirmation, shop SMTP/platform delivery, expiry/resend/attempt limits, duplicate-address checks and stale request protection. Ten database checks, one paired HTTP roundtrip and targeted ESLint pass. Captain email editor/code UI, translations, sign-in/recovery review and real email delivery remain required."
       ]
     },
     {
