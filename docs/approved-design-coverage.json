@@ -1014,6 +1014,7 @@
   "developmentBranch": "codex/captain-upi-collection",
   "releaseStatus": "Full redesign is not released; development and complete-flow verification continue.",
   "localVerification": {
+    "seatingSnapshot": "POS c53e7c40: restructure reservations now compare guest count, table identity, order type and seating claim fields atomically, even when legacy writers leave updated_date unchanged. Seven added stale-seating cases verify cancellation and release of earlier locks. All 71 seating/reservation checks pass and changed-file ESLint is clean. This closes a stale-input gap; shared-table guest-edit concurrency and legacy enrollment remain outstanding.",
     "browser": "Full run: 559 passed and 18 failed; fixes applied and all 18 last-failed checks passed. Separate affected-flow checks also passed. This was not one uninterrupted 577-pass run.",
     "unit": "590 Captain unit checks passed.",
     "build": "Captain production build passed with all 17 pages covered by startup smoke tests.",
