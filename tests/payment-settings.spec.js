@@ -41,6 +41,22 @@ test('settings refusal never displays an editable branch switch',async({page})=>
   await expect(page).toHaveURL(/me.html#preferences$/);
   expect(api.posts).toHaveLength(0);
 });
+
+for(const [label,patch] of [['enabled flag',{enabled:false}],['receipt option',{printReceipt:false}],['methods',{methods:['Cash']}],['duplicate methods',{methods:['Cash','Cash','Upi']}]] ) {
+ test(`mismatched ${label} never confirms the payment settings or clears the draft`,async({page})=>{
+  await setup(page);await page.goto('/payment-settings.html');
+  await page.locator('#payment-settings-enabled').check();
+  await page.route('**/captain/v1/payment-settings',route=>route.fulfill({json:{saved:true,enabled:true,printReceipt:true,methods:['Cash','Card','Upi'],...patch}}));
+  await page.locator('#payment-settings-save').click();
+  await expect(page.locator('#payment-settings-message')).toHaveText('Could not save. Please try again.');
+  await expect(page.locator('#payment-settings-enabled')).toBeChecked();
+  await expect(page.locator('#payment-settings-save')).toBeEnabled();
+  await page.locator('#payment-settings-back').click();
+  await expect(page.locator('#captain-discard')).toBeVisible();
+  await page.locator('[data-confirm-action=keep]').click();
+  await expect(page.locator('#payment-settings-enabled')).toBeChecked();
+ });
+}
 test('unsaved payment choices can be kept when leaving for branch details',async({page})=>{
   await setup(page);await page.goto('/payment-settings.html');
   await page.locator('#payment-settings-enabled').check();

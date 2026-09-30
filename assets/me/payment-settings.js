@@ -61,7 +61,10 @@
       message("Loading...");
       try {
         const result = await POSNIC.api.post("/captain/v1/payment-settings", value);
-        if (result.saved !== true) throw new Error("unconfirmed_save");
+        if (result.saved !== true || result.enabled !== value.enabled || result.printReceipt !== value.printReceipt ||
+          !Array.isArray(result.methods) || result.methods.length !== value.methods.length ||
+          new Set(result.methods).size !== result.methods.length || result.methods.some(method => !value.methods.includes(method)))
+          throw new Error("unconfirmed_save");
         dirty = false;
         message("Saved");
       } catch (error) { message(error.status === 403 ? "Permission is required." : "Could not save. Please try again."); }
