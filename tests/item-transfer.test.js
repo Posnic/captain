@@ -65,3 +65,25 @@ test('double taps share one transfer operation',async()=>{
  const first=a.api.complete(order,input()),second=a.api.complete(order,input());
  release();await Promise.all([first,second]);assert.equal(calls,1);
 });
+
+
+const rounds=[{ordered_at:'2026-09-30T13:30:00Z',items:[{id:'c0i0',name:'Corn',note:'Less salt',quantity:2,served:1}]},
+ {ordered_at:'2026-09-30T13:55:00Z',items:[{id:'c1i0',name:'Corn',note:'No chilli',quantity:1,served:0}]}];
+test('transfer selection retains separate preparations and explicit served plates',()=>{
+ const a=app();
+ assert.throws(()=>a.api.selection(rounds,[{id:'c0i0',quantity:1}]),error=>error.code==='SERVED_QUANTITY_REQUIRED'&&error.lineId==='c0i0');
+ const chosen=a.api.selection(rounds,[{id:'c0i0',quantity:1,servedQuantity:1},{id:'c1i0',quantity:1}]);
+ assert.deepEqual(JSON.parse(JSON.stringify(chosen)),[{id:'c0i0',quantity:1,servedQuantity:1},{id:'c1i0',quantity:1,servedQuantity:0}]);
+ assert.equal(rounds[0].items[0].quantity,2);
+});
+test('whole preparation automatically carries its exact served quantity',()=>{
+ const a=app();assert.equal(a.api.selection(rounds,[{id:'c0i0',quantity:2}])[0].servedQuantity,1);
+ const allServed=[{items:[{id:'done',quantity:3,served:3}]}];
+ assert.equal(a.api.selection(allServed,[{id:'done',quantity:1}])[0].servedQuantity,1);
+});
+for(const choices of [[],[{id:'missing',quantity:1}],[{id:'c0i0',quantity:3}],
+ [{id:'c0i0',quantity:1,servedQuantity:2}],[{id:'c0i0',quantity:2,servedQuantity:0}],
+ [{id:'c1i0',quantity:0.0001}],[{id:'c1i0',quantity:-1}],
+ [{id:'c1i0',quantity:1},{id:'c1i0',quantity:1}]])test('invalid transfer selection is rejected '+JSON.stringify(choices),()=>{
+ assert.throws(()=>app().api.selection(rounds,choices));
+});

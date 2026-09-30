@@ -25,6 +25,35 @@
       new Set(d.tableIds).size===d.tableIds.length&&d.tableIds.includes(d.primaryId)&&
       Number.isInteger(d.guests)&&d.guests>0&&d.guests<=1000;
   }
+  // The screen selects kitchen round identities, never catalogue IDs. Two
+  // preparations of the same dish must remain separate, including their notes.
+  function selection(rounds,choices){
+    if(!Array.isArray(rounds)||!Array.isArray(choices)||!choices.length||choices.length>200)throw invalid();
+    const lines=new Map(),seen=new Set();
+    const units=value=>{
+      if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1000000)throw invalid();
+      const n=Math.round(value*1000);if(Math.abs(n-value*1000)>0.000001)throw invalid();return n;
+    };
+    for(const round of rounds)for(const line of round.items||[]){
+      if(!line?.id||lines.has(line.id))throw invalid();lines.set(line.id,line);
+    }
+    return choices.map(choice=>{
+      const line=lines.get(choice?.id);
+      if(!line||seen.has(choice.id))throw invalid();seen.add(choice.id);
+      const quantity=units(choice.quantity),available=units(line.quantity),served=units(line.served||0);
+      if(!quantity||quantity>available||served>available)throw invalid();
+      let moved=choice.servedQuantity;
+      if(moved===undefined){
+        if(quantity===available)moved=served/1000;
+        else if(!served)moved=0;
+        else if(served===available)moved=quantity/1000;
+        else throw Object.assign(new Error(t('Served')),{code:'SERVED_QUANTITY_REQUIRED',lineId:choice.id});
+      }
+      const count=units(moved);
+      if(count>quantity||count>served||quantity-count>available-served)throw invalid();
+      return {id:choice.id,quantity:quantity/1000,servedQuantity:count/1000};
+    });
+  }
   function pending(order){
     const identity=owner(),entry=JSON.parse(localStorage.getItem(key(identity,order))||'null');
     if(entry&&(entry.owner!==identity||entry.body?.orderId!==order||!entry.issuer||!valid(entry.body)))throw invalid();
@@ -70,7 +99,7 @@
     active.set(storageKey,operation);
     try{return await operation;}finally{active.delete(storageKey);}
   }
-  root.CaptainItemTransfer={pending,complete:(order,input)=>run(remember(order,input)),resume:order=>{
+  root.CaptainItemTransfer={selection,pending,complete:(order,input)=>run(remember(order,input)),resume:order=>{
     const entry=pending(order);if(!entry)throw invalid();return run(entry);
   }};
 })(globalThis);
