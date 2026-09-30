@@ -1139,6 +1139,12 @@ async function refreshMoveTables() {
     retry.hidden = true;
     message.textContent = window.I18N?.t('Loading...') || 'Loading...';
     try {
+    if (orderBeingMoved.seating_request_id && window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
+        message.textContent = window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.';
+        go.textContent = window.I18N?.t('Retry') || 'Retry';
+        go.disabled = false;
+        return;
+    }
         const result = await POSNIC.api.get('/captain/v1/tables');
         if (version !== moveLoadVersion || !orderBeingMoved) return;
         if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
@@ -1236,7 +1242,14 @@ async function confirmMoveTable() {
     if (moveSaving) return;
     const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
     const order = orderBeingMoved;
-    if (!chosen || chosen.disabled || !order) return;
+    let pending;
+    try {
+        pending = order?.seating_request_id && window.CaptainGroupMove?.pending(order._id);
+    } catch (error) {
+        showToast(window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.', 'error');
+        return;
+    }
+    if (!order || (!pending && (!chosen || chosen.disabled))) return;
     moveSaving = true;
     const sheet = document.getElementById('moveTableModal');
     const controls = [...sheet.querySelectorAll('button')].map(button => ({button, disabled:button.disabled}));
@@ -1255,7 +1268,7 @@ async function confirmMoveTable() {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = await CaptainOrderActions.save( {
+        const data = pending ? await CaptainGroupMove.resume(order._id) : order.seating_request_id ? await CaptainGroupMove.move(order._id, {tableIds:[chosen.dataset.id],primaryId:chosen.dataset.id,guests:Number(order.person_count || 1)}) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1269,7 +1282,7 @@ async function confirmMoveTable() {
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
         moveSaving = false;
-        showToast(`Moved to table ${chosen.dataset.value}`, 'success');
+        showToast(pending ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
         if (el && typeof bootstrap !== 'undefined') {
@@ -1293,6 +1306,11 @@ async function confirmMoveTable() {
         sheet.removeAttribute('aria-busy');
         controls.forEach(({button, disabled}) => button.disabled = disabled);
         hideLoader();
+        // A saved request owns its destination until it is resolved.
+        // Never offer another destination while Retry will send the saved one.
+        if (sheet.classList.contains('show') && order.seating_request_id) {
+            await refreshMoveTables();
+        }
     }
 }
 

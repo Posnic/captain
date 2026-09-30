@@ -524,9 +524,14 @@
     },
     {
       "id": "move-confirm",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/common/group-move.js",
+        "assets/order-history/script.js"
+      ],
+      "verification": [
+        "Claimed-order moves now persist a request scoped to restaurant, staff and branch before network submission, resume the same request after reload, and hide alternate destinations while recovery is pending. Four journal tests and 22 move/editor browser checks pass; strengthened immediate-retry browser check also passes. All 581 unit tests and production build pass, with 30 languages and 971 messages. Multi-table selection, cancellation/reconciliation, all-writer enrollment and device acceptance remain; no release built."
+      ]
     },
     {
       "id": "combine",

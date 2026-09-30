@@ -255,3 +255,32 @@ test('failed table refresh leaves no stale choices and Retry restores current fl
  await page.locator('#moveTableModal [data-bs-dismiss]').last().click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
 });
+
+
+test('group move resumes the saved request after reopening the screen',async({page})=>{
+ await onTheOrderList(page);
+ await page.route('**/sales/getOrderHistory',route=>route.fulfill({json:{type:'success',data:{orders:ORDERS.map(order=>order._id==='ord-1'?{...order,seating_request_id:'seating-original',seating_table_ids:['tbl-four']}:order)}}}));
+ await page.evaluate(()=>loadOrderHistory());
+ let fail=true;const prepares=[];
+ await page.route('**/captain/v1/tables/move/prepare',route=>{const body=route.request().postDataJSON();prepares.push(body);return route.fulfill({json:{request_id:body.request_id,orderId:body.orderId,state:'reserved'}});});
+ await page.route('**/captain/v1/tables/move/complete',route=>route.fulfill(fail?{status:503,json:{message:'offline'}}:{json:{request_id:route.request().postDataJSON().request_id,orderId:'ord-1',state:'submitting'}}));
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await page.locator('.move-table[data-value="12"]').click();
+ await page.locator('#move-table-go').click();
+ await expect.poll(()=>prepares.length).toBe(1);
+ await expect(page.locator('#move-table-go')).toHaveText('Retry');
+ await expect(page.locator('.move-table')).toHaveCount(0);
+ await expect(page.locator('#move-table-go')).toBeEnabled();
+ await page.locator('#moveTableModal [data-bs-dismiss]').last().click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+ await page.reload();
+ await page.evaluate(()=>loadOrderHistory());
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await expect(page.locator('#move-table-go')).toHaveText('Retry');
+ fail=false;
+ await page.locator('#move-table-go').click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+ expect(prepares).toHaveLength(2);
+ expect(prepares[1]).toEqual(prepares[0]);
+ expect(await page.evaluate(()=>CaptainGroupMove.pending('ord-1'))).toBeNull();
+});
