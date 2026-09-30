@@ -19,6 +19,10 @@
             table: table?.id === 'edit_table_manual_radio' ? byId('edit_manual_table_input').value.trim().toUpperCase() : table?.value || order()?.table_number || order()?.kiosk_table_no || '',
             manual: byId('edit_manual_table_input')?.value || '',
             guests: order()?.person_count || 1,
+            discount: byId('edit-discount-value')?.value || '0',
+            discountType: selected('edit_discount_type')?.value || 'amount',
+            discountReason: byId('edit-discount-description')?.value || '',
+
         };
     }
     function fingerprint() {
@@ -29,6 +33,9 @@
         document.querySelectorAll('input[name="edit_table_no"]').forEach(input => input.checked = input.id === value.tableRadio);
         if (byId('edit_manual_table_input')) byId('edit_manual_table_input').value = value.manual;
         setEditPersonCount(value.guests);
+        byId('edit-discount-value').value = value.discount;
+        byId('edit-discount-description').value = value.discountReason;
+        document.querySelectorAll('input[name="edit_discount_type"]').forEach(input => input.checked = input.value === value.discountType);
     }
     function show(next) {
         settingLoad++;
@@ -43,6 +50,7 @@
     function typeChanged() {
         if (view !== 'settings') return;
         byId('edit-type-section').hidden = setting !== 'type';
+        byId('edit-discount-section').hidden = setting !== 'discount';
         // Converting a takeaway to dine-in includes choosing its destination.
         const tableNeeded = setting === 'table' || (setting === 'type' && details().type === 'Dine-in');
         byId('edit-table-section').hidden = !tableNeeded;
@@ -61,6 +69,7 @@
         byId('editor-table-value').textContent = value.table;
         byId('editor-guests-value').textContent = value.guests;
         byId('editor-type-value').textContent = value.type;
+        byId('editor-discount-value').textContent = value.discountType === 'percent' ? value.discount + '%' : CaptainMoney.display(Number(value.discount));
         document.querySelector('[data-editor-setting="table"]').hidden = !dineIn;
         document.querySelector('[data-editor-setting="guests"]').hidden = !dineIn;
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
@@ -114,7 +123,7 @@
             }
         }
         setting = name; beforeSetting = details();
-        byId('editor-setting-title').textContent = { table: 'Move table', guests: 'Guests', type: 'Order Type' }[name];
+        byId('editor-setting-title').textContent = { table: 'Move table', guests: 'Guests', type: 'Order Type', discount: 'Discount' }[name];
         show('settings'); typeChanged();
         if (order()?.seating_request_id && name === 'type') {
             const pending = CaptainGroupMove.pending(order()._id);
@@ -140,6 +149,17 @@
     async function apply() {
         if (saving) return;
         const value = details();
+        if (setting === 'discount') {
+            const input = byId('edit-discount-value');
+            input.max = value.discountType === 'percent' ? '100' : '';
+            input.step = value.discountType === 'percent' ? '0.01' : String(1 / CaptainMoney.current().factor);
+            if (!input.reportValidity()) return;
+            const reason = byId('edit-discount-description');
+            reason.value = reason.value.trim();
+            reason.required = value.discount !== beforeSetting.discount || value.discountType !== beforeSetting.discountType;
+            reason.minLength = 3; reason.maxLength = 200;
+            if (!reason.reportValidity()) return;
+        }
         if (value.type === 'Dine-in' && !value.table) {
             showToast('Choose a table first.', 'error'); return;
         }
@@ -232,6 +252,23 @@
     document.addEventListener('DOMContentLoaded', () => {
         const modal = byId('editOrderModal');
         if (!modal) return;
+        const discountSection = document.createElement('div');
+        discountSection.id = 'edit-discount-section'; discountSection.hidden = true;
+        for (const id of ['edit-discount-value','edit-discount-description']) {
+            const row = byId(id).closest('.row'); row.style.display = ''; discountSection.append(row);
+        }
+        byId('editor-setting-apply').before(discountSection);
+        const amountLabel = modal.querySelector('label[for="edit-discount-amount"]');
+        amountLabel.textContent = CaptainMoney.current().currencySymbol;
+        amountLabel.setAttribute('translate','no');
+        byId('edit-discount-value').step = String(1 / CaptainMoney.current().factor);
+        byId('edit-discount-value').required = true;
+        byId('edit-discount-value').inputMode = 'decimal';
+        byId('edit-discount-description').placeholder = window.I18N?.t('Reason for change') || 'Reason for change';
+        discountSection.querySelector('label.form-label').htmlFor = 'edit-discount-value';
+        byId('edit-discount-description').previousElementSibling.htmlFor = 'edit-discount-description';
+        byId('edit-discount-description').previousElementSibling.textContent = window.I18N?.t('Reason for change') || 'Reason for change';
+
         modal.addEventListener('show.bs.modal', () => {
             if (ownsHistory) return;
             history.pushState({ ...history.state, [historyKey]: true }, '', location.href);

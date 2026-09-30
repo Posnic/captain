@@ -309,3 +309,55 @@ test('ordinary fixed discount remains in legacy-server item updates',async({page
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0]).toMatchObject({extra_discount:10,extra_discount_type:'amount'});
 });
+
+for(const where of ['order-history.html','kot-management.html'])test(`discount has a separate reversible step on ${where}`,async({page})=>{
+ const posts=await editor(page,where,{extra_discount:10,extra_discount_type:'amount',transfer_allocated:true});
+ await setting(page,'discount');
+ await expect(page.locator('#edit-discount-section')).toBeVisible();
+ await expect(page.locator('#edit-type-section')).toBeHidden();
+ await page.locator('#edit-discount-value').fill('15');
+ await page.locator('#editor-setting-back').click();
+ await page.locator('[data-editor-setting="discount"]').click();
+ await expect(page.locator('#edit-discount-value')).toHaveValue('10');
+ await page.locator('#edit-discount-value').fill('0');
+ await apply(page);
+ await expect(page.locator('#edit-discount-section')).toBeVisible();
+ await page.locator('#edit-discount-description').fill('Customer requested');
+ await apply(page);
+ await expect(page.locator('#order-editor-items')).toBeVisible();
+ expect(posts).toHaveLength(0);
+ await expect(page.locator('#save-order-changes')).toBeEnabled();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts).toHaveLength(1);
+ expect(posts[0]).toMatchObject({extra_discount:0,extra_discount_type:'amount',discount_description:'Customer requested'});
+});
+
+test('percentage discount cannot exceed 100 and back retains unsaved item edits',async({page})=>{
+ const posts=await editor(page);
+ await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await setting(page,'discount');
+ await page.locator('label[for="edit-discount-percent"]').click();
+ await page.locator('#edit-discount-value').fill('101');
+ await page.locator('#edit-discount-description').fill('Customer requested');
+ await apply(page);
+ await expect(page.locator('#edit-discount-section')).toBeVisible();
+ await page.locator('#editor-setting-back').click();
+ await page.locator('[data-editor-view="items"]').click();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts[0].items[0].quantity).toBe(3);
+ expect(posts[0].extra_discount).toBe(0);
+});
+
+
+test('discount step fits a narrow phone and uses the shop currency',async({page})=>{
+ await page.setViewportSize({width:320,height:740});
+ await editor(page);
+ await setting(page,'discount');
+ await expect(page.locator('label[for="edit-discount-amount"]')).toHaveText('₹');
+ await expect(page.locator('#edit-discount-value')).toBeVisible();
+ await expect(page.locator('#editor-setting-apply')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+ await page.screenshot({path:'test-artifacts/editor-discount-320.png'});
+});
