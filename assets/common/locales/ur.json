@@ -912,5 +912,17 @@
   "Kitchen display": "باورچی خانے کی اسکرین",
   "Last confirmed on display: {0}": "اسکرین پر آخری تصدیق: {0}",
   "No recent display confirmation. Check the kitchen screen.": "اسکرین سے حالیہ تصدیق نہیں ملی۔ باورچی خانے کی اسکرین چیک کریں۔",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "برانچ کی تفصیلات میں UPI ترتیب دیں۔ UPI QR ادائیگیوں کے لیے INR ضروری ہے۔"
+  "Set up UPI in Branch details. UPI QR payments require INR.": "برانچ کی تفصیلات میں UPI ترتیب دیں۔ UPI QR ادائیگیوں کے لیے INR ضروری ہے۔",
+  "Profile details": "پروفائل کی تفصیلات",
+  "Name": "نام",
+  "Email": "ای میل",
+  "Phone number": "فون نمبر",
+  "Current password": "موجودہ پاس ورڈ",
+  "New password": "نیا پاس ورڈ",
+  "Confirm password": "پاس ورڈ کی تصدیق کریں",
+  "Passwords do not match.": "پاس ورڈ مماثل نہیں ہیں۔",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "پاس ورڈ تبدیل کرنے کے بعد دوبارہ سائن ان کریں۔ محفوظ آرڈرز اسی فون پر رہیں گے۔",
+  "Use at least 10 characters and repeat the new password.": "کم از کم 10 حروف استعمال کریں اور نیا پاس ورڈ دوبارہ لکھیں۔",
+  "The current password is incorrect.": "موجودہ پاس ورڈ غلط ہے۔",
+  "Choose a shorter password.": "مختصر پاس ورڈ منتخب کریں۔"
 }

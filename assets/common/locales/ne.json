@@ -912,5 +912,17 @@
   "👁 Read the order back": "👁 अर्डर पढेर सुनाउनुहोस्",
   "📤 Send it to the kitchen": "📤 भान्सामा पठाउनुहोस्",
   "🗑 Clear the order first": "🗑 पहिले अर्डर खाली गर्नुहोस्",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "शाखाको विवरणमा UPI सेट गर्नुहोस्। UPI QR भुक्तानीका लागि INR आवश्यक छ।"
+  "Set up UPI in Branch details. UPI QR payments require INR.": "शाखाको विवरणमा UPI सेट गर्नुहोस्। UPI QR भुक्तानीका लागि INR आवश्यक छ।",
+  "Profile details": "प्रोफाइल विवरण",
+  "Name": "नाम",
+  "Email": "इमेल",
+  "Phone number": "फोन नम्बर",
+  "Current password": "हालको पासवर्ड",
+  "New password": "नयाँ पासवर्ड",
+  "Confirm password": "पासवर्ड पुष्टि गर्नुहोस्",
+  "Passwords do not match.": "पासवर्डहरू मिलेनन्।",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "पासवर्ड परिवर्तन गरेपछि फेरि साइन इन गर्नुहोस्। सुरक्षित गरिएका अर्डर यही फोनमा रहन्छन्।",
+  "Use at least 10 characters and repeat the new password.": "कम्तीमा १० अक्षर प्रयोग गर्नुहोस् र नयाँ पासवर्ड दोहोर्याउनुहोस्।",
+  "The current password is incorrect.": "हालको पासवर्ड गलत छ।",
+  "Choose a shorter password.": "छोटो पासवर्ड रोज्नुहोस्।"
 }

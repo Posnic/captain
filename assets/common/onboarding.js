@@ -549,8 +549,8 @@
       $("branch-section").style.display = "none";
       $("connection-back").hidden = !POSNIC.server.isConfigured;
       $("captain-server").value = POSNIC.server.baseUrl || "";
-      $("connection-lan").value = POSNIC.server.lan || "";
-      $("connection-cloud").value = POSNIC.server.cloud || "";
+      $("connection-lan").value = POSNIC.server.lan || (POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
+      $("connection-cloud").value = POSNIC.server.cloud || (!POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
       showStep(false);
       note("");
       updateConnectAction();
@@ -630,8 +630,8 @@
     $("captain-search").onclick = findShop;
     $("captain-search-again").onclick = findShop;
     $("connection-settings").onclick = () => {
-      $("connection-lan").value = POSNIC.server.lan || "";
-      $("connection-cloud").value = POSNIC.server.cloud || "";
+      $("connection-lan").value = POSNIC.server.lan || (POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
+      $("connection-cloud").value = POSNIC.server.cloud || (!POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
       showView("settings");
     };
     $("captain-pair").onclick = () =>

@@ -912,5 +912,17 @@
   "Kitchen display": "주방 디스플레이",
   "Last confirmed on display: {0}": "화면 표시 최종 확인: {0}",
   "No recent display confirmation. Check the kitchen screen.": "최근 화면 표시 확인이 없습니다. 주방 화면을 확인하세요.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "지점 정보에서 UPI를 설정하세요. UPI QR 결제에는 INR이 필요합니다."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "지점 정보에서 UPI를 설정하세요. UPI QR 결제에는 INR이 필요합니다.",
+  "Profile details": "프로필 정보",
+  "Name": "이름",
+  "Email": "이메일",
+  "Phone number": "전화번호",
+  "Current password": "현재 비밀번호",
+  "New password": "새 비밀번호",
+  "Confirm password": "비밀번호 확인",
+  "Passwords do not match.": "비밀번호가 일치하지 않습니다.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "비밀번호를 변경한 후 다시 로그인하세요. 저장된 주문은 이 휴대폰에 유지됩니다.",
+  "Use at least 10 characters and repeat the new password.": "10자 이상을 사용하고 새 비밀번호를 다시 입력하세요.",
+  "The current password is incorrect.": "현재 비밀번호가 올바르지 않습니다.",
+  "Choose a shorter password.": "더 짧은 비밀번호를 선택하세요."
 }

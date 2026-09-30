@@ -912,5 +912,17 @@
   "Kitchen display": "Paparan dapur",
   "Last confirmed on display: {0}": "Kali terakhir disahkan pada paparan: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Tiada pengesahan paparan terkini. Periksa skrin dapur.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Tetapkan UPI dalam butiran cawangan. Pembayaran QR UPI memerlukan INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Tetapkan UPI dalam butiran cawangan. Pembayaran QR UPI memerlukan INR.",
+  "Profile details": "Butiran profil",
+  "Name": "Nama",
+  "Email": "E-mel",
+  "Phone number": "Nombor telefon",
+  "Current password": "Kata laluan semasa",
+  "New password": "Kata laluan baharu",
+  "Confirm password": "Sahkan kata laluan",
+  "Passwords do not match.": "Kata laluan tidak sepadan.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Selepas menukar kata laluan, log masuk semula. Pesanan yang disimpan kekal pada telefon ini.",
+  "Use at least 10 characters and repeat the new password.": "Gunakan sekurang-kurangnya 10 aksara dan ulang kata laluan baharu.",
+  "The current password is incorrect.": "Kata laluan semasa salah.",
+  "Choose a shorter password.": "Pilih kata laluan yang lebih pendek."
 }

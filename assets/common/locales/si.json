@@ -912,5 +912,17 @@
   "👁 Read the order back": "👁 ඇණවුම කියවා අසන්න",
   "📤 Send it to the kitchen": "📤 මුළුතැන්ගෙයට යවන්න",
   "🗑 Clear the order first": "🗑 පළමුව ඇණවුම හිස් කරන්න",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "ශාඛා විස්තර තුළ UPI සකසන්න. UPI QR ගෙවීම් සඳහා INR අවශ්‍ය වේ."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "ශාඛා විස්තර තුළ UPI සකසන්න. UPI QR ගෙවීම් සඳහා INR අවශ්‍ය වේ.",
+  "Profile details": "පැතිකඩ විස්තර",
+  "Name": "නම",
+  "Email": "විද්‍යුත් තැපෑල",
+  "Phone number": "දුරකථන අංකය",
+  "Current password": "වත්මන් මුරපදය",
+  "New password": "නව මුරපදය",
+  "Confirm password": "මුරපදය තහවුරු කරන්න",
+  "Passwords do not match.": "මුරපද නොගැලපේ.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "මුරපදය වෙනස් කළ පසු නැවත පිවිසෙන්න. සුරැකි ඇණවුම් මෙම දුරකථනයේ පවතී.",
+  "Use at least 10 characters and repeat the new password.": "අවම වශයෙන් අක්ෂර 10ක් භාවිත කර නව මුරපදය නැවත ඇතුළත් කරන්න.",
+  "The current password is incorrect.": "වත්මන් මුරපදය වැරදියි.",
+  "Choose a shorter password.": "කෙටි මුරපදයක් තෝරන්න."
 }

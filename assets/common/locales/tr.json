@@ -912,5 +912,17 @@
   "Kitchen display": "Mutfak ekranı",
   "Last confirmed on display: {0}": "Ekranda son onay: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Ekrandan yakın zamanda onay alınmadı. Mutfak ekranını kontrol edin.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Şube bilgilerinde UPI ayarlayın. UPI QR ödemeleri INR gerektirir."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Şube bilgilerinde UPI ayarlayın. UPI QR ödemeleri INR gerektirir.",
+  "Profile details": "Profil bilgileri",
+  "Name": "Ad",
+  "Email": "E-posta",
+  "Phone number": "Telefon numarası",
+  "Current password": "Mevcut parola",
+  "New password": "Yeni parola",
+  "Confirm password": "Parolayı doğrulayın",
+  "Passwords do not match.": "Parolalar eşleşmiyor.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Parolanızı değiştirdikten sonra tekrar giriş yapın. Kaydedilen siparişler bu telefonda kalır.",
+  "Use at least 10 characters and repeat the new password.": "En az 10 karakter kullanın ve yeni parolayı tekrar yazın.",
+  "The current password is incorrect.": "Mevcut parola yanlış.",
+  "Choose a shorter password.": "Daha kısa bir parola seçin."
 }

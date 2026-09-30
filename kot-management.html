@@ -15,6 +15,7 @@
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
     <script src="config.js"></script>
+    <script src="assets/common/connection-signals.js"></script>
     <script src="assets/common/popup.js"></script>
     <script src="assets/common/order-queue.js"></script>
     <!-- What a customer has asked for, where the waiter already is. -->
@@ -65,6 +66,7 @@
     <script src="assets/common/mobile-gestures.js" defer></script>
     <link rel="stylesheet" href="assets/common/service-rounds.css">
     <script src="assets/common/service-rounds.js" defer></script>
+    <link rel="stylesheet" href="assets/common/app-design.css">
 </head>
 
 <body class="floor-screen">
@@ -120,28 +122,10 @@
                 the sign-in screen. Each was reachable and none of them was
                 anywhere a person would look.
             -->
-            <button class="floor-icon" onclick="window.location.href='me.html'"
-                aria-label="Me" title="Me">
-                <i class="fas fa-user"></i>
-            </button>
-            <button class="floor-icon" data-mobile-refresh aria-label="Refresh" onclick="refreshPage()" title="Refresh">
-                <i class="fas fa-sync-alt"></i>
-            </button>
-            <button class="floor-icon" onclick="goToKotHistory()" aria-label="Order history" title="Order history">
-                <i class="fas fa-list"></i>
-            </button>
-            <!--
-                CHANGING WHICH SHOP THIS PHONE TALKS TO.
-
-                The connect sheet lives on the sign-in screen, so once somebody
-                had signed in there was no way back to it short of signing out
-                - which on a handset pointed at the wrong till is exactly the
-                thing they need to do and the one thing they cannot.
-            -->
-            <button class="floor-icon" onclick="changeServer()" aria-label="Change shop server"
-                title="Change shop server">
-                <i class="fas fa-server"></i>
-            </button>
+            <div class="connection-signals" role="group" aria-label="Connection settings">
+                <button type="button" class="route-signal" data-route-signal="local" aria-label="Wi-Fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></button>
+                <button type="button" class="route-signal" data-route-signal="remote" aria-label="Internet server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></button>
+            </div>
         </div>
 
         <button class="floor-new" onclick="goToAddKot()">
@@ -650,6 +634,11 @@
     <script src="assets/common/guest-bills.js"></script>
     <script src="assets/qrcode.min.js"></script>
     <script src="assets/common/captain-payments.js"></script>
+    <nav class="captain-navigation" aria-label="Captain">
+        <a href="kot-management.html" aria-current="page"><i class="fas fa-th-large" aria-hidden="true"></i><span>Active tables</span></a>
+        <a href="order-history.html"><i class="fas fa-list" aria-hidden="true"></i><span>Order history</span></a>
+        <a href="me.html"><i class="fas fa-user" aria-hidden="true"></i><span>Account</span></a>
+    </nav>
 </body>
 
 </html>

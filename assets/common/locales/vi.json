@@ -912,5 +912,17 @@
   "Kitchen display": "Màn hình bếp",
   "Last confirmed on display: {0}": "Lần xác nhận hiển thị gần nhất: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Chưa có xác nhận hiển thị gần đây. Kiểm tra màn hình bếp.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Thiết lập UPI trong thông tin chi nhánh. Thanh toán QR UPI yêu cầu INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Thiết lập UPI trong thông tin chi nhánh. Thanh toán QR UPI yêu cầu INR.",
+  "Profile details": "Thông tin hồ sơ",
+  "Name": "Tên",
+  "Email": "Email",
+  "Phone number": "Số điện thoại",
+  "Current password": "Mật khẩu hiện tại",
+  "New password": "Mật khẩu mới",
+  "Confirm password": "Xác nhận mật khẩu",
+  "Passwords do not match.": "Mật khẩu không khớp.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Sau khi đổi mật khẩu, hãy đăng nhập lại. Đơn hàng đã lưu vẫn ở trên điện thoại này.",
+  "Use at least 10 characters and repeat the new password.": "Sử dụng ít nhất 10 ký tự và nhập lại mật khẩu mới.",
+  "The current password is incorrect.": "Mật khẩu hiện tại không đúng.",
+  "Choose a shorter password.": "Chọn mật khẩu ngắn hơn."
 }

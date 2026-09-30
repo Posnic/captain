@@ -189,27 +189,6 @@
     /* ------------------------------------------------------- the account */
 
     function wireAccount() {
-        const password = at('me-password');
-        if (password) {
-            password.addEventListener('click', function () {
-                /*
-                 * NOT YET, AND SAID PLAINLY RATHER THAN HIDDEN.
-                 *
-                 * The till has an endpoint for it, but it stores a password
-                 * base64-encoded before hashing and that endpoint writes it
-                 * raw. A password changed from here would still sign in on
-                 * this phone and on the till's main login, and would fail the
-                 * super-admin check - a half-broken account is worse than a
-                 * row that says where to go.
-                 */
-                if (typeof showErrorPopup === 'function') {
-                    showErrorPopup('Ask the shop to change your password on the till. It cannot be changed from a phone yet.');
-                } else {
-                    alert('Ask the shop to change your password on the till.');
-                }
-            });
-        }
-
         at('me-sign-out')?.addEventListener('click', () => CaptainAccount.change('staff'));
     }
 
@@ -217,6 +196,7 @@
         const back = at('me-back');
         if (back) {
             back.addEventListener('click', function () {
+                if (window.CaptainProfile?.back()) return;
                 window.location.href = 'kot-management.html';
             });
         }

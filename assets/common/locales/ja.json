@@ -912,5 +912,17 @@
   "Kitchen display": "厨房ディスプレイ",
   "Last confirmed on display: {0}": "画面表示の最終確認：{0}",
   "No recent display confirmation. Check the kitchen screen.": "最近の表示確認がありません。厨房の画面を確認してください。",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "支店情報でUPIを設定してください。UPI QR決済にはINRが必要です。"
+  "Set up UPI in Branch details. UPI QR payments require INR.": "支店情報でUPIを設定してください。UPI QR決済にはINRが必要です。",
+  "Profile details": "プロフィール詳細",
+  "Name": "名前",
+  "Email": "メール",
+  "Phone number": "電話番号",
+  "Current password": "現在のパスワード",
+  "New password": "新しいパスワード",
+  "Confirm password": "パスワードの確認",
+  "Passwords do not match.": "パスワードが一致しません。",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "パスワード変更後、再度サインインしてください。保存済みの注文はこの端末に残ります。",
+  "Use at least 10 characters and repeat the new password.": "10文字以上で新しいパスワードを入力し、もう一度入力してください。",
+  "The current password is incorrect.": "現在のパスワードが正しくありません。",
+  "Choose a shorter password.": "より短いパスワードを選んでください。"
 }

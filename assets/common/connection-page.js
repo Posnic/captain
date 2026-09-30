@@ -19,6 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ) {
     sessionStorage.removeItem("posnic_change_server");
     openServerModal();
+    if (sessionStorage.getItem("posnic_connection_view") === "settings") {
+      sessionStorage.removeItem("posnic_connection_view");
+      document.getElementById("connection-settings").click();
+    }
     if (sessionStorage.getItem("posnic_find_on_wifi") === "1") {
       sessionStorage.removeItem("posnic_find_on_wifi");
       document.getElementById("captain-search").click();

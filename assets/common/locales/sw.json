@@ -912,5 +912,17 @@
   "Kitchen display": "Skrini ya jikoni",
   "Last confirmed on display: {0}": "Ilithibitishwa mara ya mwisho kwenye skrini: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Hakuna uthibitisho wa hivi karibuni wa kuonekana kwenye skrini. Kagua skrini ya jikoni.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Weka UPI katika maelezo ya tawi. Malipo ya QR ya UPI yanahitaji INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Weka UPI katika maelezo ya tawi. Malipo ya QR ya UPI yanahitaji INR.",
+  "Profile details": "Maelezo ya wasifu",
+  "Name": "Jina",
+  "Email": "Barua pepe",
+  "Phone number": "Namba ya simu",
+  "Current password": "Nenosiri la sasa",
+  "New password": "Nenosiri jipya",
+  "Confirm password": "Thibitisha nenosiri",
+  "Passwords do not match.": "Manenosiri hayalingani.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Baada ya kubadilisha nenosiri, ingia tena. Oda zilizohifadhiwa zitabaki kwenye simu hii.",
+  "Use at least 10 characters and repeat the new password.": "Tumia angalau herufi 10 na urudie nenosiri jipya.",
+  "The current password is incorrect.": "Nenosiri la sasa si sahihi.",
+  "Choose a shorter password.": "Chagua nenosiri fupi zaidi."
 }

@@ -912,5 +912,17 @@
   "Kitchen display": "شاشة المطبخ",
   "Last confirmed on display: {0}": "آخر تأكيد على الشاشة: {0}",
   "No recent display confirmation. Check the kitchen screen.": "لا يوجد تأكيد حديث من الشاشة. تحقق من شاشة المطبخ.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "قم بإعداد UPI في تفاصيل الفرع. تتطلب مدفوعات UPI QR عملة INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "قم بإعداد UPI في تفاصيل الفرع. تتطلب مدفوعات UPI QR عملة INR.",
+  "Profile details": "تفاصيل الملف الشخصي",
+  "Name": "الاسم",
+  "Email": "البريد الإلكتروني",
+  "Phone number": "رقم الهاتف",
+  "Current password": "كلمة المرور الحالية",
+  "New password": "كلمة المرور الجديدة",
+  "Confirm password": "تأكيد كلمة المرور",
+  "Passwords do not match.": "كلمتا المرور غير متطابقتين.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "بعد تغيير كلمة المرور، سجّل الدخول مجددًا. تبقى الطلبات المحفوظة على هذا الهاتف.",
+  "Use at least 10 characters and repeat the new password.": "استخدم 10 أحرف على الأقل وأعد كتابة كلمة المرور الجديدة.",
+  "The current password is incorrect.": "كلمة المرور الحالية غير صحيحة.",
+  "Choose a shorter password.": "اختر كلمة مرور أقصر."
 }

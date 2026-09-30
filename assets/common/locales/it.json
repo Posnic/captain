@@ -912,5 +912,17 @@
   "Kitchen display": "Schermo della cucina",
   "Last confirmed on display: {0}": "Ultima conferma sullo schermo: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Nessuna conferma recente dallo schermo. Controlla lo schermo della cucina.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Configura UPI nei dettagli della filiale. I pagamenti QR UPI richiedono INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Configura UPI nei dettagli della filiale. I pagamenti QR UPI richiedono INR.",
+  "Profile details": "Dettagli profilo",
+  "Name": "Nome",
+  "Email": "Email",
+  "Phone number": "Numero di telefono",
+  "Current password": "Password attuale",
+  "New password": "Nuova password",
+  "Confirm password": "Conferma password",
+  "Passwords do not match.": "Le password non coincidono.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Dopo aver cambiato la password, accedi di nuovo. Gli ordini salvati restano su questo telefono.",
+  "Use at least 10 characters and repeat the new password.": "Usa almeno 10 caratteri e ripeti la nuova password.",
+  "The current password is incorrect.": "La password attuale non è corretta.",
+  "Choose a shorter password.": "Scegli una password più corta."
 }

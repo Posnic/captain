@@ -912,5 +912,17 @@
   "Kitchen display": "จอแสดงผลในครัว",
   "Last confirmed on display: {0}": "ยืนยันการแสดงผลล่าสุด: {0}",
   "No recent display confirmation. Check the kitchen screen.": "ไม่มีการยืนยันการแสดงผลเมื่อเร็ว ๆ นี้ ตรวจสอบหน้าจอในครัว",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "ตั้งค่า UPI ในรายละเอียดสาขา การชำระเงินผ่าน UPI QR ต้องใช้ INR"
+  "Set up UPI in Branch details. UPI QR payments require INR.": "ตั้งค่า UPI ในรายละเอียดสาขา การชำระเงินผ่าน UPI QR ต้องใช้ INR",
+  "Profile details": "รายละเอียดโปรไฟล์",
+  "Name": "ชื่อ",
+  "Email": "อีเมล",
+  "Phone number": "หมายเลขโทรศัพท์",
+  "Current password": "รหัสผ่านปัจจุบัน",
+  "New password": "รหัสผ่านใหม่",
+  "Confirm password": "ยืนยันรหัสผ่าน",
+  "Passwords do not match.": "รหัสผ่านไม่ตรงกัน",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "หลังเปลี่ยนรหัสผ่าน ให้เข้าสู่ระบบอีกครั้ง ออเดอร์ที่บันทึกไว้จะยังอยู่ในโทรศัพท์นี้",
+  "Use at least 10 characters and repeat the new password.": "ใช้อย่างน้อย 10 ตัวอักษรและป้อนรหัสผ่านใหม่อีกครั้ง",
+  "The current password is incorrect.": "รหัสผ่านปัจจุบันไม่ถูกต้อง",
+  "Choose a shorter password.": "เลือกรหัสผ่านที่สั้นลง"
 }

@@ -912,5 +912,17 @@
   "Kitchen display": "Kitchen display",
   "Last confirmed on display: {0}": "Last confirmed on display: {0}",
   "No recent display confirmation. Check the kitchen screen.": "No recent display confirmation. Check the kitchen screen.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Set up UPI in Branch details. UPI QR payments require INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Set up UPI in Branch details. UPI QR payments require INR.",
+  "Profile details": "Profile details",
+  "Name": "Name",
+  "Email": "Email",
+  "Phone number": "Phone number",
+  "Current password": "Current password",
+  "New password": "New password",
+  "Confirm password": "Confirm password",
+  "Passwords do not match.": "Passwords do not match.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "After changing your password, sign in again. Saved orders stay on this phone.",
+  "Use at least 10 characters and repeat the new password.": "Use at least 10 characters and repeat the new password.",
+  "The current password is incorrect.": "The current password is incorrect.",
+  "Choose a shorter password.": "Choose a shorter password."
 }

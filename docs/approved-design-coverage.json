@@ -1,0 +1,465 @@
+{
+  "source": "captain-complete-app.html",
+  "goal": "All approved screens and supporting POS/API flows ready for end-user testing",
+  "screens": [
+    {
+      "id": "tables",
+      "status": "in-progress",
+      "implementation": [
+        "kot-management.html",
+        "assets/common/connection-signals.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "new",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "menu",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "cart",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "note",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "detail",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "edit-order",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "move",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "guests",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "type",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "cancel",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "bill",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "split",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "guest-bills",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "pay",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "receipt",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "history",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "sales",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "pending",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "more",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "profile",
+      "status": "in-progress",
+      "implementation": [
+        "me.html",
+        "assets/me/profile.js",
+        "POS/api/src/services/captain-profile.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "edit-profile",
+      "status": "in-progress",
+      "implementation": [
+        "assets/me/profile.js",
+        "POS/api/src/services/captain-profile.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "phone",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "verify-phone",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "password",
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/me/profile.js",
+        "POS/api/src/services/captain-profile.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "pin",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "unlock",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "recover",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "language",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "preferences",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "connection",
+      "status": "in-progress",
+      "implementation": [
+        "assets/common/connection-signals.js",
+        "assets/common/connection-page.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "addresses",
+      "status": "in-progress",
+      "implementation": [
+        "assets/common/onboarding.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "setup",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "address",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "found",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "connection-error",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "signin",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "approval",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "qr",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "pair",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "branch",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "set-pin",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "help",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "signout",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "discard",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "table-settings",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "table-edit",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "seat-confirm",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "move-confirm",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "combine",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "transfer",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "merge",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "table-status",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "table-conflict",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "close-order",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "payment-review",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "permission",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "offline",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "session-expired",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "overview",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "categories",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "search-demo",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "search-empty",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "item",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "service-hours",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "gestures",
+      "status": "audit-required",
+      "implementation": [],
+      "verification": []
+    },
+    {
+      "id": "branch-details",
+      "status": "in-progress",
+      "implementation": [
+        "POS/frontend/modules/branchEdit.html",
+        "POS/api/src/utils/branch-upi.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    },
+    {
+      "id": "upi-qr",
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/captain-payments.js",
+        "POS/api/src/services/captain-payments.js"
+      ],
+      "verification": [
+        "Local targeted tests passed; complete application acceptance pending."
+      ]
+    }
+  ],
+  "remainingPriorities": [
+    "Finish screen-by-screen visual replacement, preserving working ordering APIs",
+    "Complete profile email/phone verification and account preferences flows",
+    "Table metadata and capacity-aware seating/moves, combined tables, transfers, merges, cleaning lifecycle with POS controls",
+    "Meal suggestions, category/search/customization and detail/round layouts",
+    "Bill review, individual payments, receipts and order closure",
+    "Shared setup, branch selection, offline/session recovery and pending order screens",
+    "All languages, gestures, phone/tablet and RTL checks",
+    "Build APK and POS installer for user testing after integration verification"
+  ]
+}

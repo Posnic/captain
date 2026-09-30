@@ -1,0 +1,34 @@
+import { test, expect } from '@playwright/test';
+import { onTheMenu } from './support/shop.js';
+async function open(page) {
+  await onTheMenu(page,'nothing');
+  await page.route('**/captain/v1/profile', async route=>route.fulfill({json:{id:'user-1',name:route.request().method()==='POST'?route.request().postDataJSON().name:'Staff',email:'staff@example.test',phone:'+919000000000'}}));
+  await page.goto('/me.html');
+}
+test('profile edits persist through the API and Back returns to the account page',async({page})=>{
+  await open(page);await page.locator('#me-profile').click();
+  await expect(page.locator('#profile-name')).toHaveValue('Staff');
+  await page.locator('#profile-name').fill('Floor captain');
+  await page.locator('#profile-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('Saved');
+  await page.locator('#me-back').click();
+  await expect(page.locator('#me-who')).toHaveText('Floor captain');
+  await expect(page.locator('#me-password')).toBeVisible();
+});
+test('password validation preserves typing and a successful change keeps saved orders on the phone',async({page})=>{
+  await open(page);const posts=[];
+  await page.route('**/captain/v1/password',route=>{posts.push(route.request().postDataJSON());return route.fulfill({json:{saved:true,reauthenticate:true}})});
+  await page.evaluate(()=>localStorage.setItem('profile-test-preserved','saved-order'));
+  await page.locator('#me-password').click();
+  await page.locator('#currentPassword').fill('old-secret-123');
+  await page.locator('#newPassword').fill('new-secret-123');
+  await page.locator('#confirmPassword').fill('mismatch');
+  await page.locator('#profile-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toContainText('repeat');expect(posts).toHaveLength(0);
+  await expect(page.locator('#newPassword')).toHaveValue('new-secret-123');
+  await page.locator('#confirmPassword').fill('new-secret-123');
+  await page.locator('#profile-form button[type=submit]').click();
+  await expect(page).toHaveURL(/index.html/);
+  expect(posts).toHaveLength(1);
+  expect(await page.evaluate(()=>localStorage.getItem('profile-test-preserved'))).toBe('saved-order');
+});

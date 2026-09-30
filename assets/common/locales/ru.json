@@ -912,5 +912,17 @@
   "Kitchen display": "Кухонный экран",
   "Last confirmed on display: {0}": "Последнее подтверждение на экране: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Нет недавнего подтверждения с экрана. Проверьте кухонный экран.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Настройте UPI в данных филиала. Для оплаты по QR-коду UPI требуется INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Настройте UPI в данных филиала. Для оплаты по QR-коду UPI требуется INR.",
+  "Profile details": "Данные профиля",
+  "Name": "Название",
+  "Email": "Эл. почта",
+  "Phone number": "Номер телефона",
+  "Current password": "Текущий пароль",
+  "New password": "Новый пароль",
+  "Confirm password": "Подтвердите пароль",
+  "Passwords do not match.": "Пароли не совпадают.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "После смены пароля войдите снова. Сохранённые заказы останутся на этом телефоне.",
+  "Use at least 10 characters and repeat the new password.": "Используйте не менее 10 символов и повторите новый пароль.",
+  "The current password is incorrect.": "Текущий пароль неверен.",
+  "Choose a shorter password.": "Выберите более короткий пароль."
 }

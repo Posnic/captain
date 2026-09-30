@@ -912,5 +912,17 @@
   "👁 Read the order back": "👁 ഓർഡർ വായിച്ചുകേൾപ്പിക്കുക",
   "📤 Send it to the kitchen": "📤 അടുക്കളയിലേക്ക് അയയ്ക്കുക",
   "🗑 Clear the order first": "🗑 ആദ്യം ഓർഡർ മായ്ക്കുക",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "ബ്രാഞ്ച് വിവരങ്ങളിൽ UPI സജ്ജീകരിക്കുക. UPI QR പേയ്‌മെന്റുകൾക്ക് INR ആവശ്യമാണ്."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "ബ്രാഞ്ച് വിവരങ്ങളിൽ UPI സജ്ജീകരിക്കുക. UPI QR പേയ്‌മെന്റുകൾക്ക് INR ആവശ്യമാണ്.",
+  "Profile details": "പ്രൊഫൈൽ വിവരങ്ങൾ",
+  "Name": "പേര്",
+  "Email": "ഇമെയിൽ",
+  "Phone number": "ഫോൺ നമ്പർ",
+  "Current password": "നിലവിലെ പാസ്‌വേഡ്",
+  "New password": "പുതിയ പാസ്‌വേഡ്",
+  "Confirm password": "പാസ്‌വേഡ് സ്ഥിരീകരിക്കുക",
+  "Passwords do not match.": "പാസ്‌വേഡുകൾ ഒത്തുപോകുന്നില്ല.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "പാസ്‌വേഡ് മാറ്റിയ ശേഷം വീണ്ടും സൈൻ ഇൻ ചെയ്യുക. സേവ് ചെയ്ത ഓർഡറുകൾ ഈ ഫോണിൽ തുടരും.",
+  "Use at least 10 characters and repeat the new password.": "കുറഞ്ഞത് 10 അക്ഷരങ്ങൾ ഉപയോഗിച്ച് പുതിയ പാസ്‌വേഡ് വീണ്ടും നൽകുക.",
+  "The current password is incorrect.": "നിലവിലെ പാസ്‌വേഡ് തെറ്റാണ്.",
+  "Choose a shorter password.": "ചെറിയ പാസ്‌വേഡ് തിരഞ്ഞെടുക്കുക."
 }

@@ -912,5 +912,17 @@
   "Kitchen display": "Keukenscherm",
   "Last confirmed on display: {0}": "Laatst bevestigd op het scherm: {0}",
   "No recent display confirmation. Check the kitchen screen.": "Geen recente bevestiging van het scherm. Controleer het keukenscherm.",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "Stel UPI in bij de vestigingsgegevens. UPI-QR-betalingen vereisen INR."
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Stel UPI in bij de vestigingsgegevens. UPI-QR-betalingen vereisen INR.",
+  "Profile details": "Profielgegevens",
+  "Name": "Naam",
+  "Email": "E-mail",
+  "Phone number": "Telefoonnummer",
+  "Current password": "Huidig wachtwoord",
+  "New password": "Nieuw wachtwoord",
+  "Confirm password": "Wachtwoord bevestigen",
+  "Passwords do not match.": "De wachtwoorden komen niet overeen.",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "Meld u na het wijzigen van uw wachtwoord opnieuw aan. Opgeslagen bestellingen blijven op deze telefoon.",
+  "Use at least 10 characters and repeat the new password.": "Gebruik minimaal 10 tekens en herhaal het nieuwe wachtwoord.",
+  "The current password is incorrect.": "Het huidige wachtwoord is onjuist.",
+  "Choose a shorter password.": "Kies een korter wachtwoord."
 }

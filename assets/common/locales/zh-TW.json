@@ -912,5 +912,17 @@
   "Kitchen display": "廚房顯示螢幕",
   "Last confirmed on display: {0}": "最近一次顯示確認：{0}",
   "No recent display confirmation. Check the kitchen screen.": "近期沒有顯示確認。請檢查廚房螢幕。",
-  "Set up UPI in Branch details. UPI QR payments require INR.": "請在分店詳情中設定 UPI。UPI QR 碼付款需要使用 INR。"
+  "Set up UPI in Branch details. UPI QR payments require INR.": "請在分店詳情中設定 UPI。UPI QR 碼付款需要使用 INR。",
+  "Profile details": "個人資料",
+  "Name": "名稱",
+  "Email": "電子郵件",
+  "Phone number": "電話號碼",
+  "Current password": "目前密碼",
+  "New password": "新密碼",
+  "Confirm password": "確認密碼",
+  "Passwords do not match.": "密碼不一致。",
+  "After changing your password, sign in again. Saved orders stay on this phone.": "變更密碼後，請重新登入。已儲存的訂單將保留在此手機上。",
+  "Use at least 10 characters and repeat the new password.": "請使用至少10個字元，並再次輸入新密碼。",
+  "The current password is incorrect.": "目前密碼不正確。",
+  "Choose a shorter password.": "請選擇更短的密碼。"
 }

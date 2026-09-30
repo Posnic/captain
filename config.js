@@ -1300,11 +1300,17 @@
   const failedAt = new Map();
 
   function noteFailure(url) {
-    if (url) failedAt.set(url, Date.now());
+    if (url) {
+      failedAt.set(url, Date.now());
+      window.dispatchEvent(new CustomEvent('posnic:route-health', {detail:{base:url,reachable:false}}));
+    }
   }
 
   function noteSuccess(url) {
-    if (url) failedAt.delete(url);
+    if (url) {
+      failedAt.delete(url);
+      window.dispatchEvent(new CustomEvent('posnic:route-health', {detail:{base:url,reachable:true}}));
+    }
   }
 
   function coolingOff(url) {
