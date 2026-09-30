@@ -911,5 +911,6 @@
   "🎤 Say again": "🎤 மீண்டும் சொல்",
   "👁 Read the order back": "👁 ஆர்டரை வாசித்துக் காட்டு",
   "📤 Send it to the kitchen": "📤 சமையலறைக்கு அனுப்பு",
-  "🗑 Clear the order first": "🗑 முதலில் ஆர்டரை அழி"
+  "🗑 Clear the order first": "🗑 முதலில் ஆர்டரை அழி",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "கிளை விவரங்களில் UPI அமைக்கவும். UPI QR கட்டணங்களுக்கு INR தேவை."
 }

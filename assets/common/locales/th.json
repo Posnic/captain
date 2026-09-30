@@ -911,5 +911,6 @@
   "{0} each": "รายการละ {0}",
   "Kitchen display": "จอแสดงผลในครัว",
   "Last confirmed on display: {0}": "ยืนยันการแสดงผลล่าสุด: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "ไม่มีการยืนยันการแสดงผลเมื่อเร็ว ๆ นี้ ตรวจสอบหน้าจอในครัว"
+  "No recent display confirmation. Check the kitchen screen.": "ไม่มีการยืนยันการแสดงผลเมื่อเร็ว ๆ นี้ ตรวจสอบหน้าจอในครัว",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "ตั้งค่า UPI ในรายละเอียดสาขา การชำระเงินผ่าน UPI QR ต้องใช้ INR"
 }

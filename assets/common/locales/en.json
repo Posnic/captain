@@ -911,5 +911,6 @@
   "{0} each": "{0} each",
   "Kitchen display": "Kitchen display",
   "Last confirmed on display: {0}": "Last confirmed on display: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "No recent display confirmation. Check the kitchen screen."
+  "No recent display confirmation. Check the kitchen screen.": "No recent display confirmation. Check the kitchen screen.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Set up UPI in Branch details. UPI QR payments require INR."
 }

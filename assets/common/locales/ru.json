@@ -911,5 +911,6 @@
   "{0} each": "по {0}",
   "Kitchen display": "Кухонный экран",
   "Last confirmed on display: {0}": "Последнее подтверждение на экране: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Нет недавнего подтверждения с экрана. Проверьте кухонный экран."
+  "No recent display confirmation. Check the kitchen screen.": "Нет недавнего подтверждения с экрана. Проверьте кухонный экран.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Настройте UPI в данных филиала. Для оплаты по QR-коду UPI требуется INR."
 }

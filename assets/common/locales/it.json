@@ -911,5 +911,6 @@
   "{0} each": "{0} ciascuno",
   "Kitchen display": "Schermo della cucina",
   "Last confirmed on display: {0}": "Ultima conferma sullo schermo: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Nessuna conferma recente dallo schermo. Controlla lo schermo della cucina."
+  "No recent display confirmation. Check the kitchen screen.": "Nessuna conferma recente dallo schermo. Controlla lo schermo della cucina.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Configura UPI nei dettagli della filiale. I pagamenti QR UPI richiedono INR."
 }

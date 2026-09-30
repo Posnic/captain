@@ -911,5 +911,6 @@
   "{0} each": "每份 {0}",
   "Kitchen display": "廚房顯示螢幕",
   "Last confirmed on display: {0}": "最近一次顯示確認：{0}",
-  "No recent display confirmation. Check the kitchen screen.": "近期沒有顯示確認。請檢查廚房螢幕。"
+  "No recent display confirmation. Check the kitchen screen.": "近期沒有顯示確認。請檢查廚房螢幕。",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "請在分店詳情中設定 UPI。UPI QR 碼付款需要使用 INR。"
 }

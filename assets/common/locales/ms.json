@@ -911,5 +911,6 @@
   "{0} each": "{0} setiap satu",
   "Kitchen display": "Paparan dapur",
   "Last confirmed on display: {0}": "Kali terakhir disahkan pada paparan: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Tiada pengesahan paparan terkini. Periksa skrin dapur."
+  "No recent display confirmation. Check the kitchen screen.": "Tiada pengesahan paparan terkini. Periksa skrin dapur.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Tetapkan UPI dalam butiran cawangan. Pembayaran QR UPI memerlukan INR."
 }

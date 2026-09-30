@@ -911,5 +911,6 @@
   "{0} each": "{0} mỗi món",
   "Kitchen display": "Màn hình bếp",
   "Last confirmed on display: {0}": "Lần xác nhận hiển thị gần nhất: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Chưa có xác nhận hiển thị gần đây. Kiểm tra màn hình bếp."
+  "No recent display confirmation. Check the kitchen screen.": "Chưa có xác nhận hiển thị gần đây. Kiểm tra màn hình bếp.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Thiết lập UPI trong thông tin chi nhánh. Thanh toán QR UPI yêu cầu INR."
 }

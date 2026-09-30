@@ -911,5 +911,6 @@
   "{0} each": "{0} kila moja",
   "Kitchen display": "Skrini ya jikoni",
   "Last confirmed on display: {0}": "Ilithibitishwa mara ya mwisho kwenye skrini: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Hakuna uthibitisho wa hivi karibuni wa kuonekana kwenye skrini. Kagua skrini ya jikoni."
+  "No recent display confirmation. Check the kitchen screen.": "Hakuna uthibitisho wa hivi karibuni wa kuonekana kwenye skrini. Kagua skrini ya jikoni.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Weka UPI katika maelezo ya tawi. Malipo ya QR ya UPI yanahitaji INR."
 }

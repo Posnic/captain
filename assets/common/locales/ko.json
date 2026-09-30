@@ -911,5 +911,6 @@
   "{0} each": "개당 {0}",
   "Kitchen display": "주방 디스플레이",
   "Last confirmed on display: {0}": "화면 표시 최종 확인: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "최근 화면 표시 확인이 없습니다. 주방 화면을 확인하세요."
+  "No recent display confirmation. Check the kitchen screen.": "최근 화면 표시 확인이 없습니다. 주방 화면을 확인하세요.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "지점 정보에서 UPI를 설정하세요. UPI QR 결제에는 INR이 필요합니다."
 }

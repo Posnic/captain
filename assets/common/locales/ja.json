@@ -911,5 +911,6 @@
   "{0} each": "1品 {0}",
   "Kitchen display": "厨房ディスプレイ",
   "Last confirmed on display: {0}": "画面表示の最終確認：{0}",
-  "No recent display confirmation. Check the kitchen screen.": "最近の表示確認がありません。厨房の画面を確認してください。"
+  "No recent display confirmation. Check the kitchen screen.": "最近の表示確認がありません。厨房の画面を確認してください。",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "支店情報でUPIを設定してください。UPI QR決済にはINRが必要です。"
 }

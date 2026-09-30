@@ -911,5 +911,6 @@
   "{0} each": "{0} per stuk",
   "Kitchen display": "Keukenscherm",
   "Last confirmed on display: {0}": "Laatst bevestigd op het scherm: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Geen recente bevestiging van het scherm. Controleer het keukenscherm."
+  "No recent display confirmation. Check the kitchen screen.": "Geen recente bevestiging van het scherm. Controleer het keukenscherm.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Stel UPI in bij de vestigingsgegevens. UPI-QR-betalingen vereisen INR."
 }

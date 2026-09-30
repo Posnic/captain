@@ -911,5 +911,6 @@
   "{0} each": "Her biri {0}",
   "Kitchen display": "Mutfak ekranı",
   "Last confirmed on display: {0}": "Ekranda son onay: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Ekrandan yakın zamanda onay alınmadı. Mutfak ekranını kontrol edin."
+  "No recent display confirmation. Check the kitchen screen.": "Ekrandan yakın zamanda onay alınmadı. Mutfak ekranını kontrol edin.",
+  "Set up UPI in Branch details. UPI QR payments require INR.": "Şube bilgilerinde UPI ayarlayın. UPI QR ödemeleri INR gerektirir."
 }
