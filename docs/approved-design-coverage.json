@@ -37,12 +37,16 @@
         "products.html",
         "assets/products/script.js",
         "indexedDB.js",
-        "assets/common/app-design.css"
+        "assets/common/app-design.css",
+        "assets/common/serving-periods.js",
+        "assets/common/menu-view.js",
+        "POS/api/src/repositories/item.repository.js"
       ],
       "verification": [
         "Bill summary now shows selected item lines, each item note and the same unit-price totals as checkout, replacing totals-only chips. The same renderer is a phone sheet and a persistent side basket on displays at least 900px wide.",
         "Real-browser flow verifies add/search-clear, notes attached to the right item, escaped note content, live totals, retained search focus, resizing to phone, and opening/closing through the real footer control. Phone and tablet screenshots inspected; 574 unit tests pass.",
-        "Meal-period suggestions, remaining item/category design audit, native gesture acceptance and complete-app release remain."
+        "Meal-period suggestions, remaining item/category design audit, native gesture acceptance and complete-app release remain.",
+        "POS now exposes assigned named serving schedules and branch time zone; Captain preserves these with the offline menu and labels current periods without hiding dishes or changing server authorization. Labels refresh in place, on resume and after browser restoration. Tests cover branch time, exact closing boundaries, overnight periods, unknown zones and cached browser reload. 577 Captain unit tests, serving-period browser flow, 211 existing POS menu/schedule tests and build pass. POS lint has no errors (77 existing warnings). Meal-period filtering and the remaining menu/item review still remain."
       ]
     },
     {

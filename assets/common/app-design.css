@@ -155,3 +155,8 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 }
 
 button.bill-what { background: transparent; color: var(--ink); border: 0; padding: 0; text-align: start; min-height: 44px; }
+
+.dish-serving { display: inline-block; margin: 0 8px 8px 0; padding: 4px 8px; border-radius: 8px; color: var(--ink-soft); background: var(--surface-sunk); font-size: 12px; }
+.dish-serving.is-current { color: var(--good); }
+
+.dish-serving [hidden] { display: none; }

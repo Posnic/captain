@@ -194,6 +194,8 @@
     const mark = diet(product.diet);
     const note = plain(product.description);
     const prep = Number(product.prep_minutes) || 0;
+    const periods = globalThis.ServingPeriods?.describe(product) || [];
+    const serving = periods.map(period => '<span class="dish-serving' + (period.active ? ' is-current' : '') + '"><span translate="no">' + escape(period.name) + '</span>' + '<span data-serving-active' + (period.active ? '' : ' hidden="hidden"') + '><span aria-hidden="true"> · </span><span>Available</span></span>' + '</span>').join('');
     const popular = opts.popular instanceof Set && opts.popular.has(String(product.id));
 
     /*
@@ -272,6 +274,7 @@
       '<div class="dish-text">' +
       (mark ? '<span class="dish-diet is-' + mark + '" title="' + mark + '"></span>' : '') +
       (popular ? '<span class="dish-badge">Bestseller</span>' : '') +
+      (periods.length ? '<div class="dish-serving-periods" data-serving="' + escape(JSON.stringify({serving_periods:product.serving_periods,serving_time_zone:product.serving_time_zone})) + '">' + serving + '</div>' : '') +
       '<p class="dish-name" translate="no">' +
       numberMark +
       escape(globalThis.ItemLanguage ? globalThis.ItemLanguage.name(product) : product.name) +

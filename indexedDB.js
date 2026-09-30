@@ -600,6 +600,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                          * is an honest answer rather than a gap.
                          */
                         icon: item.icon || "",
+                        serving_periods: Array.isArray(item.serving_periods) ? item.serving_periods : [],
+                        serving_time_zone: item.serving_time_zone || "",
                         category_name: category.category_name,
                         category_sort: categoryIndex,
                         item_sort: itemIndex,
