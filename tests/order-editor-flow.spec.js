@@ -444,3 +444,59 @@ test('pricing deadline allows retry and ignores a late timed-out result',async({
  release();await page.waitForTimeout(100);
  await expect(page.locator('#editor-total-value')).toContainText('462');
 });
+
+
+test('transfer screen selects preparations, reviews destination and confirms once',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ const source='a'.repeat(24),table='b'.repeat(24),target='c'.repeat(24),writes=[];
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[{id:table,tableorder_value:'8',status:'available',capacity:4,max:4}]}}));
+ await page.route('**/captain/v1/tables/transfer/preview',route=>route.fulfill({json:{sourceId:source,revision:'d'.repeat(64),currencyCode:'INR',currencyDigits:2,destination:{totalMinor:5250,rounds:[{name:'Corn',quantity:1}]},source:{totalMinor:5250}}}));
+ await page.route('**/captain/v1/tables/transfer/complete',route=>{const body=route.request().postDataJSON();writes.push(body);return route.fulfill({json:{requestId:body.requestId,sourceId:source,destinationId:target,sourceClosed:false,state:'completed'}});});
+ await page.evaluate(source=>CaptainTransferScreen.open({_id:source,kitchen_rounds:[{ordered_at:'2026-09-30T13:30:00Z',items:[{id:'c0i0',name:'Corn',quantity:2,served:1}]}]}),source);
+ const dialog=page.locator('.transfer-screen');
+ await dialog.locator('[data-quantity]').fill('1');await dialog.locator('[data-served]').fill('1');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await dialog.locator('input[type=checkbox]').check();
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(dialog).toContainText('52.50');expect(writes).toHaveLength(0);
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();
+ await expect(dialog.locator('input[type=checkbox]')).toBeChecked();
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await dialog.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(dialog).not.toBeVisible();expect(writes).toHaveLength(1);
+ expect(writes[0].items).toEqual([{id:'c0i0',quantity:1,servedQuantity:1}]);
+ expect(writes[0].destination.tableIds).toEqual([table]);
+});
+
+
+test('transfer screen Back ignores late table results and keeps invalid quantities editable',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ const source='a'.repeat(24);let release,started;
+ const waiting=new Promise(resolve=>release=resolve),first=new Promise(resolve=>started=resolve);
+ await page.route('**/captain/v1/tables',async route=>{started();await waiting;await route.fulfill({json:{tables:[]}});});
+ await page.evaluate(source=>CaptainTransferScreen.open({_id:source,kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:2,served:1}]}]}),source);
+ const dialog=page.locator('.transfer-screen');
+ await dialog.locator('[data-quantity]').fill('2');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(dialog.locator('[role=alert]')).not.toBeEmpty();
+ await expect(dialog.locator('[data-quantity]')).toHaveValue('2');
+ await dialog.locator('[data-served]').fill('1');await dialog.getByRole('button',{name:'Continue',exact:true}).click();await first;
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog).not.toBeVisible();
+ release();await page.waitForTimeout(100);await expect(dialog).not.toBeVisible();
+});
+
+
+test('transfer action requires capability and permission and opens the registered order',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ await page.evaluate(()=>{
+  const order={_id:'a'.repeat(24),item_transfer:true,kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:2,served:0,remaining:2}]}]};
+  window.canMergeOrders=()=>false;
+  if(ServiceRounds.render(order).includes('data-transfer-order'))throw new Error('permission');
+  window.canMergeOrders=()=>true;
+  if(ServiceRounds.render({...order,item_transfer:false}).includes('data-transfer-order'))throw new Error('capability');
+  const host=document.createElement('div');host.innerHTML=ServiceRounds.render(order);document.body.append(host);
+ });
+ await page.locator('[data-transfer-order]').click();
+ await expect(page.locator('.transfer-screen')).toBeVisible();
+ await expect(page.locator('.transfer-screen')).toContainText('Corn');
+});

@@ -995,5 +995,6 @@
   "Play recording": "Воспроизвести запись",
   "Pause playback": "Приостановить воспроизведение",
   "Merge orders": "Объединить заказы",
-  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Оба счёта перемещаются на выбранный стол. Позиции не отправляются на кухню повторно."
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Оба счёта перемещаются на выбранный стол. Позиции не отправляются на кухню повторно.",
+  "Transfer items": "Перенести позиции"
 }

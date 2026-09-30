@@ -995,5 +995,6 @@
   "Play recording": "Écouter l’enregistrement",
   "Pause playback": "Mettre la lecture en pause",
   "Merge orders": "Regrouper les commandes",
-  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Les deux additions passent à la table sélectionnée. Les articles ne sont pas renvoyés en cuisine."
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Les deux additions passent à la table sélectionnée. Les articles ne sont pas renvoyés en cuisine.",
+  "Transfer items": "Transférer des articles"
 }

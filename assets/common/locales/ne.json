@@ -995,5 +995,6 @@
   "Play recording": "रेकर्डिङ बजाउनुहोस्",
   "Pause playback": "प्लेब्याक रोक्नुहोस्",
   "Merge orders": "अर्डरहरू जोड्नुहोस्",
-  "Both bills move to the selected table. Items are not sent to the kitchen again.": "दुवै बिल चयन गरिएको टेबलमा सारिन्छन्। वस्तुहरू भान्सामा फेरि पठाइँदैनन्।"
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "दुवै बिल चयन गरिएको टेबलमा सारिन्छन्। वस्तुहरू भान्सामा फेरि पठाइँदैनन्।",
+  "Transfer items": "वस्तुहरू सार्नुहोस्"
 }

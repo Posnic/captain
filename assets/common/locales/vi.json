@@ -995,5 +995,6 @@
   "Play recording": "Phát bản ghi âm",
   "Pause playback": "Tạm dừng phát",
   "Merge orders": "Gộp đơn hàng",
-  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Cả hai hóa đơn được chuyển đến bàn đã chọn. Các món không được gửi lại đến bếp."
+  "Both bills move to the selected table. Items are not sent to the kitchen again.": "Cả hai hóa đơn được chuyển đến bàn đã chọn. Các món không được gửi lại đến bếp.",
+  "Transfer items": "Chuyển món"
 }
