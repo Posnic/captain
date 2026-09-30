@@ -233,15 +233,23 @@
     },
     {
       "id": "phone",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "POS/api/src/services/captain-phone.js"
+      ],
+      "verification": [
+        "Internal phone verification service implemented with own-user/branch scope, E.164 input, hashed six-digit codes, ten-minute expiry, atomic resend throttling, five-attempt limit, failure cleanup and interrupted confirmation recovery. Five MongoDB tests and ESLint pass. Not routed or exposed in Captain yet; concurrency review, routes, translations and both screens remain required."
+      ]
     },
     {
       "id": "verify-phone",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "POS/api/src/services/captain-phone.js"
+      ],
+      "verification": [
+        "Internal phone verification service implemented with own-user/branch scope, E.164 input, hashed six-digit codes, ten-minute expiry, atomic resend throttling, five-attempt limit, failure cleanup and interrupted confirmation recovery. Five MongoDB tests and ESLint pass. Not routed or exposed in Captain yet; concurrency review, routes, translations and both screens remain required."
+      ]
     },
     {
       "id": "password",
