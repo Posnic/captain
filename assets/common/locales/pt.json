@@ -970,5 +970,20 @@
   "Enter a valid email address.": "Introduza um endereço de e-mail válido.",
   "This email address is unavailable.": "Este endereço de e-mail não está disponível.",
   "Could not send the code. Check email settings or try again later.": "Não foi possível enviar o código. Verifique as definições de e-mail ou tente novamente mais tarde.",
-  "Main table": "Mesa principal"
+  "Main table": "Mesa principal",
+  "Message kitchen": "Enviar mensagem à cozinha",
+  "General message": "Mensagem geral",
+  "No table or order required": "Não é necessário indicar mesa ou pedido",
+  "Record voice note": "Gravar mensagem de voz",
+  "Discard recording": "Descartar gravação",
+  "Voice notes play after the current kitchen announcement.": "As mensagens de voz são reproduzidas após o anúncio atual da cozinha.",
+  "Kitchen messages": "Mensagens à cozinha",
+  "Stop recording": "Parar gravação",
+  "Recording…": "A gravar…",
+  "Queued for playback": "Na fila para reprodução",
+  "Voice note saved on this phone": "Mensagem de voz guardada neste telemóvel",
+  "Tap to record, then review and send.": "Toque para gravar, depois reveja e envie.",
+  "Microphone unavailable. Check app permissions.": "Microfone indisponível. Verifique as permissões da aplicação.",
+  "Recording failed. Please record again.": "Falha na gravação. Grave novamente.",
+  "Playback completed": "Reprodução concluída"
 }

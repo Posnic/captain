@@ -970,5 +970,20 @@
   "Enter a valid email address.": "Введите действительный адрес электронной почты.",
   "This email address is unavailable.": "Этот адрес электронной почты недоступен.",
   "Could not send the code. Check email settings or try again later.": "Не удалось отправить код. Проверьте настройки электронной почты или повторите попытку позже.",
-  "Main table": "Основной стол"
+  "Main table": "Основной стол",
+  "Message kitchen": "Написать на кухню",
+  "General message": "Общее сообщение",
+  "No table or order required": "Стол или заказ не требуется",
+  "Record voice note": "Записать голосовое сообщение",
+  "Discard recording": "Удалить запись",
+  "Voice notes play after the current kitchen announcement.": "Голосовые сообщения воспроизводятся после текущего объявления на кухне.",
+  "Kitchen messages": "Сообщения для кухни",
+  "Stop recording": "Остановить запись",
+  "Recording…": "Идёт запись…",
+  "Queued for playback": "В очереди на воспроизведение",
+  "Voice note saved on this phone": "Голосовое сообщение сохранено на этом телефоне",
+  "Tap to record, then review and send.": "Нажмите для записи, затем проверьте и отправьте.",
+  "Microphone unavailable. Check app permissions.": "Микрофон недоступен. Проверьте разрешения приложения.",
+  "Recording failed. Please record again.": "Не удалось записать. Повторите запись.",
+  "Playback completed": "Воспроизведение завершено"
 }

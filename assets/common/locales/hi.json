@@ -970,5 +970,20 @@
   "Enter a valid email address.": "एक मान्य ईमेल पता दर्ज करें।",
   "This email address is unavailable.": "यह ईमेल पता उपलब्ध नहीं है।",
   "Could not send the code. Check email settings or try again later.": "कोड भेजा नहीं जा सका। ईमेल सेटिंग जाँचें या बाद में फिर से कोशिश करें।",
-  "Main table": "मुख्य टेबल"
+  "Main table": "मुख्य टेबल",
+  "Message kitchen": "रसोई को संदेश भेजें",
+  "General message": "सामान्य संदेश",
+  "No table or order required": "टेबल या ऑर्डर की ज़रूरत नहीं",
+  "Record voice note": "वॉइस मैसेज रिकॉर्ड करें",
+  "Discard recording": "रिकॉर्डिंग हटाएँ",
+  "Voice notes play after the current kitchen announcement.": "रसोई की मौजूदा घोषणा के बाद वॉइस मैसेज चलेंगे।",
+  "Kitchen messages": "रसोई के संदेश",
+  "Stop recording": "रिकॉर्डिंग रोकें",
+  "Recording…": "रिकॉर्ड हो रहा है…",
+  "Queued for playback": "चलाने के लिए कतार में",
+  "Voice note saved on this phone": "वॉइस मैसेज इस फ़ोन पर सेव किया गया",
+  "Tap to record, then review and send.": "रिकॉर्ड करने के लिए टैप करें, फिर जाँचकर भेजें।",
+  "Microphone unavailable. Check app permissions.": "माइक्रोफ़ोन उपलब्ध नहीं है। ऐप की अनुमतियाँ जाँचें।",
+  "Recording failed. Please record again.": "रिकॉर्डिंग नहीं हो सकी। कृपया फिर से रिकॉर्ड करें।",
+  "Playback completed": "चलाना पूरा हुआ"
 }

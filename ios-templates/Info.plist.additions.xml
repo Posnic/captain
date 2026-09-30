@@ -56,7 +56,7 @@
       sentence is what they are shown.
     -->
     <key>NSMicrophoneUsageDescription</key>
-    <string>Captain listens when you press the microphone, so you can say an order at the table instead of typing it.</string>
+    <string>Captain uses the microphone when you record a voice message for the kitchen or speak an order.</string>
 
     <!--
       Speech recognition is a SEPARATE permission from the microphone on iOS,

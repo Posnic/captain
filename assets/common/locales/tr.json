@@ -970,5 +970,20 @@
   "Enter a valid email address.": "Geçerli bir e-posta adresi girin.",
   "This email address is unavailable.": "Bu e-posta adresi kullanılamıyor.",
   "Could not send the code. Check email settings or try again later.": "Kod gönderilemedi. E-posta ayarlarını kontrol edin veya daha sonra tekrar deneyin.",
-  "Main table": "Ana masa"
+  "Main table": "Ana masa",
+  "Message kitchen": "Mutfağa mesaj gönder",
+  "General message": "Genel mesaj",
+  "No table or order required": "Masa veya sipariş gerekmez",
+  "Record voice note": "Sesli mesaj kaydet",
+  "Discard recording": "Kaydı sil",
+  "Voice notes play after the current kitchen announcement.": "Sesli mesajlar, mutfaktaki mevcut anons bittikten sonra çalınır.",
+  "Kitchen messages": "Mutfak mesajları",
+  "Stop recording": "Kaydı durdur",
+  "Recording…": "Kaydediliyor…",
+  "Queued for playback": "Çalınmak üzere sıraya alındı",
+  "Voice note saved on this phone": "Sesli mesaj bu telefona kaydedildi",
+  "Tap to record, then review and send.": "Kaydetmek için dokunun, ardından kontrol edip gönderin.",
+  "Microphone unavailable. Check app permissions.": "Mikrofon kullanılamıyor. Uygulama izinlerini kontrol edin.",
+  "Recording failed. Please record again.": "Kayıt başarısız oldu. Lütfen tekrar kaydedin.",
+  "Playback completed": "Çalma tamamlandı"
 }

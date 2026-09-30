@@ -970,5 +970,20 @@
   "Enter a valid email address.": "చెల్లుబాటు అయ్యే ఇమెయిల్ చిరునామాను నమోదు చేయండి.",
   "This email address is unavailable.": "ఈ ఇమెయిల్ చిరునామా అందుబాటులో లేదు.",
   "Could not send the code. Check email settings or try again later.": "కోడ్‌ను పంపలేకపోయాము. ఇమెయిల్ సెట్టింగ్‌లను తనిఖీ చేయండి లేదా తర్వాత మళ్లీ ప్రయత్నించండి.",
-  "Main table": "ప్రధాన టేబుల్"
+  "Main table": "ప్రధాన టేబుల్",
+  "Message kitchen": "వంటగదికి సందేశం పంపండి",
+  "General message": "సాధారణ సందేశం",
+  "No table or order required": "టేబుల్ లేదా ఆర్డర్ అవసరం లేదు",
+  "Record voice note": "వాయిస్ సందేశాన్ని రికార్డ్ చేయండి",
+  "Discard recording": "రికార్డింగ్‌ను తొలగించండి",
+  "Voice notes play after the current kitchen announcement.": "ప్రస్తుతం వంటగదిలో వినిపిస్తున్న ప్రకటన ముగిసిన తర్వాత వాయిస్ సందేశాలు ప్లే అవుతాయి.",
+  "Kitchen messages": "వంటగది సందేశాలు",
+  "Stop recording": "రికార్డింగ్ ఆపండి",
+  "Recording…": "రికార్డ్ అవుతోంది…",
+  "Queued for playback": "ప్లే చేయడానికి క్యూలో ఉంది",
+  "Voice note saved on this phone": "వాయిస్ సందేశం ఈ ఫోన్‌లో సేవ్ చేయబడింది",
+  "Tap to record, then review and send.": "రికార్డ్ చేయడానికి నొక్కండి, తర్వాత తనిఖీ చేసి పంపండి.",
+  "Microphone unavailable. Check app permissions.": "మైక్రోఫోన్ అందుబాటులో లేదు. యాప్ అనుమతులను తనిఖీ చేయండి.",
+  "Recording failed. Please record again.": "రికార్డింగ్ విఫలమైంది. దయచేసి మళ్లీ రికార్డ్ చేయండి.",
+  "Playback completed": "ప్లే చేయడం పూర్తయింది"
 }

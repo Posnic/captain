@@ -970,5 +970,20 @@
   "Enter a valid email address.": "請輸入有效的電子郵件地址。",
   "This email address is unavailable.": "此電子郵件地址無法使用。",
   "Could not send the code. Check email settings or try again later.": "無法傳送驗證碼。請檢查電子郵件設定或稍後再試。",
-  "Main table": "主桌"
+  "Main table": "主桌",
+  "Message kitchen": "傳送訊息給廚房",
+  "General message": "一般訊息",
+  "No table or order required": "無需關聯餐桌或訂單",
+  "Record voice note": "錄製語音訊息",
+  "Discard recording": "捨棄錄音",
+  "Voice notes play after the current kitchen announcement.": "語音訊息會在目前的廚房播報結束後播放。",
+  "Kitchen messages": "廚房訊息",
+  "Stop recording": "停止錄音",
+  "Recording…": "正在錄音…",
+  "Queued for playback": "已加入播放佇列",
+  "Voice note saved on this phone": "語音訊息已儲存在這支手機上",
+  "Tap to record, then review and send.": "點選錄音，然後確認並傳送。",
+  "Microphone unavailable. Check app permissions.": "麥克風無法使用。請檢查應用程式權限。",
+  "Recording failed. Please record again.": "錄音失敗。請重新錄製。",
+  "Playback completed": "播放完畢"
 }

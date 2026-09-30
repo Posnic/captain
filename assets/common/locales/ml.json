@@ -970,5 +970,20 @@
   "Enter a valid email address.": "സാധുവായ ഇമെയിൽ വിലാസം നൽകുക.",
   "This email address is unavailable.": "ഈ ഇമെയിൽ വിലാസം ലഭ്യമല്ല.",
   "Could not send the code. Check email settings or try again later.": "കോഡ് അയയ്ക്കാനായില്ല. ഇമെയിൽ ക്രമീകരണങ്ങൾ പരിശോധിക്കുക അല്ലെങ്കിൽ പിന്നീട് വീണ്ടും ശ്രമിക്കുക.",
-  "Main table": "പ്രധാന മേശ"
+  "Main table": "പ്രധാന മേശ",
+  "Message kitchen": "അടുക്കളയിലേക്ക് സന്ദേശം അയയ്ക്കുക",
+  "General message": "പൊതുവായ സന്ദേശം",
+  "No table or order required": "ടേബിളോ ഓർഡറോ ആവശ്യമില്ല",
+  "Record voice note": "ശബ്ദസന്ദേശം റെക്കോർഡ് ചെയ്യുക",
+  "Discard recording": "റെക്കോർഡിങ് നീക്കം ചെയ്യുക",
+  "Voice notes play after the current kitchen announcement.": "അടുക്കളയിലെ നിലവിലെ അറിയിപ്പ് അവസാനിച്ച ശേഷം ശബ്ദസന്ദേശങ്ങൾ പ്ലേ ചെയ്യും.",
+  "Kitchen messages": "അടുക്കളയ്ക്കുള്ള സന്ദേശങ്ങൾ",
+  "Stop recording": "റെക്കോർഡിങ് നിർത്തുക",
+  "Recording…": "റെക്കോർഡ് ചെയ്യുന്നു…",
+  "Queued for playback": "പ്ലേ ചെയ്യാനുള്ള ക്യൂവിൽ",
+  "Voice note saved on this phone": "ശബ്ദസന്ദേശം ഈ ഫോണിൽ സേവ് ചെയ്തു",
+  "Tap to record, then review and send.": "റെക്കോർഡ് ചെയ്യാൻ ടാപ്പ് ചെയ്യുക, തുടർന്ന് പരിശോധിച്ച് അയയ്ക്കുക.",
+  "Microphone unavailable. Check app permissions.": "മൈക്രോഫോൺ ലഭ്യമല്ല. ആപ്പിന്റെ അനുമതികൾ പരിശോധിക്കുക.",
+  "Recording failed. Please record again.": "റെക്കോർഡിങ് പരാജയപ്പെട്ടു. വീണ്ടും റെക്കോർഡ് ചെയ്യുക.",
+  "Playback completed": "പ്ലേ ചെയ്തു കഴിഞ്ഞു"
 }

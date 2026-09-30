@@ -970,5 +970,20 @@
   "Enter a valid email address.": "ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸ ನಮೂದಿಸಿ.",
   "This email address is unavailable.": "ಈ ಇಮೇಲ್ ವಿಳಾಸ ಲಭ್ಯವಿಲ್ಲ.",
   "Could not send the code. Check email settings or try again later.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಇಮೇಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
-  "Main table": "ಮುಖ್ಯ ಟೇಬಲ್"
+  "Main table": "ಮುಖ್ಯ ಟೇಬಲ್",
+  "Message kitchen": "ಅಡುಗೆಮನೆಗೆ ಸಂದೇಶ ಕಳುಹಿಸಿ",
+  "General message": "ಸಾಮಾನ್ಯ ಸಂದೇಶ",
+  "No table or order required": "ಟೇಬಲ್ ಅಥವಾ ಆರ್ಡರ್ ಅಗತ್ಯವಿಲ್ಲ",
+  "Record voice note": "ಧ್ವನಿ ಸಂದೇಶವನ್ನು ರೆಕಾರ್ಡ್ ಮಾಡಿ",
+  "Discard recording": "ರೆಕಾರ್ಡಿಂಗ್ ಅಳಿಸಿ",
+  "Voice notes play after the current kitchen announcement.": "ಅಡುಗೆಮನೆಯಲ್ಲಿ ಈಗ ಕೇಳಿಸುತ್ತಿರುವ ಪ್ರಕಟಣೆ ಮುಗಿದ ನಂತರ ಧ್ವನಿ ಸಂದೇಶಗಳನ್ನು ಪ್ಲೇ ಮಾಡಲಾಗುತ್ತದೆ.",
+  "Kitchen messages": "ಅಡುಗೆಮನೆಯ ಸಂದೇಶಗಳು",
+  "Stop recording": "ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ",
+  "Recording…": "ರೆಕಾರ್ಡ್ ಆಗುತ್ತಿದೆ…",
+  "Queued for playback": "ಪ್ಲೇ ಮಾಡಲು ಸರದಿಯಲ್ಲಿದೆ",
+  "Voice note saved on this phone": "ಧ್ವನಿ ಸಂದೇಶವನ್ನು ಈ ಫೋನ್‌ನಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ",
+  "Tap to record, then review and send.": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ, ನಂತರ ಪರಿಶೀಲಿಸಿ ಕಳುಹಿಸಿ.",
+  "Microphone unavailable. Check app permissions.": "ಮೈಕ್ರೋಫೋನ್ ಲಭ್ಯವಿಲ್ಲ. ಆ್ಯಪ್ ಅನುಮತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+  "Recording failed. Please record again.": "ರೆಕಾರ್ಡಿಂಗ್ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ರೆಕಾರ್ಡ್ ಮಾಡಿ.",
+  "Playback completed": "ಪ್ಲೇ ಮಾಡುವುದು ಪೂರ್ಣಗೊಂಡಿದೆ"
 }

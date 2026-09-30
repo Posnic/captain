@@ -970,5 +970,20 @@
   "Enter a valid email address.": "Masukkan alamat e-mel yang sah.",
   "This email address is unavailable.": "Alamat e-mel ini tidak tersedia.",
   "Could not send the code. Check email settings or try again later.": "Tidak dapat menghantar kod. Semak tetapan e-mel atau cuba lagi kemudian.",
-  "Main table": "Meja utama"
+  "Main table": "Meja utama",
+  "Message kitchen": "Hantar mesej ke dapur",
+  "General message": "Mesej umum",
+  "No table or order required": "Tidak memerlukan meja atau pesanan",
+  "Record voice note": "Rakam mesej suara",
+  "Discard recording": "Buang rakaman",
+  "Voice notes play after the current kitchen announcement.": "Mesej suara dimainkan selepas pengumuman dapur semasa selesai.",
+  "Kitchen messages": "Mesej dapur",
+  "Stop recording": "Hentikan rakaman",
+  "Recording…": "Sedang merakam…",
+  "Queued for playback": "Dalam giliran untuk dimainkan",
+  "Voice note saved on this phone": "Mesej suara disimpan pada telefon ini",
+  "Tap to record, then review and send.": "Ketik untuk merakam, kemudian semak dan hantar.",
+  "Microphone unavailable. Check app permissions.": "Mikrofon tidak tersedia. Semak kebenaran aplikasi.",
+  "Recording failed. Please record again.": "Rakaman gagal. Sila rakam semula.",
+  "Playback completed": "Main balik selesai"
 }

@@ -970,5 +970,20 @@
   "Enter a valid email address.": "درست ای میل پتہ درج کریں۔",
   "This email address is unavailable.": "یہ ای میل پتہ دستیاب نہیں ہے۔",
   "Could not send the code. Check email settings or try again later.": "کوڈ نہیں بھیجا جا سکا۔ ای میل کی ترتیبات چیک کریں یا بعد میں دوبارہ کوشش کریں۔",
-  "Main table": "مرکزی میز"
+  "Main table": "مرکزی میز",
+  "Message kitchen": "باورچی خانے کو پیغام بھیجیں",
+  "General message": "عام پیغام",
+  "No table or order required": "میز یا آرڈر کی ضرورت نہیں",
+  "Record voice note": "صوتی پیغام ریکارڈ کریں",
+  "Discard recording": "ریکارڈنگ حذف کریں",
+  "Voice notes play after the current kitchen announcement.": "صوتی پیغامات باورچی خانے کے موجودہ اعلان کے بعد چلائے جائیں گے۔",
+  "Kitchen messages": "باورچی خانے کے پیغامات",
+  "Stop recording": "ریکارڈنگ روکیں",
+  "Recording…": "ریکارڈ ہو رہا ہے…",
+  "Queued for playback": "چلانے کے لیے قطار میں",
+  "Voice note saved on this phone": "صوتی پیغام اس فون پر محفوظ ہو گیا",
+  "Tap to record, then review and send.": "ریکارڈ کرنے کے لیے ٹیپ کریں، پھر جائزہ لے کر بھیجیں۔",
+  "Microphone unavailable. Check app permissions.": "مائیکروفون دستیاب نہیں۔ ایپ کی اجازتیں چیک کریں۔",
+  "Recording failed. Please record again.": "ریکارڈنگ ناکام ہو گئی۔ براہ کرم دوبارہ ریکارڈ کریں۔",
+  "Playback completed": "چلانا مکمل ہو گیا"
 }

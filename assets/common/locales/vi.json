@@ -970,5 +970,20 @@
   "Enter a valid email address.": "Nhập địa chỉ email hợp lệ.",
   "This email address is unavailable.": "Không thể sử dụng địa chỉ email này.",
   "Could not send the code. Check email settings or try again later.": "Không thể gửi mã. Hãy kiểm tra cài đặt email hoặc thử lại sau.",
-  "Main table": "Bàn chính"
+  "Main table": "Bàn chính",
+  "Message kitchen": "Gửi tin nhắn cho bếp",
+  "General message": "Tin nhắn chung",
+  "No table or order required": "Không cần bàn hoặc đơn hàng",
+  "Record voice note": "Ghi âm tin nhắn",
+  "Discard recording": "Hủy bản ghi âm",
+  "Voice notes play after the current kitchen announcement.": "Tin nhắn thoại sẽ được phát sau thông báo hiện tại của bếp.",
+  "Kitchen messages": "Tin nhắn cho bếp",
+  "Stop recording": "Dừng ghi âm",
+  "Recording…": "Đang ghi âm…",
+  "Queued for playback": "Đang chờ phát",
+  "Voice note saved on this phone": "Tin nhắn thoại đã lưu trên điện thoại này",
+  "Tap to record, then review and send.": "Nhấn để ghi âm, sau đó kiểm tra và gửi.",
+  "Microphone unavailable. Check app permissions.": "Không dùng được micrô. Hãy kiểm tra quyền của ứng dụng.",
+  "Recording failed. Please record again.": "Ghi âm không thành công. Vui lòng ghi âm lại.",
+  "Playback completed": "Đã phát xong"
 }
