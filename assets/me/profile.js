@@ -20,9 +20,14 @@
     busy = false,
     profile,
     generation = 0;
+  function dirty() {
+    if (current === "password") return [...page.querySelectorAll("input")].some(input => input.value !== "");
+    const name = page?.querySelector("#profile-name");
+    return current === "profile" && name && name.value !== String(profile?.name ?? "");
+  }
   function back() {
     if (!current) return false;
-    if (busy) return true;
+    if (busy || (dirty() && !confirm(t("Discard changes?")))) return true;
     generation++;
     page.hidden = true;
     home.hidden = false;
@@ -97,9 +102,12 @@
         if (result.saved !== true) throw new Error("Unconfirmed");
         await POSNIC.session.end();
         // Preserve the restaurant cache and durable orders for the same user to resume.
+        current = "";
+        busy = false;
         location.href = "index.html";
       } else {
         profile = result;
+        page.querySelector("#profile-name").value = result.name;
         await POSNIC.session.updateProfile?.(result);
         document.getElementById("me-who").textContent = result.name;
         document.getElementById("me-home-who").textContent = result.name;
@@ -142,5 +150,11 @@
       back();
     }
   });
-  window.CaptainProfile = { back };
+  window.addEventListener("beforeunload", event => {
+    if (busy || dirty()) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
+  window.CaptainProfile = { back, get active() { return Boolean(current); } };
 })();

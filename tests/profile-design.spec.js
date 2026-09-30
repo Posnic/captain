@@ -32,3 +32,52 @@ test('password validation preserves typing and a successful change keeps saved o
   expect(posts).toHaveLength(1);
   expect(await page.evaluate(()=>localStorage.getItem('profile-test-preserved'))).toBe('saved-order');
 });
+
+for (const action of ['header', 'cancel', 'native', 'browser']) {
+  test(`unsaved profile survives declined ${action} Back`, async ({page}) => {
+    await open(page);
+    await page.locator('#me-back').click();
+    await page.locator('a[href="#account"]').click();
+    await page.locator('#me-profile').click();
+    await page.locator('#profile-name').fill('Unsaved captain');
+    let accept = false;
+    const dialogs = [];
+    page.on('dialog', async dialog => {
+      dialogs.push(dialog.message());
+      await (accept ? dialog.accept() : dialog.dismiss());
+    });
+    const leave = async () => {
+      if (action === 'header') await page.locator('#me-back').click();
+      else if (action === 'cancel') await page.locator('[data-profile-back]').click();
+      else if (action === 'native') await page.evaluate(() => window.dispatchEvent(new Event('captain:back', {cancelable:true})));
+      else await page.goBack();
+    };
+    await leave();
+    await expect.poll(() => dialogs.length).toBe(1);
+    await expect(page.locator('#profile-name')).toHaveValue('Unsaved captain');
+    await expect(page.locator('.me-title')).toHaveText('Profile details');
+    await expect(page).toHaveURL(/#account$/);
+    accept = true;
+    // Use the visible Back button after a declined browser history traversal.
+    await page.locator('#me-back').click();
+    await expect(page.locator('#me-password')).toBeVisible();
+    expect(dialogs).toEqual(['Discard changes?', 'Discard changes?']);
+  });
+}
+
+test('failed password save preserves the draft and cancel requires confirmation', async ({page}) => {
+  await open(page);
+  await page.route('**/captain/v1/password', route => route.fulfill({status:400,json:{message:'incorrect'}}));
+  await page.locator('#me-password').click();
+  await page.locator('#currentPassword').fill('wrong-secret');
+  await page.locator('#newPassword').fill('new-secret-123');
+  await page.locator('#confirmPassword').fill('new-secret-123');
+  await page.locator('#profile-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('The current password is incorrect.');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.locator('#me-back').click();
+  await expect(page.locator('#newPassword')).toHaveValue('new-secret-123');
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('[data-profile-back]').click();
+  await expect(page.locator('#me-password')).toBeVisible();
+});

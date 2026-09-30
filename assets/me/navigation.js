@@ -3,7 +3,9 @@
   "use strict";
   const titles = { home: "Me", account: "Account", language: "Language", preferences: "This phone" };
   const current = () => Object.hasOwn(titles, location.hash.slice(1)) ? location.hash.slice(1) : "home";
+  let renderedHash = location.hash;
   function render() {
+    renderedHash = location.hash;
     const route = current();
     document.querySelectorAll("[data-me-page]").forEach(page => { page.hidden = page.dataset.mePage !== route; });
     document.querySelector(".me-title").textContent = window.I18N?.t(titles[route]) || titles[route];
@@ -21,6 +23,10 @@
   });
   window.addEventListener("hashchange", () => {
     window.CaptainProfile?.back();
+    if (window.CaptainProfile?.active) {
+      history.replaceState(null, "", location.pathname + location.search + renderedHash);
+      return;
+    }
     render();
   });
   window.addEventListener("captain:back", event => {
