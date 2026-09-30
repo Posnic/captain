@@ -9,13 +9,18 @@
  async function load(){
   if(busy)return;if(dirty&&!await CaptainConfirm.discard())return;
   const ticket=++generation;at('branch-details-form').hidden=true;message('Loading...');at('branch-retry').hidden=true;
+  let timer;
   try{
-   const result=await POSNIC.api.get('/captain/v1/branch-details');if(ticket!==generation)return;
+   const result=await Promise.race([
+    Promise.resolve().then(()=>POSNIC.api.get('/captain/v1/branch-details')),
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('branch_timeout')),20000);}),
+   ]);if(ticket!==generation)return;
    if(!valid(result))throw new Error('invalid_branch_response');
    details=result;dirty=false;at('branch-name').textContent=result.name;
    at('branch-upi-id').value=result.branch_upi_id;at('branch-upi-name').value=result.branch_upi_name;
    at('branch-details-form').hidden=false;message('');
   }catch(error){if(ticket!==generation)return;message(error.status===403?'Permission is required.':'Connection failed');at('branch-retry').hidden=error.status===403;}
+  finally{clearTimeout(timer);}
  }
  document.addEventListener('DOMContentLoaded',()=>{
   const form=at('branch-details-form');at('branch-back').onclick=back;at('branch-cancel').onclick=back;at('branch-retry').onclick=load;

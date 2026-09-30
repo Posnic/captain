@@ -23,8 +23,12 @@
     at("payment-settings-form").hidden = true;
     at("payment-settings-retry").hidden = true;
     message("Loading...");
+    let timer;
     try {
-      const value = await POSNIC.api.get("/captain/v1/payment-settings");
+      const value = await Promise.race([
+        Promise.resolve().then(() => POSNIC.api.get("/captain/v1/payment-settings")),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('settings_timeout')), 20000); }),
+      ]);
       if (ticket !== generation) return;
       if (typeof value.enabled !== "boolean" || !Array.isArray(value.methods) || typeof value.printReceipt !== "boolean") throw new Error("invalid_settings");
       at("payment-settings-enabled").checked = value.enabled;
@@ -38,6 +42,8 @@
       if (ticket !== generation) return;
       message(error.status === 403 ? "Permission is required." : "Connection failed");
       at("payment-settings-retry").hidden = error.status === 403;
+    } finally {
+      clearTimeout(timer);
     }
   }
   document.addEventListener("DOMContentLoaded", () => {
