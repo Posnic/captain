@@ -379,10 +379,12 @@
       "implementation": [
         "assets/table/manage.js",
         "POS/api/src/utils/table-details.js",
-        "POS/api/src/services/captain-tables.js"
+        "POS/api/src/services/captain-tables.js",
+        "POS/api/src/services/seating-claims.js"
       ],
       "verification": [
-        "Neighbour configuration implemented in Captain and desktop POS. Desktop form supports multiple selections, clearing and safe label rendering; form tests and asset build passed. Actual combined seating, shared occupancy and release remain unimplemented."
+        "Neighbour configuration implemented in Captain and desktop POS. Desktop form supports multiple selections, clearing and safe label rendering; form tests and asset build passed. Actual combined seating, shared occupancy and release remain unimplemented.",
+        "Internal multi-table claim service: 10 real-Mongo tests passed for concurrency, retry identity, cancellation/submission race, capacity, branch scope and adjacency. Not exposed yet: all order writers, recovery, completed-claim archival, floor projection and release must integrate before enabling combined seating."
       ]
     },
     {
