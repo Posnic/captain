@@ -960,5 +960,11 @@
   "Customer requested": "Müşteri talebi",
   "Entered by mistake": "Yanlışlıkla girildi",
   "Item unavailable": "Ürün mevcut değil",
-  "Duplicate order": "Yinelenen sipariş"
+  "Duplicate order": "Yinelenen sipariş",
+  "Check the verification code.": "Doğrulama kodunu kontrol edin.",
+  "Could not send the code. Check SMS settings or try again later.": "Kod gönderilemedi. SMS ayarlarını kontrol edin veya daha sonra tekrar deneyin.",
+  "Enter a phone number with country code.": "Ülke koduyla birlikte bir telefon numarası girin.",
+  "Request a new verification code.": "Yeni bir doğrulama kodu isteyin.",
+  "Resend code": "Kodu yeniden gönder",
+  "Send verification code": "Doğrulama kodu gönder"
 }

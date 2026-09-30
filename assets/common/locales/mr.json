@@ -960,5 +960,11 @@
   "Customer requested": "ग्राहकाच्या विनंतीनुसार",
   "Entered by mistake": "चुकून नोंदवले",
   "Item unavailable": "पदार्थ उपलब्ध नाही",
-  "Duplicate order": "दुबार ऑर्डर"
+  "Duplicate order": "दुबार ऑर्डर",
+  "Send verification code": "पडताळणी कोड पाठवा",
+  "Resend code": "कोड पुन्हा पाठवा",
+  "Check the verification code.": "पडताळणी कोड तपासा.",
+  "Request a new verification code.": "नवीन पडताळणी कोडची विनंती करा.",
+  "Enter a phone number with country code.": "देश कोडसह फोन नंबर प्रविष्ट करा.",
+  "Could not send the code. Check SMS settings or try again later.": "कोड पाठवता आला नाही. SMS सेटिंग्ज तपासा किंवा नंतर पुन्हा प्रयत्न करा."
 }

@@ -960,5 +960,11 @@
   "Customer requested": "お客様のご希望",
   "Entered by mistake": "誤って入力",
   "Item unavailable": "品切れ",
-  "Duplicate order": "注文の重複"
+  "Duplicate order": "注文の重複",
+  "Send verification code": "確認コードを送信",
+  "Resend code": "コードを再送信",
+  "Check the verification code.": "確認コードを確認してください。",
+  "Request a new verification code.": "新しい確認コードをリクエストしてください。",
+  "Enter a phone number with country code.": "国番号を含む電話番号を入力してください。",
+  "Could not send the code. Check SMS settings or try again later.": "コードを送信できませんでした。SMS設定を確認するか、後でもう一度お試しください。"
 }

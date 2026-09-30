@@ -960,5 +960,11 @@
   "Customer requested": "顾客要求",
   "Entered by mistake": "误操作录入",
   "Item unavailable": "菜品售罄",
-  "Duplicate order": "重复订单"
+  "Duplicate order": "重复订单",
+  "Send verification code": "发送验证码",
+  "Resend code": "重新发送验证码",
+  "Check the verification code.": "请检查验证码。",
+  "Request a new verification code.": "请获取新的验证码。",
+  "Enter a phone number with country code.": "请输入包含国家代码的电话号码。",
+  "Could not send the code. Check SMS settings or try again later.": "无法发送验证码。请检查短信设置或稍后重试。"
 }

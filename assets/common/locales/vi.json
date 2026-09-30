@@ -960,5 +960,11 @@
   "Customer requested": "Khách yêu cầu",
   "Entered by mistake": "Nhập nhầm",
   "Item unavailable": "Món không có sẵn",
-  "Duplicate order": "Đơn hàng trùng lặp"
+  "Duplicate order": "Đơn hàng trùng lặp",
+  "Send verification code": "Gửi mã xác minh",
+  "Resend code": "Gửi lại mã",
+  "Check the verification code.": "Kiểm tra mã xác minh.",
+  "Request a new verification code.": "Yêu cầu mã xác minh mới.",
+  "Enter a phone number with country code.": "Nhập số điện thoại kèm mã quốc gia.",
+  "Could not send the code. Check SMS settings or try again later.": "Không thể gửi mã. Hãy kiểm tra cài đặt SMS hoặc thử lại sau."
 }

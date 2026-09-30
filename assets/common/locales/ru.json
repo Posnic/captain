@@ -960,5 +960,11 @@
   "Customer requested": "По просьбе гостя",
   "Entered by mistake": "Введено по ошибке",
   "Item unavailable": "Блюдо недоступно",
-  "Duplicate order": "Дубликат заказа"
+  "Duplicate order": "Дубликат заказа",
+  "Check the verification code.": "Проверьте код подтверждения.",
+  "Could not send the code. Check SMS settings or try again later.": "Не удалось отправить код. Проверьте настройки SMS или повторите попытку позже.",
+  "Enter a phone number with country code.": "Введите номер телефона с кодом страны.",
+  "Request a new verification code.": "Запросите новый код подтверждения.",
+  "Resend code": "Отправить код повторно",
+  "Send verification code": "Отправить код подтверждения"
 }

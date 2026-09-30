@@ -960,5 +960,11 @@
   "Customer requested": "بناءً على طلب العميل",
   "Entered by mistake": "أُدخل بالخطأ",
   "Item unavailable": "الصنف غير متوفر",
-  "Duplicate order": "طلب مكرر"
+  "Duplicate order": "طلب مكرر",
+  "Check the verification code.": "تحقق من رمز التحقق.",
+  "Could not send the code. Check SMS settings or try again later.": "تعذر إرسال الرمز. تحقق من إعدادات الرسائل النصية أو حاول مرة أخرى لاحقًا.",
+  "Enter a phone number with country code.": "أدخل رقم هاتف مع رمز البلد.",
+  "Request a new verification code.": "اطلب رمز تحقق جديدًا.",
+  "Resend code": "إعادة إرسال الرمز",
+  "Send verification code": "إرسال رمز التحقق"
 }

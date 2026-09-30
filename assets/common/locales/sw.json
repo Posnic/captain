@@ -960,5 +960,11 @@
   "Customer requested": "Ombi la mteja",
   "Entered by mistake": "Imeingizwa kimakosa",
   "Item unavailable": "Chakula hakipatikani",
-  "Duplicate order": "Agizo lililorudiwa"
+  "Duplicate order": "Agizo lililorudiwa",
+  "Check the verification code.": "Kagua msimbo wa uthibitishaji.",
+  "Could not send the code. Check SMS settings or try again later.": "Imeshindikana kutuma msimbo. Kagua mipangilio ya SMS au ujaribu tena baadaye.",
+  "Enter a phone number with country code.": "Weka nambari ya simu yenye msimbo wa nchi.",
+  "Request a new verification code.": "Omba msimbo mpya wa uthibitishaji.",
+  "Resend code": "Tuma msimbo tena",
+  "Send verification code": "Tuma msimbo wa uthibitishaji"
 }

@@ -960,5 +960,11 @@
   "Customer requested": "வாடிக்கையாளர் கோரிக்கை",
   "Entered by mistake": "தவறுதலாகச் சேர்க்கப்பட்டது",
   "Item unavailable": "உணவு கிடைக்கவில்லை",
-  "Duplicate order": "இருமுறை சேர்க்கப்பட்ட ஆர்டர்"
+  "Duplicate order": "இருமுறை சேர்க்கப்பட்ட ஆர்டர்",
+  "Send verification code": "சரிபார்ப்புக் குறியீட்டை அனுப்பு",
+  "Resend code": "குறியீட்டை மீண்டும் அனுப்பு",
+  "Check the verification code.": "சரிபார்ப்புக் குறியீட்டைச் சரிபார்க்கவும்.",
+  "Request a new verification code.": "புதிய சரிபார்ப்புக் குறியீட்டைக் கோரவும்.",
+  "Enter a phone number with country code.": "நாட்டுக் குறியீட்டுடன் தொலைபேசி எண்ணை உள்ளிடவும்.",
+  "Could not send the code. Check SMS settings or try again later.": "குறியீட்டை அனுப்ப முடியவில்லை. SMS அமைப்புகளைச் சரிபார்க்கவும் அல்லது பின்னர் மீண்டும் முயற்சிக்கவும்."
 }

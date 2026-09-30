@@ -960,5 +960,11 @@
   "Customer requested": "ಗ್ರಾಹಕರ ಕೋರಿಕೆ",
   "Entered by mistake": "ತಪ್ಪಾಗಿ ನಮೂದಿಸಲಾಗಿದೆ",
   "Item unavailable": "ತಿನಿಸು ಲಭ್ಯವಿಲ್ಲ",
-  "Duplicate order": "ನಕಲಿ ಆರ್ಡರ್"
+  "Duplicate order": "ನಕಲಿ ಆರ್ಡರ್",
+  "Send verification code": "ಪರಿಶೀಲನಾ ಕೋಡ್ ಕಳುಹಿಸಿ",
+  "Resend code": "ಕೋಡ್ ಮತ್ತೆ ಕಳುಹಿಸಿ",
+  "Check the verification code.": "ಪರಿಶೀಲನಾ ಕೋಡ್ ಪರಿಶೀಲಿಸಿ.",
+  "Request a new verification code.": "ಹೊಸ ಪರಿಶೀಲನಾ ಕೋಡ್ ವಿನಂತಿಸಿ.",
+  "Enter a phone number with country code.": "ದೇಶದ ಕೋಡ್ ಜೊತೆಗೆ ಫೋನ್ ಸಂಖ್ಯೆ ನಮೂದಿಸಿ.",
+  "Could not send the code. Check SMS settings or try again later.": "ಕೋಡ್ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. SMS ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ಅಥವಾ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
 }

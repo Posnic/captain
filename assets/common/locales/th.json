@@ -960,5 +960,11 @@
   "Customer requested": "ลูกค้าร้องขอ",
   "Entered by mistake": "ป้อนข้อมูลผิดพลาด",
   "Item unavailable": "รายการอาหารหมด",
-  "Duplicate order": "คำสั่งซื้อซ้ำ"
+  "Duplicate order": "คำสั่งซื้อซ้ำ",
+  "Send verification code": "ส่งรหัสยืนยัน",
+  "Resend code": "ส่งรหัสอีกครั้ง",
+  "Check the verification code.": "ตรวจสอบรหัสยืนยัน",
+  "Request a new verification code.": "ขอรหัสยืนยันใหม่",
+  "Enter a phone number with country code.": "ป้อนหมายเลขโทรศัพท์พร้อมรหัสประเทศ",
+  "Could not send the code. Check SMS settings or try again later.": "ไม่สามารถส่งรหัสได้ ตรวจสอบการตั้งค่า SMS หรือลองอีกครั้งในภายหลัง"
 }

@@ -960,5 +960,11 @@
   "Customer requested": "Op verzoek van de klant",
   "Entered by mistake": "Per ongeluk ingevoerd",
   "Item unavailable": "Artikel niet beschikbaar",
-  "Duplicate order": "Dubbele bestelling"
+  "Duplicate order": "Dubbele bestelling",
+  "Check the verification code.": "Controleer de verificatiecode.",
+  "Could not send the code. Check SMS settings or try again later.": "De code kon niet worden verzonden. Controleer de sms-instellingen of probeer het later opnieuw.",
+  "Enter a phone number with country code.": "Voer een telefoonnummer met landcode in.",
+  "Request a new verification code.": "Vraag een nieuwe verificatiecode aan.",
+  "Resend code": "Code opnieuw verzenden",
+  "Send verification code": "Verificatiecode verzenden"
 }

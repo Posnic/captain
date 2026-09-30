@@ -960,5 +960,11 @@
   "Customer requested": "Su richiesta del cliente",
   "Entered by mistake": "Inserito per errore",
   "Item unavailable": "Articolo non disponibile",
-  "Duplicate order": "Ordine duplicato"
+  "Duplicate order": "Ordine duplicato",
+  "Check the verification code.": "Controlla il codice di verifica.",
+  "Could not send the code. Check SMS settings or try again later.": "Impossibile inviare il codice. Controlla le impostazioni SMS o riprova più tardi.",
+  "Enter a phone number with country code.": "Inserisci un numero di telefono con il prefisso internazionale.",
+  "Request a new verification code.": "Richiedi un nuovo codice di verifica.",
+  "Resend code": "Invia di nuovo il codice",
+  "Send verification code": "Invia codice di verifica"
 }

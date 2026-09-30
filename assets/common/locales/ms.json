@@ -960,5 +960,11 @@
   "Customer requested": "Permintaan pelanggan",
   "Entered by mistake": "Dimasukkan secara tidak sengaja",
   "Item unavailable": "Item tidak tersedia",
-  "Duplicate order": "Pesanan pendua"
+  "Duplicate order": "Pesanan pendua",
+  "Send verification code": "Hantar kod pengesahan",
+  "Resend code": "Hantar semula kod",
+  "Check the verification code.": "Semak kod pengesahan.",
+  "Request a new verification code.": "Minta kod pengesahan baharu.",
+  "Enter a phone number with country code.": "Masukkan nombor telefon dengan kod negara.",
+  "Could not send the code. Check SMS settings or try again later.": "Tidak dapat menghantar kod. Semak tetapan SMS atau cuba lagi kemudian."
 }

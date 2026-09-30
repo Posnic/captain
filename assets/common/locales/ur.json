@@ -960,5 +960,11 @@
   "Customer requested": "گاہک کی درخواست پر",
   "Entered by mistake": "غلطی سے درج کیا گیا",
   "Item unavailable": "کھانا دستیاب نہیں",
-  "Duplicate order": "دہرایا گیا آرڈر"
+  "Duplicate order": "دہرایا گیا آرڈر",
+  "Send verification code": "تصدیقی کوڈ بھیجیں",
+  "Resend code": "کوڈ دوبارہ بھیجیں",
+  "Check the verification code.": "تصدیقی کوڈ چیک کریں۔",
+  "Request a new verification code.": "نئے تصدیقی کوڈ کی درخواست کریں۔",
+  "Enter a phone number with country code.": "ملکی کوڈ کے ساتھ فون نمبر درج کریں۔",
+  "Could not send the code. Check SMS settings or try again later.": "کوڈ نہیں بھیجا جا سکا۔ SMS کی ترتیبات چیک کریں یا بعد میں دوبارہ کوشش کریں۔"
 }

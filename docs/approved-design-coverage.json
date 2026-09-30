@@ -237,11 +237,15 @@
       "implementation": [
         "POS/api/src/services/captain-phone.js",
         "POS/api/src/routes/captain-access.routes.js",
-        "POS/api/src/services/captain-access.js"
+        "POS/api/src/services/captain-access.js",
+        "assets/me/profile.js",
+        "assets/common/app-design.css",
+        "tests/profile-design.spec.js"
       ],
       "verification": [
         "Internal phone verification service implemented with own-user/branch scope, E.164 input, hashed six-digit codes, ten-minute expiry, atomic resend throttling, five-attempt limit, failure cleanup and interrupted confirmation recovery. Five MongoDB tests and ESLint pass. Not routed or exposed in Captain yet; concurrency review, routes, translations and both screens remain required.",
-        "Authenticated phone start/verify routes added to Captain scope. Per-user challenge marker prevents a delayed old verification overwriting a newer request; concurrent starts send only one SMS. Ten phone/profile database tests and a real authenticated HTTP roundtrip with a test SMS sender pass; targeted ESLint passes. Captain screens and translated messages remain required; no real SMS was sent."
+        "Authenticated phone start/verify routes added to Captain scope. Per-user challenge marker prevents a delayed old verification overwriting a newer request; concurrent starts send only one SMS. Ten phone/profile database tests and a real authenticated HTTP roundtrip with a test SMS sender pass; targeted ESLint passes. Captain screens and translated messages remain required; no real SMS was sent.",
+        "Captain phone entry and code confirmation screens implemented with name-draft preservation, resend countdown, expiry recovery, native Back and clear server failure messages. Four new browser checks pass alongside seven existing profile/password checks; 577 unit checks and production build pass. Six new messages translated in all 30 languages. Real SMS delivery and device/visual acceptance remain unverified."
       ]
     },
     {
@@ -250,11 +254,15 @@
       "implementation": [
         "POS/api/src/services/captain-phone.js",
         "POS/api/src/routes/captain-access.routes.js",
-        "POS/api/src/services/captain-access.js"
+        "POS/api/src/services/captain-access.js",
+        "assets/me/profile.js",
+        "assets/common/app-design.css",
+        "tests/profile-design.spec.js"
       ],
       "verification": [
         "Internal phone verification service implemented with own-user/branch scope, E.164 input, hashed six-digit codes, ten-minute expiry, atomic resend throttling, five-attempt limit, failure cleanup and interrupted confirmation recovery. Five MongoDB tests and ESLint pass. Not routed or exposed in Captain yet; concurrency review, routes, translations and both screens remain required.",
-        "Authenticated phone start/verify routes added to Captain scope. Per-user challenge marker prevents a delayed old verification overwriting a newer request; concurrent starts send only one SMS. Ten phone/profile database tests and a real authenticated HTTP roundtrip with a test SMS sender pass; targeted ESLint passes. Captain screens and translated messages remain required; no real SMS was sent."
+        "Authenticated phone start/verify routes added to Captain scope. Per-user challenge marker prevents a delayed old verification overwriting a newer request; concurrent starts send only one SMS. Ten phone/profile database tests and a real authenticated HTTP roundtrip with a test SMS sender pass; targeted ESLint passes. Captain screens and translated messages remain required; no real SMS was sent.",
+        "Captain phone entry and code confirmation screens implemented with name-draft preservation, resend countdown, expiry recovery, native Back and clear server failure messages. Four new browser checks pass alongside seven existing profile/password checks; 577 unit checks and production build pass. Six new messages translated in all 30 languages. Real SMS delivery and device/visual acceptance remain unverified."
       ]
     },
     {

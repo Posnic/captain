@@ -960,5 +960,11 @@
   "Customer requested": "গ্রাহকের অনুরোধ",
   "Entered by mistake": "ভুল করে লেখা হয়েছে",
   "Item unavailable": "পদটি পাওয়া যাচ্ছে না",
-  "Duplicate order": "একই অর্ডার দুবার"
+  "Duplicate order": "একই অর্ডার দুবার",
+  "Send verification code": "যাচাইকরণ কোড পাঠান",
+  "Resend code": "কোড আবার পাঠান",
+  "Check the verification code.": "যাচাইকরণ কোড পরীক্ষা করুন।",
+  "Request a new verification code.": "নতুন যাচাইকরণ কোডের অনুরোধ করুন।",
+  "Enter a phone number with country code.": "দেশের কোডসহ ফোন নম্বর লিখুন।",
+  "Could not send the code. Check SMS settings or try again later.": "কোড পাঠানো যায়নি। SMS সেটিংস পরীক্ষা করুন অথবা পরে আবার চেষ্টা করুন।"
 }

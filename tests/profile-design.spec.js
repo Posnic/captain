@@ -81,3 +81,67 @@ test('failed password save preserves the draft and cancel requires confirmation'
   await page.locator('[data-profile-back]').click();
   await expect(page.locator('#me-password')).toBeVisible();
 });
+
+
+async function phoneScreen(page) {
+  await open(page);
+  await page.locator('#me-profile').click();
+  await page.locator('#profile-name').fill('Draft name');
+  await page.locator('[data-profile-phone]').click();
+}
+const challenge = {challenge:'phone-challenge',expiresAt:'2099-01-01T00:00:00Z',retryAfter:60};
+
+test('phone verification saves only after confirmation and preserves the name draft', async ({page}) => {
+  await phoneScreen(page);
+  const posts=[];
+  await page.route('**/captain/v1/profile/phone/*', route => {
+    posts.push(route.request().postDataJSON());
+    return route.fulfill({json:route.request().url().endsWith('/start') ? challenge : {saved:true,phone:'+919111111111'}});
+  });
+  await page.locator('#phone-number').fill('+91 91111 11111');
+  await page.locator('[data-phone-send]').click();
+  await expect(page.locator('#phone-code')).toBeVisible();
+  await expect(page.locator('[data-phone-resend]')).toBeDisabled();
+  await page.locator('#phone-code').fill('012345');
+  await page.locator('#phone-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('Saved');
+  await expect(page.locator('#profile-name')).toHaveValue('Draft name');
+  await expect(page.locator('.profile-detail').last()).toContainText('+919111111111');
+  expect(posts).toEqual([{phone:'+919111111111'},{challenge:'phone-challenge',code:'012345'}]);
+});
+
+test('expired code can be resent, invalid code keeps typing, and native Back steps out', async ({page}) => {
+  await phoneScreen(page);
+  let starts=0, verifies=0;
+  await page.route('**/captain/v1/profile/phone/*', route => {
+    if(route.request().url().endsWith('/start')) { starts++; return route.fulfill({json:challenge}); }
+    verifies++;
+    return route.fulfill({status:verifies===1?400:409,json:{message:'Invalid'}});
+  });
+  await page.locator('#phone-number').fill('+919111111111');
+  await page.locator('[data-phone-send]').click();
+  await page.locator('#phone-code').fill('123456');
+  await page.locator('#phone-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('Check the verification code.');
+  await expect(page.locator('#phone-code')).toHaveValue('123456');
+  await page.locator('#phone-form button[type=submit]').click();
+  await expect(page.locator('#profile-message')).toHaveText('Request a new verification code.');
+  await page.locator('[data-phone-resend]').click();
+  await expect.poll(()=>starts).toBe(2);
+  await expect(page.locator('#phone-code')).toHaveValue('');
+  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+  await expect(page.locator('#phone-number')).toHaveValue('+919111111111');
+  await page.locator('[data-profile-back]').click();
+  await expect(page.locator('#profile-name')).toHaveValue('Draft name');
+  await expect(page.locator('.profile-detail').last()).toContainText('+919000000000');
+});
+
+for(const status of [404,503]) test(`phone start failure ${status} preserves the number`,async({page})=>{
+  await phoneScreen(page);
+  await page.route('**/captain/v1/profile/phone/start',route=>route.fulfill({status,json:{message:'Unavailable'}}));
+  await page.locator('#phone-number').fill('+919111111111');
+  await page.locator('[data-phone-send]').click();
+  await expect(page.locator('#profile-message')).toContainText(status===404?'too old':'SMS settings');
+  await expect(page.locator('#phone-number')).toHaveValue('+919111111111');
+  await expect(page.locator('[data-phone-send]')).toBeEnabled();
+});

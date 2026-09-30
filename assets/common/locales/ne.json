@@ -960,5 +960,11 @@
   "Customer requested": "ग्राहकको अनुरोधमा",
   "Entered by mistake": "गल्तीले प्रविष्ट गरियो",
   "Item unavailable": "परिकार उपलब्ध छैन",
-  "Duplicate order": "दोहोरिएको अर्डर"
+  "Duplicate order": "दोहोरिएको अर्डर",
+  "Send verification code": "प्रमाणीकरण कोड पठाउनुहोस्",
+  "Resend code": "कोड फेरि पठाउनुहोस्",
+  "Check the verification code.": "प्रमाणीकरण कोड जाँच गर्नुहोस्।",
+  "Request a new verification code.": "नयाँ प्रमाणीकरण कोड अनुरोध गर्नुहोस्।",
+  "Enter a phone number with country code.": "देशको कोडसहित फोन नम्बर प्रविष्ट गर्नुहोस्।",
+  "Could not send the code. Check SMS settings or try again later.": "कोड पठाउन सकिएन। SMS सेटिङहरू जाँच गर्नुहोस् वा पछि फेरि प्रयास गर्नुहोस्।"
 }

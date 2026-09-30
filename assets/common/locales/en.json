@@ -960,5 +960,11 @@
   "Customer requested": "Customer requested",
   "Entered by mistake": "Entered by mistake",
   "Item unavailable": "Item unavailable",
-  "Duplicate order": "Duplicate order"
+  "Duplicate order": "Duplicate order",
+  "Send verification code": "Send verification code",
+  "Resend code": "Resend code",
+  "Check the verification code.": "Check the verification code.",
+  "Request a new verification code.": "Request a new verification code.",
+  "Enter a phone number with country code.": "Enter a phone number with country code.",
+  "Could not send the code. Check SMS settings or try again later.": "Could not send the code. Check SMS settings or try again later."
 }

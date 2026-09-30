@@ -960,5 +960,11 @@
   "Customer requested": "පාරිභෝගික ඉල්ලීම",
   "Entered by mistake": "වැරදීමකින් ඇතුළත් කළා",
   "Item unavailable": "කෑම වර්ගය නොමැත",
-  "Duplicate order": "නැවත ඇතුළත් කළ ඇණවුම"
+  "Duplicate order": "නැවත ඇතුළත් කළ ඇණවුම",
+  "Send verification code": "තහවුරු කිරීමේ කේතය යවන්න",
+  "Resend code": "කේතය නැවත යවන්න",
+  "Check the verification code.": "තහවුරු කිරීමේ කේතය පරීක්ෂා කරන්න.",
+  "Request a new verification code.": "නව තහවුරු කිරීමේ කේතයක් ඉල්ලන්න.",
+  "Enter a phone number with country code.": "රටේ කේතය සමඟ දුරකථන අංකයක් ඇතුළත් කරන්න.",
+  "Could not send the code. Check SMS settings or try again later.": "කේතය යැවීමට නොහැකි විය. SMS සැකසුම් පරීක්ෂා කරන්න හෝ පසුව නැවත උත්සාහ කරන්න."
 }
