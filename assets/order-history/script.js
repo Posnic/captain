@@ -445,14 +445,14 @@ async function saveOrderChanges() {
 
     const desc = document.getElementById('edit-discount-description').value.trim();
 
-    let extraType = '';
-    let extraVal = 0;
-
-    if (discountValue > 0) {
-        extraType = discountType;   // 'percent' or 'amount'
-        extraVal = discountValue;
-    }
     const order = allOrders.find(o => o._id === currentOrderId) || {};
+    const priorType = ['amount', 'price', 'fixed'].includes(String(order.extra_discount_type || '').toLowerCase()) ? 'amount' : 'percent';
+    const priorValue = Number(order.extra_discount || 0);
+    // Hidden discount controls must not replace a bill discount during an item edit.
+    const discountChanged = discountValue !== priorValue || (discountValue !== 0 && discountType !== priorType);
+    const preserveAllocation = order.transfer_allocated === true && !discountChanged;
+    const extraType = preserveAllocation ? null : discountType;
+    const extraVal = preserveAllocation ? null : discountValue;
     const dineTypeRadio = document.querySelector('input[name="edit_dine_type"]:checked');
     const dineType = dineTypeRadio ? dineTypeRadio.value : (order.dine_type || 'Dine-in');
     const tableRadio = document.querySelector('input[name="edit_table_no"]:checked');
@@ -1482,7 +1482,7 @@ function openEditOrderModal() {
         return;
     }
 
-    const type = order.extra_discount_type || 'percent';
+    const type = ['amount', 'price', 'fixed'].includes(String(order.extra_discount_type || '').toLowerCase()) ? 'amount' : 'percent';
     const val = order.extra_discount || 0;
 
     document.getElementById('edit-discount-value').value = val;

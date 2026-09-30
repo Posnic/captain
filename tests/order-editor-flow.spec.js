@@ -288,3 +288,24 @@ test('a failed claimed-order type change locks its saved intent and retries the 
  expect(bodies).toHaveLength(4);
  expect(new Set(bodies.map(body=>body.request_id)).size).toBe(1);
 });
+
+
+for(const type of ['amount','price','fixed','percent'])test(`item edits preserve the existing ${type} bill discount`,async({page})=>{
+ const posts=await editor(page,'order-history.html',{extra_discount:10,extra_discount_type:type,transfer_allocated:true});
+ await expect(page.locator('#edit-discount-value')).toHaveValue('10');
+ await expect(page.locator(type==='percent'?'#edit-discount-percent':'#edit-discount-amount')).toBeChecked();
+ await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts).toHaveLength(1);
+ expect(posts[0]).toMatchObject({extra_discount:null,extra_discount_type:null});
+});
+
+
+test('ordinary fixed discount remains in legacy-server item updates',async({page})=>{
+ const posts=await editor(page,'order-history.html',{extra_discount:10,extra_discount_type:'price'});
+ await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts[0]).toMatchObject({extra_discount:10,extra_discount_type:'amount'});
+});
