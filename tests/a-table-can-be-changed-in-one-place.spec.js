@@ -310,3 +310,29 @@ test('a saved move can be cancelled and a lost cancellation reply survives reloa
  expect(cancels).toBe(2);
  expect(await page.evaluate(()=>CaptainGroupMove.pending('ord-1'))).toBeNull();
 });
+
+test('a group move selects neighbouring seats and sends the chosen primary table',async({page})=>{
+ await onTheOrderList(page);
+ await page.route('**/sales/getOrderHistory',route=>route.fulfill({json:{type:'success',data:{orders:ORDERS.map(order=>order._id==='ord-1'?{...order,person_count:4,seating_request_id:'seating-original'}:order)}}}));
+ await page.evaluate(()=>loadOrderHistory());
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[
+   {id:'table-a',tableorder_value:'20',capacity:2,max_capacity:2,adjacent_table_ids:['table-b']},
+   {id:'table-b',tableorder_value:'21',capacity:2,max_capacity:2,adjacent_table_ids:[]},
+   {id:'table-c',tableorder_value:'22',capacity:4,max_capacity:4,adjacent_table_ids:[]}
+ ]}}));
+ let prepared;
+ await page.route('**/captain/v1/tables/move/prepare',route=>{prepared=route.request().postDataJSON();return route.fulfill({json:{request_id:prepared.request_id,orderId:'ord-1',state:'reserved'}});});
+ await page.route('**/captain/v1/tables/move/complete',route=>route.fulfill({json:{request_id:route.request().postDataJSON().request_id,orderId:'ord-1',state:'submitting'}}));
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await page.locator('.move-table[data-value="20"]').click();
+ await expect(page.locator('#move-table-go')).toBeDisabled();
+ await expect(page.locator('.move-table[data-value="22"]')).toBeDisabled();
+ await page.locator('.move-table[data-value="21"]').click();
+ await expect(page.locator('#move-table-go')).toBeEnabled();
+ await page.locator('#move-primary').selectOption('table-b');
+ await page.locator('#move-table-go').click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+ expect(prepared.tableIds).toEqual(['table-a','table-b']);
+ expect(prepared.primaryId).toBe('table-b');
+ expect(prepared.guests).toBe(4);
+});

@@ -99,3 +99,14 @@ test('a generic cancellation conflict cannot complete a still reserved move',asy
  assert.equal(a.calls.some(url=>url.endsWith('complete')),false);
  assert.equal(a.api.pending('order-1').cancel,true);
 });
+
+test('group selection counts connected seats and rejects disconnected or unknown-capacity groups',()=>{
+ const a=app();
+ const tables=[{id:'a',capacity:2,max:3,adjacent:['b']},{id:'b',capacity:2,max:3,adjacent:['c']},{id:'c',capacity:2,max:3,adjacent:[]}];
+ assert.equal(a.api.selection(tables,['a','b','c'],'b',8).valid,true);
+ assert.equal(a.api.selection(tables,['a','c'],'a',4).valid,false);
+ assert.equal(a.api.selection(tables,['a','b'],'a',7).valid,false);
+ assert.equal(a.api.selection(tables,['a','b'],'c',4).valid,false);
+ tables[1].capacity=0;tables[1].max=0;
+ assert.equal(a.api.selection(tables,['a','b'],'a',2).valid,false);
+});

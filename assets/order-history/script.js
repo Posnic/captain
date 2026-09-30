@@ -1025,6 +1025,7 @@ function tablesFromStorage(rows) {
                 description: CaptainTables.description(t),
                 serviceState: t.status || t.service_state,
                 orders: t.orders || [],
+                adjacent: (t.adjacent_table_ids || []).map(String),
                 closing: Boolean(t.closing),
                 id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.id || t.tableorder_id || t.table_id || '',
             };
@@ -1051,6 +1052,7 @@ function tablesFromStorage(rows) {
 let orderBeingMoved = null;
 let moveSaving = false;
 let moveLoadVersion = 0, moveTables = [];
+let moveSelected = [], movePrimary = "";
 
 /*
  * BUILT HERE, not written into a page.
@@ -1136,6 +1138,7 @@ async function refreshMoveTables() {
     const retry = document.getElementById('move-table-retry');
     const go = document.getElementById('move-table-go');
     moveTables = [];
+    moveSelected = []; movePrimary = "";
     document.getElementById('move-table-list').replaceChildren();
     go.disabled = true;
     retry.hidden = true;
@@ -1192,6 +1195,7 @@ function renderMoveTables() {
             .filter(Boolean)
     );
 
+    if (order.seating_request_id) { renderGroupMoveTables(); return; }
     const tables = moveTables;
     for (const table of tables) if (table.orders.some(row => row.id !== order._id)) busy.add(table.value);
     if (!tables.length) {
@@ -1223,6 +1227,40 @@ function renderMoveTables() {
         .join('');
 }
 
+function groupMoveSelection() {
+    return CaptainGroupMove.selection(moveTables, moveSelected, movePrimary, Number(orderBeingMoved.person_count || 1));
+}
+function renderGroupMoveTables() {
+    const container=document.getElementById('move-table-list');
+    const t=key=>window.I18N?.t(key)||key;
+    const esc=CaptainTables.esc;
+    const current=groupMoveSelection();
+    container.innerHTML=moveTables.map(row=>{
+        const selected=moveSelected.includes(row.id);
+        const otherOrders=row.orders.some(order=>order.id!==orderBeingMoved._id);
+        const unavailable=row.closing || ['held','cleaning'].includes(row.serviceState) || otherOrders;
+        const adjacent=!moveSelected.length || moveSelected.some(id=>{
+            const member=moveTables.find(table=>table.id===id);
+            return row.adjacent.includes(id) || member?.adjacent.includes(row.id);
+        });
+        return `<button type="button" class="move-table${selected?' is-chosen':''}" data-id="${esc(row.id)}" data-value="${esc(row.value)}" aria-pressed="${selected}" ${unavailable||(!selected&&!adjacent)?'disabled':''}>
+          <span class="move-table-no">${esc(row.label)}</span><span class="move-table-note">${esc(row.description)}</span>
+          ${unavailable?`<span class="move-table-note">${esc(t(row.serviceState==='cleaning'?'Cleaning':row.serviceState==='held'?'Held':'Occupied'))}</span>`:''}
+          <span class="move-table-note">${esc(t('Can combine with'))}: ${esc(moveTables.filter(other=>row.adjacent.includes(other.id)||other.adjacent.includes(row.id)).map(other=>other.label).join(', ')||'—')}</span>
+        </button>`;
+    }).join('');
+    if(moveSelected.length){
+        container.insertAdjacentHTML('beforeend',`<label>${esc(t('Table'))}<select id="move-primary" class="form-select">${moveSelected.map(id=>`<option value="${esc(id)}" ${id===movePrimary?'selected':''}>${esc(moveTables.find(row=>row.id===id).label)}</option>`).join('')}</select></label>`);
+        container.querySelector('#move-primary').addEventListener('change',event=>{movePrimary=event.target.value;renderGroupMoveTables();});
+    }
+    const message=document.getElementById('move-table-status');
+    message.textContent=moveSelected.length ? t('Seat capacity')+': '+current.maximum+' · '+t('Guests')+': '+current.guests : t('Choose a table');
+    const unchanged=JSON.stringify([...moveSelected].sort())===JSON.stringify([...(orderBeingMoved.seating_table_ids||[])].sort()) && movePrimary===orderBeingMoved.seating_primary_id;
+    const go=document.getElementById('move-table-go');
+    go.disabled=!current.valid||unchanged;
+    go.textContent=t('Save');
+}
+
 /*
  * Chosen, then confirmed. A tap that moved an order the moment it landed
  * would make a mis-tap into a table change the kitchen hears about, and the
@@ -1232,6 +1270,13 @@ function chooseMoveTable(button) {
     if (moveSaving || button.disabled) return;
     const list = document.getElementById('move-table-list');
     if (!list) return;
+    if (orderBeingMoved.seating_request_id) {
+        const id=button.dataset.id;
+        moveSelected=moveSelected.includes(id)?moveSelected.filter(value=>value!==id):[...moveSelected,id];
+        if(!moveSelected.includes(movePrimary))movePrimary=moveSelected[0]||'';
+        renderGroupMoveTables();
+        return;
+    }
     for (const other of list.querySelectorAll('.move-table')) other.classList.remove('is-chosen');
     button.classList.add('is-chosen');
 
@@ -1254,9 +1299,10 @@ async function confirmMoveTable(cancelPending = false) {
         return;
     }
     if (!order || (!pending && (!chosen || chosen.disabled))) return;
+    if (!pending && order.seating_request_id && !groupMoveSelection().valid) return;
     moveSaving = true;
     const sheet = document.getElementById('moveTableModal');
-    const controls = [...sheet.querySelectorAll('button')].map(button => ({button, disabled:button.disabled}));
+    const controls = [...sheet.querySelectorAll('button,select')].map(button => ({button, disabled:button.disabled}));
     controls.forEach(({button}) => button.disabled = true);
     sheet.setAttribute('aria-busy', 'true');
 
@@ -1272,7 +1318,7 @@ async function confirmMoveTable(cancelPending = false) {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, {tableIds:[chosen.dataset.id],primaryId:chosen.dataset.id,guests:Number(order.person_count || 1)}) : await CaptainOrderActions.save( {
+        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, groupMoveSelection()) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1286,7 +1332,7 @@ async function confirmMoveTable(cancelPending = false) {
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
         moveSaving = false;
-        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : pending ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
+        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : (pending || order.seating_request_id) ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
         if (el && typeof bootstrap !== 'undefined') {

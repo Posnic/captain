@@ -70,5 +70,26 @@
     localStorage.setItem(storageKey,JSON.stringify(entry));
     return run(entry);
   }
-  root.CaptainGroupMove={cancel,pending:read,move:(order,selection)=>run(save(order,selection)),resume:order=>{const entry=read(order);if(!entry)throw new Error(root.I18N?.t('Choose a table first.') || 'Choose a table first.');return run(entry);}};
+  function selection(tables, ids, primaryId, guests) {
+    const tableIds=[...new Set(ids)];
+    const rows=tableIds.map(id=>tables.find(row=>row.id===id));
+    const reached=new Set(tableIds.length?[tableIds[0]]:[]);
+    let changed=true;
+    while(changed){
+      changed=false;
+      for(const row of rows.filter(Boolean))for(const other of rows.filter(Boolean)){
+        if(reached.has(row.id) && !reached.has(other.id) &&
+          ((row.adjacent||[]).includes(other.id)||(other.adjacent||[]).includes(row.id))){
+          reached.add(other.id);changed=true;
+        }
+      }
+    }
+    const maximum=rows.reduce((sum,row)=>sum+(row?.max||0),0);
+    const known=rows.every(row=>row?.capacity>0 && row?.max>0);
+    return {tableIds,primaryId,guests,maximum,
+      valid:tableIds.length>0 && tableIds.length<=20 && rows.every(Boolean) &&
+        tableIds.includes(primaryId) && reached.size===tableIds.length &&
+        (tableIds.length===1 || known) && (!maximum || guests<=maximum)};
+  }
+  root.CaptainGroupMove={selection,cancel,pending:read,move:(order,selection)=>run(save(order,selection)),resume:order=>{const entry=read(order);if(!entry)throw new Error(root.I18N?.t('Choose a table first.') || 'Choose a table first.');return run(entry);}};
 })(globalThis);
