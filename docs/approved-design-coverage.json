@@ -70,11 +70,13 @@
         "assets/common/service-rounds.js",
         "assets/common/service-details.js",
         "assets/kot/script.js",
-        "assets/common/order-actions.js"
+        "assets/common/order-actions.js",
+        "POS/api/src/services/captain-service.js"
       ],
       "verification": [
         "Serving or firing a course preserves assigned staff, expanded order options and valid unsubmitted partial quantities on other dishes. Capability checks follow the order branch rather than drifting phone state. Six browser checks pass across 390/800/1280px, partial and whole serving, 201-line batches, recovery and held-course release. 577 unit checks and production build pass; complete detail design review remains.",
-        "Staff handover requires explicit staff selection, supports retrying staff-list failures, blocks dismissal and duplicate submission while saving, and retains the request ID when retrying the same handover. Native Back during loading closes cleanly and ignores late results. Six order-action browser checks, 577 unit checks and production build pass; server/device integration remains."
+        "Staff handover requires explicit staff selection, supports retrying staff-list failures, blocks dismissal and duplicate submission while saving, and retains the request ID when retrying the same handover. Native Back during loading closes cleanly and ignores late results. Six order-action browser checks, 577 unit checks and production build pass; server/device integration remains.",
+        "POS handover retries are bound to original actor and recipient. Concurrent identical requests create one audit entry, changed request payloads/actors conflict, and delayed retries cannot overwrite or falsely confirm superseded assignments. Nine real-Mongo service tests and targeted ESLint pass. Complete handover device acceptance remains."
       ]
     },
     {
