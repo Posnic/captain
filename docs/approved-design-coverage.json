@@ -76,7 +76,8 @@
       "verification": [
         "Serving or firing a course preserves assigned staff, expanded order options and valid unsubmitted partial quantities on other dishes. Capability checks follow the order branch rather than drifting phone state. Six browser checks pass across 390/800/1280px, partial and whole serving, 201-line batches, recovery and held-course release. 577 unit checks and production build pass; complete detail design review remains.",
         "Staff handover requires explicit staff selection, supports retrying staff-list failures, blocks dismissal and duplicate submission while saving, and retains the request ID when retrying the same handover. Native Back during loading closes cleanly and ignores late results. Six order-action browser checks, 577 unit checks and production build pass; server/device integration remains.",
-        "POS handover retries are bound to original actor and recipient. Concurrent identical requests create one audit entry, changed request payloads/actors conflict, and delayed retries cannot overwrite or falsely confirm superseded assignments. Nine real-Mongo service tests and targeted ESLint pass. Complete handover device acceptance remains."
+        "POS handover retries are bound to original actor and recipient. Concurrent identical requests create one audit entry, changed request payloads/actors conflict, and delayed retries cannot overwrite or falsely confirm superseded assignments. Nine real-Mongo service tests and targeted ESLint pass. Complete handover device acceptance remains.",
+        "Kitchen-delivery dialog retains confirmed reports when refresh fails, supports native Back during loading, ignores late responses after closing, and lists each printer state independently. Eight order-action browser checks (including accepted/failed/pending printers), 577 unit checks and production build pass. Physical multi-printer output remains a separate required acceptance check."
       ]
     },
     {

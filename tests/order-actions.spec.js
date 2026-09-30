@@ -93,3 +93,44 @@ test('Back closes a loading handover and a late staff response cannot reopen it'
  await expect(page.locator('[data-handover-sale]')).toBeFocused();
  await expect(page.locator('[data-handover-dialog]')).toHaveCount(0);
 });
+
+
+test('delivery status lists every printer and preserves reports when refresh fails',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>{
+  document.body.insertAdjacentHTML('beforeend','<button data-delivery-sale="order-1">Delivery test</button>');
+  window.deliveryLoads=0;
+  POSNIC.api.get=async()=>{
+   if(++deliveryLoads===2)throw new Error('Could not load delivery status.');
+   return {type:'success',data:{displays:[{till:'Kitchen display',at:new Date().toISOString(),recent:true}],reports:[{at:new Date().toISOString(),printers:[{name:'Hot kitchen',state:'accepted'},{name:'Bar',state:'failed',reason:'Paper empty'},{name:'Cold kitchen',state:'pending'}]}]}};
+  };
+ });
+ await page.locator('[data-delivery-sale]').click();
+ const dialog=page.locator('[data-delivery-dialog]');
+ await expect(dialog.locator('.delivery-body')).toContainText('Hot kitchen · Accepted by printer system');
+ await expect(dialog.locator('.delivery-body')).toContainText('Bar · Printing failed');
+ await expect(dialog.locator('.delivery-body')).toContainText('Paper empty');
+ await expect(dialog.locator('.delivery-body')).toContainText('Cold kitchen · Printing pending');
+ await dialog.locator('[data-refresh]').click();
+ await expect(dialog.locator('[role=status]')).toHaveText('Could not load delivery status.');
+ await expect(dialog.locator('.delivery-body')).toContainText('Hot kitchen');
+ await dialog.locator('[data-refresh]').click();
+ await expect(dialog.locator('[role=status]')).toBeEmpty();
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(dialog).toHaveCount(0);await expect(page.locator('[data-delivery-sale]')).toBeFocused();
+});
+
+test('delivery Back works during loading and late reports do not reopen the dialog',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>{
+  document.body.insertAdjacentHTML('beforeend','<button data-delivery-sale="order-1">Delivery test</button>');
+  POSNIC.api.get=()=>new Promise(resolve=>{window.finishDelivery=()=>resolve({type:'success',data:{displays:[],reports:[]}});});
+ });
+ await page.locator('[data-delivery-sale]').click();
+ await expect(page.locator('[data-delivery-dialog]')).toHaveAttribute('aria-busy','true');
+ await expect(page.locator('[data-refresh]')).toBeDisabled();
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await page.evaluate(()=>window.finishDelivery());
+ await expect(page.locator('[data-delivery-dialog]')).toHaveCount(0);
+ await expect(page.locator('[data-delivery-sale]')).toBeFocused();
+});

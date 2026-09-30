@@ -90,18 +90,24 @@
     await load();
   });
   document.addEventListener('click',async event=>{
-    const button=event.target.closest('[data-delivery-sale]');if(!button)return;
-    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';
-    dialog.innerHTML='<h2>Kitchen delivery</h2><div class="delivery-body" role="status">Loading...</div><footer><button type="button" data-refresh>Refresh</button><button type="button" data-close>Close</button></footer>';
+    const button=event.target.closest('[data-delivery-sale]');if(!button||document.querySelector('[data-delivery-dialog]'))return;
+    const dialog=document.createElement('dialog');dialog.className='captain-action-dialog';dialog.dataset.deliveryDialog='';
+    dialog.innerHTML='<h2>Kitchen delivery</h2><p class="delivery-status" role="status">Loading...</p><div class="delivery-body"></div><footer><button type="button" data-refresh>Refresh</button><button type="button" data-close>Close</button></footer>';
     document.body.append(dialog);root.I18N?.apply(dialog);dialog.showModal();
-    const close=()=>{dialog.close();dialog.remove();button.focus();};dialog.querySelector('[data-close]').onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
-    const body=dialog.querySelector('.delivery-body'),refresh=dialog.querySelector('[data-refresh]');
+    let closed=false,loading=false;
+    const close=()=>{closed=true;window.removeEventListener('captain:back',nativeBack,true);dialog.close();dialog.remove();button.focus();};
+    const nativeBack=event=>{event.preventDefault();event.stopImmediatePropagation();close();};
+    window.addEventListener('captain:back',nativeBack,true);
+    dialog.querySelector('[data-close]').onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
+    const body=dialog.querySelector('.delivery-body'),refresh=dialog.querySelector('[data-refresh]'),status=dialog.querySelector('.delivery-status');
     const load=async()=>{
-      refresh.disabled=true;
+      if(closed||loading)return;loading=true;
+      refresh.disabled=true;dialog.setAttribute('aria-busy','true');status.textContent=t('Loading...');
       try{
         const response=await POSNIC.api.get('/sales/kitchenDeliveryStatus?saleId='+encodeURIComponent(button.dataset.deliverySale));
-        if(response.type!=='success')throw new Error(response.message||'Could not load delivery status.');
-        body.replaceChildren();
+        if(closed)return;
+        if(response.type!=='success'||!response.data||!Array.isArray(response.data.displays)||!Array.isArray(response.data.reports)||response.data.reports.some(report=>!Array.isArray(report.printers)))throw new Error(response.message||'Could not load delivery status.');
+        body.replaceChildren();status.textContent='';
         const add=(text,tag='p')=>{const element=document.createElement(tag);element.textContent=text;body.append(element);};
         add(t('Order saved on server'));
         add(t('Kitchen display'),'h3');
@@ -118,8 +124,8 @@
           }
         }
         add(t('Printer acceptance does not confirm paper output. Check the desktop printing log before reprinting.'));
-      }catch(error){body.textContent=t(error.message||'Could not load delivery status.');}
-      finally{refresh.disabled=false;}
+      }catch(error){if(!closed)status.textContent=t(error.message||'Could not load delivery status.');}
+      finally{loading=false;refresh.disabled=false;dialog.removeAttribute('aria-busy');}
     };
     refresh.onclick=load;await load();
   });
