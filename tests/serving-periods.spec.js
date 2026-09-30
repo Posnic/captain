@@ -15,3 +15,28 @@ test('serving labels survive caching, update with branch time and never hide the
  await expect(page.locator('.dish-serving')).toContainText('Breakfast');
  await expect(page.locator('.dish-serving.is-current')).toHaveCount(0);
 });
+
+test('meal choices filter browsing but search can still find and add any menu item',async({page})=>{
+ await page.clock.setFixedTime(new Date('2026-09-30T03:00:00Z'));
+ await onTheMenu(page,'nothing',{menu:[{category_name:'Food',items:[item('p-breakfast','Breakfast plate',100,{serving_time_zone:'Asia/Kolkata',serving_periods:[{id:'breakfast',name:'Breakfast',hours:{wed:[{open:420,close:660}]}}]}),item('p-dinner','Dinner plate',150,{serving_time_zone:'Asia/Kolkata',serving_periods:[{id:'dinner',name:'Dinner',hours:{wed:[{open:1080,close:1380}]}}]}),item('p-all','Coffee',50)]}]});
+ await page.locator('#meal-menu button[data-period="breakfast"]').click();
+ await expect(page.locator('.dish')).toHaveCount(1);
+ await expect(page.locator('.dish-name')).toHaveText('Breakfast plate');
+ await page.locator('.btn-add[data-id="p-breakfast"]').click();
+ await page.locator('#meal-menu button[data-period="dinner"]').click();
+ await expect(page.locator('.dish-name')).toHaveText('Dinner plate');
+ await page.locator('#product-search-input').fill('coffee');
+ await expect(page.locator('.dish-name')).toHaveText('Coffee');
+ await page.locator('.btn-add[data-id="p-all"]').click();
+ await expect(page.locator('#product-search-input')).toHaveValue('');
+ await expect(page.locator('#meal-menu button[data-period=""]')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.dish')).toHaveCount(3);
+ await expect(page.locator('#bill-count')).toHaveText('2 items');
+ await page.locator('#meal-menu button[data-period="breakfast"]').click();
+ await page.clock.setFixedTime(new Date('2026-09-30T05:30:00Z'));
+ await page.evaluate(()=>ServingPeriods.refresh());
+ await expect(page.locator('#meal-menu button[data-period="breakfast"] small')).toBeHidden();
+ await expect(page.locator('#meal-menu button[data-period="breakfast"]')).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.dish')).toHaveCount(1);
+ await page.screenshot({path:'test-artifacts/meal-period-menu.png',fullPage:true});
+});

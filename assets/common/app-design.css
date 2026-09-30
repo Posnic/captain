@@ -160,3 +160,11 @@ button.bill-what { background: transparent; color: var(--ink); border: 0; paddin
 .dish-serving.is-current { color: var(--good); }
 
 .dish-serving [hidden] { display: none; }
+
+#meal-menu { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 12px; background: var(--surface); }
+#meal-menu[hidden], .is-searching #meal-menu { display: none; }
+#meal-menu button { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+#meal-menu button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+#meal-menu small { font-weight: 400; font-size: 12px; }
+
+#meal-menu button { border-radius: 999px !important; }

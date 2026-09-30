@@ -31,6 +31,7 @@
         });
       } catch { /* A malformed row never stops the rest of the menu. */ }
     });
+    globalThis.dispatchEvent?.(new Event('posnic:serving-periods')) ;
   }
   if (globalThis.document) {
     document.addEventListener('visibilitychange', refresh);

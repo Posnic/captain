@@ -1277,6 +1277,7 @@ async function applyProductFilter() {
     window._pendingQuantity = typed.quantity;
     const term = typed.term.trim().toLowerCase();
     showQuantityHint(typed.quantity);
+    if (term) window.MealMenu?.reset();
 
     /*
      * Searching is a different screen, and the keyboard has already taken
