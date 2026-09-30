@@ -30,7 +30,7 @@
         throw new Error("invalid_table_response");
       rows = data.tables;
       canManage = data.canManage === true;
-      localStorage.setItem(
+      try { localStorage.setItem(
         "kiosk_tableorders",
         JSON.stringify(
           rows.map((row) => ({
@@ -38,13 +38,13 @@
             service_state: row.status === "occupied" ? "available" : row.status,
           })),
         ),
-      );
+      ); } catch { /* A full device cache must not hide the live table list. */ }
       list();
       say("");
       if(requestedTable){const target=rows.find(row=>row.tableorder_value===requestedTable);requestedTable=null;if(target){edit(target);if(target.closing || (target.orders?.length&&target.orders.every(order=>order.paid)))reviewClose();}}
       return true;
-    } catch {
-      say("Connection failed");
+    } catch (error) {
+      say(error.status === 403 ? "Permission is required." : "Connection failed");
       return false;
     } finally {
       busy = false;
@@ -56,7 +56,7 @@
     dirty = false;
     at("tables-refresh").hidden = false;
     at("table-management-content").innerHTML =
-      `${canManage ? `<button type="button" class="profile-primary table-add" data-action="add">${esc(t("Add table"))}</button>` : ""}<div class="managed-tables">${rows.map((row) => `<button type="button" class="managed-table" data-table="${esc(row.id)}"><span class="managed-shape shape-${esc(row.shape)}" aria-hidden="true"></span><strong translate="no">${esc(row.tableorder_value)}</strong><span class="managed-state state-${esc(row.status)}">${esc(status(row))}</span><small translate="no">${esc(CaptainTables.description(row))}</small></button>`).join("")}</div>`;
+      `${canManage ? `<button type="button" class="profile-primary table-add" data-action="add">${esc(t("Add table"))}</button>` : ""}${!rows.length ? `<p class="me-note" role="status">${esc(t("No tables set up yet."))}</p>` : ""}<div class="managed-tables">${rows.map((row) => `<button type="button" class="managed-table" data-table="${esc(row.id)}"><span class="managed-shape shape-${esc(row.shape)}" aria-hidden="true"></span><strong translate="no">${esc(row.tableorder_value)}</strong><span class="managed-state state-${esc(row.status)}">${esc(status(row))}</span><small translate="no">${esc(CaptainTables.description(row))}</small></button>`).join("")}</div>`;
   }
   function field(label, id, value, type = "text") {
     return `<label class="profile-field">${esc(t(label))}<input id="${id}" name="${id}" class="ui-field" type="${type}" value="${esc(value)}" ${type === "number" ? 'min="1" max="1000" step="1"' : ""}></label>`;
@@ -87,7 +87,13 @@
       at("tableorder_value").maxLength = 6;
       at("tableorder_value").pattern = "[A-Za-z0-9]{1,6}";
       at("area").maxLength = 60;
+      seatLimits();
     }
+  }
+  function seatLimits() {
+    if (!editingSettings || !at("max_capacity")) return;
+    at("max_capacity").min = String(Math.max(1, Number(at("capacity").value) || 1));
+    at("max_capacity").placeholder = at("capacity").value;
   }
   function stateButtons() {
     if (!selected?.id) return "";
@@ -126,7 +132,7 @@
       if(editingSettings && selected.id){edit(selected);return;}
       list();
       say("");
-    } else location.href = fromFloor ? "kot-management.html" : "me.html";
+    } else location.href = fromFloor ? "kot-management.html" : "me.html#preferences";
   }
   async function save(body, stateChange = false) {
     if (busy) return;
@@ -176,11 +182,11 @@
     };
     at("table-management-content").addEventListener(
       "input",
-      () => (dirty = true),
+      () => { dirty = true; seatLimits(); },
     );
     at("table-management-content").addEventListener(
       "change",
-      () => (dirty = true),
+      () => { dirty = true; seatLimits(); },
     );
     at("table-management-content").addEventListener("click", (event) => {
       const button = event.target.closest("button");

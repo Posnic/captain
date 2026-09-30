@@ -174,3 +174,10 @@ button.bill-what { background: transparent; color: var(--ink); border: 0; paddin
 body:has(#help-back) .me-row { box-sizing: border-box; text-align: start; flex-wrap: wrap; }
 #help-address { overflow-wrap: anywhere; }
 #help-status { font-size: 14px; }
+
+/* Table setup uses the available tablet width without stretching each field. */
+#table-edit-form { display: grid; gap: 16px; }
+#table-edit-form .profile-field { margin: 0; min-width: 0; }
+#table-edit-form .ui-field { box-sizing: border-box; width: 100%; }
+#table-edit-form .table-neighbours, #table-edit-form .profile-actions { grid-column: 1 / -1; }
+@media (min-width: 700px) { #table-edit-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -408,7 +408,8 @@
         "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
         "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
         "Adjacency configuration and complete table closure lifecycle remain.",
-        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages."
+        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages.",
+        "Table setup enforces maximum seats at least normal capacity before submission, permits an empty maximum to use normal capacity, returns to restaurant settings, and displays empty/live tables even if device-cache storage fails. Responsive form inspected at 320/768 pixels; 10 table-management browser checks, 577 unit checks and production build pass."
       ]
     },
     {
@@ -424,7 +425,8 @@
         "Manager save, staff status controls, back navigation, stale-edit recovery, phone/tablet layout: Playwright passed.",
         "API permissions, version conflicts, concurrent duplicate creation and seated capacity checks passed.",
         "Adjacency configuration and complete table closure lifecycle remain.",
-        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages."
+        "Neighbour selection saves stable table IDs and supports clearing; browser regression passed. API rejects self, missing and cross-branch references. Translated in all 30 languages.",
+        "Table setup enforces maximum seats at least normal capacity before submission, permits an empty maximum to use normal capacity, returns to restaurant settings, and displays empty/live tables even if device-cache storage fails. Responsive form inspected at 320/768 pixels; 10 table-management browser checks, 577 unit checks and production build pass."
       ]
     },
     {

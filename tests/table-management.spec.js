@@ -20,7 +20,7 @@ test('manager saves table details, cancels edits, and returns to account',async(
  await page.locator('button[type=submit]').click();await expect(page.locator('[data-table]')).toContainText('Seat capacity: 5');
  expect(posts[0]).toMatchObject({capacity:'5',version:0,id:'table-1'});
  await page.locator('[data-table]').click();await page.locator('#tables-back').click();
- await expect(page.locator('[data-table]')).toBeVisible();await page.locator('#tables-back').click();await expect(page).toHaveURL(/me.html/);
+ await expect(page.locator('[data-table]')).toBeVisible();await page.locator('#tables-back').click();await expect(page).toHaveURL(/me.html#preferences$/);
 });
 test('staff can mark cleaning without gaining table settings access',async({page})=>{
  const {posts}=await open(page,false);await expect(page.locator('[data-action=add]')).toHaveCount(0);
@@ -95,4 +95,39 @@ test('closing from a combined member reviews the group and sends the primary tab
  await page.locator('[data-action=close-confirm]').click();
  await expect(page.locator('[data-table="table-2"]')).toContainText('Cleaning');
  expect(posts[0]).toMatchObject({id:'table-1',version:0,orderIds:['paid-order']});
+});
+
+
+test('seat limits prevent invalid capacity before sending and allow the normal capacity default', async ({page}) => {
+ const {posts}=await open(page);
+ await page.locator('[data-table]').click();await page.locator('[data-action=edit-table]').click();
+ await page.locator('#capacity').fill('8');
+ await page.locator('button[type=submit]').click();
+ expect(posts).toHaveLength(0);
+ expect(await page.locator('#max_capacity').evaluate(input => input.validity.rangeUnderflow)).toBe(true);
+ await page.locator('#max_capacity').fill('');
+ await page.locator('button[type=submit]').click();
+ await expect(page.locator('[data-table]')).toBeVisible();
+ expect(posts[0]).toMatchObject({capacity:'8',max_capacity:''});
+});
+
+test('empty table setup stays usable even when the device cache cannot be written', async ({page}) => {
+ await onTheMenu(page,'nothing');
+ await page.addInitScript(() => {
+   const original=Storage.prototype.setItem;
+   Storage.prototype.setItem=function(key,value) { if(key==='kiosk_tableorders') throw new Error('full'); return original.call(this,key,value); };
+ });
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{canManage:true,tables:[]}}));
+ await page.goto('/tables.html');
+ await expect(page.locator('#table-management-content')).toContainText('No tables set up yet.');
+ await expect(page.locator('#table-management-message')).toBeEmpty();
+ await page.locator('[data-action=add]').click();
+ for(const width of [320,768]) {
+   await page.setViewportSize({width,height:1024});
+   await expect(page.locator('#capacity')).toBeVisible();
+   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+   await page.screenshot({path:`test-artifacts/table-edit-${width}.png`,fullPage:true});
+ }
+ await page.locator('#tables-back').click();
+ await expect(page.locator('[data-action=add]')).toBeVisible();
 });
