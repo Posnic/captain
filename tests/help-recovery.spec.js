@@ -61,3 +61,25 @@ test('a late failed check cannot erase a new server connection',async({page})=>{
  await expect(page.locator('#help-status')).toHaveText('Connected in the shop');
  await expect(page.locator('#help-retry')).toBeEnabled();
 });
+
+test('a stalled recovery unlocks retry and its late response cannot finish a newer check',async({page})=>{
+ await onTheMenu(page,'nothing');await page.goto('/help.html');
+ await expect(page.locator('#help-status')).toHaveText('Connected over the internet');
+ await page.clock.install();
+ await page.evaluate(()=>{POSNIC.net.check=()=>new Promise(resolve=>{window.finishTimedOutCheck=resolve;});});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Checking');
+ await page.clock.fastForward(20001);
+ await expect(page.locator('#help-status')).toHaveText('Not connected');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await page.evaluate(()=>{POSNIC.net.check=()=>new Promise(resolve=>{window.finishNewCheck=resolve;});});
+ await page.locator('#help-retry').click();
+ await page.evaluate(()=>window.finishTimedOutCheck(true));
+ await expect(page.locator('#help-status')).toHaveText('Checking');
+ await expect(page.locator('#help-retry')).toBeDisabled();
+ await page.evaluate(()=>window.finishNewCheck(true));
+ await expect(page.locator('#help-status')).toHaveText('Connected over the internet');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await page.locator('#help-back').click();
+ await expect(page).toHaveURL(/me.html$/);
+});

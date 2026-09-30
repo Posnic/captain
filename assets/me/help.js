@@ -10,17 +10,22 @@
   }
   function retry() {
     if(flight)return flight;
-    const revision=routeRevision;
+    const revision=++routeRevision;
+    let timer;
     at('help-retry').disabled=true;
-    flight=(async()=>{
-      try {
-        await POSNIC.session.ready;
-        if(POSNIC.session.needsReconnect) await POSNIC.session.retryAccess();
-        const reachable = POSNIC.server.isConfigured && await POSNIC.net.check(true) === true;
-        if(revision===routeRevision)confirmed=reachable;
-      } catch { if(revision===routeRevision)confirmed=false; }
-      finally { if(revision===routeRevision){flight=null;at('help-retry').disabled=false;paint();} }
-    })();
+    // A suspended native/network request must not leave recovery disabled.
+    // Each retry owns its result; a timed-out attempt cannot repaint a newer one.
+    const work=Promise.resolve().then(async()=>{
+      await POSNIC.session.ready;
+      if(revision!==routeRevision)return false;
+      if(POSNIC.session.needsReconnect) await POSNIC.session.retryAccess();
+      if(revision!==routeRevision)return false;
+      return POSNIC.server.isConfigured && await POSNIC.net.check(true) === true;
+    });
+    flight=Promise.race([work,new Promise(resolve=>{timer=setTimeout(()=>resolve(false),20000);})])
+      .then(reachable=>{if(revision===routeRevision)confirmed=reachable;})
+      .catch(()=>{if(revision===routeRevision)confirmed=false;})
+      .finally(()=>{clearTimeout(timer);if(revision===routeRevision){routeRevision++;flight=null;at('help-retry').disabled=false;paint();}});
     paint();return flight;
   }
   document.addEventListener('DOMContentLoaded',()=>{
