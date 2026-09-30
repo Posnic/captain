@@ -144,7 +144,7 @@ test('all four places that draw a line ask', () => {
    */
   assert.match(HISTORY, /class="item-preview\$\{struck\(item, order\)\}"/,
     'the card preview does not strike');
-  assert.match(HISTORY, /<tr class="\$\{struck\(item, order\)\.trim\(\)\}">/,
+  assert.match(HISTORY, /<(?:tr|div) class="\$\{struck\(item,\s*order\)\.trim\(\)\}">/,
     'the details table does not strike');
   assert.match(HISTORY, /class="order-item-card\$\{struck\(item, editingOrder\)\}"/,
     'the modify list does not strike');

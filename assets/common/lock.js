@@ -180,7 +180,7 @@
 
   /* --------------------------------------------------------------- the pad */
 
-  let asking = null;
+  let asking = null, checking = false, priorFocus = null, background = [];
 
   function pad() {
     if (document.getElementById('posnic-lock')) return;
@@ -190,42 +190,43 @@
       #posnic-lock {
         position: fixed; inset: 0; z-index: 2147483646;
         display: none; align-items: center; justify-content: center;
-        background: #0f172a; color: #e5e7eb; padding: 24px;
+        background: var(--surface,#fff); color: var(--ink,#17243a); padding: max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom)); overflow:auto; box-sizing:border-box;
         font: 16px/1.5 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
       }
       #posnic-lock.is-open { display: flex; }
       #posnic-lock-card { width: min(320px, 100%); text-align: center; }
-      #posnic-lock-who { font-size: 19px; font-weight: 800; margin: 0 0 4px; }
-      #posnic-lock-why { font-size: 14px; color: #94a3b8; margin: 0 0 22px; }
+      #posnic-lock-who { font-size: 24px; font-weight: 650; margin: 0 0 4px; }
+      #posnic-lock-why { font-size: 14px; color: var(--ink-soft,#647084); margin: 0 0 22px; }
       #posnic-lock-dots { display: flex; gap: 14px; justify-content: center; margin-bottom: 8px; }
       .posnic-lock-dot {
         width: 14px; height: 14px; border-radius: 50%;
-        border: 2px solid #475569; box-sizing: border-box;
+        border: 2px solid var(--line,#cbd5e1); box-sizing: border-box;
       }
-      .posnic-lock-dot.is-on { background: #f97316; border-color: #f97316; }
-      #posnic-lock-warn { min-height: 20px; font-size: 13px; color: #fca5a5; margin-bottom: 14px; }
-      #posnic-lock-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .posnic-lock-dot.is-on { background: var(--accent,#2459de); border-color: var(--accent,#2459de); }
+      #posnic-lock-warn { min-height: 20px; font-size: 13px; color: var(--bad,#b33336); margin-bottom: 14px; }
+      #posnic-lock-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; direction:ltr; }
       #posnic-lock-keys button {
         min-height: 62px; border: none; border-radius: 12px;
-        background: #1e293b; color: #e5e7eb; font-size: 22px; font-weight: 700;
+        background: var(--surface-sunk,#f4f7fb); color: var(--ink,#17243a); font-size: 24px; font-weight: 500;
         cursor: pointer;
       }
-      #posnic-lock-keys button:active { background: #334155; }
+      #posnic-lock-keys button:active { background: var(--accent-soft,#edf2ff); }
       #posnic-lock-password {
-        margin-top: 18px; background: none; border: none; color: #94a3b8;
-        font-size: 14px; text-decoration: underline; cursor: pointer;
+        margin-top: 18px; background: none; border: none; color: var(--ink-soft,#647084);
+        font-size: 14px; min-height:48px; padding:12px; cursor: pointer;
       }
     `;
     document.head.appendChild(style);
 
     const screen = document.createElement('div');
     screen.id = 'posnic-lock';
+    screen.setAttribute('role','dialog'); screen.setAttribute('aria-modal','true'); screen.setAttribute('aria-labelledby','posnic-lock-why');
     screen.innerHTML =
       '<div id="posnic-lock-card">' +
       '<p id="posnic-lock-who"></p>' +
       '<p id="posnic-lock-why">Enter your PIN</p>' +
       '<div id="posnic-lock-dots"></div>' +
-      '<div id="posnic-lock-warn"></div>' +
+      '<div id="posnic-lock-warn" role="alert"></div>' +
       '<div id="posnic-lock-keys"></div>' +
       '<button type="button" id="posnic-lock-password">Use my password instead</button>' +
       '</div>';
@@ -243,12 +244,26 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = key;
-      if (!key) button.style.visibility = 'hidden';
+      if (!key) { button.style.visibility = 'hidden'; button.tabIndex = -1; }
+      if (key === '⌫') button.setAttribute('aria-label', root.I18N?.t('Remove') || 'Remove');
       button.addEventListener('click', () => press(key));
       keys.appendChild(button);
     });
 
-    screen.querySelector('#posnic-lock-password').addEventListener('click', () => settle(false));
+    screen.querySelector('#posnic-lock-password').addEventListener('click', () => {if (!checking) settle(false);});
+    window.addEventListener('captain:back', event => {if(!asking)return;event.preventDefault();event.stopImmediatePropagation();if(!checking)settle(false);},true);
+    screen.addEventListener('keydown', event => {
+      if (!asking) return;
+      if (/^\d$/.test(event.key) || event.key === 'Backspace') {event.preventDefault();void press(event.key === 'Backspace' ? '⌫' : event.key);}
+      if (event.key === 'Escape') {event.preventDefault();if(!checking)settle(false);}
+      if (event.key === 'Tab') {
+        const buttons=[...screen.querySelectorAll('button')].filter(button=>!button.disabled && button.tabIndex !== -1);
+        if (!buttons.length) {event.preventDefault();return;}
+        const first=buttons[0],last=buttons[buttons.length-1];
+        if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+        else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+      }
+    });
   }
 
   let entered = '';
@@ -262,7 +277,7 @@
   }
 
   async function press(key) {
-    if (!asking) return;
+    if (!asking || checking) return;
     if (key === '⌫') {
       entered = entered.slice(0, -1);
       paint();
@@ -274,6 +289,9 @@
     paint();
     if (entered.length < DIGITS) return;
 
+    checking = true;
+    document.querySelectorAll('#posnic-lock button').forEach(button=>button.disabled=true);
+    try {
     if (choosing) {
       const digits = entered;
       entered = '';
@@ -300,6 +318,7 @@
       warn.textContent =
         said.left === 1 ? 'Wrong PIN. One try left.' : 'Wrong PIN. ' + said.left + ' tries left.';
     }
+    } finally {checking=false;document.querySelectorAll('#posnic-lock button').forEach(button=>button.disabled=false);}
   }
 
   function settle(unlocked) {
@@ -309,7 +328,18 @@
     entered = '';
     const screen = document.getElementById('posnic-lock');
     if (screen) screen.classList.remove('is-open');
+    for (const [node,wasInert] of background) node.inert=wasInert;
+    background=[];priorFocus?.focus?.({preventScroll:true});
     done(unlocked);
+  }
+
+  function showPad(screen) {
+    priorFocus = document.activeElement;
+    background = [...document.body.children].filter(node=>node!==screen).map(node=>[node,node.inert]);
+    background.forEach(([node])=>node.inert=true);
+    screen.classList.add('is-open');
+    root.I18N?.apply(screen);
+    screen.querySelector('#posnic-lock-keys button')?.focus();
   }
 
   /**
@@ -347,7 +377,7 @@
     document.getElementById('posnic-lock-warn').textContent = '';
     entered = '';
     paint();
-    screen.classList.add('is-open');
+    showPad(screen);
 
     return new Promise((resolve) => {
       asking = resolve;
@@ -379,7 +409,7 @@
     out.textContent = 'Not now';
     entered = '';
     paint();
-    screen.classList.add('is-open');
+    showPad(screen);
 
     let first = null;
     choosing = async (digits) => {
@@ -395,6 +425,7 @@
         return;
       }
       const stored = await set(digits);
+      if (!stored) { first = null; why.textContent = 'Choose a 4 digit PIN'; warn.textContent = 'Could not save. Please try again.'; return; }
       choosing = null;
       out.textContent = 'Use my password instead';
       settle(stored);

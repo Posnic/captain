@@ -292,7 +292,8 @@ test('THE LONG PRESS DOES NOT FIGHT THE TAP THAT ADDS A DISH', () => {
 });
 
 test('and a press that became the sheet is not also a tap', () => {
-  const click = HANDSET.slice(HANDSET.indexOf("document.addEventListener(\n        'click'"));
+  const normalized = HANDSET.replace(/\r\n/g, "\n");
+  const click = normalized.slice(normalized.indexOf("document.addEventListener(\n        'click'"));
 
   assert.match(click.slice(0, 400), /stopPropagation/, 'the dish would be added as well');
 });

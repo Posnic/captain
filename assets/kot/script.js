@@ -500,6 +500,7 @@ async function loadTablesNow() {
                that has just said nothing is. */
             const empty = document.getElementById('floor-count');
             if (empty) empty.textContent = '';
+            window.FloorDashboard?.update(data.data);
             return true;
         }
 
@@ -571,6 +572,7 @@ async function loadTablesNow() {
                and "3 tables open" under "Active tables" says tables twice. */
             count.textContent = open === 1 ? '1 open' : open + ' open';
         }
+        window.FloorDashboard?.update(data.data);
         return true;
     } catch (error) {
         console.error('Error loading tables:', error);
@@ -747,7 +749,7 @@ async function selectTable(tableName, takeaway, options = {}) {
                 ${
                   isTakeaway
                     ? ''
-                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" data-review-bill="${escapeFloor(tableName)}">Bill</button><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
                          data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>

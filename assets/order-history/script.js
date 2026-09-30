@@ -16,9 +16,8 @@ let _orderHistoryPollInterval = null;
 function startOrderHistoryPolling() {
     if (_orderHistoryPollInterval) return;
     _orderHistoryPollInterval = setInterval(() => {
-        const selScreen = document.getElementById('table-selection-screen');
-        if (!selScreen || selScreen.style.display === 'none') return; // only on screen 1
-        if (currentOrderId || editingOrder) return; // skip while editing
+        if (document.hidden || !document.getElementById('order-list-screen')) return;
+        if (document.querySelector('#orderDetailsModal.show') || editingOrder) return;
         loadOrderHistory();
     }, 10000);
 }
@@ -48,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // screen. Do not fetch hidden history or show its errors over the floor.
     if (document.getElementById('table-selection-screen')) loadOrderHistory();
     setupEventListeners();
-    showTableSelectionScreen(); // Start with table selection
+    if (document.getElementById("table-selection-screen")) showOrderListScreen("all");
     restoreTableFilterState(); // Set filters to collapsed by default
     startOrderHistoryPolling();
 });
@@ -62,7 +61,7 @@ function showTableSelectionScreen() {
     list.style.display = 'none';
     const headerElement = document.getElementById('header-title');
     if (headerElement) {
-        headerElement.textContent = 'Select Table';
+        headerElement.textContent = window.I18N?.t('Select Table') || 'Select Table';
     }
     document.getElementById('refresh-btn').style.display = 'block';
     selectedTable = null;
@@ -84,7 +83,7 @@ function showOrderListScreen(tableNumber) {
     }
     const headerElement = document.getElementById('header-title');
     if (headerElement) {
-        headerElement.textContent = headerTitle;
+        headerElement.textContent = window.I18N?.t(headerTitle) || headerTitle;
     }
     
     document.getElementById('refresh-btn').style.display = 'block';
@@ -92,13 +91,8 @@ function showOrderListScreen(tableNumber) {
 }
 
 function handleBackButton() {
-    if (selectedTable !== null) {
-        // On order list screen - go back to table selection
-        showTableSelectionScreen();
-    } else {
-        // On table selection screen - go back to previous page
-        goBack();
-    }
+    if (selectedTable === 'all') location.href = 'kot-management.html';
+    else showOrderListScreen('all');
 }
 
 function goBack() {
@@ -179,25 +173,15 @@ function generateTableCards() {
 
 // Filter orders by selected table
 function filterOrdersBySelectedTable() {
-    if (selectedTable === 'all') {
-        filteredOrders = allOrders.filter(order => {
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return matchesStatus;
-        });
-    } else if (selectedTable === 'TA') {
-        // Filter for takeaway orders
-        filteredOrders = allOrders.filter(order => {
-            const isTakeaway = order.dine_type === 'Take away' || order.dine_type === 'Takeaway';
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return isTakeaway && matchesStatus;
-        });
-    } else {
-        filteredOrders = allOrders.filter(order => {
-            const matchesTable = order.table_number == selectedTable;
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return matchesTable && matchesStatus;
-        });
-    }
+    const search = String(document.getElementById('order-search')?.value || '').trim().toLocaleLowerCase();
+    filteredOrders = allOrders.filter(order => {
+        const table = String(order.table_number || '');
+        const takeaway = ['Take away','Takeaway'].includes(order.dine_type);
+        const chosen = selectedTable && selectedTable !== 'all' ? selectedTable : currentTableFilter;
+        const matchesTable = chosen === 'all' || !chosen || (chosen === 'TA' ? takeaway : table === String(chosen));
+        const matchesSearch = !search || [order.order_id, table, order.customer_name].some(value => String(value || '').toLocaleLowerCase().includes(search));
+        return matchesTable && matchesSearch && (currentFilter === 'all' || order.status === currentFilter);
+    });
     renderOrders();
 }
 
@@ -213,12 +197,8 @@ function setupEventListeners() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentFilter = this.dataset.status;
-            if (selectedTable !== null) {
-                // On order list screen - filter by selected table
-                filterOrdersBySelectedTable();
-            } else {
-                loadOrderHistory();
-            }
+            filterOrdersBySelectedTable();
+            loadOrderHistory({background:true});
         });
     });
 
@@ -608,24 +588,7 @@ async function saveOrderChanges() {
 }
 
 // Filter orders
-function filterOrders() {
-    const searchInput = document.getElementById('order-search');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-
-    filteredOrders = allOrders.filter(order => {
-        const matchesSearch = !searchTerm ||
-            order.order_id.toLowerCase().includes(searchTerm) ||
-            order.table_number.toString().includes(searchTerm) ||
-            (order.customer_name && order.customer_name.toLowerCase().includes(searchTerm));
-
-        const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-        const matchesTable = currentTableFilter === 'all' || order.table_number.toString() === currentTableFilter;
-
-        return matchesSearch && matchesStatus && matchesTable;
-    });
-
-    renderOrders();
-}
+function filterOrders() { filterOrdersBySelectedTable(); }
 
 // Generate dynamic table filter buttons
 function generateTableFilterButtons() {
@@ -731,6 +694,7 @@ function restoreTableFilterState() {
 
 // Render orders
 function renderOrders() {
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const container = document.getElementById('orders-list');
     const emptyState = document.getElementById('empty-state');
 
@@ -746,18 +710,19 @@ function renderOrders() {
 
     const ordersHtml = filteredOrders.map(order => `
     <div class="order-card ${order.status === 'cancelled' ? 'order-card-cancelled' : ''}"
-         onclick="viewOrderDetails('${order._id}')">
+         data-order-id="${safe(order._id)}">
+            <button type="button" class="order-open" data-view-order="${safe(order._id)}">
             <div class="order-header">
                 <div class="order-info">
-                    <h5>#${order.order_id}</h5>
+                    <h5>#${safe(order.order_id || order._id)}</h5>
                                         <span class="table-number">
-                        Table ${order.table_number}
-                        · ${order.dine_type || 'Dine-in'}
-                        ${order.person_count ? ` · ${order.person_count} Pax` : ''}
+                        <span>Table</span> <bdi translate="no">${safe(order.table_number)}</bdi>
+                        · <span>${safe(order.dine_type || 'Dine-in')}</span>
+                        ${order.person_count ? ` · <bdi translate="no">${safe(order.person_count)}</bdi> <span>Guests</span>` : ''}
                     </span>
                 </div>
                 <div class="order-status">
-                    <span class="status-badge status-${order.status}">${order.status}</span>
+                    <span class="status-badge status-${safe(order.status)}">${safe(order.status)}</span>
                 </div>
             </div>
             <div class="order-details">
@@ -771,31 +736,41 @@ function renderOrders() {
                     </span>
                 </div>
                 <div class="order-items-preview">
-                    ${order.items.slice(0, 2).map(item =>
-        `<span class="item-preview${struck(item, order)}">${item.quantity}x ${item.name}</span>`
+                    ${(order.items || []).slice(0, 2).map(item =>
+        `<span class="item-preview${struck(item, order)}">${safe(item.quantity)}x ${safe(item.name)}</span>`
     ).join(', ')}
-                    ${order.items.length > 2 ? `... +${order.items.length - 2} more` : ''}
+                    ${(order.items || []).length > 2 ? `... +${(order.items || []).length - 2} more` : ''}
                 </div>
             </div>
+            </button>
             ${order.status === 'cancelled' || order.status === 'completed' ? '' : `
-        <div class="order-actions">
-            <button class="action-btn edit-btn" onclick="event.stopPropagation(); editOrder('${order._id}')">
+        <details class="order-actions-menu"><summary>Order options</summary><div class="order-actions">
+            <button class="action-btn edit-btn" data-edit-order="${safe(order._id)}">
                 <i class="fas fa-edit"></i> Modify
             </button>
             ${(order.dine_type || 'Dine-in') === 'Dine-in' ? `
-            <button class="action-btn move-btn" onclick="event.stopPropagation(); moveOrder('${order._id}')">
+            <button class="action-btn move-btn" data-move-order="${safe(order._id)}">
                 <i class="fas fa-right-left"></i> Move table
             </button>` : ''}
-            <button class="action-btn cancel-btn" onclick="event.stopPropagation(); cancelOrder('${order._id}')">
+            <button class="action-btn cancel-btn" data-cancel-order="${safe(order._id)}">
                 <i class="fas fa-times"></i> Cancel order
             </button>
-        </div>
+        </div></details>
         `}
     </div>
 `).join('');
 
     container.innerHTML = ordersHtml;
 }
+
+document.addEventListener('click', event => {
+    const button=event.target.closest('[data-view-order],[data-edit-order],[data-move-order],[data-cancel-order]');
+    if (!button) return;
+    if (button.dataset.viewOrder) viewOrderDetails(button.dataset.viewOrder);
+    if (button.dataset.editOrder) editOrder(button.dataset.editOrder);
+    if (button.dataset.moveOrder) moveOrder(button.dataset.moveOrder);
+    if (button.dataset.cancelOrder) cancelOrder(button.dataset.cancelOrder);
+});
 
 // View order details
 function viewOrderDetails(orderId) {
@@ -823,122 +798,17 @@ function viewOrderDetails(orderId) {
         }
     }
 
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const detailsHtml = `
-        <div class="order-details-content p-2">
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-hashtag me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Order ID:</strong> #${order.order_id}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-chair me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Table:</strong> ${order.table_number}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-info-circle me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Status:</strong> <span class="status-badge status-${order.status}">${order.status}</span></span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-calendar-alt me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Date:</strong> ${formatDateTime(order.created_at)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-utensils me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Order Type:</strong> ${order.dine_type || 'Dine-in'}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-users me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Pax:</strong> ${order.person_count || 0}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-user me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Customer:</strong> ${order.customer_name || 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            ${window.ServiceRounds ? ServiceRounds.render(order) : ''}
-            <h6>Order Items:</h6>
-            <div class="order-items-table">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Price</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(Array.isArray(order.kitchen_rounds) ? [] : order.items).map(item => `
-                        <tr class="${struck(item, order).trim()}">
-                            <td>
-                                <span class="line-name">${item.name}</span>
-                                ${item.item_description
-            ? `<div class="order-item-notes">${item.item_description}</div>`
-            : ''
-        }
-                            </td>
-                            <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">${CaptainMoney.html(item.price)}</td>
-                        </tr>
-                    `).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Subtotal:</th>
-                            <td style="text-align: right;">${CaptainMoney.html(subtotal)}</td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Discount:</th>
-                            <td style="text-align: right;">-${CaptainMoney.html(discount)}</td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Tax:</th>
-                            <td style="text-align: right;">${CaptainMoney.html(tax)}</td>
-                        </tr>
-                        <tr style="border-top: 2px solid #eee;">
-                            <th></th>
-                            <th style="text-align: right; font-size: 1.1rem;">Total Amount:</th>
-                            <th style="text-align: right; font-size: 1.1rem;">${CaptainMoney.html(order.total_amount)}</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            ${order.discount_description ? `
-            <div class="order-notes-section mt-3 p-3 bg-light rounded border">
-                <div class="d-flex align-items-start">
-                    <i class="fas fa-sticky-note me-2 text-primary mt-1"></i>
-                    <div>
-                        <h6 class="mb-1" style="font-size: 0.9rem;">Order Notes:</h6>
-                        <div class="text-muted small">${order.discount_description}</div>
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-        </div>
+      <section class="history-detail-context"><h2 translate="no">#${safe(order.order_id || order._id)}</h2>
+        <p><span>Table</span> <bdi>${safe(order.table_number)}</bdi> · <span>${safe(order.dine_type || 'Dine-in')}</span> · <span>Guests</span> <bdi>${safe(order.person_count || 1)}</bdi></p>
+        <p><span>${safe(order.status)}</span> · <time translate="no">${safe(formatDateTime(order.created_at))}</time></p>
+        ${order.customer_name ? `<p translate="no">${safe(order.customer_name)}</p>` : ''}
+      </section>
+      ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
+      <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div><div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
+      ${order.discount_description ? `<section class="history-detail-note"><h3>Order Notes:</h3><p translate="no">${safe(order.discount_description)}</p></section>` : ''}
+      ${['completed','cancelled'].includes(order.status) ? '' : `<details class="history-detail-options"><summary>Order options</summary><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></details>`}
     `;
 
     const detailsContent = document.getElementById('order-details-content');
@@ -2848,7 +2718,7 @@ window.addEventListener('captain:back', event => {
     if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
     if (document.getElementById('order-list-screen') && selectedTable !== null) {
         event.preventDefault();
-        showTableSelectionScreen();
+        handleBackButton();
     }
 });
 

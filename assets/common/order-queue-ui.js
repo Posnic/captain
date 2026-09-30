@@ -89,6 +89,7 @@
     el.querySelector(`#${ID}-text`).textContent =
       lastError ||
       (rows.length === 1 ? `${rows.length} order saved · Not sent to kitchen` : `${rows.length} orders saved · Not sent to kitchen`);
+    window.dispatchEvent(new CustomEvent("captain:pending-changed"));
     if (!page) return;
     if (!rows.length && !lastError) el.querySelector(`#${ID}-text`).textContent = "No pending orders";
     const list = el.querySelector(`#${ID}-rows`);
@@ -203,5 +204,5 @@
       else clearTimeout(timer);
     });
   });
-  window.POSNIC_ORDER_QUEUE_UI = { render, flush, reconcileCart };
+  window.POSNIC_ORDER_QUEUE_UI = { render, flush, reconcileCart, visibleRows: () => POSNIC.session.active && !window.CaptainAccess?.locked ? OrderQueue.all().filter(ownerMatches) : [] };
 })();

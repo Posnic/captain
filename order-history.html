@@ -54,9 +54,10 @@
     <link rel="stylesheet" href="assets/common/service-rounds.css">
     <script src="assets/common/service-rounds.js" defer></script>
     <link rel="stylesheet" href="assets/common/app-design.css">
+<script src="assets/common/navigation.js" defer></script>
 </head>
 
-<body>
+<body class="history-screen">
     <!-- Page Loader -->
     <div id="page-loader">
         <div class="loader"></div>
@@ -67,7 +68,9 @@
         <button class="back-btn" aria-label="Back" onclick="handleBackButton()">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <button class="refresh-btn" data-mobile-refresh aria-label="Refresh" onclick="refreshOrders()" id="refresh-btn" style="display: none;">
+        <h1 id="header-title">Order history</h1>
+        <button type="button" class="history-table-picker" onclick="showTableSelectionScreen()">Tables</button>
+        <button class="refresh-btn" data-mobile-refresh aria-label="Refresh" id="refresh-btn" style="display: none;">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
@@ -90,10 +93,6 @@
         <!-- Search and Filter Section -->
         <section class="section-block">
             <div class="search-filter-container">
-                <div class="table-filter-header" onclick="toggleTableFilters()">
-                    <span class="filter-header-text">Filters</span>
-                    <i class="fas fa-chevron-down" id="table-filter-arrow"></i>
-                </div>
                 <div class="all-filters-container" id="all-filters-container">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
@@ -129,7 +128,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Order Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="order-details-content">
                     <!-- Order details will be loaded here -->
@@ -137,7 +136,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn close-btn" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn action-btn edit-btn" id="edit-order-btn">Modify</button>
-                    <button type="button" class="btn action-btn cancel-btn" id="cancel-order-btn">Cancel Order</button>
+
                 </div>
             </div>
         </div>
@@ -355,7 +354,7 @@
             <div class="modal-content edit-notes-content">
                 <div class="modal-header edit-notes-header">
                     <h5 class="modal-title" id="edit-notes-product-name" translate="no">Item Notes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body edit-notes-body">
                     <label for="edit-item-notes-text" class="edit-notes-label">Notes</label>

@@ -1,1 +1,112 @@
-.kitchen-message{max-width:640px;margin-inline:auto;padding-bottom:calc(32px + env(safe-area-inset-bottom));}.voice-actions{display:grid;gap:12px;margin-block:24px}.voice-actions button{min-height:48px}.kitchen-message audio{width:100%;margin-block:20px}.kitchen-message [hidden]{display:none!important}.voice-history-item{padding-block:16px;border-bottom:1px solid var(--border,#ccd5dd)}#voice-error{color:var(--danger,#b42318)}.kitchen-message p{overflow-wrap:anywhere}
+.kitchen-message {
+  box-sizing: border-box;
+  max-width: 960px;
+  margin-inline: auto;
+  padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 24px;
+  align-items: start;
+}
+.kitchen-message * {
+  box-sizing: border-box;
+}
+.voice-compose,
+.voice-messages {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.kitchen-message h2 {
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 0 0 12px;
+  font-weight: 650;
+}
+.kitchen-message p {
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.voice-actions {
+  display: grid;
+  gap: 12px;
+  margin-block: 24px;
+}
+.voice-actions button {
+  min-height: 48px;
+  font: inherit;
+  border-radius: 12px;
+}
+.voice-actions .ui-btn {
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  border-color: var(--accent);
+}
+.kitchen-message .ui-btn-quiet {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 12px;
+}
+.kitchen-message button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.kitchen-message audio {
+  width: 100%;
+  margin-block: 20px;
+}
+.kitchen-message [hidden] {
+  display: none !important;
+}
+.voice-history-item {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.voice-history-item:last-child {
+  border-bottom: 0;
+}
+.voice-history-item strong {
+  font-size: 14px;
+}
+.voice-history-item p {
+  margin-block: 8px 0;
+}
+.voice-messages header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.voice-messages header h2 {
+  margin: 0;
+}
+#voice-error {
+  color: var(--bad);
+}
+#voice-error:empty {
+  display: none;
+}
+#voice-status {
+  min-height: 48px;
+  background: var(--surface-sunk);
+  padding: 12px;
+  border-radius: 12px;
+  color: var(--ink);
+}
+.me-back {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+@media (min-width: 768px) {
+  .kitchen-message {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    padding-top: 32px;
+  }
+}

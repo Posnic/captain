@@ -11,7 +11,7 @@
     const pending = order.kitchen_rounds.some(round => round.items.some(line => !line.held && line.remaining > 0));
     const all = editable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Mark all served</button></div>` : '';
     const options = editable && root.ServiceDetails?.supported(order.branch_id) ? `<details class="service-order-options"><summary>Order options</summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Hand over order</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
-    return options + all + order.kitchen_rounds.map(round => `<section class="service-round">
+    return options + all + [...order.kitchen_rounds].sort((a,b) => (Date.parse(b.ordered_at) || 0) - (Date.parse(a.ordered_at) || 0)).map(round => `<section class="service-round">
       <h3><span>Ordered at</span> <time translate="no">${escape(time(round.ordered_at))}</time></h3>
       ${round.fired_at ? `<p><span>Sent to the kitchen</span> <time translate="no">${escape(time(round.fired_at))}</time></p>` : ''}
       ${round.items.map(line => `<div class="service-line${line.remaining ? '' : ' is-served'}">

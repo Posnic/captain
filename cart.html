@@ -64,10 +64,8 @@
 
         <div class="bill-head">
             <a href="products.html" class="back-link" aria-label="Back to the menu">←</a>
-            <div class="bill-head-title">Bill</div>
-            <button class="header-btn" onclick="openOrderHistory()" title="Order History">
-                <i class="fas fa-history"></i>
-            </button>
+            <div class="bill-head-title">On this order</div>
+            <a class="cart-add-items" href="products.html">+ <span>Add items</span></a>
         </div>
 
         <!-- Which table this is for: the one piece of context a waiter
@@ -148,11 +146,12 @@
 
     <!-- Product Notes Modal -->
     <!-- Product Notes Modal -->
-    <div id="cart-notes-modal" class="notes-modal" style="display:none;">
+    <div id="cart-notes-modal" role="dialog" aria-modal="true" aria-labelledby="cart-notes-product-name" class="notes-modal" style="display:none;">
         <div class="notes-modal-content">
             <h4 id="cart-notes-product-name" translate="no" class="notes-title">Product Notes</h4>
 
             <div class="notes-body">
+                <div id="cart-notes-chips" class="notes-chips"></div>
                 <label for="cart-notes-text" class="notes-label">Notes</label>
                 <textarea id="cart-notes-text" rows="3" class="notes-textarea"
                     placeholder="Eg: Non sugar, half milk, extra hot..."></textarea>

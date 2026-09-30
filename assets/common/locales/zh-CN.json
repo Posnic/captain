@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "麦克风不可用。请检查应用权限。",
   "Recording failed. Please record again.": "录音失败。请重新录制。",
   "Playback completed": "播放完毕",
-  "Customer left": "顾客已离开"
+  "Customer left": "顾客已离开",
+  "Ready": "已备好"
 }

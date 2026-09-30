@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "ไม่สามารถใช้ไมโครโฟนได้ โปรดตรวจสอบสิทธิ์ของแอป",
   "Recording failed. Please record again.": "บันทึกเสียงไม่สำเร็จ โปรดบันทึกอีกครั้ง",
   "Playback completed": "เล่นจบแล้ว",
-  "Customer left": "ลูกค้าออกไปแล้ว"
+  "Customer left": "ลูกค้าออกไปแล้ว",
+  "Ready": "พร้อม"
 }

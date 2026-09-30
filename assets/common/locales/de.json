@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "Mikrofon nicht verfügbar. App-Berechtigungen prüfen.",
   "Recording failed. Please record again.": "Aufnahme fehlgeschlagen. Bitte erneut aufnehmen.",
   "Playback completed": "Wiedergabe abgeschlossen",
-  "Customer left": "Gast ist gegangen"
+  "Customer left": "Gast ist gegangen",
+  "Ready": "Bereit"
 }

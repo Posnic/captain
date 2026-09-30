@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "マイクを使用できません。アプリの権限を確認してください。",
   "Recording failed. Please record again.": "録音に失敗しました。もう一度録音してください。",
   "Playback completed": "再生完了",
-  "Customer left": "お客様が退店した"
+  "Customer left": "お客様が退店した",
+  "Ready": "準備完了"
 }

@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "الميكروفون غير متاح. تحقق من أذونات التطبيق.",
   "Recording failed. Please record again.": "فشل التسجيل. يرجى التسجيل مرة أخرى.",
   "Playback completed": "اكتمل التشغيل",
-  "Customer left": "غادر العميل"
+  "Customer left": "غادر العميل",
+  "Ready": "جاهز"
 }

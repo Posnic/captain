@@ -61,9 +61,14 @@ test("guest cash payment shows change and updates remaining balance; card requir
     fullPage: true,
   });
   await page.locator("#captain-payments [data-action=record]").click();
+  expect(posts).toHaveLength(0);
+  await expect(page.locator(".cp-review")).toContainText("₹9.99");
+  await page.locator("#captain-payments [data-action=record]").click();
   await expect(page.locator(".cp-balance strong")).toHaveText("₹50.00");
   expect(posts[0].amountMinor).toBe(5001);
   expect(posts[0].receivedMinor).toBe(6000);
+  await expect(page.locator(".cp-receipt")).toContainText("₹9.99");
+  await page.locator("[data-action=continue]").click();
   await page.locator("[data-method=Card]").click();
   await page.locator("#captain-payments [data-action=record]").click();
   expect(posts).toHaveLength(1);
@@ -82,6 +87,8 @@ test("uncertain request persists across closing and retries the same payment ide
     posts.push(r.request().postDataJSON());
     return r.abort("failed");
   });
+  await page.locator("#captain-payments [data-action=record]").click();
+  expect(posts).toHaveLength(0);
   await page.locator("#captain-payments [data-action=record]").click();
   await expect(page.locator(".cp-error")).toContainText(
     "do not collect the money again",
@@ -172,6 +179,9 @@ test("UPI QR encodes the exact full or guest amount and requires manual receipt 
   await page.locator('#cp-reference').fill('test-utr');
   await page.screenshot({path:'test-artifacts/captain-upi-qr.png',fullPage:true});
   await page.locator('[data-action="record"]').click();
+  expect(posts).toHaveLength(0);
+  await expect(page.locator(".cp-review")).toContainText("test-utr");
+  await page.locator('[data-action="record"]').click();
   await expect.poll(() => posts.length).toBe(1);
   expect(posts[0].amountMinor).toBe(5001);
   expect(posts[0].upi).toEqual({...plan.upiPayee,verified:true});
@@ -188,4 +198,23 @@ test("UPI without branch details or with foreign currency cannot collect", async
     await expect(page.locator('#cp-qr')).toHaveCount(0);
     await expect(page.locator('[data-action="record"]')).toBeDisabled();
   }
+});
+
+test('payment review Back preserves entry and confirmation is blocked while saving',async({page})=>{
+ const plan=await setup(page);const posts=[];let complete;
+ await page.route('**/captain/v1/payments/record',async r=>{const body=r.request().postDataJSON();posts.push(body);await new Promise(resolve=>complete=resolve);return r.fulfill({json:{...plan,dueMinor:0,confirmed:body.request_id}});});
+ await page.locator('#cp-received').fill('120');
+ await page.locator('[data-action=record]').click();
+ await expect(page.locator('.cp-review')).toContainText('₹19.99');expect(posts).toHaveLength(0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page.locator('#cp-received')).toHaveValue('120');
+ await page.locator('[data-action=record]').click();
+ await page.emulateMedia({colorScheme:'dark'});
+ await page.screenshot({path:'test-artifacts/payment-review-dark.png',fullPage:true});
+ await page.locator('[data-action=record]').click();
+ await expect.poll(()=>posts.length).toBe(1);
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page.locator('#captain-payments')).toBeVisible();
+ await expect(page.locator('[data-action=record]')).toBeDisabled();
+ complete();await expect(page.locator('#captain-payments')).toContainText('Payment recorded');
 });

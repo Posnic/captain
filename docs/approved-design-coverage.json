@@ -8,10 +8,13 @@
       "implementation": [
         "kot-management.html",
         "assets/common/connection-signals.js",
-        "assets/common/app-design.css"
+        "assets/common/app-design.css",
+        "assets/kot/dashboard.js",
+        "tests/floor-design.spec.js"
       ],
       "verification": [
-        "Local targeted tests passed; complete application acceptance pending."
+        "Local targeted tests passed; complete application acceptance pending.",
+        "Added Active / All / Ready filters backed by authenticated table and kitchen APIs, dining-area filtering, optional table shapes, refresh and shared primary navigation. Six dashboard checks passed at phone/tablet widths; stale readiness is cleared on lookup failure. Real-device and full-flow acceptance remain."
       ]
     },
     {
@@ -53,15 +56,28 @@
     },
     {
       "id": "cart",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "cart.html",
+        "assets/common/app-design.css",
+        "tests/history-design.spec.js"
+      ],
+      "verification": [
+        "Cart now says On this order and gives a direct Add items action. Shared preparation-note choices, totals and persistent cart tested. Full cart regression suite and whole-app acceptance remain."
+      ]
     },
     {
       "id": "note",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/products/script.js",
+        "assets/cart/notes-modal.js",
+        "cart.html",
+        "tests/history-design.spec.js"
+      ],
+      "verification": [
+        "Menu and cart share the same togglable note presets, accessible selected state and theme. Real-browser test verifies Coffee and Dosa retain separate notes and Add items returns to the menu without losing the cart. Dark 320px screenshot inspected."
+      ]
     },
     {
       "id": "detail",
@@ -139,9 +155,15 @@
     },
     {
       "id": "bill",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/bill-review.js",
+        "POS/api/src/services/captain-bill.js",
+        "tests/bill-review.spec.js"
+      ],
+      "verification": [
+        "Read-only, branch-scoped canonical bill totals, confirmed payments, refresh/retry, print, split and collection are implemented. Two phone/tablet browser journeys and five real-Mongo bill tests pass. Full integration/device acceptance remains."
+      ]
     },
     {
       "id": "split",
@@ -163,16 +185,25 @@
     },
     {
       "id": "receipt",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/captain-payments.js"
+      ],
+      "verification": [
+        "Confirmed payment summary shows received amount, cash change, reference and remaining balance; server journal supplies staff/time when available. Partial guest payments require Continue before collecting the next payment. Printer output remains separately tested by the existing server payment workflow and requires device acceptance."
+      ]
     },
     {
       "id": "history",
-      "status": "audit-required",
-      "implementation": [],
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "order-history.html",
+        "assets/order-history/script.js",
+        "tests/history-design.spec.js"
+      ],
       "verification": [
-        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending."
+        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending.",
+        "Order history opens its list directly with visible search/status filters and contextual order options. Refresh preserves current search/table filters; new status selection fetches current server results. Compact escaped detail view, latest kitchen rounds first, Back, keyboard-accessible cards and swipe refresh checked at 320/900px. Screenshots inspected; complete app acceptance remains."
       ]
     },
     {
@@ -194,17 +225,22 @@
     },
     {
       "id": "pending",
-      "status": "in-progress",
+      "status": "implemented-needs-complete-flow-review",
       "implementation": [
         "pending.html",
         "assets/common/order-queue-ui.js",
         "assets/common/app-design.css",
-        "me.html"
+        "me.html",
+        "assets/common/navigation.js",
+        "assets/kot/dashboard.js",
+        "tests/floor-design.spec.js"
       ],
       "verification": [
         "Dedicated pending-orders page replaces the inline accordion. Compact floor entry and Me navigation, safe return routes, tablet grid and shared light/dark theme implemented.",
         "Browser checks cover offline persistence, deliberate rejected-order retry, stalled fetch/body recovery, 320/768px layouts, owner-private item details, native Back event and touch pull-to-refresh retaining the original request ID. Six translated offline ordering journeys pass.",
-        "573 unit tests pass. Production build passes with 30 languages and 954 messages. Full native-device acceptance and complete-app release remain."
+        "573 unit tests pass. Production build passes with 30 languages and 954 messages. Full native-device acceptance and complete-app release remain.",
+        "Pending orders is now a primary destination shared with the other main pages; retained saved-order behavior is unchanged. Full navigation verification in progress.",
+        "Owned unsent orders appear as grey floor cards with a pending navigation count. Other staff order details remain excluded, and the empty-floor message stays hidden while saved orders exist. Browser ownership/navigation check passes."
       ]
     },
     {
@@ -214,12 +250,14 @@
         "me.html",
         "assets/me/navigation.js",
         "assets/me/script.js",
-        "assets/common/app-design.css"
+        "assets/common/app-design.css",
+        "assets/common/navigation.js"
       ],
       "verification": [
         "Account hub separates account/security, language and phone/restaurant settings. Hash navigation supports reloads, browser Back and one-level native Back from profile/password editors. No duplicate legacy form remains.",
         "13 targeted browser checks pass, including persisted print-copy choice, 30-language selector, RTL, 320/768px layouts, profile/password API flows and unsent-order account-switch guard. 573 unit checks and production build pass.",
-        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains."
+        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains.",
+        "Shared primary navigation now reaches Tables, Order history, Pending orders and Account. Nested account forms hide primary navigation to preserve their Back/discard flow. Browser review in progress."
       ]
     },
     {
@@ -308,15 +346,26 @@
     },
     {
       "id": "pin",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/lock.js",
+        "assets/me/script.js",
+        "tests/pin-design.spec.js"
+      ],
+      "verification": [
+        "PIN screen uses the shared theme, isolates background controls, restores focus, supports keyboard and native Back, blocks concurrent validation and retains the keypad on storage failure. Current PIN required before changing it. Three browser checks and existing PIN unit suite pass at 320/900px; native acceptance remains."
+      ]
     },
     {
       "id": "unlock",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/lock.js",
+        "tests/pin-design.spec.js"
+      ],
+      "verification": [
+        "Shared PIN pad verified for wrong PIN, correct unlock, setup mismatch, storage retry, focus isolation and Back. Three browser checks pass; native acceptance remains."
+      ]
     },
     {
       "id": "recover",
@@ -632,9 +681,17 @@
     },
     {
       "id": "payment-review",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "assets/common/captain-payments.js",
+        "tests/captain-payments.spec.js",
+        "POS/frontend/static/script/js/core/captain-payments.js",
+        "POS/tests/captain-payment-review.test.js"
+      ],
+      "verification": [
+        "Added explicit payment review before the persisted record request, with guest, amount, method, cash/change and reference. Eight payment journeys plus a targeted native Back/double-submit check pass; full POS integration and release remain.",
+        "Explicit review precedes the durable payment request. Back preserves input and busy submission cannot be duplicated or dismissed. Shared desktop review and recorded-payment summary tested; uncertain retries retain their original ID."
+      ]
     },
     {
       "id": "permission",
@@ -726,6 +783,19 @@
       "verification": [
         "Local targeted tests passed; complete application acceptance pending."
       ]
+    },
+    {
+      "id": "general-kitchen-voice",
+      "status": "implemented-needs-complete-flow-review",
+      "implementation": [
+        "kitchen-message.html",
+        "assets/common/kitchen-message.js",
+        "assets/common/kitchen-message.css",
+        "tests/kitchen-message-design.spec.js"
+      ],
+      "verification": [
+        "Shared theme, phone/tablet two-column layout, refresh and native Back now implemented. Recording is saved before leaving; same-staff draft restored on return. Corrupted recording/status punctuation fixed. Browser journeys pass at 320 and 900 pixels. Actual microphone and kitchen playback require device acceptance."
+      ]
     }
   ],
   "remainingPriorities": [
@@ -737,5 +807,8 @@
     "Shared setup, branch selection, offline/session recovery and pending order screens",
     "All languages, gestures, phone/tablet and RTL checks",
     "Build APK and POS installer for user testing after integration verification"
-  ]
+  ],
+  "releaseBaseline": "v1.3.29",
+  "developmentBranch": "codex/captain-upi-collection",
+  "releaseStatus": "Full redesign is not released; development and complete-flow verification continue."
 }

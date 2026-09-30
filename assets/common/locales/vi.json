@@ -986,5 +986,6 @@
   "Microphone unavailable. Check app permissions.": "Không dùng được micrô. Hãy kiểm tra quyền của ứng dụng.",
   "Recording failed. Please record again.": "Ghi âm không thành công. Vui lòng ghi âm lại.",
   "Playback completed": "Đã phát xong",
-  "Customer left": "Khách đã rời đi"
+  "Customer left": "Khách đã rời đi",
+  "Ready": "Sẵn sàng"
 }

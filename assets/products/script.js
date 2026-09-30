@@ -686,8 +686,8 @@ const NOTE_SUGGESTIONS = [
 ];
 
 /** Draw them once, the first time the modal is opened. */
-function buildNoteChips() {
-    const host = $("#notes-chips");
+function buildNoteChips(selector = "#notes-chips") {
+    const host = $(selector);
     if (!host.length || host.children().length) return;
     host.html(
         NOTE_SUGGESTIONS.map(
@@ -702,19 +702,20 @@ function buildNoteChips() {
 }
 
 /** The note as a list of parts, so a chip can be taken back off. */
-function notePieces() {
-    return String($("#product-notes-text").val() || "")
+function notePieces(field = "#product-notes-text") {
+    return String($(field).val() || "")
         .split(",")
         .map((piece) => piece.trim())
         .filter(Boolean);
 }
 
 /** Light the chips that are already in the box, however they got there. */
-function markChips() {
-    const said = notePieces().map((piece) => piece.toLowerCase());
-    $(".notes-chip").each(function () {
+function markChips(field = "#product-notes-text") {
+    if (typeof field !== "string") field = "#" + field.target.id;
+    const said = notePieces(field).map((piece) => piece.toLowerCase());
+    $(field).closest(".notes-modal").find(".notes-chip").each(function () {
         const say = String($(this).data("say") || "").toLowerCase();
-        $(this).toggleClass("is-on", said.indexOf(say) !== -1);
+        $(this).toggleClass("is-on", said.indexOf(say) !== -1).attr("aria-pressed", String(said.indexOf(say) !== -1));
     });
 }
 
@@ -723,17 +724,18 @@ function markChips() {
 $(document).on("click", ".notes-chip", function () {
     const say = String($(this).data("say") || "");
     if (!say) return;
-    const pieces = notePieces();
+    const field = "#" + $(this).closest(".notes-modal").find("textarea").attr("id");
+    const pieces = notePieces(field);
     const at = pieces.findIndex((piece) => piece.toLowerCase() === say.toLowerCase());
     if (at === -1) pieces.push(say);
     else pieces.splice(at, 1);
-    $("#product-notes-text").val(pieces.join(", "));
-    markChips();
+    $(field).val(pieces.join(", "));
+    markChips(field);
 });
 
 /* Typed by hand, or edited after a tap: the chips still have to agree with
    the box, or one of them is lying. */
-$(document).on("input", "#product-notes-text", markChips);
+$(document).on("input", "#product-notes-text, #cart-notes-text", markChips);
 // ADD button → behaves like first + click
 /**
  * Show how many the next tap will add, when it is more than one.

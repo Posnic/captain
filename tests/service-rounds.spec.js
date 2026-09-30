@@ -14,6 +14,7 @@ for (const size of [{width:800,height:1280},{width:1280,height:800},{width:390,h
   await page.route('**/sales/serveKitchenItems',r=>{sent=r.request().postDataJSON();if (sent.branchId !== branchId || sent.saleId !== saleId) return r.fulfill({status:409,json:{type:'error',message:'Invalid service request'}});rounds[0].items[0].served=sent.items[0].quantity;rounds[0].items[0].remaining=3-sent.items[0].quantity;return r.fulfill({json:{type:'success',data:rounds}});});
   await page.goto('/kot-management.html');await page.evaluate(branch=>ServiceDetails.remember(true,branch),branchId);await page.locator('.floor-card').first().click();
   await expect(page.locator('.service-round')).toHaveCount(2);
+  await expect(page.locator('.service-round').first()).toContainText('New soup');
   const dimensions=await page.locator('.kot-items-list').evaluate(el=>({height:el.clientHeight,scroll:el.scrollHeight}));
   expect(dimensions.height).toBeGreaterThan(300);expect(dimensions.height).toBe(dimensions.scroll);
   await page.evaluate(() => localStorage.setItem('branch_id','64f9a1c2e3b4d5e6f7000099'));
@@ -28,10 +29,10 @@ for (const size of [{width:800,height:1280},{width:1280,height:800},{width:390,h
   expect(sent.branchId).toBe(branchId);
   expect(sent.saleId).toBe(saleId);
   expect(sent.items).toEqual([{id:'c0i0',quantity:1}]);
-  await expect(page.locator('.service-line').first()).toContainText('1 / 3');
+  await expect(page.locator('.service-line').filter({has:page.locator('[data-serve-line="c0i0"]')})).toContainText('1 / 3');
   await page.locator('.service-action input').first().fill('1');
   await page.locator('[data-serve-line="c0i0"]').click();
-  await expect(page.locator('.service-line').first()).toContainText('2 / 3');
+  await expect(page.locator('.service-line').filter({has:page.locator('[data-serve-line="c0i0"]')})).toContainText('2 / 3');
   expect(sent.branchId).toBe(branchId);
   expect(sent.items).toEqual([{id:'c0i0',quantity:2}]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

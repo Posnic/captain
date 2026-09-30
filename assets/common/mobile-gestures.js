@@ -168,7 +168,7 @@
                 return;
             }
             if (!refreshAction || pending || event.touches.length !== 1 || overlayOpen() || editing() ||
-                event.target.closest('button, input, textarea, select, [contenteditable="true"]') || !atTop(event.target)) return;
+                event.target.closest('button:not([data-view-order]), input, textarea, select, [contenteditable="true"]') || !atTop(event.target)) return;
             const touch = event.touches[0];
             if (touch.clientX < 24 || touch.clientX > innerWidth - 24) return;
             gesture = {x:touch.clientX, y:touch.clientY, target:event.target, distance:0};

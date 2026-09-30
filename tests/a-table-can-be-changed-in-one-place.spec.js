@@ -184,7 +184,7 @@ test('a takeaway has no table to move it to, and is not offered one', async ({ p
    * to be third. Found by the order's own id, because the card shows its
    * number in a format this test should not be asserting the shape of.
    */
-  const takeaway = page.locator('.order-card[onclick*="ord-3"]');
+  const takeaway = page.locator('.order-card[data-order-id="ord-3"]');
   await expect(takeaway).toHaveCount(1);
   expect(await takeaway.locator('.move-btn').count()).toBe(0);
 });

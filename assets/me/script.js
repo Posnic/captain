@@ -89,8 +89,10 @@
         const row = at('me-lock');
         const off = at('me-lock-off');
         if (row) {
-            row.addEventListener('click', function () {
-                if (window.POSNIC && POSNIC.lock) POSNIC.lock.choose().then(paintLock);
+            row.addEventListener('click', async function () {
+                if (!(window.POSNIC && POSNIC.lock)) return;
+                if (POSNIC.lock.isSet() && !await POSNIC.lock.unlock('', {why:'Enter your PIN',escape:'Not now'})) return;
+                await POSNIC.lock.choose(); paintLock();
             });
         }
         if (off) {

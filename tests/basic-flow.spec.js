@@ -124,6 +124,7 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page.locator('#manual_table_input')).toBeVisible();
   await page.locator('#manual_table_input').fill('T1');
   await page.getByRole('button', { name: /Next/ }).click();
+  await page.locator('#seat-confirmation').getByRole('button', { name: 'Continue', exact: true }).click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();
@@ -140,7 +141,8 @@ test('login to order history basic flow', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(0);
 
   await page.goto('/order-history.html');
-  await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'All Orders', exact: true })).toBeVisible();
+  await page.locator('.mobile-header').getByRole('button', { name: 'Tables', exact: true }).click();
   await expect(page.locator('.table-card.all-tables')).toContainText('0 orders');
 
   expect(apiCalls).toEqual(expect.arrayContaining([
