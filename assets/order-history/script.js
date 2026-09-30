@@ -1047,6 +1047,7 @@ function tablesFromStorage() {
  * to the till exactly as they came.
  */
 let orderBeingMoved = null;
+let moveSaving = false;
 
 /*
  * BUILT HERE, not written into a page.
@@ -1095,6 +1096,7 @@ function ensureMoveSheet() {
 
     /* Reopened later for a different order, the last choice must not still be
        sitting there ready to move this one. */
+    el.addEventListener('hide.bs.modal', event => { if (moveSaving) event.preventDefault(); });
     el.addEventListener('hidden.bs.modal', () => {
         orderBeingMoved = null;
         const go = document.getElementById('move-table-go');
@@ -1108,6 +1110,7 @@ function ensureMoveSheet() {
 }
 
 function moveOrder(orderId) {
+    if (moveSaving) return;
     const order = (allOrders || []).find((o) => o._id === orderId);
     if (!order) return;
 
@@ -1182,6 +1185,7 @@ function renderMoveTables() {
  * floor is not a place where anybody taps carefully.
  */
 function chooseMoveTable(button) {
+    if (moveSaving || button.disabled) return;
     const list = document.getElementById('move-table-list');
     if (!list) return;
     for (const other of list.querySelectorAll('.move-table')) other.classList.remove('is-chosen');
@@ -1195,9 +1199,15 @@ function chooseMoveTable(button) {
 }
 
 async function confirmMoveTable() {
+    if (moveSaving) return;
     const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
     const order = orderBeingMoved;
-    if (!chosen || !order) return;
+    if (!chosen || chosen.disabled || !order) return;
+    moveSaving = true;
+    const sheet = document.getElementById('moveTableModal');
+    const controls = [...sheet.querySelectorAll('button')].map(button => ({button, disabled:button.disabled}));
+    controls.forEach(({button}) => button.disabled = true);
+    sheet.setAttribute('aria-busy', 'true');
 
     const go = document.getElementById('move-table-go');
     if (go) go.disabled = true;
@@ -1224,6 +1234,7 @@ async function confirmMoveTable() {
 
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
+        moveSaving = false;
         showToast(`Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
@@ -1235,6 +1246,7 @@ async function confirmMoveTable() {
         if (typeof loadTables === 'function') await loadTables();
         await loadOrderHistory();
     } catch (error) {
+        moveSaving = false;
         if (isAConflict(error)) {
             await tellThemSomebodyElseGotThere();
             return;
@@ -1243,6 +1255,9 @@ async function confirmMoveTable() {
         showToast(error.message || 'Could not move the order', 'error');
         if (go) go.disabled = false;
     } finally {
+        moveSaving = false;
+        sheet.removeAttribute('aria-busy');
+        controls.forEach(({button, disabled}) => button.disabled = disabled);
         hideLoader();
     }
 }

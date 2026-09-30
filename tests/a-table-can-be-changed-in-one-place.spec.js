@@ -197,3 +197,25 @@ test('held, cleaning and undersized tables are unavailable before confirming a m
  await expect(page.locator('.move-table[data-value="17"]')).toBeEnabled();
  await expect(page.locator('.move-table[data-value="12"]')).toContainText('Cleaning');
 });
+
+
+test('pending move cannot be dismissed or submitted twice and failure restores selection',async({page})=>{
+ await onTheOrderList(page);
+ let release, sent=0;
+ const gate=new Promise(resolve=>{release=resolve;});
+ await page.route('**/sales/updateOrder',async route=>{sent++;await gate;await route.fulfill({status:500,json:{message:'Try again'}});});
+ await page.evaluate(()=>moveOrder('ord-1'));
+ await page.locator('.move-table[data-value="12"]').click();
+ await page.locator('#move-table-go').click();
+ await expect.poll(()=>sent).toBe(1);
+ await page.evaluate(()=>{confirmMoveTable();bootstrap.Modal.getInstance(document.getElementById('moveTableModal')).hide();moveOrder('ord-2');});
+ await expect(page.locator('#moveTableModal')).toHaveClass(/show/);
+ await expect(page.locator('#moveTableModal')).toHaveAttribute('aria-busy','true');
+ await expect(page.locator('.move-table[data-value="15"]')).toBeDisabled();
+ expect(sent).toBe(1);
+ release();
+ await expect(page.locator('#move-table-go')).toBeEnabled();
+ await expect(page.locator('.move-table[data-value="12"]')).toHaveClass(/is-chosen/);
+ await page.locator('#moveTableModal [data-bs-dismiss]').last().click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
+});

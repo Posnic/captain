@@ -93,11 +93,13 @@
         "discount.html",
         "assets/common/table-details.js",
         "assets/order-history/script.js",
-        "POS/api/src/repositories/sale.repository.js"
+        "POS/api/src/repositories/sale.repository.js",
+        "tests/a-table-can-be-changed-in-one-place.spec.js"
       ],
       "verification": [
         "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
-        "Seat/move confirmation and combined-table flow remain."
+        "Seat/move confirmation and combined-table flow remain.",
+        "Move sheet now guards duplicate saves, destination changes and dismissal during requests, with restored selection and controls after failure. Seven move browser checks pass (table ID/line preservation, held/cleaning/capacity restrictions, failure recovery), alongside 577 unit checks and production build. Combined-seating protocol, live destination freshness and full visual acceptance remain required."
       ]
     },
     {
