@@ -70,16 +70,17 @@
     function begin() {
         saved = false; saving = false; beforeSetting = null;
         originalOrder = JSON.parse(JSON.stringify(order()));
-        document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input => input.disabled=false);
+        document.querySelectorAll('#edit-type-section input, #edit-table-section input, #edit-pax-section input, #edit-pax-section button').forEach(input => input.disabled=false);
         originalLines = new WeakSet(order()?.items || []);
         initial = fingerprint();
         show('items');
     }
     async function openSetting(name) {
         if (saving) return;
-        if (order()?.seating_request_id && ['table','type'].includes(name)) {
+        if (order()?.seating_request_id && ['table','type','guests'].includes(name)) {
             const pending = CaptainGroupMove.pending(order()._id);
             if (pending) name = pending.body.dineType ? 'type' : 'table';
+            if (CaptainGuestUpdate.pending(order()._id)) name = 'guests';
             if (initial !== null && fingerprint() !== initial) {
                 if (!await CaptainConfirm.discard()) return;
                 setOrderBeingModified(JSON.parse(JSON.stringify(originalOrder)));
@@ -105,6 +106,11 @@
             }
             byId('editor-setting-apply').textContent = window.I18N?.t(pending ? 'Retry' : 'Save') || (pending ? 'Retry' : 'Save');
             document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input => input.disabled=!!pending);
+        } else if (order()?.seating_request_id && name === 'guests') {
+            const pending = CaptainGuestUpdate.pending(order()._id);
+            if (pending) setEditPersonCount(pending.body.guests);
+            byId('editor-setting-apply').textContent = window.I18N?.t(pending ? 'Retry' : 'Save') || (pending ? 'Retry' : 'Save');
+            document.querySelectorAll('#edit-pax-section input, #edit-pax-section button').forEach(input => input.disabled=!!pending);
         } else byId('editor-setting-apply').textContent = window.I18N?.t('Apply') || 'Apply';
     }
     function back() {
@@ -121,6 +127,32 @@
         }
         if (value.type === 'Dine-in' && value.tableRadio === 'edit_table_manual_radio' && !/^[A-Z0-9]{1,6}$/.test(value.table)) {
             showToast('Table must be 1–6 letters/numbers (A–Z, 0–9).', 'error'); return;
+        }
+        if (setting === 'guests' && order()?.seating_request_id) {
+            const current = order(), controls = [...byId('editOrderModal').querySelectorAll('button,input,select')];
+            const disabled = controls.map(control => control.disabled);
+            saving=true; controls.forEach(control=>control.disabled=true);
+            try {
+                if (CaptainGuestUpdate.pending(current._id)) await CaptainGuestUpdate.resume(current._id);
+                else await CaptainGuestUpdate.save(current._id,value.guests);
+                saved=true;
+                bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
+                await loadOrderHistory({background:true});
+                showToast(window.I18N?.t('Saved') || 'Saved','success');
+            } catch(error) {
+                showToast(error.message || 'Could not save. Please try again.','error');
+            } finally {
+                saving=false; controls.forEach((control,index)=>control.disabled=disabled[index]);
+                try {
+                    const pending=CaptainGuestUpdate.pending(current._id);
+                    byId('editor-setting-apply').textContent=window.I18N?.t(pending?'Retry':'Save') || (pending?'Retry':'Save');
+                    document.querySelectorAll('#edit-pax-section input, #edit-pax-section button').forEach(input=>input.disabled=!!pending);
+                } catch {
+                    saved=true; bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
+                }
+                refresh();
+            }
+            return;
         }
         if (setting === 'type' && order()?.seating_request_id &&
             (value.type !== (originalOrder.dine_type || 'Dine-in') || CaptainGroupMove.pending(order()._id))) {

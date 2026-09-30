@@ -23,6 +23,37 @@ async function apply(page) {
   await page.locator('#editor-setting-apply').click();
 }
 for (const where of ['order-history.html','kot-management.html']) {
+ test(`claimed guest changes save separately without resending dishes on ${where}`,async({page})=>{
+  const posts=await editor(page,where,{seating_request_id:'initial-seating'}), requests=[];
+  await page.route('**/captain/v1/tables/guests',route=>{
+    const body=route.request().postDataJSON();requests.push(body);
+    return route.fulfill({json:{...body,state:'completed'}});
+  });
+  await setting(page,'guests');
+  await expect(page.locator('#editor-setting-apply')).toHaveText('Save');
+  await page.locator('.edit-person-btn[data-person="3"]').click();
+  await apply(page);
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(requests).toHaveLength(1);expect(requests[0]).toMatchObject({orderId:'order-1',guests:3});
+  expect(requests[0].items).toBeUndefined();expect(posts).toHaveLength(0);
+ });
+}
+test('a failed guest save keeps the original count and request through Back and Retry',async({page})=>{
+ const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating'}), requests=[];
+ await page.route('**/captain/v1/tables/guests',route=>{
+  const body=route.request().postDataJSON();requests.push(body);
+  return requests.length===1?route.fulfill({status:503,json:{error:{message:'Please retry.'}}}):route.fulfill({json:{...body,state:'completed'}});
+ });
+ await setting(page,'guests');await page.locator('.edit-person-btn[data-person="3"]').click();await apply(page);
+ await expect(page.locator('#editor-setting-apply')).toHaveText('Retry');
+ await expect(page.locator('.edit-person-btn[data-person="4"]')).toBeDisabled();
+ await page.locator('#editor-setting-back').click();
+ await page.locator('[data-editor-setting="guests"]').click();
+ await expect(page.locator('.edit-person-btn[data-person="3"]')).toHaveClass(/active/);
+ await apply(page);await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(requests).toHaveLength(2);expect(requests[0]).toEqual(requests[1]);expect(posts).toHaveLength(0);
+});
+for (const where of ['order-history.html','kot-management.html']) {
  test(`items are primary and adding from the menu saves once on ${where}`,async({page})=>{
   const posts=await editor(page,where);
   await expect(page.locator('#save-order-changes')).toBeDisabled();
