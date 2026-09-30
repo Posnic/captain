@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "Ketuk untuk merekam, lalu tinjau dan kirim.",
   "Microphone unavailable. Check app permissions.": "Mikrofon tidak tersedia. Periksa izin aplikasi.",
   "Recording failed. Please record again.": "Perekaman gagal. Silakan rekam ulang.",
-  "Playback completed": "Pemutaran selesai"
+  "Playback completed": "Pemutaran selesai",
+  "Customer requested": "Permintaan pelanggan",
+  "Entered by mistake": "Dimasukkan secara tidak sengaja",
+  "Item unavailable": "Item tidak tersedia",
+  "Duplicate order": "Pesanan duplikat",
+  "Customer left": "Pelanggan sudah pergi"
 }

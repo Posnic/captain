@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "點選錄音，然後確認並傳送。",
   "Microphone unavailable. Check app permissions.": "麥克風無法使用。請檢查應用程式權限。",
   "Recording failed. Please record again.": "錄音失敗。請重新錄製。",
-  "Playback completed": "播放完畢"
+  "Playback completed": "播放完畢",
+  "Customer requested": "顧客要求",
+  "Entered by mistake": "誤操作輸入",
+  "Item unavailable": "餐點售罄",
+  "Duplicate order": "重複訂單",
+  "Customer left": "顧客已離開"
 }

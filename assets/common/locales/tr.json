@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "Kaydetmek için dokunun, ardından kontrol edip gönderin.",
   "Microphone unavailable. Check app permissions.": "Mikrofon kullanılamıyor. Uygulama izinlerini kontrol edin.",
   "Recording failed. Please record again.": "Kayıt başarısız oldu. Lütfen tekrar kaydedin.",
-  "Playback completed": "Çalma tamamlandı"
+  "Playback completed": "Çalma tamamlandı",
+  "Customer requested": "Müşteri talebi",
+  "Entered by mistake": "Yanlışlıkla girildi",
+  "Item unavailable": "Ürün mevcut değil",
+  "Duplicate order": "Yinelenen sipariş",
+  "Customer left": "Müşteri ayrıldı"
 }

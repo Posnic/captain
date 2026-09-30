@@ -5,3 +5,5 @@
 .captain-action-dialog select{width:100%;min-height:48px;font:inherit;margin:8px 0 20px;border:1px solid #b6c1d1;border-radius:10px;padding:10px}.service-order-options{margin-bottom:12px;font-size:14px}.service-order-options summary{min-height:44px;padding:12px 0;cursor:pointer}.service-order-options button{font:inherit;padding:10px 14px;min-height:44px;border:1px solid #c3ccda;border-radius:10px;background:white;color:#2154d6}.service-assignee:empty{display:none}
 
 .delivery-body{max-height:65dvh;overflow:auto}.delivery-body h3{font-size:14px;margin:18px 0 8px}.delivery-body p{font-size:14px;line-height:1.5}
+
+.change-reason-choices{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}.change-reason-choices:empty{display:none}.change-reason-choices button{padding:10px 12px;text-align:start}.change-reason-choices button[aria-pressed="true"]{background:#edf2ff;border-color:#2154d6;color:#1743b8}.captain-action-dialog{max-height:calc(100dvh - 32px);overflow-y:auto}

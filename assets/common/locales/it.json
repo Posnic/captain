@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "Tocca per registrare, poi controlla e invia.",
   "Microphone unavailable. Check app permissions.": "Microfono non disponibile. Controlla le autorizzazioni dell’app.",
   "Recording failed. Please record again.": "Registrazione non riuscita. Registra di nuovo.",
-  "Playback completed": "Riproduzione completata"
+  "Playback completed": "Riproduzione completata",
+  "Customer requested": "Su richiesta del cliente",
+  "Entered by mistake": "Inserito per errore",
+  "Item unavailable": "Articolo non disponibile",
+  "Duplicate order": "Ordine duplicato",
+  "Customer left": "Il cliente è andato via"
 }

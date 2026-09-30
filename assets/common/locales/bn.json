@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "রেকর্ড করতে ট্যাপ করুন, তারপর যাচাই করে পাঠান।",
   "Microphone unavailable. Check app permissions.": "মাইক্রোফোন ব্যবহার করা যাচ্ছে না। অ্যাপের অনুমতিগুলো দেখুন।",
   "Recording failed. Please record again.": "রেকর্ডিং ব্যর্থ হয়েছে। আবার রেকর্ড করুন।",
-  "Playback completed": "বাজানো শেষ হয়েছে"
+  "Playback completed": "বাজানো শেষ হয়েছে",
+  "Customer requested": "গ্রাহকের অনুরোধ",
+  "Entered by mistake": "ভুল করে লেখা হয়েছে",
+  "Item unavailable": "পদটি পাওয়া যাচ্ছে না",
+  "Duplicate order": "একই অর্ডার দুবার",
+  "Customer left": "ক্রেতা চলে গেছেন"
 }
