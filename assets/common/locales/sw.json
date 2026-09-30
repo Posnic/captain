@@ -911,5 +911,20 @@
   "{0} each": "{0} kila moja",
   "Kitchen display": "Skrini ya jikoni",
   "Last confirmed on display: {0}": "Ilithibitishwa mara ya mwisho kwenye skrini: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Hakuna uthibitisho wa hivi karibuni wa kuonekana kwenye skrini. Kagua skrini ya jikoni."
+  "No recent display confirmation. Check the kitchen screen.": "Hakuna uthibitisho wa hivi karibuni wa kuonekana kwenye skrini. Kagua skrini ya jikoni.",
+  "Message kitchen": "Tuma ujumbe jikoni",
+  "General message": "Ujumbe wa jumla",
+  "No table or order required": "Hakuna haja ya meza au agizo",
+  "Record voice note": "Rekodi ujumbe wa sauti",
+  "Discard recording": "Futa rekodi",
+  "Voice notes play after the current kitchen announcement.": "Ujumbe wa sauti utachezwa baada ya tangazo la sasa la jikoni.",
+  "Kitchen messages": "Ujumbe wa jikoni",
+  "Stop recording": "Acha kurekodi",
+  "Recording…": "Inarekodi…",
+  "Queued for playback": "Kwenye foleni ya kucheza",
+  "Voice note saved on this phone": "Ujumbe wa sauti umehifadhiwa kwenye simu hii",
+  "Tap to record, then review and send.": "Gusa ili kurekodi, kisha kagua na utume.",
+  "Microphone unavailable. Check app permissions.": "Maikrofoni haipatikani. Angalia ruhusa za programu.",
+  "Recording failed. Please record again.": "Kurekodi kumeshindikana. Tafadhali rekodi tena.",
+  "Playback completed": "Uchezaji umekamilika"
 }

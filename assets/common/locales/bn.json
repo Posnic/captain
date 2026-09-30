@@ -911,5 +911,20 @@
   "🎤 Say again": "🎤 আবার বলুন",
   "👁 Read the order back": "👁 অর্ডার পড়ে শোনান",
   "📤 Send it to the kitchen": "📤 রান্নাঘরে পাঠান",
-  "🗑 Clear the order first": "🗑 আগে অর্ডার খালি করুন"
+  "🗑 Clear the order first": "🗑 আগে অর্ডার খালি করুন",
+  "Message kitchen": "রান্নাঘরে বার্তা পাঠান",
+  "General message": "সাধারণ বার্তা",
+  "No table or order required": "টেবিল বা অর্ডারের প্রয়োজন নেই",
+  "Record voice note": "ভয়েস মেসেজ রেকর্ড করুন",
+  "Discard recording": "রেকর্ডিং মুছে ফেলুন",
+  "Voice notes play after the current kitchen announcement.": "রান্নাঘরের বর্তমান ঘোষণা শেষ হলে ভয়েস মেসেজগুলো বাজানো হবে।",
+  "Kitchen messages": "রান্নাঘরের বার্তা",
+  "Stop recording": "রেকর্ডিং বন্ধ করুন",
+  "Recording…": "রেকর্ড হচ্ছে…",
+  "Queued for playback": "বাজানোর জন্য সারিতে আছে",
+  "Voice note saved on this phone": "ভয়েস মেসেজ এই ফোনে সংরক্ষিত হয়েছে",
+  "Tap to record, then review and send.": "রেকর্ড করতে ট্যাপ করুন, তারপর যাচাই করে পাঠান।",
+  "Microphone unavailable. Check app permissions.": "মাইক্রোফোন ব্যবহার করা যাচ্ছে না। অ্যাপের অনুমতিগুলো দেখুন।",
+  "Recording failed. Please record again.": "রেকর্ডিং ব্যর্থ হয়েছে। আবার রেকর্ড করুন।",
+  "Playback completed": "বাজানো শেষ হয়েছে"
 }

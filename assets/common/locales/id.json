@@ -911,5 +911,20 @@
   "{0} each": "{0} per item",
   "Kitchen display": "Layar dapur",
   "Last confirmed on display: {0}": "Terakhir dikonfirmasi di layar: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Belum ada konfirmasi tampilan terbaru. Periksa layar dapur."
+  "No recent display confirmation. Check the kitchen screen.": "Belum ada konfirmasi tampilan terbaru. Periksa layar dapur.",
+  "Message kitchen": "Kirim pesan ke dapur",
+  "General message": "Pesan umum",
+  "No table or order required": "Tidak perlu meja atau pesanan",
+  "Record voice note": "Rekam pesan suara",
+  "Discard recording": "Buang rekaman",
+  "Voice notes play after the current kitchen announcement.": "Pesan suara diputar setelah pengumuman dapur saat ini selesai.",
+  "Kitchen messages": "Pesan dapur",
+  "Stop recording": "Hentikan rekaman",
+  "Recording…": "Merekam…",
+  "Queued for playback": "Dalam antrean pemutaran",
+  "Voice note saved on this phone": "Pesan suara disimpan di ponsel ini",
+  "Tap to record, then review and send.": "Ketuk untuk merekam, lalu tinjau dan kirim.",
+  "Microphone unavailable. Check app permissions.": "Mikrofon tidak tersedia. Periksa izin aplikasi.",
+  "Recording failed. Please record again.": "Perekaman gagal. Silakan rekam ulang.",
+  "Playback completed": "Pemutaran selesai"
 }

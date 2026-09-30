@@ -911,5 +911,20 @@
   "{0} each": "개당 {0}",
   "Kitchen display": "주방 디스플레이",
   "Last confirmed on display: {0}": "화면 표시 최종 확인: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "최근 화면 표시 확인이 없습니다. 주방 화면을 확인하세요."
+  "No recent display confirmation. Check the kitchen screen.": "최근 화면 표시 확인이 없습니다. 주방 화면을 확인하세요.",
+  "Message kitchen": "주방에 메시지 보내기",
+  "General message": "일반 메시지",
+  "No table or order required": "테이블이나 주문이 필요하지 않습니다",
+  "Record voice note": "음성 메시지 녹음",
+  "Discard recording": "녹음 삭제",
+  "Voice notes play after the current kitchen announcement.": "음성 메시지는 현재 주방 안내 방송이 끝난 후 재생됩니다.",
+  "Kitchen messages": "주방 메시지",
+  "Stop recording": "녹음 중지",
+  "Recording…": "녹음 중…",
+  "Queued for playback": "재생 대기 중",
+  "Voice note saved on this phone": "음성 메시지가 이 휴대전화에 저장되었습니다",
+  "Tap to record, then review and send.": "눌러서 녹음한 다음 확인하고 보내세요.",
+  "Microphone unavailable. Check app permissions.": "마이크를 사용할 수 없습니다. 앱 권한을 확인하세요.",
+  "Recording failed. Please record again.": "녹음에 실패했습니다. 다시 녹음해 주세요.",
+  "Playback completed": "재생 완료"
 }

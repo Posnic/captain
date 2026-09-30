@@ -911,5 +911,20 @@
   "{0} each": "每份 {0}",
   "Kitchen display": "廚房顯示螢幕",
   "Last confirmed on display: {0}": "最近一次顯示確認：{0}",
-  "No recent display confirmation. Check the kitchen screen.": "近期沒有顯示確認。請檢查廚房螢幕。"
+  "No recent display confirmation. Check the kitchen screen.": "近期沒有顯示確認。請檢查廚房螢幕。",
+  "Message kitchen": "傳送訊息給廚房",
+  "General message": "一般訊息",
+  "No table or order required": "無需關聯餐桌或訂單",
+  "Record voice note": "錄製語音訊息",
+  "Discard recording": "捨棄錄音",
+  "Voice notes play after the current kitchen announcement.": "語音訊息會在目前的廚房播報結束後播放。",
+  "Kitchen messages": "廚房訊息",
+  "Stop recording": "停止錄音",
+  "Recording…": "正在錄音…",
+  "Queued for playback": "已加入播放佇列",
+  "Voice note saved on this phone": "語音訊息已儲存在這支手機上",
+  "Tap to record, then review and send.": "點選錄音，然後確認並傳送。",
+  "Microphone unavailable. Check app permissions.": "麥克風無法使用。請檢查應用程式權限。",
+  "Recording failed. Please record again.": "錄音失敗。請重新錄製。",
+  "Playback completed": "播放完畢"
 }

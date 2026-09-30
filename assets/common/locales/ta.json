@@ -911,5 +911,20 @@
   "🎤 Say again": "🎤 மீண்டும் சொல்",
   "👁 Read the order back": "👁 ஆர்டரை வாசித்துக் காட்டு",
   "📤 Send it to the kitchen": "📤 சமையலறைக்கு அனுப்பு",
-  "🗑 Clear the order first": "🗑 முதலில் ஆர்டரை அழி"
+  "🗑 Clear the order first": "🗑 முதலில் ஆர்டரை அழி",
+  "Message kitchen": "சமையலறைக்குச் செய்தி அனுப்பு",
+  "General message": "பொதுவான செய்தி",
+  "No table or order required": "மேசையோ ஆர்டரோ தேவையில்லை",
+  "Record voice note": "குரல் செய்தியைப் பதிவு செய்",
+  "Discard recording": "பதிவை நீக்கு",
+  "Voice notes play after the current kitchen announcement.": "தற்போதைய சமையலறை அறிவிப்பு முடிந்ததும் குரல் செய்திகள் ஒலிக்கப்படும்.",
+  "Kitchen messages": "சமையலறைச் செய்திகள்",
+  "Stop recording": "பதிவை நிறுத்து",
+  "Recording…": "பதிவாகிறது…",
+  "Queued for playback": "ஒலிப்பதற்கான வரிசையில் உள்ளது",
+  "Voice note saved on this phone": "குரல் செய்தி இந்த மொபைலில் சேமிக்கப்பட்டது",
+  "Tap to record, then review and send.": "பதிவு செய்யத் தட்டவும்; பிறகு சரிபார்த்து அனுப்பவும்.",
+  "Microphone unavailable. Check app permissions.": "மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை. செயலி அனுமதிகளைச் சரிபார்க்கவும்.",
+  "Recording failed. Please record again.": "பதிவு தோல்வியடைந்தது. மீண்டும் பதிவு செய்யவும்.",
+  "Playback completed": "ஒலித்து முடிந்தது"
 }

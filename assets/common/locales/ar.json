@@ -911,5 +911,20 @@
   "{0} each": "{0} لكل واحد",
   "Kitchen display": "شاشة المطبخ",
   "Last confirmed on display: {0}": "آخر تأكيد على الشاشة: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "لا يوجد تأكيد حديث من الشاشة. تحقق من شاشة المطبخ."
+  "No recent display confirmation. Check the kitchen screen.": "لا يوجد تأكيد حديث من الشاشة. تحقق من شاشة المطبخ.",
+  "Message kitchen": "إرسال رسالة إلى المطبخ",
+  "General message": "رسالة عامة",
+  "No table or order required": "لا حاجة إلى طاولة أو طلب",
+  "Record voice note": "تسجيل رسالة صوتية",
+  "Discard recording": "حذف التسجيل",
+  "Voice notes play after the current kitchen announcement.": "تُشغَّل الرسائل الصوتية بعد انتهاء الإعلان الحالي في المطبخ.",
+  "Kitchen messages": "رسائل المطبخ",
+  "Stop recording": "إيقاف التسجيل",
+  "Recording…": "جارٍ التسجيل…",
+  "Queued for playback": "في قائمة انتظار التشغيل",
+  "Voice note saved on this phone": "تم حفظ الرسالة الصوتية على هذا الهاتف",
+  "Tap to record, then review and send.": "اضغط للتسجيل، ثم راجع الرسالة وأرسلها.",
+  "Microphone unavailable. Check app permissions.": "الميكروفون غير متاح. تحقق من أذونات التطبيق.",
+  "Recording failed. Please record again.": "فشل التسجيل. يرجى التسجيل مرة أخرى.",
+  "Playback completed": "اكتمل التشغيل"
 }

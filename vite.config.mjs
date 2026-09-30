@@ -126,6 +126,7 @@ export default defineConfig({
         'access-denied': path.resolve(ROOT, 'access-denied.html'),
         'number-card': path.resolve(ROOT, 'number-card.html'),
         me: path.resolve(ROOT, 'me.html'),
+        kitchenMessage: path.resolve(ROOT, 'kitchen-message.html'),
         'my-sales': path.resolve(ROOT, 'my-sales.html')
       }
     }

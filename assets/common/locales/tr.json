@@ -911,5 +911,20 @@
   "{0} each": "Her biri {0}",
   "Kitchen display": "Mutfak ekranı",
   "Last confirmed on display: {0}": "Ekranda son onay: {0}",
-  "No recent display confirmation. Check the kitchen screen.": "Ekrandan yakın zamanda onay alınmadı. Mutfak ekranını kontrol edin."
+  "No recent display confirmation. Check the kitchen screen.": "Ekrandan yakın zamanda onay alınmadı. Mutfak ekranını kontrol edin.",
+  "Message kitchen": "Mutfağa mesaj gönder",
+  "General message": "Genel mesaj",
+  "No table or order required": "Masa veya sipariş gerekmez",
+  "Record voice note": "Sesli mesaj kaydet",
+  "Discard recording": "Kaydı sil",
+  "Voice notes play after the current kitchen announcement.": "Sesli mesajlar, mutfaktaki mevcut anons bittikten sonra çalınır.",
+  "Kitchen messages": "Mutfak mesajları",
+  "Stop recording": "Kaydı durdur",
+  "Recording…": "Kaydediliyor…",
+  "Queued for playback": "Çalınmak üzere sıraya alındı",
+  "Voice note saved on this phone": "Sesli mesaj bu telefona kaydedildi",
+  "Tap to record, then review and send.": "Kaydetmek için dokunun, ardından kontrol edip gönderin.",
+  "Microphone unavailable. Check app permissions.": "Mikrofon kullanılamıyor. Uygulama izinlerini kontrol edin.",
+  "Recording failed. Please record again.": "Kayıt başarısız oldu. Lütfen tekrar kaydedin.",
+  "Playback completed": "Çalma tamamlandı"
 }
