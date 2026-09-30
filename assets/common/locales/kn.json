@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಟ್ಯಾಪ್ ಮಾಡಿ, ನಂತರ ಪರಿಶೀಲಿಸಿ ಕಳುಹಿಸಿ.",
   "Microphone unavailable. Check app permissions.": "ಮೈಕ್ರೋಫೋನ್ ಲಭ್ಯವಿಲ್ಲ. ಆ್ಯಪ್ ಅನುಮತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
   "Recording failed. Please record again.": "ರೆಕಾರ್ಡಿಂಗ್ ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ರೆಕಾರ್ಡ್ ಮಾಡಿ.",
-  "Playback completed": "ಪ್ಲೇ ಮಾಡುವುದು ಪೂರ್ಣಗೊಂಡಿದೆ"
+  "Playback completed": "ಪ್ಲೇ ಮಾಡುವುದು ಪೂರ್ಣಗೊಂಡಿದೆ",
+  "Customer requested": "ಗ್ರಾಹಕರ ಕೋರಿಕೆ",
+  "Entered by mistake": "ತಪ್ಪಾಗಿ ನಮೂದಿಸಲಾಗಿದೆ",
+  "Item unavailable": "ತಿನಿಸು ಲಭ್ಯವಿಲ್ಲ",
+  "Duplicate order": "ನಕಲಿ ಆರ್ಡರ್",
+  "Customer left": "ಗ್ರಾಹಕರು ಹೊರಟುಹೋದರು"
 }

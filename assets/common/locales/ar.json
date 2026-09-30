@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "اضغط للتسجيل، ثم راجع الرسالة وأرسلها.",
   "Microphone unavailable. Check app permissions.": "الميكروفون غير متاح. تحقق من أذونات التطبيق.",
   "Recording failed. Please record again.": "فشل التسجيل. يرجى التسجيل مرة أخرى.",
-  "Playback completed": "اكتمل التشغيل"
+  "Playback completed": "اكتمل التشغيل",
+  "Customer requested": "بناءً على طلب العميل",
+  "Entered by mistake": "أُدخل بالخطأ",
+  "Item unavailable": "الصنف غير متوفر",
+  "Duplicate order": "طلب مكرر",
+  "Customer left": "غادر العميل"
 }

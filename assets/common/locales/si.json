@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "පටිගත කිරීමට තට්ටු කරන්න, ඉන්පසු පරීක්ෂා කර යවන්න.",
   "Microphone unavailable. Check app permissions.": "මයික්‍රෆෝනය ලබාගත නොහැක. යෙදුමේ අවසර පරීක්ෂා කරන්න.",
   "Recording failed. Please record again.": "පටිගත කිරීම අසාර්ථක විය. කරුණාකර නැවත පටිගත කරන්න.",
-  "Playback completed": "වාදනය අවසන්"
+  "Playback completed": "වාදනය අවසන්",
+  "Customer requested": "පාරිභෝගික ඉල්ලීම",
+  "Entered by mistake": "වැරදීමකින් ඇතුළත් කළා",
+  "Item unavailable": "කෑම වර්ගය නොමැත",
+  "Duplicate order": "නැවත ඇතුළත් කළ ඇණවුම",
+  "Customer left": "පාරිභෝගිකයා පිටව ගියා"
 }

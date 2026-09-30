@@ -7,9 +7,19 @@
       const form=document.createElement('form'),heading=document.createElement('h2'),caption=document.createElement('label'),input=document.createElement('input'),footer=document.createElement('footer'),cancel=document.createElement('button'),submit=document.createElement('button');
       heading.textContent=t(title);caption.textContent=t(label);input.type=secret?'password':'text';input.required=true;input.minLength=secret?4:3;input.maxLength=secret?8:200;input.autocomplete='off';
       if(secret){input.inputMode='numeric';input.pattern='[0-9]{4,8}';}
-      caption.append(input);cancel.type='button';cancel.textContent=t('Cancel');submit.type='submit';submit.textContent=t('Continue');footer.append(cancel,submit);form.append(heading,caption,footer);dialog.append(form);document.body.append(dialog);
-      const finish=value=>{input.value='';dialog.close();dialog.remove();resolve(value);};
-      cancel.onclick=()=>finish(null);dialog.oncancel=event=>{event.preventDefault();finish(null);};form.onsubmit=event=>{event.preventDefault();if(form.reportValidity())finish(input.value.trim());};dialog.showModal();input.focus();
+      const reasons=document.createElement('div');reasons.className='change-reason-choices';
+      if(!secret) for(const reason of ['Customer requested','Customer left','Entered by mistake','Item unavailable','Duplicate order']) {
+        const choice=document.createElement('button');choice.type='button';choice.textContent=t(reason);choice.setAttribute('aria-pressed','false');
+        choice.onclick=()=>{input.value=t(reason);updateChoices();};reasons.append(choice);
+      }
+      function updateChoices(){for(const choice of reasons.children)choice.setAttribute('aria-pressed',String(choice.textContent===input.value));}
+      input.addEventListener('input',updateChoices);
+      caption.append(input);cancel.type='button';cancel.textContent=t('Cancel');submit.type='submit';submit.textContent=t('Continue');footer.append(cancel,submit);form.append(heading,reasons,caption,footer);dialog.append(form);document.body.append(dialog);
+      const previous=document.activeElement;
+      const nativeBack=event=>{event.preventDefault();event.stopImmediatePropagation();finish(null);};
+      const finish=value=>{input.value='';window.removeEventListener('captain:back',nativeBack,true);dialog.close();dialog.remove();previous?.focus({preventScroll:true});resolve(value);};
+      window.addEventListener('captain:back',nativeBack,true);
+      cancel.onclick=()=>finish(null);dialog.oncancel=event=>{event.preventDefault();finish(null);};form.onsubmit=event=>{event.preventDefault();input.value=input.value.trim();if(form.reportValidity())finish(input.value);};dialog.showModal();if(secret)input.focus();else reasons.querySelector('button')?.focus();
     });
   }
   async function save(body) {

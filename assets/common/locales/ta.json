@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "பதிவு செய்யத் தட்டவும்; பிறகு சரிபார்த்து அனுப்பவும்.",
   "Microphone unavailable. Check app permissions.": "மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை. செயலி அனுமதிகளைச் சரிபார்க்கவும்.",
   "Recording failed. Please record again.": "பதிவு தோல்வியடைந்தது. மீண்டும் பதிவு செய்யவும்.",
-  "Playback completed": "ஒலித்து முடிந்தது"
+  "Playback completed": "ஒலித்து முடிந்தது",
+  "Customer requested": "வாடிக்கையாளர் கோரிக்கை",
+  "Entered by mistake": "தவறுதலாகச் சேர்க்கப்பட்டது",
+  "Item unavailable": "உணவு கிடைக்கவில்லை",
+  "Duplicate order": "இருமுறை சேர்க்கப்பட்ட ஆர்டர்",
+  "Customer left": "வாடிக்கையாளர் சென்றுவிட்டார்"
 }

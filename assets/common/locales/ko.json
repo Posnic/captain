@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "눌러서 녹음한 다음 확인하고 보내세요.",
   "Microphone unavailable. Check app permissions.": "마이크를 사용할 수 없습니다. 앱 권한을 확인하세요.",
   "Recording failed. Please record again.": "녹음에 실패했습니다. 다시 녹음해 주세요.",
-  "Playback completed": "재생 완료"
+  "Playback completed": "재생 완료",
+  "Customer requested": "고객 요청",
+  "Entered by mistake": "잘못 입력함",
+  "Item unavailable": "품절",
+  "Duplicate order": "중복 주문",
+  "Customer left": "고객이 떠남"
 }

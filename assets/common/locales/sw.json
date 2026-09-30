@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "Gusa ili kurekodi, kisha kagua na utume.",
   "Microphone unavailable. Check app permissions.": "Maikrofoni haipatikani. Angalia ruhusa za programu.",
   "Recording failed. Please record again.": "Kurekodi kumeshindikana. Tafadhali rekodi tena.",
-  "Playback completed": "Uchezaji umekamilika"
+  "Playback completed": "Uchezaji umekamilika",
+  "Customer requested": "Ombi la mteja",
+  "Entered by mistake": "Imeingizwa kimakosa",
+  "Item unavailable": "Chakula hakipatikani",
+  "Duplicate order": "Agizo lililorudiwa",
+  "Customer left": "Mteja ameondoka"
 }

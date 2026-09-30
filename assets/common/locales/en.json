@@ -926,5 +926,10 @@
   "Tap to record, then review and send.": "Tap to record, then review and send.",
   "Microphone unavailable. Check app permissions.": "Microphone unavailable. Check app permissions.",
   "Recording failed. Please record again.": "Recording failed. Please record again.",
-  "Playback completed": "Playback completed"
+  "Playback completed": "Playback completed",
+  "Customer requested": "Customer requested",
+  "Entered by mistake": "Entered by mistake",
+  "Item unavailable": "Item unavailable",
+  "Duplicate order": "Duplicate order",
+  "Customer left": "Customer left"
 }
