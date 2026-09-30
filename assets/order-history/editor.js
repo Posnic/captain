@@ -77,7 +77,7 @@
     }
     async function openSetting(name) {
         if (saving) return;
-        if (order()?.seating_request_id && ['table','type','guests'].includes(name)) {
+        if (order() && (name === 'table' || (order().seating_request_id && ['type','guests'].includes(name)))) {
             const pending = CaptainGroupMove.pending(order()._id);
             if (pending) name = pending.body.dineType ? 'type' : 'table';
             if (CaptainGuestUpdate.pending(order()._id)) name = 'guests';

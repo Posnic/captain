@@ -76,20 +76,17 @@ for (const where of ['order-history.html','kot-management.html']) {
   expect(posts[0].items.map(i=>[i.product_id,i.quantity])).toEqual([['p-biryani',2],['p-coffee',1]]);
  });
 }
-test('table changes are staged separately and preserve items and guests',async({page})=>{
+test('older-server table changes use the shared selector and preserve items and guests',async({page})=>{
  const posts=await editor(page);
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[{id:'table-2',tableorder_value:'2',capacity:4,max_capacity:4,orders:[]}]}}));
  await setting(page,'table');
- await page.locator('label[for="edit_table_2"]').click();
- await page.locator('#editor-setting-back').click();
- await expect(page.locator('#editor-table-value')).toHaveText('1');
- await page.locator('[data-editor-setting="table"]').click();
- await page.locator('label[for="edit_table_2"]').click();
- await page.screenshot({path:'test-artifacts/editor-table.png'});
- await apply(page);
- await expect(page.locator('#order-editor-context')).toHaveText('Table 2');
- expect(posts).toHaveLength(0);
- await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
+ await expect(page.locator('#moveTableModal')).toBeVisible();
+ await page.locator('#move-table-list [data-id="table-2"]').click();
+ await page.screenshot({path:'test-artifacts/editor-table.png'});
+ expect(posts).toHaveLength(0);
+ await page.locator('#move-table-go').click();
+ await expect(page.locator('#moveTableModal')).toBeHidden();
  expect(posts[0]).toMatchObject({table_number:'2',table_id:'table-2',person_count:2,dine_type:'Dine-in',seen_at:original.updated_date});
  expect(posts[0].items[0]).toMatchObject({product_id:'p-biryani',quantity:2});
 });

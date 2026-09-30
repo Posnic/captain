@@ -927,6 +927,10 @@ let orderBeingMoved = null;
 let moveSaving = false;
 let moveLoadVersion = 0, moveTables = [];
 let moveSelected = [], movePrimary = "", moveMode = "move", mergeChoice = null;
+let moveLegacySupported = false;
+let moveClosing = false, moveReopen = null;
+const usesDurableMove = order => Boolean(order?.seating_request_id ||
+    (moveLegacySupported && tableOf(order) && order?.dine_type !== 'Take away'));
 let mergePermission = null;
 const mergePermissionOwner = () => JSON.stringify([window.POSNIC?.session?.shopKey,window.POSNIC?.session?.user?.id,localStorage.getItem('branch_id')]);
 function canMergeOrders() { return mergePermission?.owner === mergePermissionOwner() && mergePermission.value; }
@@ -990,7 +994,10 @@ function ensureMoveSheet() {
 
     /* Reopened later for a different order, the last choice must not still be
        sitting there ready to move this one. */
-    el.addEventListener('hide.bs.modal', event => { if (moveSaving) event.preventDefault(); });
+    el.addEventListener('hide.bs.modal', event => {
+        if (moveSaving) event.preventDefault();
+        else moveClosing = true;
+    });
     el.addEventListener('hidden.bs.modal', () => {
         orderBeingMoved = null;
         moveLoadVersion++;
@@ -999,6 +1006,10 @@ function ensureMoveSheet() {
             go.disabled = true;
             go.textContent = 'Choose a table';
         }
+        moveClosing = false;
+        const reopen = moveReopen;
+        moveReopen = null;
+        if (reopen) moveOrder(...reopen);
     });
 
     return el;
@@ -1006,6 +1017,9 @@ function ensureMoveSheet() {
 
 function moveOrder(orderId, mode = "move") {
     if (moveSaving) return;
+    // Bootstrap finishes hiding the backdrop after the dialog becomes invisible.
+    // Wait for that cleanup before reopening, so it cannot clear the new order.
+    if (moveClosing) { moveReopen = [orderId, mode]; return; }
     const order = (allOrders || []).find((o) => o._id === orderId);
     if (!order) return;
 
@@ -1016,7 +1030,7 @@ function moveOrder(orderId, mode = "move") {
     void refreshMoveTables();
 
     const el = ensureMoveSheet();
-    if (typeof bootstrap !== 'undefined') new bootstrap.Modal(el).show();
+    if (typeof bootstrap !== 'undefined') bootstrap.Modal.getOrCreateInstance(el).show();
 }
 
 async function refreshMoveTables() {
@@ -1026,6 +1040,7 @@ async function refreshMoveTables() {
     const retry = document.getElementById('move-table-retry');
     const go = document.getElementById('move-table-go');
     moveTables = [];
+    moveLegacySupported = false;
     moveSelected = []; movePrimary = ""; mergeChoice = null;
     document.getElementById('move-table-list').replaceChildren();
     go.disabled = true;
@@ -1033,7 +1048,7 @@ async function refreshMoveTables() {
     document.getElementById('move-table-cancel').hidden = true;
     message.textContent = window.I18N?.t('Loading...') || 'Loading...';
     try {
-    if (orderBeingMoved.seating_request_id && window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
+    if (window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
         const pending=CaptainGroupMove.pending(orderBeingMoved._id);
         moveMode=pending.body.targetOrderId ? 'merge' : 'move';
         ensureMoveSheet().querySelector('.modal-title').textContent=window.I18N?.t(moveMode==='merge'?'Merge orders':'Move to another table') || (moveMode==='merge'?'Merge orders':'Move to another table');
@@ -1046,6 +1061,7 @@ async function refreshMoveTables() {
         const result = await POSNIC.api.get('/captain/v1/tables');
         if (version !== moveLoadVersion || !orderBeingMoved) return;
         if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
+        moveLegacySupported = result.capabilities?.legacySourceMove === true;
         if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
         moveTables = tablesFromStorage(result.tables);
         message.textContent = '';
@@ -1088,7 +1104,7 @@ function renderMoveTables() {
     );
 
     if (moveMode === "merge") { renderMergeTables(); return; }
-    if (order.seating_request_id) { renderGroupMoveTables(); return; }
+    if (usesDurableMove(order)) { renderGroupMoveTables(); return; }
     const tables = moveTables;
     for (const table of tables) if (table.orders.some(row => row.id !== order._id)) busy.add(table.value);
     if (!tables.length) {
@@ -1163,7 +1179,9 @@ function renderGroupMoveTables() {
     }
     const message=document.getElementById('move-table-status');
     message.textContent=moveSelected.length ? t('Seat capacity')+': '+current.maximum+' · '+t('Guests')+': '+current.guests : t('Choose a table');
-    const unchanged=JSON.stringify([...moveSelected].sort())===JSON.stringify([...(orderBeingMoved.seating_table_ids||[])].sort()) && movePrimary===orderBeingMoved.seating_primary_id;
+    const unchanged=orderBeingMoved.seating_request_id
+        ? JSON.stringify([...moveSelected].sort())===JSON.stringify([...(orderBeingMoved.seating_table_ids||[])].sort()) && movePrimary===orderBeingMoved.seating_primary_id
+        : moveSelected.length===1 && moveTables.find(row=>row.id===moveSelected[0])?.value===tableOf(orderBeingMoved);
     const go=document.getElementById('move-table-go');
     go.disabled=!current.valid||unchanged;
     go.textContent=t('Save');
@@ -1179,7 +1197,7 @@ function chooseMoveTable(button) {
     const list = document.getElementById('move-table-list');
     if (!list) return;
     if(moveMode === 'merge') { mergeChoice=moveTables.find(row=>row.id===button.dataset.id); renderMergeTables(); return; }
-    if (orderBeingMoved.seating_request_id) {
+    if (usesDurableMove(orderBeingMoved)) {
         const id=button.dataset.id;
         moveSelected=moveSelected.includes(id)?moveSelected.filter(value=>value!==id):[...moveSelected,id];
         if(!moveSelected.includes(movePrimary))movePrimary=moveSelected[0]||'';
@@ -1202,13 +1220,13 @@ async function confirmMoveTable(cancelPending = false) {
     const order = orderBeingMoved;
     let pending;
     try {
-        pending = order?.seating_request_id && window.CaptainGroupMove?.pending(order._id);
+        pending = order && window.CaptainGroupMove?.pending(order._id);
     } catch (error) {
         showToast(window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.', 'error');
         return;
     }
     if (!order || (!pending && (!chosen || chosen.disabled))) return;
-    if (!pending && order.seating_request_id && (moveMode === 'merge' ? !mergeChoice : !groupMoveSelection().valid)) return;
+    if (!pending && usesDurableMove(order) && (moveMode === 'merge' ? !mergeChoice : !groupMoveSelection().valid)) return;
     moveSaving = true;
     const sheet = document.getElementById('moveTableModal');
     const controls = [...sheet.querySelectorAll('button,select')].map(button => ({button, disabled:button.disabled}));
@@ -1227,7 +1245,7 @@ async function confirmMoveTable(cancelPending = false) {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : order.seating_request_id ? await CaptainGroupMove.move(order._id, moveMode === 'merge' ? mergeSelection() : groupMoveSelection()) : await CaptainOrderActions.save( {
+        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : usesDurableMove(order) ? await CaptainGroupMove.move(order._id, moveMode === 'merge' ? mergeSelection() : groupMoveSelection()) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1241,7 +1259,7 @@ async function confirmMoveTable(cancelPending = false) {
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
         moveSaving = false;
-        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : (pending || order.seating_request_id) ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
+        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : (pending || usesDurableMove(order)) ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
         if (el && typeof bootstrap !== 'undefined') {
@@ -1267,7 +1285,7 @@ async function confirmMoveTable(cancelPending = false) {
         hideLoader();
         // A saved request owns its destination until it is resolved.
         // Never offer another destination while Retry will send the saved one.
-        if (sheet.classList.contains('show') && order.seating_request_id) {
+        if (sheet.classList.contains('show') && (usesDurableMove(order) || window.CaptainGroupMove?.pending(order._id))) {
             await refreshMoveTables();
         }
     }
