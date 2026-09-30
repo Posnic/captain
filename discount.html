@@ -356,11 +356,13 @@
         }
 
         let previousTableMode = '';
+        let tableLoadGeneration = 0;
 
         async function loadTablesFromTableorders(isPollingUpdate = false) {
+            const generation = ++tableLoadGeneration;
             const container = document.querySelector('.table-list');
             if (!container) return;
-            const choice = rememberTableChoice();
+            let choice = rememberTableChoice();
 
             // wrapper <div> that contains BOTH: .section-title + .table-list
             const sectionWrapper = container.closest('.discount-container > div') || container.parentElement;
@@ -502,6 +504,11 @@
             } catch (error) {
                 console.error('Failed to fetch active orders:', error);
             }
+            if (generation !== tableLoadGeneration) return;
+            // A delayed occupancy lookup must not overwrite newer typing or
+            // dismiss the keyboard. The next poll refreshes after editing ends.
+            if (document.activeElement?.id === 'manual_table_input') return;
+            choice = rememberTableChoice();
 
             /* How many orders this table already has. Falls back to the name
                list for a server that sends no per-table detail: one order is

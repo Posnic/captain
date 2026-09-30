@@ -369,7 +369,7 @@ for (const width of [320, 768]) {
     await page.locator("#pending-back").click();
     await expect(page).toHaveURL(/kot-management\.html$/);
     await page.goto('/me.html');
-    await page.locator('a[href="pending.html"]').click();
+    await page.locator('.me-row[href="pending.html"]').click();
     await expect(page.locator(".pending-order-card")).toHaveCount(1);
     await page.evaluate(() => window.dispatchEvent(new Event("captain:back", {cancelable:true})));
     await expect(page).toHaveURL(/me\.html$/);

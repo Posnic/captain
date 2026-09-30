@@ -729,7 +729,7 @@ function renderOrders() {
                 <div class="order-meta">
                     <span class="order-time">
                         <i class="fas fa-clock"></i>
-                        ${formatDateTime(order.created_at)}
+                        ${formatDateTime(order.created_at || order.created_date)}
                     </span>
                     <span class="order-total">
                         ${CaptainMoney.html(order.total_amount)}
@@ -802,7 +802,7 @@ function viewOrderDetails(orderId) {
     const detailsHtml = `
       <section class="history-detail-context"><h2 translate="no">#${safe(order.order_id || order._id)}</h2>
         <p><span>Table</span> <bdi>${safe(order.table_number)}</bdi> · <span>${safe(order.dine_type || 'Dine-in')}</span> · <span>Guests</span> <bdi>${safe(order.person_count || 1)}</bdi></p>
-        <p><span>${safe(order.status)}</span> · <time translate="no">${safe(formatDateTime(order.created_at))}</time></p>
+        <p><span>${safe(order.status)}</span> · <time translate="no">${safe(formatDateTime(order.created_at || order.created_date))}</time></p>
         ${order.customer_name ? `<p translate="no">${safe(order.customer_name)}</p>` : ''}
       </section>
       ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
@@ -1948,8 +1948,12 @@ function clearNewItems() {
 
 // Utility functions
 function formatDateTime(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', {
+    const raw = dateString?.$date ?? dateString;
+    if (raw === undefined || raw === null || raw === '') return '—';
+    const date = new Date(raw?.$numberLong !== undefined ? Number(raw.$numberLong) : raw);
+    if (!Number.isFinite(date.getTime())) return '—';
+    const language = window.I18N?.language() || 'en';
+    return date.toLocaleString(language === 'en' ? 'en-IN' : language, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

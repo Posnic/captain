@@ -121,3 +121,21 @@ test("cart shares the menu note presets and preserves each item note separately"
   await expect(page).toHaveURL(/products.html$/);
   await expect(page.locator("#cart-qty")).toHaveText("2");
 });
+
+
+test('history dates accept legacy timestamps and never display Invalid Date',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.route('**/sales/getOrderHistory',route=>route.fulfill({json:{type:'success',data:{orders:[
+  {_id:'legacy-date',table_number:'8',status:'pending',total_amount:20,created_date:{$date:'2026-09-30T12:00:00Z'},items:[]},
+  {_id:'missing-date',table_number:'9',status:'pending',total_amount:20,items:[]}
+ ]}}}));
+ await page.goto('/order-history.html');
+ await expect(page.locator('.order-card')).toHaveCount(2);
+ await expect(page.locator('[data-view-order=legacy-date]')).toContainText('2026');
+ await expect(page.locator('[data-view-order=missing-date]')).toContainText('—');
+ await expect(page.locator('#order-list-screen')).not.toContainText('Invalid Date');
+ await page.locator('[data-view-order=legacy-date]').click();
+ await expect(page.locator('#order-details-content time')).toContainText('2026');
+ expect(await page.evaluate(()=>formatDateTime({$date:{$numberLong:'1790769600000'}}))).not.toBe('—');
+ expect(await page.evaluate(()=>formatDateTime('malformed'))).toBe('—');
+});
