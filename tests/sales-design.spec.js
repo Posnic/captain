@@ -8,6 +8,7 @@ for(const [width,language] of [[320,'en'],[768,'ar']]) {
   await page.route('**/sales/myDay',route=>route.fulfill({json:{type:'success',data:{total:123456789.99,paid_total:5000,orders:1234,cancelled:3,tables:[{table:'GardenTerraceTableWithALongName',total:123456789.99,paid_total:5000,orders:1234}],recent:[{table_number:'GardenTerraceTableWithALongName',total_amount:123456789.99,created_at:new Date().toISOString()}]}}}));
   await page.goto('/my-sales.html');
   await expect(page.locator('#sales-tables')).toContainText('GardenTerraceTableWithALongName');
+  if(language==='ar')await expect(page.locator('#sales-recent .me-row-sub')).not.toContainText(/am|pm/i);
   expect(await page.locator('#sales-total').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   await expect(page.locator('#sales-paid-row')).toBeVisible();
   await expect(page.locator('#sales-paid')).toContainText('5,000');
@@ -30,4 +31,31 @@ test('older servers do not display an invented paid total',async({page})=>{
  await page.goto('/my-sales.html');
  await expect(page.locator('#sales-count')).toHaveText('1 order');
  await expect(page.locator('#sales-paid-row')).toBeHidden();
+});
+
+test('stalled sales refresh retains known figures, releases loading and ignores its late reply',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.route('**/sales/myDay',route=>route.fulfill({json:{type:'success',data:{total:100,orders:1,cancelled:0,tables:[],recent:[]}}}));
+ await page.goto('/my-sales.html');
+ await expect(page.locator('#sales-count')).toHaveText('1 order');
+ const before=await page.locator('#sales-total').textContent();
+ await page.clock.install();
+ await page.evaluate(()=>{POSNIC.api.post=()=>new Promise(resolve=>{window.finishOldSales=resolve;});void refreshMySales();});
+ await expect(page.locator('main')).toHaveAttribute('aria-busy','true');
+ await page.clock.fastForward(20001);
+ await expect(page.locator('main')).not.toHaveAttribute('aria-busy','true');
+ await expect(page.locator('#sales-status')).toContainText('did not answer');
+ await expect(page.locator('#sales-total')).toHaveText(before);
+ await page.evaluate(()=>{POSNIC.api.post=async()=>({type:'success',data:{total:200,orders:2,cancelled:0,tables:[],recent:[]}});return refreshMySales();});
+ await expect(page.locator('#sales-count')).toHaveText('2 orders');
+ await page.evaluate(()=>finishOldSales({type:'success',data:{total:999,orders:99,cancelled:0,tables:[],recent:[]}}));
+ await expect(page.locator('#sales-count')).toHaveText('2 orders');
+ await page.evaluate(()=>{POSNIC.api.post=()=>new Promise(()=>{});});
+ await page.locator('[data-day=yesterday]').click();
+ await page.clock.fastForward(20001);
+ await expect(page.locator('#sales-total')).toBeEmpty();
+ await expect(page.locator('#sales-count')).toBeEmpty();
+ await expect(page.locator('#sales-status')).toContainText('did not answer');
+ await page.locator('#sales-back').click();
+ await expect(page).toHaveURL(/me.html$/);
 });

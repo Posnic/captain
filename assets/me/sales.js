@@ -35,7 +35,7 @@
         const then = new Date(value);
         if (isNaN(then.getTime())) return '';
         try {
-            return then.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            return then.toLocaleTimeString(window.I18N?.language?.() || undefined, { hour: 'numeric', minute: '2-digit' });
         } catch (e) {
             return '';
         }
@@ -122,12 +122,15 @@
         }
         at('sales-status').textContent = t('Loading...');
         document.querySelector('main').setAttribute('aria-busy', 'true');
-
+        let timer;
         try {
-            const said = await POSNIC.api.post('/sales/myDay', {
-                branch_id: localStorage.getItem('branch_id') || '',
-                day: dateKey,
-            });
+            const said = await Promise.race([
+                Promise.resolve().then(() => POSNIC.api.post('/sales/myDay', {
+                    branch_id: localStorage.getItem('branch_id') || '',
+                    day: dateKey,
+                })),
+                new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('sales_timeout')), 20000); }),
+            ]);
             if (request !== revision) return false;
             if (said?.type !== 'success' || !said.data) throw new Error('Connection failed');
             draw(said.data);
@@ -145,6 +148,7 @@
             if (loadedDay !== dateKey) clearFigures();
             return false;
         } finally {
+            clearTimeout(timer);
             if (request === revision) document.querySelector('main').removeAttribute('aria-busy');
         }
     }
