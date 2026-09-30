@@ -23,3 +23,29 @@ test('a changed payee keeps the draft until staff choose to refresh',async({page
  await page.locator('#branch-retry').click();
  await page.locator('#captain-discard [data-confirm-action=discard]').click();await expect(page.locator('#branch-upi-id')).toHaveValue('cashier@bank');
 });
+
+for(const [label,patch] of [['missing details',null],['wrong branch',{id:'other'}],['wrong payee',{branch_upi_id:'other@bank'}],['wrong name',{branch_upi_name:'Another Restaurant'}],['missing revision',{revision:''}]]) {
+ test(`UPI save rejects ${label} without losing its draft or original revision`,async({page})=>{
+  await open(page);
+  await page.route('**/captain/v1/branch-details',route=>route.fulfill({json:patch===null?{}:{id:'branch',revision:'next',branch_upi_id:'draft@bank',branch_upi_name:'Garden Restaurant',...patch}}));
+  await page.locator('#branch-upi-id').fill('draft@bank');
+  await page.locator('button[type=submit]').click();
+  await expect(page.locator('#branch-message')).toHaveText('Could not save. Please try again.');
+  await expect(page.locator('#branch-upi-id')).toHaveValue('draft@bank');
+  await expect(page.locator('#branch-upi-name')).toHaveValue('Garden Restaurant');
+  const posts=[];
+  await page.route('**/captain/v1/branch-details',route=>{const body=route.request().postDataJSON();posts.push(body);return route.fulfill({json:{id:'branch',...body,revision:'confirmed'}});});
+  await page.locator('button[type=submit]').click();
+  await expect(page.locator('#branch-message')).toHaveText('Saved');
+  expect(posts[0].revision).toBe('first');
+ });
+}
+
+test('removing UPI accepts the server clearing the receiving name',async({page})=>{
+ await open(page);
+ await page.route('**/captain/v1/branch-details',route=>route.fulfill({json:{id:'branch',revision:'cleared',branch_upi_id:'',branch_upi_name:''}}));
+ await page.locator('#branch-upi-id').fill('');
+ await page.locator('button[type=submit]').click();
+ await expect(page.locator('#branch-message')).toHaveText('Saved');
+ await expect(page.locator('#branch-upi-name')).toHaveValue('');
+});
