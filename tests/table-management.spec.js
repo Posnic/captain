@@ -78,3 +78,21 @@ test('manager selects neighbouring table identities and can clear them', async (
  await page.getByRole('checkbox', {name:/T2/}).uncheck();await page.locator('button[type=submit]').click();
  await expect(page.locator('[data-table="table-1"]')).toBeVisible();expect(posts[1].adjacent_table_ids).toEqual([]);
 });
+test('closing from a combined member reviews the group and sends the primary table identity', async ({page}) => {
+ await onTheMenu(page,'nothing');
+ const posts=[];
+ const seating={id:'group-1',primary_id:'table-1',table_ids:['table-1','table-2'],labels:['T1','T2'],guests:4};
+ const orders=[{id:'paid-order',paid:true,guests:4}];
+ let rows=[{...initial,status:'occupied',orders,seating},{...initial,id:'table-2',tableorder_value:'T2',version:7,status:'occupied',orders,seating}];
+ await page.route('**/captain/v1/tables**', async route=>{
+  if(route.request().method()==='GET')return route.fulfill({json:{canManage:true,tables:rows}});
+  posts.push(route.request().postDataJSON());rows=rows.map(row=>({...row,seating:null,orders:[],status:'cleaning'}));return route.fulfill({json:rows[0]});
+ });
+ await page.goto('/tables.html');await page.locator('[data-table="table-2"]').click();
+ await expect(page.locator('[data-action=edit-table]')).toHaveCount(0);
+ await page.locator('[data-action=close-review]').click();
+ await expect(page.locator('#table-management-content h3')).toHaveText('T1 + T2');
+ await page.locator('[data-action=close-confirm]').click();
+ await expect(page.locator('[data-table="table-2"]')).toContainText('Cleaning');
+ expect(posts[0]).toMatchObject({id:'table-1',version:0,orderIds:['paid-order']});
+});

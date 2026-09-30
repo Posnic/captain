@@ -385,7 +385,8 @@
       "verification": [
         "Neighbour configuration implemented in Captain and desktop POS. Desktop form supports multiple selections, clearing and safe label rendering; form tests and asset build passed. Actual combined seating, shared occupancy and release remain unimplemented.",
         "Internal multi-table claim service: 10 real-Mongo tests passed for concurrency, retry identity, cancellation/submission race, capacity, branch scope and adjacency. Not exposed yet: all order writers, recovery, completed-claim archival, floor projection and release must integrate before enabling combined seating.",
-        "Seating lifecycle now archives terminal claims, rejects archived replay, requires floor closure before releasing all member tables, and guards delayed cleaning projections with claim generations. 14 real-Mongo tests and lint pass. Order writers, API/UI, recovery entry points and floor projection integration remain."
+        "Seating lifecycle now archives terminal claims, rejects archived replay, requires floor closure before releasing all member tables, and guards delayed cleaning projections with claim generations. 14 real-Mongo tests and lint pass. Order writers, API/UI, recovery entry points and floor projection integration remain.",
+        "Table-management API now projects shared held/occupied state, rejects member edits and manual release, closes all members to cleaning, and exposes retry after interrupted release. Captain routes closure from any member through the primary with group labels. 29 API tests, 8 browser tests, 573 unit tests and production build passed. Creation/order-writer integration and full floor view are still pending."
       ]
     },
     {

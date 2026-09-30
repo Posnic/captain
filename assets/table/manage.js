@@ -81,7 +81,7 @@
     say("");
     at("table-management-content").innerHTML = editingSettings
       ? `<form id="table-edit-form">${field("Table", "tableorder_value", selected.tableorder_value)}${field("Seat capacity", "capacity", selected.capacity || "", "number")}${field("Maximum seats", "max_capacity", selected.max_capacity || "", "number")}${field("Dining area", "area", selected.area)}<label class="profile-field">${esc(t("Table shape"))}<select class="ui-field" name="shape">${["square", "round", "rectangle"].map((shape) => `<option value="${shape}" ${selected.shape === shape ? "selected" : ""}>${esc(t(shape[0].toUpperCase() + shape.slice(1)))}</option>`).join("")}</select></label>${neighbouringTables()}<div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="submit" class="profile-primary">${esc(t("Save"))}</button></div></form>`
-      : `<h2 translate="no">${esc(selected.tableorder_value)}</h2><p translate="no">${esc(CaptainTables.description(selected))}</p><p>${esc(status(selected))}</p>${stateButtons()}${canManage ? `<div class="table-status-actions"><button type="button" class="profile-secondary" data-action="edit-table">${esc(t("Change"))}</button></div>` : ""}`;
+      : `<h2 translate="no">${esc(selected.tableorder_value)}</h2><p translate="no">${esc(CaptainTables.description(selected))}</p><p>${esc(status(selected))}</p>${stateButtons()}${canManage && !selected.seating ? `<div class="table-status-actions"><button type="button" class="profile-secondary" data-action="edit-table">${esc(t("Change"))}</button></div>` : ""}`;
     if (editingSettings) {
       at("tableorder_value").required = true;
       at("tableorder_value").maxLength = 6;
@@ -93,6 +93,7 @@
     if (!selected?.id) return "";
     if (selected.closing || (selected.orders?.length && selected.orders.every(order=>order.paid)))
       return `<div class="table-status-actions"><button type="button" class="profile-primary" data-action="close-review">${esc(t(selected.closing ? "Retry" : "Close order"))}</button></div>`;
+    if (selected.seating && !selected.orders?.length) return "";
     if (selected.status === "occupied") return `<p class="me-note">${esc(t("Record the remaining payment first."))}</p>`;
     return `<div class="table-status-actions">${[
       "available",
@@ -108,9 +109,14 @@
   }
   function reviewClose() {
     if (dirty && !confirm(t("Discard changes?"))) return;
+    if (selected.seating) {
+      const primary = rows.find(row => row.id === selected.seating.primary_id);
+      if (!primary) { say("Table changed. Refresh and try again."); return; }
+      selected = primary;
+    }
     dirty=false;closeReview=true;
     closeRequest ||= {id:selected.id,version:selected.version,request_id:selected.closing?.request_id || crypto.randomUUID(),orderIds:selected.closing?.orderIds || selected.orders.map(order=>order.id)};
-    at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.tableorder_value)}</h3><p>${esc(t("Close paid orders and mark this table for cleaning."))}</p><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
+    at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.seating?.labels?.join(" + ") || selected.tableorder_value)}</h3><p>${esc(t("Close paid orders and mark this table for cleaning."))}</p><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
   }
   function back() {
     if (busy) return;
