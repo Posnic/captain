@@ -428,3 +428,19 @@ test('closing the editor ignores an outstanding pricing response',async({page})=
  release();await page.waitForTimeout(100);
  expect(await page.evaluate(()=>orderBeingModified())).toBeNull();
 });
+
+
+test('pricing deadline allows retry and ignores a late timed-out result',async({page})=>{
+ let release,started,calls=0;
+ const waiting=new Promise(resolve=>release=resolve), first=new Promise(resolve=>started=resolve);
+ const setup=()=>page.route('**/captain/v1/orders/edit/preview',async route=>{
+  if(++calls===1){started();await waiting;await route.fulfill({json:{total_amount:999}});}
+  else await route.fulfill({json:{total_amount:462}});
+ });
+ await editor(page,'order-history.html',{pricing_preview:true},setup);await first;
+ await expect(page.locator('#editor-price-retry')).toBeVisible({timeout:25000});
+ await page.locator('#editor-price-retry').click();
+ await expect(page.locator('#editor-total-value')).toContainText('462');
+ release();await page.waitForTimeout(100);
+ await expect(page.locator('#editor-total-value')).toContainText('462');
+});
