@@ -52,7 +52,8 @@ test('the grid of boxes says what it is a grid of', async ({ page }) => {
   /* Owner: "when you show table mention text like active order or active
      tables or some suitable name." */
   await atTheFloor(page);
-  await expect(page.locator('.floor-section-name')).toHaveText(/Active tables/i);
+  await expect(page.locator('.floor-section-name')).toHaveText('Tables');
+  await expect(page.locator('[data-floor-filter="active"]')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('the count does not say "tables" twice', async ({ page }) => {
@@ -70,6 +71,6 @@ test('a long shop name shortens rather than shoving the buttons off', async ({ p
   });
 
   const head = await page.locator('.floor-head').boundingBox();
-  const refresh = await page.locator('.floor-icon[aria-label="Refresh"]').boundingBox();
-  expect(refresh.x + refresh.width).toBeLessThanOrEqual(head.x + head.width + 1);
+  const connection = await page.locator('.floor-head .route-signal').last().boundingBox();
+  expect(connection.x + connection.width).toBeLessThanOrEqual(head.x + head.width + 1);
 });

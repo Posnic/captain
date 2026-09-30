@@ -30,7 +30,8 @@
         "Guest-first phone flow and side-by-side tablet layout verified at 320 and 768 pixels.",
         "Dining-area filter preserves focus. RTL mode selector and explicit takeaway Next passed.",
         "Fixed-height inner scrolling removed; no horizontal overflow.",
-        "Combined-table seating remains."
+        "Combined-table seating remains.",
+        "Delayed occupancy lookups no longer restore an earlier manual table value or dismiss its keyboard. Two regression flows pass for focused and blurred input. Startup coverage now includes all 17 application pages."
       ]
     },
     {
@@ -134,7 +135,8 @@
         "Public close-table service now acquires beginClose before table/floor projection. Table view exposes claim-only pending close ID/order IDs, allowing the existing Retry screen to resume an interruption before table intent is written. 48 table/seating checks and ESLint pass. Partial-close conflict reconciliation and broad all-writer adoption still remain before combined seating activation.",
         "Close projection now rechecks payment_pending and balance atomically with each order update. A partial close keeps durable intent and occupied floor status instead of marking the table available/operation permanently failed; retry finishes remaining eligible orders without changing previously closed timestamps. 49 table/seating checks pass; ESLint has zero errors and one pre-existing test warning. Combined move public routes/UI and all-writer adoption remain required.",
         "Authenticated /tables/move/prepare, complete and cancel routes added to paired Captain scope. Sales access and branch context are enforced; actor comes from authenticated user, never request body. Completed move enqueues sale sync. Real paired HTTP flow verifies no-auth rejection, forged actor ignored, completion/retry and cancellation preserving the prior table; targeted ESLint passes. Captain durable move UI, existing-order migration and every-writer seating adoption remain required.",
-        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending."
+        "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending.",
+        "Table moves now acquire the same sale fence used by payment collection before reserving destination seats. Completion/cancellation choose one winner, interrupted cancellation releases reservations on retry, and legacy unpaid records remain supported. 82 local seating, reservation, payment and bill tests pass; changed-code lint and POS attribution checks pass. POS commit d31a6006."
       ]
     },
     {
@@ -239,7 +241,8 @@
       ],
       "verification": [
         "Order history response now preserves seating request/primary/member IDs and canonical created_date/updated_date. Previously history omitted fields used by Captain orderSeenAt, so its edit version was absent. 114 repository checks pass; browser move payload verifies latest seen_at and unchanged lines. ESLint reports zero errors with existing repository warnings. Group move UI/journal and all-writer adoption remain pending.",
-        "Order history opens its list directly with visible search/status filters and contextual order options. Refresh preserves current search/table filters; new status selection fetches current server results. Compact escaped detail view, latest kitchen rounds first, Back, keyboard-accessible cards and swipe refresh checked at 320/900px. Screenshots inspected; complete app acceptance remains."
+        "Order history opens its list directly with visible search/status filters and contextual order options. Refresh preserves current search/table filters; new status selection fetches current server results. Compact escaped detail view, latest kitchen rounds first, Back, keyboard-accessible cards and swipe refresh checked at 320/900px. Screenshots inspected; complete app acceptance remains.",
+        "Legacy created_date and Mongo date wrappers display correctly; absent or malformed timestamps render a dash. Locale follows the selected interface language. Twelve history/conflict/table-refresh follow-up browser checks and all 590 unit checks pass; production build passes."
       ]
     },
     {
@@ -701,7 +704,8 @@
         "Server cancel now accepts orderId for an unprepared request, verifies the original seating actor, and writes a revision-guarded cancellation tombstone before archival. Delayed prepare is rejected. All 35 real-database seating tests pass, including pre-prepare cancellation, actor denial and concurrent prepare/cancel; changed-file lint clean. Captain still needs to call cancellation directly with orderId and distinguish a cancellation conflict from an already applying move.",
         "Captain now sends cancellation directly with orderId, including before prepare succeeds. Conflict recovery completes only server-confirmed applying/submitting moves; a still-reserved conflict retains cancellation intent. Nine journal tests, two recovery browser checks, authenticated real-HTTP cancellation-before-prepare/replay test, and production build pass. Requires the matching POS API update; group selection, all-writer enrollment and full device acceptance remain.",
         "Existing claimed orders now have a neighbouring-table multiselect, combined capacity/guest summary and primary-table selector. Other occupied/held/cleaning tables are excluded; disconnected or under-capacity groups cannot save. Ten journal/selection checks, three browser recovery/multiselect tests, all 587 unit tests and production build pass. Actual phone/tablet visual acceptance, new seating creation and all-writer rollout remain.",
-        "Inspected actual browser screenshots at 320px and 768px: widened table cards, increased capacity/adjacency text, made the main-table selector full width and corrected its accessible label and 48px touch target. Main table translated in all 30 locales (972 keys). Responsive save-flow test and production build pass. Physical-device/RTL visual review and complete floor integration remain."
+        "Inspected actual browser screenshots at 320px and 768px: widened table cards, increased capacity/adjacency text, made the main-table selector full width and corrected its accessible label and 48px touch target. Main table translated in all 30 locales (972 keys). Responsive save-flow test and production build pass. Physical-device/RTL visual review and complete floor integration remain.",
+        "Table moves now acquire the same sale fence used by payment collection before reserving destination seats. Completion/cancellation choose one winner, interrupted cancellation releases reservations on retry, and legacy unpaid records remain supported. 82 local seating, reservation, payment and bill tests pass; changed-code lint and POS attribution checks pass. POS commit d31a6006."
       ]
     },
     {
@@ -739,15 +743,28 @@
     },
     {
       "id": "transfer",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "POS/api/src/services/captain-transfer-plan.js",
+        "POS/api/tests/unit/services/captain-transfer-plan.test.js",
+        "POS/api/src/services/captain-restructure-lock.js",
+        "POS/api/tests/unit/services/captain-restructure-lock.test.js"
+      ],
+      "verification": [
+        "Read-only transfer planning implemented. Fifteen local checks cover exact currency minor-unit conservation, weighted quantities, original kitchen round times, distinct preparation notes, served/unserved conservation, stale selections and revision invalidation after service updates. This is NOT a production transfer: durable write/reservation protocol, monetary projection, stock/KOT suppression, recovery and Captain UI still required.",
+        "Durable tenant/staff-scoped restructuring reservations now exclude payments and edits, support cancellation tombstones and retain the fence during interrupted application. Reservation journals cannot be recorded as payments or presented as final bills. Transfer/merge write projections and Captain screens are still not implemented."
+      ]
     },
     {
       "id": "merge",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "POS/api/src/services/captain-restructure-lock.js",
+        "POS/api/tests/unit/services/captain-restructure-lock.test.js"
+      ],
+      "verification": [
+        "Durable tenant/staff-scoped restructuring reservations now exclude payments and edits, support cancellation tombstones and retain the fence during interrupted application. Reservation journals cannot be recorded as payments or presented as final bills. Transfer/merge write projections and Captain screens are still not implemented."
+      ]
     },
     {
       "id": "table-status",
@@ -983,5 +1000,12 @@
   ],
   "releaseBaseline": "v1.3.29",
   "developmentBranch": "codex/captain-upi-collection",
-  "releaseStatus": "Full redesign is not released; development and complete-flow verification continue."
+  "releaseStatus": "Full redesign is not released; development and complete-flow verification continue.",
+  "localVerification": {
+    "browser": "Full run: 559 passed and 18 failed; fixes applied and all 18 last-failed checks passed. Separate affected-flow checks also passed. This was not one uninterrupted 577-pass run.",
+    "unit": "590 Captain unit checks passed.",
+    "build": "Captain production build passed with all 17 pages covered by startup smoke tests.",
+    "floor": "Six floor header/filter/layout checks passed after updating stale selectors.",
+    "device": "Microphone, camera, OS resume and physical printer acceptance are not yet verified on real devices."
+  }
 }
