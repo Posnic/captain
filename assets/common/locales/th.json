@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 ล้างออเดอร์ก่อน",
   "Can combine with": "สามารถรวมกับโต๊ะ",
   "Pending orders": "รายการสั่งที่รอส่ง",
-  "No pending orders": "ไม่มีรายการสั่งที่รอส่ง"
+  "No pending orders": "ไม่มีรายการสั่งที่รอส่ง",
+  "Sound alerts": "เสียงแจ้งเตือน",
+  "Vibration": "การสั่น"
 }

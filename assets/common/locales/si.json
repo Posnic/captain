@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 පළමුව ඇණවුම හිස් කරන්න",
   "Can combine with": "මේවා සමඟ එක් කළ හැක",
   "Pending orders": "යැවීමට ඇති ඇණවුම්",
-  "No pending orders": "යැවීමට ඇණවුම් නැත"
+  "No pending orders": "යැවීමට ඇණවුම් නැත",
+  "Sound alerts": "ශබ්ද දැනුම්දීම්",
+  "Vibration": "කම්පනය"
 }

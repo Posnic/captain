@@ -117,6 +117,8 @@
     const COPIES = 'posnic.bill_copies';
 
     function paintPreferences() {
+        for (const name of ['sound', 'vibration']) at('me-' + name).checked = CaptainPhone.enabled(name);
+        at('me-vibration-row').hidden = typeof navigator.vibrate !== 'function';
         const language = at('me-language');
         if (language && typeof I18N !== 'undefined') {
             language.value = I18N.language();
@@ -155,6 +157,13 @@
     }
 
     function wirePreferences() {
+        for (const name of ['sound', 'vibration']) {
+            at('me-' + name).addEventListener('change', event => {
+                const saved = CaptainPhone.set(name, event.target.checked);
+                if (!saved) event.target.checked = CaptainPhone.enabled(name);
+                at('me-preference-message').textContent = saved ? '' : I18N.t('Could not save. Please try again.');
+            });
+        }
         const language = at('me-language');
         if (language) {
             language.addEventListener('change', function () {

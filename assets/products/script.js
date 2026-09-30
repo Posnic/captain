@@ -1004,7 +1004,8 @@ async function addOneOff(said) {
             held = true;
             /* A short buzz, so the sheet is not a surprise arriving from
                nowhere while a thumb is still down. */
-            if (navigator.vibrate) navigator.vibrate(12);
+            if (window.CaptainPhone) CaptainPhone.vibrate(12);
+            else if (navigator.vibrate) navigator.vibrate(12);
             offerToTakeItOff(row);
         }, HELD_FOR_MS);
     };

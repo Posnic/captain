@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 先清空订单",
   "Can combine with": "可拼接的餐桌",
   "Pending orders": "待发送订单",
-  "No pending orders": "没有待发送订单"
+  "No pending orders": "没有待发送订单",
+  "Sound alerts": "声音提醒",
+  "Vibration": "振动"
 }

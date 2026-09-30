@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/phone-preferences.js"></script>
     <script src="config.js"></script>
     <script src="assets/common/lock.js"></script>
     <script src="assets/common/item-localization.js"></script>
@@ -67,6 +68,11 @@
             <section class="me-card"><label class="me-field"><span class="me-row-label">Language</span><select id="me-language" class="ui-field"><option value="en">English</option><option value="ta">தமிழ்</option></select></label></section>
         </section>
         <section data-me-page="preferences" hidden>
+            <section class="me-card">
+                <label class="me-row"><span class="me-row-label">Sound alerts</span><input type="checkbox" role="switch" id="me-sound"></label>
+                <label class="me-row" id="me-vibration-row"><span class="me-row-label">Vibration</span><input type="checkbox" role="switch" id="me-vibration"></label>
+            </section>
+            <p id="me-preference-message" class="me-note" role="status"></p>
             <section class="me-card">
                 <label class="me-field"><span class="me-row-label">Copies of a printed bill</span><select id="me-copies" class="ui-field"><option value="">As the shop is set</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
                 <a class="me-row me-row-go" href="number-card.html"><span class="me-row-label">Number card for the wall</span></a>

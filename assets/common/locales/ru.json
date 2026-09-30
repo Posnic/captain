@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 Сначала очистить заказ",
   "Can combine with": "Можно объединить с",
   "Pending orders": "Ожидающие заказы",
-  "No pending orders": "Нет ожидающих заказов"
+  "No pending orders": "Нет ожидающих заказов",
+  "Sound alerts": "Звуковые уведомления",
+  "Vibration": "Вибрация"
 }

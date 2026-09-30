@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 Eerst de bestelling wissen",
   "Can combine with": "Te combineren met",
   "Pending orders": "Wachtende bestellingen",
-  "No pending orders": "Geen wachtende bestellingen"
+  "No pending orders": "Geen wachtende bestellingen",
+  "Sound alerts": "Geluidsmeldingen",
+  "Vibration": "Trillen"
 }

@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 Zuerst die Bestellung leeren",
   "Can combine with": "Kombinierbar mit",
   "Pending orders": "Ausstehende Bestellungen",
-  "No pending orders": "Keine ausstehenden Bestellungen"
+  "No pending orders": "Keine ausstehenden Bestellungen",
+  "Sound alerts": "Akustische Hinweise",
+  "Vibration": "Vibration"
 }

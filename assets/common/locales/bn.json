@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 আগে অর্ডার খালি করুন",
   "Can combine with": "যে টেবিলের সঙ্গে যুক্ত করা যাবে",
   "Pending orders": "অপেক্ষমাণ অর্ডার",
-  "No pending orders": "কোনো অপেক্ষমাণ অর্ডার নেই"
+  "No pending orders": "কোনো অপেক্ষমাণ অর্ডার নেই",
+  "Sound alerts": "শব্দ সতর্কতা",
+  "Vibration": "কম্পন"
 }

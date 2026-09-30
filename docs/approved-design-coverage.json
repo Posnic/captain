@@ -250,12 +250,17 @@
         "me.html",
         "assets/me/navigation.js",
         "assets/me/script.js",
-        "assets/common/app-design.css"
+        "assets/common/app-design.css",
+        "assets/common/phone-preferences.js",
+        "assets/common/requests-ui.js",
+        "assets/common/voice-order-ui.js",
+        "assets/products/script.js"
       ],
       "verification": [
         "Account hub separates account/security, language and phone/restaurant settings. Hash navigation supports reloads, browser Back and one-level native Back from profile/password editors. No duplicate legacy form remains.",
         "13 targeted browser checks pass, including persisted print-copy choice, 30-language selector, RTL, 320/768px layouts, profile/password API flows and unsent-order account-switch guard. 573 unit checks and production build pass.",
-        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains."
+        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains.",
+        "Sound-alert and vibration switches now control customer-request tones, request buzzes, voice-order feedback and menu long-press vibration independently. Muting leaves visual requests available and unmuting does not replay old alerts. Unsupported vibration control is hidden. Choices persist; failed storage writes restore the actual switch state. 574 unit tests and targeted browser persistence/failure check pass. All 30 catalogs include the labels (956 messages). Manager payment preferences and native acceptance remain."
       ]
     },
     {

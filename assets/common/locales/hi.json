@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 पहले ऑर्डर साफ़ करें",
   "Can combine with": "इन टेबलों के साथ जोड़ सकते हैं",
   "Pending orders": "लंबित ऑर्डर",
-  "No pending orders": "कोई लंबित ऑर्डर नहीं"
+  "No pending orders": "कोई लंबित ऑर्डर नहीं",
+  "Sound alerts": "ध्वनि सूचनाएँ",
+  "Vibration": "कंपन"
 }

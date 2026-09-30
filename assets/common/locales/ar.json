@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 امسح الطلب أولاً",
   "Can combine with": "يمكن ضمها إلى",
   "Pending orders": "الطلبات المعلّقة",
-  "No pending orders": "لا توجد طلبات معلّقة"
+  "No pending orders": "لا توجد طلبات معلّقة",
+  "Sound alerts": "التنبيهات الصوتية",
+  "Vibration": "الاهتزاز"
 }

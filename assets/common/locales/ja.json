@@ -952,5 +952,7 @@
   "🗑 Clear the order first": "🗑 先に注文を空にする",
   "Can combine with": "結合できるテーブル",
   "Pending orders": "送信待ちの注文",
-  "No pending orders": "送信待ちの注文はありません"
+  "No pending orders": "送信待ちの注文はありません",
+  "Sound alerts": "通知音",
+  "Vibration": "バイブレーション"
 }

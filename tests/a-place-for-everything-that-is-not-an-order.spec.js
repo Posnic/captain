@@ -189,3 +189,23 @@ test('unsent orders prevent account switching but keep server settings reachable
   await expect(page.locator('#me-server')).toBeVisible();
   expect(await page.evaluate(() => OrderQueue.count())).toBe(1);
 });
+
+test('phone alert preferences persist and failed saves leave the real setting visible', async ({page}) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'vibrate', {configurable:true,value:()=>true}));
+  await onTheFloor(page);
+  await page.goto('/me.html#preferences');
+  await expect(page.locator('#me-sound')).toBeChecked();
+  await expect(page.locator('#me-vibration')).toBeChecked();
+  await page.locator('#me-sound').uncheck();
+  await page.locator('#me-vibration').uncheck();
+  await page.reload();
+  await expect(page.locator('#me-sound')).not.toBeChecked();
+  await expect(page.locator('#me-vibration')).not.toBeChecked();
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key,value) { if(key.startsWith('posnic.phone.')) throw new Error('full'); return original.call(this,key,value); };
+  });
+  await page.locator('#me-sound').click();
+  await expect(page.locator('#me-sound')).not.toBeChecked();
+  await expect(page.locator('#me-preference-message')).toHaveText('Could not save. Please try again.');
+});

@@ -291,6 +291,7 @@
   }
 
   function tone(which) {
+    if (window.CaptainPhone?.enabled("sound") === false) return false;
     const ctx = audio();
     if (!ctx) return false;
     try {
@@ -322,6 +323,7 @@
   }
 
   function buzz(which) {
+    if (window.CaptainPhone) return CaptainPhone.vibrate(BUZZ[which] || BUZZ.received);
     try {
       /* Android gives a WebView this; iOS does not, and silently having no
          vibration is fine - the tone is still made. */
