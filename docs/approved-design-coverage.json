@@ -95,7 +95,8 @@
         "assets/order-history/script.js",
         "POS/api/src/repositories/sale.repository.js",
         "tests/a-table-can-be-changed-in-one-place.spec.js",
-        "POS/api/src/services/table-move-check.js"
+        "POS/api/src/services/table-move-check.js",
+        "POS/api/src/services/captain-seating.js"
       ],
       "verification": [
         "Capacity choice test passed; API refuses undersized, held and cleaning destinations without moving the source order.",
@@ -108,7 +109,8 @@
         "prepareMove retries now recover completed and applying moves only for the same order, actor and payload. Floor release claims a revision-guarded releasing state before cleaning; interrupted release retains its reservation and retries without repeating cleaning. 40 seating/repository checks and ESLint pass. Close intent coordination, public routes/UI and adoption by every order writer remain unfinished.",
         "Internal beginClose acquires revision-guarded group close intent. Exact retries succeed; competing close IDs, order edits and moves cannot pass the same intent. Real concurrency test confirms exactly one close/move acquisition. 42 seating/repository checks and ESLint pass. Close endpoint recovery/intent projection and activation across all writers still pending; beginClose is not called by the public close route yet.",
         "Public close-table service now acquires beginClose before table/floor projection. Table view exposes claim-only pending close ID/order IDs, allowing the existing Retry screen to resume an interruption before table intent is written. 48 table/seating checks and ESLint pass. Partial-close conflict reconciliation and broad all-writer adoption still remain before combined seating activation.",
-        "Close projection now rechecks payment_pending and balance atomically with each order update. A partial close keeps durable intent and occupied floor status instead of marking the table available/operation permanently failed; retry finishes remaining eligible orders without changing previously closed timestamps. 49 table/seating checks pass; ESLint has zero errors and one pre-existing test warning. Combined move public routes/UI and all-writer adoption remain required."
+        "Close projection now rechecks payment_pending and balance atomically with each order update. A partial close keeps durable intent and occupied floor status instead of marking the table available/operation permanently failed; retry finishes remaining eligible orders without changing previously closed timestamps. 49 table/seating checks pass; ESLint has zero errors and one pre-existing test warning. Combined move public routes/UI and all-writer adoption remain required.",
+        "Authenticated /tables/move/prepare, complete and cancel routes added to paired Captain scope. Sales access and branch context are enforced; actor comes from authenticated user, never request body. Completed move enqueues sale sync. Real paired HTTP flow verifies no-auth rejection, forged actor ignored, completion/retry and cancellation preserving the prior table; targeted ESLint passes. Captain durable move UI, existing-order migration and every-writer seating adoption remain required."
       ]
     },
     {
