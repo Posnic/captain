@@ -956,5 +956,9 @@
   "Sound alerts": "শব্দ সতর্কতা",
   "Vibration": "কম্পন",
   "Choose at least one payment method.": "অন্তত একটি পেমেন্ট পদ্ধতি বেছে নিন।",
-  "Help": "সহায়তা"
+  "Help": "সহায়তা",
+  "Customer requested": "গ্রাহকের অনুরোধ",
+  "Entered by mistake": "ভুল করে লেখা হয়েছে",
+  "Item unavailable": "পদটি পাওয়া যাচ্ছে না",
+  "Duplicate order": "একই অর্ডার দুবার"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "เสียงแจ้งเตือน",
   "Vibration": "การสั่น",
   "Choose at least one payment method.": "เลือกวิธีชำระเงินอย่างน้อยหนึ่งวิธี",
-  "Help": "ความช่วยเหลือ"
+  "Help": "ความช่วยเหลือ",
+  "Customer requested": "ลูกค้าร้องขอ",
+  "Entered by mistake": "ป้อนข้อมูลผิดพลาด",
+  "Item unavailable": "รายการอาหารหมด",
+  "Duplicate order": "คำสั่งซื้อซ้ำ"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "ध्वनि सूचनाएँ",
   "Vibration": "कंपन",
   "Choose at least one payment method.": "कम से कम एक भुगतान विधि चुनें।",
-  "Help": "सहायता"
+  "Help": "सहायता",
+  "Customer requested": "ग्राहक के अनुरोध पर",
+  "Entered by mistake": "गलती से दर्ज किया",
+  "Item unavailable": "व्यंजन उपलब्ध नहीं",
+  "Duplicate order": "दोहरा ऑर्डर"
 }

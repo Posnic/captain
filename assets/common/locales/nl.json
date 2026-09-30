@@ -956,5 +956,9 @@
   "Sound alerts": "Geluidsmeldingen",
   "Vibration": "Trillen",
   "Choose at least one payment method.": "Kies ten minste één betaalmethode.",
-  "Help": "Help"
+  "Help": "Help",
+  "Customer requested": "Op verzoek van de klant",
+  "Entered by mistake": "Per ongeluk ingevoerd",
+  "Item unavailable": "Artikel niet beschikbaar",
+  "Duplicate order": "Dubbele bestelling"
 }

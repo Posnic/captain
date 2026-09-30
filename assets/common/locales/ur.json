@@ -956,5 +956,9 @@
   "Sound alerts": "صوتی اطلاعات",
   "Vibration": "وائبریشن",
   "Choose at least one payment method.": "ادائیگی کا کم از کم ایک طریقہ منتخب کریں۔",
-  "Help": "مدد"
+  "Help": "مدد",
+  "Customer requested": "گاہک کی درخواست پر",
+  "Entered by mistake": "غلطی سے درج کیا گیا",
+  "Item unavailable": "کھانا دستیاب نہیں",
+  "Duplicate order": "دہرایا گیا آرڈر"
 }

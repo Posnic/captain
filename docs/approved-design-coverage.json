@@ -109,9 +109,14 @@
     },
     {
       "id": "cancel",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "assets/common/order-actions.js",
+        "assets/common/service-details.css"
+      ],
+      "verification": [
+        "Required change-reason dialog offers four translated, editable common reasons. Native Back cancels without retrying the mutation; manager approval remains order-bound. Four browser checks cover reason selection/editing, cancellation, approval and Tamil/Arabic at 320px. 30 languages/962 messages, 577 unit checks and production build pass. Full cancellation-page integration review remains."
+      ]
     },
     {
       "id": "bill",

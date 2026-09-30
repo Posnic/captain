@@ -10,3 +10,9 @@
 #preparation-dialog input, #preparation-dialog select, #preparation-dialog textarea { font-size: 16px; }
 .preparation-check span { min-width: 0; overflow-wrap: anywhere; }
 .captain-action-dialog input, .captain-action-dialog select { color: var(--ink); background: var(--surface); }
+
+.change-reason-choices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-bottom: 20px; }
+.change-reason-choices:empty { display: none; }
+.captain-action-dialog .change-reason-choices button { padding: 12px; text-align: start; overflow-wrap: anywhere; color: var(--ink); }
+.captain-action-dialog .change-reason-choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+@media(max-width:360px) { .change-reason-choices { grid-template-columns: 1fr; } }

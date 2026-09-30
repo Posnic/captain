@@ -956,5 +956,9 @@
   "Sound alerts": "ശബ്ദ അറിയിപ്പുകൾ",
   "Vibration": "വൈബ്രേഷൻ",
   "Choose at least one payment method.": "കുറഞ്ഞത് ഒരു പേയ്‌മെന്റ് രീതി തിരഞ്ഞെടുക്കുക.",
-  "Help": "സഹായം"
+  "Help": "സഹായം",
+  "Customer requested": "ഉപഭോക്താവിന്റെ അഭ്യർത്ഥന",
+  "Entered by mistake": "അബദ്ധത്തിൽ ചേർത്തത്",
+  "Item unavailable": "വിഭവം ലഭ്യമല്ല",
+  "Duplicate order": "ആവർത്തിച്ച ഓർഡർ"
 }

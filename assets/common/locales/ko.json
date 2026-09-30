@@ -956,5 +956,9 @@
   "Sound alerts": "알림 소리",
   "Vibration": "진동",
   "Choose at least one payment method.": "결제 수단을 하나 이상 선택하세요.",
-  "Help": "도움말"
+  "Help": "도움말",
+  "Customer requested": "고객 요청",
+  "Entered by mistake": "잘못 입력함",
+  "Item unavailable": "품절",
+  "Duplicate order": "중복 주문"
 }

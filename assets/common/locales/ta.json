@@ -956,5 +956,9 @@
   "Sound alerts": "ஒலி அறிவிப்புகள்",
   "Vibration": "அதிர்வு",
   "Choose at least one payment method.": "குறைந்தது ஒரு கட்டண முறையைத் தேர்ந்தெடுக்கவும்.",
-  "Help": "உதவி"
+  "Help": "உதவி",
+  "Customer requested": "வாடிக்கையாளர் கோரிக்கை",
+  "Entered by mistake": "தவறுதலாகச் சேர்க்கப்பட்டது",
+  "Item unavailable": "உணவு கிடைக்கவில்லை",
+  "Duplicate order": "இருமுறை சேர்க்கப்பட்ட ஆர்டர்"
 }

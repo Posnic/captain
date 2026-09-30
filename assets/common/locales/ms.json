@@ -956,5 +956,9 @@
   "Sound alerts": "Amaran bunyi",
   "Vibration": "Getaran",
   "Choose at least one payment method.": "Pilih sekurang-kurangnya satu kaedah pembayaran.",
-  "Help": "Bantuan"
+  "Help": "Bantuan",
+  "Customer requested": "Permintaan pelanggan",
+  "Entered by mistake": "Dimasukkan secara tidak sengaja",
+  "Item unavailable": "Item tidak tersedia",
+  "Duplicate order": "Pesanan pendua"
 }

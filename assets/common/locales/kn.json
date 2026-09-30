@@ -956,5 +956,9 @@
   "Sound alerts": "ಧ್ವನಿ ಎಚ್ಚರಿಕೆಗಳು",
   "Vibration": "ಕಂಪನ",
   "Choose at least one payment method.": "ಕನಿಷ್ಠ ಒಂದು ಪಾವತಿ ವಿಧಾನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
-  "Help": "ಸಹಾಯ"
+  "Help": "ಸಹಾಯ",
+  "Customer requested": "ಗ್ರಾಹಕರ ಕೋರಿಕೆ",
+  "Entered by mistake": "ತಪ್ಪಾಗಿ ನಮೂದಿಸಲಾಗಿದೆ",
+  "Item unavailable": "ತಿನಿಸು ಲಭ್ಯವಿಲ್ಲ",
+  "Duplicate order": "ನಕಲಿ ಆರ್ಡರ್"
 }

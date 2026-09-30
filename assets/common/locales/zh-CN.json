@@ -956,5 +956,9 @@
   "Sound alerts": "声音提醒",
   "Vibration": "振动",
   "Choose at least one payment method.": "请至少选择一种付款方式。",
-  "Help": "帮助"
+  "Help": "帮助",
+  "Customer requested": "顾客要求",
+  "Entered by mistake": "误操作录入",
+  "Item unavailable": "菜品售罄",
+  "Duplicate order": "重复订单"
 }

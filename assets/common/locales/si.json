@@ -956,5 +956,9 @@
   "Sound alerts": "ශබ්ද දැනුම්දීම්",
   "Vibration": "කම්පනය",
   "Choose at least one payment method.": "අවම වශයෙන් එක් ගෙවීම් ක්‍රමයක් තෝරන්න.",
-  "Help": "උදව්"
+  "Help": "උදව්",
+  "Customer requested": "පාරිභෝගික ඉල්ලීම",
+  "Entered by mistake": "වැරදීමකින් ඇතුළත් කළා",
+  "Item unavailable": "කෑම වර්ගය නොමැත",
+  "Duplicate order": "නැවත ඇතුළත් කළ ඇණවුම"
 }

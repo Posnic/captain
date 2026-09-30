@@ -956,5 +956,9 @@
   "Sound alerts": "Arifa za sauti",
   "Vibration": "Mtetemo",
   "Choose at least one payment method.": "Chagua angalau njia moja ya malipo.",
-  "Help": "Msaada"
+  "Help": "Msaada",
+  "Customer requested": "Ombi la mteja",
+  "Entered by mistake": "Imeingizwa kimakosa",
+  "Item unavailable": "Chakula hakipatikani",
+  "Duplicate order": "Agizo lililorudiwa"
 }

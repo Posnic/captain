@@ -956,5 +956,9 @@
   "Sound alerts": "ध्वनी सूचना",
   "Vibration": "कंपन",
   "Choose at least one payment method.": "किमान एक पेमेंट पद्धत निवडा.",
-  "Help": "मदत"
+  "Help": "मदत",
+  "Customer requested": "ग्राहकाच्या विनंतीनुसार",
+  "Entered by mistake": "चुकून नोंदवले",
+  "Item unavailable": "पदार्थ उपलब्ध नाही",
+  "Duplicate order": "दुबार ऑर्डर"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "ध्वनि सूचनाहरू",
   "Vibration": "कम्पन",
   "Choose at least one payment method.": "कम्तीमा एउटा भुक्तानी विधि छान्नुहोस्।",
-  "Help": "सहयोग"
+  "Help": "सहयोग",
+  "Customer requested": "ग्राहकको अनुरोधमा",
+  "Entered by mistake": "गल्तीले प्रविष्ट गरियो",
+  "Item unavailable": "परिकार उपलब्ध छैन",
+  "Duplicate order": "दोहोरिएको अर्डर"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "Thông báo âm thanh",
   "Vibration": "Rung",
   "Choose at least one payment method.": "Chọn ít nhất một phương thức thanh toán.",
-  "Help": "Trợ giúp"
+  "Help": "Trợ giúp",
+  "Customer requested": "Khách yêu cầu",
+  "Entered by mistake": "Nhập nhầm",
+  "Item unavailable": "Món không có sẵn",
+  "Duplicate order": "Đơn hàng trùng lặp"
 }

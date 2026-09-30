@@ -956,5 +956,9 @@
   "Sound alerts": "通知音",
   "Vibration": "バイブレーション",
   "Choose at least one payment method.": "支払い方法を少なくとも1つ選択してください。",
-  "Help": "ヘルプ"
+  "Help": "ヘルプ",
+  "Customer requested": "お客様のご希望",
+  "Entered by mistake": "誤って入力",
+  "Item unavailable": "品切れ",
+  "Duplicate order": "注文の重複"
 }

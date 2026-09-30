@@ -956,5 +956,9 @@
   "Sound alerts": "Звуковые уведомления",
   "Vibration": "Вибрация",
   "Choose at least one payment method.": "Выберите хотя бы один способ оплаты.",
-  "Help": "Помощь"
+  "Help": "Помощь",
+  "Customer requested": "По просьбе гостя",
+  "Entered by mistake": "Введено по ошибке",
+  "Item unavailable": "Блюдо недоступно",
+  "Duplicate order": "Дубликат заказа"
 }

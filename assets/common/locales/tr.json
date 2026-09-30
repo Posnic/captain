@@ -956,5 +956,9 @@
   "Sound alerts": "Sesli uyarılar",
   "Vibration": "Titreşim",
   "Choose at least one payment method.": "En az bir ödeme yöntemi seçin.",
-  "Help": "Yardım"
+  "Help": "Yardım",
+  "Customer requested": "Müşteri talebi",
+  "Entered by mistake": "Yanlışlıkla girildi",
+  "Item unavailable": "Ürün mevcut değil",
+  "Duplicate order": "Yinelenen sipariş"
 }

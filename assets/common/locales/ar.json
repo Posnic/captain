@@ -956,5 +956,9 @@
   "Sound alerts": "التنبيهات الصوتية",
   "Vibration": "الاهتزاز",
   "Choose at least one payment method.": "اختر طريقة دفع واحدة على الأقل.",
-  "Help": "المساعدة"
+  "Help": "المساعدة",
+  "Customer requested": "بناءً على طلب العميل",
+  "Entered by mistake": "أُدخل بالخطأ",
+  "Item unavailable": "الصنف غير متوفر",
+  "Duplicate order": "طلب مكرر"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "ધ્વનિ સૂચનાઓ",
   "Vibration": "કંપન",
   "Choose at least one payment method.": "ઓછામાં ઓછી એક ચુકવણી પદ્ધતિ પસંદ કરો.",
-  "Help": "મદદ"
+  "Help": "મદદ",
+  "Customer requested": "ગ્રાહકની વિનંતી",
+  "Entered by mistake": "ભૂલથી દાખલ કર્યું",
+  "Item unavailable": "વાનગી ઉપલબ્ધ નથી",
+  "Duplicate order": "ડુપ્લિકેટ ઓર્ડર"
 }

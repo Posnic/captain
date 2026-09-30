@@ -956,5 +956,9 @@
   "Sound alerts": "Alertas sonoras",
   "Vibration": "Vibración",
   "Choose at least one payment method.": "Elige al menos un método de pago.",
-  "Help": "Ayuda"
+  "Help": "Ayuda",
+  "Customer requested": "A petición del cliente",
+  "Entered by mistake": "Introducido por error",
+  "Item unavailable": "Artículo no disponible",
+  "Duplicate order": "Pedido duplicado"
 }

@@ -956,5 +956,9 @@
   "Sound alerts": "ధ్వని హెచ్చరికలు",
   "Vibration": "వైబ్రేషన్",
   "Choose at least one payment method.": "కనీసం ఒక చెల్లింపు పద్ధతిని ఎంచుకోండి.",
-  "Help": "సహాయం"
+  "Help": "సహాయం",
+  "Customer requested": "కస్టమర్ అభ్యర్థన",
+  "Entered by mistake": "పొరపాటున నమోదు చేశారు",
+  "Item unavailable": "వంటకం అందుబాటులో లేదు",
+  "Duplicate order": "నకిలీ ఆర్డర్"
 }
