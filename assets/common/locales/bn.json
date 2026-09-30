@@ -989,5 +989,9 @@
   "Customer left": "ক্রেতা চলে গেছেন",
   "Ready": "প্রস্তুত",
   "Keep editing": "সম্পাদনা চালিয়ে যান",
-  "Discard changes": "পরিবর্তন বাতিল করুন"
+  "Discard changes": "পরিবর্তন বাতিল করুন",
+  "Pause recording": "রেকর্ডিং বিরতি দিন",
+  "Resume recording": "রেকর্ডিং চালিয়ে যান",
+  "Play recording": "রেকর্ডিং শুনুন",
+  "Pause playback": "প্লেব্যাক বিরতি দিন"
 }

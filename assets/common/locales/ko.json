@@ -989,5 +989,9 @@
   "Customer left": "고객이 떠남",
   "Ready": "준비 완료",
   "Keep editing": "계속 편집",
-  "Discard changes": "변경 사항 취소"
+  "Discard changes": "변경 사항 취소",
+  "Pause recording": "녹음 일시 정지",
+  "Resume recording": "녹음 재개",
+  "Play recording": "녹음 재생",
+  "Pause playback": "재생 일시 정지"
 }

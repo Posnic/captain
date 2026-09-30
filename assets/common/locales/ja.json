@@ -989,5 +989,9 @@
   "Customer left": "お客様が退店した",
   "Ready": "準備完了",
   "Keep editing": "編集を続ける",
-  "Discard changes": "変更を破棄"
+  "Discard changes": "変更を破棄",
+  "Pause recording": "録音を一時停止",
+  "Resume recording": "録音を再開",
+  "Play recording": "録音を再生",
+  "Pause playback": "再生を一時停止"
 }

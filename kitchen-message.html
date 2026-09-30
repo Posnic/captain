@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <title>Message kitchen</title>
     <link rel="stylesheet" href="assets/common/design.css" />
     <link rel="stylesheet" href="assets/common/ui-theme.css" />
@@ -17,6 +20,7 @@
     <script src="config.js"></script>
     <script src="assets/common/lock.js"></script>
     <script src="assets/common/mobile-gestures.js" defer></script>
+    <script src="assets/common/voice-recorder.js" defer></script>
     <script src="assets/common/kitchen-message.js" defer></script>
   </head>
   <body data-offline-page>
@@ -29,15 +33,42 @@
         <h2>General message</h2>
         <p>No table or order required</p>
         <p id="voice-status" role="status" aria-live="polite"></p>
-        <audio id="voice-preview" controls hidden></audio>
-        <div class="voice-actions">
-          <button class="ui-btn" id="voice-record" type="button">
-            Record voice note</button
-          ><button class="ui-btn" id="voice-send" type="button" hidden>
-            Send to kitchen</button
-          ><button class="ui-btn-quiet" id="voice-discard" type="button" hidden>
-            Discard recording
-          </button>
+        <div id="voice-composer" class="voice-composer">
+          <audio id="voice-preview" hidden></audio>
+          <div class="voice-track">
+            <button
+              id="voice-play"
+              type="button"
+              hidden
+              aria-label="Play recording"
+            ></button>
+            <canvas
+              id="voice-wave"
+              width="240"
+              height="40"
+              aria-hidden="true"
+            ></canvas>
+            <span id="voice-duration" dir="ltr">0:00</span>
+          </div>
+          <div class="voice-actions">
+            <button
+              id="voice-discard"
+              type="button"
+              hidden
+              aria-label="Discard recording"
+            ></button>
+            <button
+              id="voice-record"
+              type="button"
+              aria-label="Record voice note"
+            ></button>
+            <button
+              id="voice-send"
+              type="button"
+              hidden
+              aria-label="Send to kitchen"
+            ></button>
+          </div>
         </div>
         <p>Voice notes play after the current kitchen announcement.</p>
         <p id="voice-error" role="alert"></p>

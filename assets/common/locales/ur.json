@@ -989,5 +989,9 @@
   "Customer left": "گاہک چلا گیا",
   "Ready": "تیار",
   "Keep editing": "ترمیم جاری رکھیں",
-  "Discard changes": "تبدیلیاں مسترد کریں"
+  "Discard changes": "تبدیلیاں مسترد کریں",
+  "Pause recording": "ریکارڈنگ روکیں",
+  "Resume recording": "ریکارڈنگ جاری رکھیں",
+  "Play recording": "ریکارڈنگ چلائیں",
+  "Pause playback": "پلے بیک روکیں"
 }

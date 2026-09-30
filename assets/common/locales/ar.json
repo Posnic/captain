@@ -989,5 +989,9 @@
   "Customer left": "غادر العميل",
   "Ready": "جاهز",
   "Keep editing": "متابعة التعديل",
-  "Discard changes": "تجاهل التغييرات"
+  "Discard changes": "تجاهل التغييرات",
+  "Pause recording": "إيقاف التسجيل مؤقتًا",
+  "Resume recording": "استئناف التسجيل",
+  "Play recording": "تشغيل التسجيل",
+  "Pause playback": "إيقاف التشغيل مؤقتًا"
 }

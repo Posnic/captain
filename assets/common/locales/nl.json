@@ -989,5 +989,9 @@
   "Customer left": "Gast is vertrokken",
   "Ready": "Gereed",
   "Keep editing": "Verder bewerken",
-  "Discard changes": "Wijzigingen verwerpen"
+  "Discard changes": "Wijzigingen verwerpen",
+  "Pause recording": "Opname pauzeren",
+  "Resume recording": "Opname hervatten",
+  "Play recording": "Opname afspelen",
+  "Pause playback": "Afspelen pauzeren"
 }

@@ -989,5 +989,9 @@
   "Customer left": "Customer left",
   "Ready": "Ready",
   "Keep editing": "Keep editing",
-  "Discard changes": "Discard changes"
+  "Discard changes": "Discard changes",
+  "Pause recording": "Pause recording",
+  "Resume recording": "Resume recording",
+  "Play recording": "Play recording",
+  "Pause playback": "Pause playback"
 }

@@ -989,5 +989,9 @@
   "Customer left": "顧客已離開",
   "Ready": "已備好",
   "Keep editing": "繼續編輯",
-  "Discard changes": "捨棄變更"
+  "Discard changes": "捨棄變更",
+  "Pause recording": "暫停錄音",
+  "Resume recording": "繼續錄音",
+  "Play recording": "播放錄音",
+  "Pause playback": "暫停播放"
 }

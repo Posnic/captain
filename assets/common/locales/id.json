@@ -989,5 +989,9 @@
   "Customer left": "Pelanggan sudah pergi",
   "Ready": "Siap",
   "Keep editing": "Lanjutkan mengedit",
-  "Discard changes": "Buang perubahan"
+  "Discard changes": "Buang perubahan",
+  "Pause recording": "Jeda rekaman",
+  "Resume recording": "Lanjutkan rekaman",
+  "Play recording": "Putar rekaman",
+  "Pause playback": "Jeda pemutaran"
 }

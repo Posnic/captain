@@ -989,5 +989,9 @@
   "Customer left": "ಗ್ರಾಹಕರು ಹೊರಟುಹೋದರು",
   "Ready": "ಸಿದ್ಧ",
   "Keep editing": "ತಿದ್ದುಪಡಿ ಮುಂದುವರಿಸಿ",
-  "Discard changes": "ಬದಲಾವಣೆಗಳನ್ನು ತ್ಯಜಿಸಿ"
+  "Discard changes": "ಬದಲಾವಣೆಗಳನ್ನು ತ್ಯಜಿಸಿ",
+  "Pause recording": "ಧ್ವನಿಮುದ್ರಣ ವಿರಾಮಗೊಳಿಸಿ",
+  "Resume recording": "ಧ್ವನಿಮುದ್ರಣ ಮುಂದುವರಿಸಿ",
+  "Play recording": "ಧ್ವನಿಮುದ್ರಣ ಪ್ಲೇ ಮಾಡಿ",
+  "Pause playback": "ಪ್ಲೇಬ್ಯಾಕ್ ವಿರಾಮಗೊಳಿಸಿ"
 }

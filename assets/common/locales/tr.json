@@ -989,5 +989,9 @@
   "Customer left": "Müşteri ayrıldı",
   "Ready": "Hazır",
   "Keep editing": "Düzenlemeye devam et",
-  "Discard changes": "Değişiklikleri sil"
+  "Discard changes": "Değişiklikleri sil",
+  "Pause recording": "Kaydı duraklat",
+  "Resume recording": "Kayda devam et",
+  "Play recording": "Kaydı oynat",
+  "Pause playback": "Oynatmayı duraklat"
 }

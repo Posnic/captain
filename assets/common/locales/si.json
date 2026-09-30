@@ -989,5 +989,9 @@
   "Customer left": "පාරිභෝගිකයා පිටව ගියා",
   "Ready": "සූදානම්",
   "Keep editing": "සංස්කරණය කරගෙන යන්න",
-  "Discard changes": "වෙනස්කම් ඉවත දමන්න"
+  "Discard changes": "වෙනස්කම් ඉවත දමන්න",
+  "Pause recording": "පටිගත කිරීම විරාම කරන්න",
+  "Resume recording": "පටිගත කිරීම නැවත අරඹන්න",
+  "Play recording": "පටිගත කිරීම වාදනය කරන්න",
+  "Pause playback": "වාදනය විරාම කරන්න"
 }

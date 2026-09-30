@@ -989,5 +989,9 @@
   "Customer left": "O cliente foi embora",
   "Ready": "Pronto",
   "Keep editing": "Continuar a editar",
-  "Discard changes": "Descartar alterações"
+  "Discard changes": "Descartar alterações",
+  "Pause recording": "Pausar gravação",
+  "Resume recording": "Retomar gravação",
+  "Play recording": "Reproduzir gravação",
+  "Pause playback": "Pausar reprodução"
 }

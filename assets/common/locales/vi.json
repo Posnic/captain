@@ -989,5 +989,9 @@
   "Customer left": "Khách đã rời đi",
   "Ready": "Sẵn sàng",
   "Keep editing": "Tiếp tục chỉnh sửa",
-  "Discard changes": "Bỏ thay đổi"
+  "Discard changes": "Bỏ thay đổi",
+  "Pause recording": "Tạm dừng ghi âm",
+  "Resume recording": "Tiếp tục ghi âm",
+  "Play recording": "Phát bản ghi âm",
+  "Pause playback": "Tạm dừng phát"
 }

@@ -989,5 +989,9 @@
   "Customer left": "ग्राहक चले गए",
   "Ready": "तैयार",
   "Keep editing": "संपादन जारी रखें",
-  "Discard changes": "बदलाव छोड़ें"
+  "Discard changes": "बदलाव छोड़ें",
+  "Pause recording": "रिकॉर्डिंग रोकें",
+  "Resume recording": "रिकॉर्डिंग जारी रखें",
+  "Play recording": "रिकॉर्डिंग चलाएँ",
+  "Pause playback": "प्लेबैक रोकें"
 }

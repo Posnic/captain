@@ -989,5 +989,9 @@
   "Customer left": "வாடிக்கையாளர் சென்றுவிட்டார்",
   "Ready": "தயார்",
   "Keep editing": "தொடர்ந்து திருத்தவும்",
-  "Discard changes": "மாற்றங்களைக் கைவிடு"
+  "Discard changes": "மாற்றங்களைக் கைவிடு",
+  "Pause recording": "பதிவை இடைநிறுத்து",
+  "Resume recording": "பதிவைத் தொடரவும்",
+  "Play recording": "பதிவை இயக்கு",
+  "Pause playback": "இயக்கத்தை இடைநிறுத்து"
 }

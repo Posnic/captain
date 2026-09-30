@@ -989,5 +989,9 @@
   "Customer left": "Гость ушёл",
   "Ready": "Готово",
   "Keep editing": "Продолжить редактирование",
-  "Discard changes": "Отменить изменения"
+  "Discard changes": "Отменить изменения",
+  "Pause recording": "Приостановить запись",
+  "Resume recording": "Продолжить запись",
+  "Play recording": "Воспроизвести запись",
+  "Pause playback": "Приостановить воспроизведение"
 }

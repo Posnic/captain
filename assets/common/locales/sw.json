@@ -989,5 +989,9 @@
   "Customer left": "Mteja ameondoka",
   "Ready": "Tayari",
   "Keep editing": "Endelea kuhariri",
-  "Discard changes": "Tupa mabadiliko"
+  "Discard changes": "Tupa mabadiliko",
+  "Pause recording": "Sitisha kurekodi kwa muda",
+  "Resume recording": "Endelea kurekodi",
+  "Play recording": "Cheza rekodi",
+  "Pause playback": "Sitisha uchezaji kwa muda"
 }

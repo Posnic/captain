@@ -985,10 +985,13 @@
         "kitchen-message.html",
         "assets/common/kitchen-message.js",
         "assets/common/kitchen-message.css",
-        "tests/kitchen-message-design.spec.js"
+        "tests/kitchen-message-design.spec.js",
+        "assets/common/voice-recorder.js",
+        "tests/voice-composer.spec.js"
       ],
       "verification": [
-        "Shared theme, phone/tablet two-column layout, refresh and native Back now implemented. Recording is saved before leaving; same-staff draft restored on return. Corrupted recording/status punctuation fixed. Browser journeys pass at 320 and 900 pixels. Actual microphone and kitchen playback require device acceptance."
+        "Shared theme, phone/tablet two-column layout, refresh and native Back now implemented. Recording is saved before leaving; same-staff draft restored on return. Corrupted recording/status punctuation fixed. Browser journeys pass at 320 and 900 pixels. Actual microphone and kitchen playback require device acceptance.",
+        "Messaging-style audio composer implemented: microphone starts; recording shows delete/pause/send; paused preview shows play, measured vertical waveform, duration and resume microphone. Complete recording segments are joined as playable 16 kHz mono WAV after resume, including restored drafts; original message identity is retained after upload failure. All 30 language catalogs include the new accessible labels. Six browser journeys pass at phone/tablet sizes including real generated audio, reload/resume and permission denial; two final layout rechecks and the existing upload-retry unit test pass. Production build and translation checks pass. Real Android/iPhone microphone and speaker acceptance remains pending; this feature is not yet released."
       ]
     }
   ],

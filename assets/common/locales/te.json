@@ -989,5 +989,9 @@
   "Customer left": "కస్టమర్ వెళ్లిపోయారు",
   "Ready": "సిద్ధం",
   "Keep editing": "సవరణ కొనసాగించండి",
-  "Discard changes": "మార్పులను విస్మరించండి"
+  "Discard changes": "మార్పులను విస్మరించండి",
+  "Pause recording": "రికార్డింగ్‌ను పాజ్ చేయండి",
+  "Resume recording": "రికార్డింగ్‌ను కొనసాగించండి",
+  "Play recording": "రికార్డింగ్‌ను ప్లే చేయండి",
+  "Pause playback": "ప్లేబ్యాక్‌ను పాజ్ చేయండి"
 }
