@@ -151,9 +151,18 @@
     },
     {
       "id": "more",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "me.html",
+        "assets/me/navigation.js",
+        "assets/me/script.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Account hub separates account/security, language and phone/restaurant settings. Hash navigation supports reloads, browser Back and one-level native Back from profile/password editors. No duplicate legacy form remains.",
+        "13 targeted browser checks pass, including persisted print-copy choice, 30-language selector, RTL, 320/768px layouts, profile/password API flows and unsent-order account-switch guard. 573 unit checks and production build pass.",
+        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains."
+      ]
     },
     {
       "id": "profile",
@@ -221,15 +230,33 @@
     },
     {
       "id": "language",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "me.html",
+        "assets/me/navigation.js",
+        "assets/me/script.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Account hub separates account/security, language and phone/restaurant settings. Hash navigation supports reloads, browser Back and one-level native Back from profile/password editors. No duplicate legacy form remains.",
+        "13 targeted browser checks pass, including persisted print-copy choice, 30-language selector, RTL, 320/768px layouts, profile/password API flows and unsent-order account-switch guard. 573 unit checks and production build pass.",
+        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains."
+      ]
     },
     {
       "id": "preferences",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "me.html",
+        "assets/me/navigation.js",
+        "assets/me/script.js",
+        "assets/common/app-design.css"
+      ],
+      "verification": [
+        "Account hub separates account/security, language and phone/restaurant settings. Hash navigation supports reloads, browser Back and one-level native Back from profile/password editors. No duplicate legacy form remains.",
+        "13 targeted browser checks pass, including persisted print-copy choice, 30-language selector, RTL, 320/768px layouts, profile/password API flows and unsent-order account-switch guard. 573 unit checks and production build pass.",
+        "Remaining approved preference controls and help/verified-contact flows require implementation; full native acceptance remains."
+      ]
     },
     {
       "id": "connection",

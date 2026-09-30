@@ -30,7 +30,7 @@ async function onTheFloor(page) {
 test('THE FLOOR SCREEN HAS A WAY IN, and it is not the server icon', async ({ page }) => {
   await onTheFloor(page);
 
-  const me = page.locator('[aria-label="Me"]');
+  const me = page.locator('.captain-navigation a[href="me.html"]');
   await expect(me).toBeVisible();
 
   await me.click();
@@ -41,32 +41,30 @@ test('it says who is signed in, and offers the day on the way past', async ({ pa
   await onTheFloor(page);
   await page.goto('/me.html');
 
-  await expect(page.locator('#me-who')).not.toBeEmpty();
+  await expect(page.locator('#me-home-who')).not.toBeEmpty();
   await expect(page.locator('#me-sales')).toHaveAttribute('href', 'my-sales.html');
 });
 
-test('THE THREE HEADINGS ARE ACCOUNT, THIS PHONE AND ABOUT', async ({ page }) => {
-  /*
-   * The arrangement is the feature. Signing out beside the language beside the
-   * build number is a list of controls; these are three questions.
-   */
+test('the hub leads to focused account, language and preference screens', async ({ page }) => {
   await onTheFloor(page);
   await page.goto('/me.html');
-
-  /* Lowercased before comparing: the stylesheet uppercases them, and which
-     three questions the page asks is the rule - not how the CSS shouts them. */
-  const headings = await page.locator('.me-heading').allInnerTexts();
-  expect(headings.map((h) => h.trim().toLowerCase())).toEqual(['account', 'this phone', 'about']);
-});
-
-test('everything that was scattered is on it', async ({ page }) => {
-  await onTheFloor(page);
-  await page.goto('/me.html');
-
-  for (const id of ['me-sign-out', 'me-password', 'me-lock', 'me-language', 'me-copies', 'me-server']) {
-    await expect(page.locator('#' + id)).toBeVisible();
-  }
+  await expect(page.locator('#me-password')).toBeHidden();
+  await expect(page.locator('#me-server')).toBeVisible();
+  await page.locator('a[href="#account"]').click();
+  for (const id of ['me-sign-out', 'me-password', 'me-lock']) await expect(page.locator('#' + id)).toBeVisible();
+  await expect(page.locator('#me-copies')).toBeHidden();
+  await page.locator('#me-back').click();
+  await page.locator('a[href="#preferences"]').click();
+  await expect(page.locator('#me-copies')).toBeVisible();
   await expect(page.getByRole('link', { name: /number card/i })).toBeVisible();
+  await page.locator('#me-copies').selectOption('2');
+  await page.reload();
+  await expect(page.locator('#me-copies')).toHaveValue('2');
+  await page.locator('#me-back').click();
+  await page.locator('a[href="#language"]').click();
+  await expect(page.locator('#me-language option')).toHaveCount(30);
+  await page.goBack();
+  await expect(page.locator('#me-server')).toBeVisible();
 });
 
 test('and the build is readable without signing out', async ({ page }) => {
@@ -80,24 +78,11 @@ test('and the build is readable without signing out', async ({ page }) => {
   await expect(page.locator('#me-version')).toContainText(/Captain/);
 });
 
-test('CHANGE PASSWORD SAYS WHERE TO GO rather than half working', async ({ page }) => {
-  /*
-   * The till has an endpoint for it and stores the password base64-encoded
-   * before hashing, while that endpoint writes it raw: a password changed from
-   * a phone would still sign in here and on the till's main login, and would
-   * fail the super-admin check. A row that says where to go beats a
-   * half-broken account.
-   */
-  await onTheFloor(page);
-  await page.goto('/me.html');
-
-  await expect(page.locator('#me-password-why')).toHaveText('On the till');
-});
-
 test('SIGNING OUT ENDS THE SESSION, not just the menu', async ({ page }) => {
   await onTheFloor(page);
   await page.goto('/me.html');
 
+  await page.locator('a[href="#account"]').click();
   await page.locator('#me-sign-out').click();
   await expect(page).toHaveURL(/index\.html$/);
 
@@ -163,4 +148,44 @@ test('a till that will not answer is not "you have sold nothing"', async ({ page
 
   await expect(page.locator('#sales-tables')).not.toContainText('No tables yet');
   await expect(page.locator('#sales-total')).toBeEmpty();
+});
+
+for (const width of [320, 768]) {
+  test(`account navigation fits ${width}px and native Back leaves one screen at a time`, async ({page}) => {
+    await page.setViewportSize({width,height:1024});
+    await onTheFloor(page);
+    await page.goto('/me.html');
+    await page.locator('a[href="#account"]').click();
+    await page.locator('#me-password').click();
+    await expect(page.locator('#currentPassword')).toBeVisible();
+    await page.evaluate(() => window.dispatchEvent(new Event('captain:back', {cancelable:true})));
+    await expect(page.locator('.me-title')).toHaveText('Account');
+    await expect(page.locator('#me-password')).toBeVisible();
+    await page.evaluate(() => window.dispatchEvent(new Event('captain:back', {cancelable:true})));
+    await expect(page.locator('#me-server')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path:`test-artifacts/account-hub-${width}.png`,fullPage:true});
+    await page.locator('a[href="#language"]').click();
+    await page.locator('#me-language').selectOption('ar');
+    await expect(page.locator('html')).toHaveAttribute('dir','rtl');
+    await page.locator('#me-back').click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.locator('#me-language-name')).not.toBeEmpty();
+  });
+}
+
+test('unsent orders prevent account switching but keep server settings reachable', async ({page}) => {
+  await onTheFloor(page);
+  await page.goto('/me.html#account');
+  await expect(page.locator('#me-sign-out')).toBeVisible();
+  await page.evaluate(() => localStorage.setItem('posnic.pending-orders',JSON.stringify([{key:'saved-order',state:'waiting'}])));
+  const warnings=[];
+  page.on('dialog', async dialog => { warnings.push(dialog.message()); await dialog.accept(); });
+  await page.locator('#me-sign-out').click();
+  await expect.poll(() => warnings.length).toBe(1);
+  expect(warnings[0]).toContain('Send saved orders');
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
+  await page.locator('#me-back').click();
+  await expect(page.locator('#me-server')).toBeVisible();
+  expect(await page.evaluate(() => OrderQueue.count())).toBe(1);
 });

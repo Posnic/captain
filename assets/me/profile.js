@@ -27,7 +27,7 @@
     page.hidden = true;
     home.hidden = false;
     current = "";
-    document.querySelector(".me-title").textContent = t("Me");
+    window.CaptainMe?.render();
     return true;
   }
   function field(label, id, type, value = "", autocomplete = "off") {
@@ -102,6 +102,7 @@
         profile = result;
         await POSNIC.session.updateProfile?.(result);
         document.getElementById("me-who").textContent = result.name;
+        document.getElementById("me-home-who").textContent = result.name;
         message.textContent = t("Saved");
       }
     } catch (error) {
@@ -136,7 +137,7 @@
     });
   });
   window.addEventListener("captain:back", (event) => {
-    if (current) {
+    if (current && !event.defaultPrevented) {
       event.preventDefault();
       back();
     }

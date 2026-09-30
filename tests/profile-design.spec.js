@@ -3,7 +3,7 @@ import { onTheMenu } from './support/shop.js';
 async function open(page) {
   await onTheMenu(page,'nothing');
   await page.route('**/captain/v1/profile', async route=>route.fulfill({json:{id:'user-1',name:route.request().method()==='POST'?route.request().postDataJSON().name:'Staff',email:'staff@example.test',phone:'+919000000000'}}));
-  await page.goto('/me.html');
+  await page.goto('/me.html#account');
 }
 test('profile edits persist through the API and Back returns to the account page',async({page})=>{
   await open(page);await page.locator('#me-profile').click();

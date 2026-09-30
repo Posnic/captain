@@ -35,8 +35,10 @@
         } catch (e) {
             name = '';
         }
-        line.translate = !name;
-        line.textContent = name || 'Signed in on this phone';
+        for (const target of [line, at('me-home-who')].filter(Boolean)) {
+            target.translate = !name;
+            target.textContent = name || 'Signed in on this phone';
+        }
     }
 
     /*
@@ -116,7 +118,10 @@
 
     function paintPreferences() {
         const language = at('me-language');
-        if (language && typeof I18N !== 'undefined') language.value = I18N.language();
+        if (language && typeof I18N !== 'undefined') {
+            language.value = I18N.language();
+            at('me-language-name').textContent = language.selectedOptions[0]?.textContent || '';
+        }
 
         const copies = at('me-copies');
         if (copies) {
@@ -154,6 +159,7 @@
         if (language) {
             language.addEventListener('change', function () {
                 if (typeof I18N !== 'undefined') I18N.use(language.value);
+                at('me-language-name').textContent = language.selectedOptions[0]?.textContent || '';
             });
         }
 
@@ -193,14 +199,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const back = at('me-back');
-        if (back) {
-            back.addEventListener('click', function () {
-                if (window.CaptainProfile?.back()) return;
-                window.location.href = 'kot-management.html';
-            });
-        }
-
         paintWho();
         paintLock();
         paintPreferences();
