@@ -12,6 +12,7 @@
     'use strict';
 
     const at = (id) => document.getElementById(id);
+    const t = text => window.I18N?.t(text) || text;
 
     const money = amount => CaptainMoney.display(amount);
 
@@ -89,15 +90,18 @@
         }
     }
 
-    function saySomethingWentWrong(why) {
+    function clearFigures() {
         const tables = at('sales-tables');
         const recent = at('sales-recent');
-        const note = '<p class="me-note">' + escape(why) + '</p>';
+        const note = '';
         if (tables) tables.innerHTML = note;
         if (recent) recent.innerHTML = note;
 
         const total = at('sales-total');
         if (total) total.textContent = '';
+        at('sales-count').textContent = '';
+        at('sales-cancelled').textContent = '';
+        at('sales-cancelled').hidden = true;
     }
 
     let selectedDay = 'today', revision = 0, loadedDay = null;
@@ -106,16 +110,24 @@
         const request = ++revision;
         const day = new Date();
         if (which === 'yesterday') day.setDate(day.getDate() - 1);
+        const dateKey = stamp(day);
+        if (loadedDay !== dateKey) {
+            loadedDay = null;
+            clearFigures();
+        }
+        at('sales-status').textContent = t('Loading...');
+        document.querySelector('main').setAttribute('aria-busy', 'true');
 
         try {
             const said = await POSNIC.api.post('/sales/myDay', {
                 branch_id: localStorage.getItem('branch_id') || '',
-                day: stamp(day),
+                day: dateKey,
             });
             if (request !== revision) return false;
             if (said?.type !== 'success' || !said.data) throw new Error('Connection failed');
             draw(said.data);
-            loadedDay = which;
+            loadedDay = dateKey;
+            at('sales-status').textContent = '';
             return true;
         } catch (error) {
             /*
@@ -123,13 +135,20 @@
              * difference matters on a screen about money.
              */
             if (request !== revision) return false;
-            if (loadedDay !== which) saySomethingWentWrong(
-                (error && error.message) || 'The till did not answer. Try again in a moment.'
-            );
+            const message = t('The till did not answer. Try again in a moment.');
+            at('sales-status').textContent = message;
+            if (loadedDay !== dateKey) clearFigures();
             return false;
+        } finally {
+            if (request === revision) document.querySelector('main').removeAttribute('aria-busy');
         }
     }
     window.refreshMySales = () => load(selectedDay);
+    window.addEventListener('captain:back', event => {
+        if (event.defaultPrevented) return;
+        event.preventDefault();
+        location.href = 'me.html';
+    });
 
     document.addEventListener('DOMContentLoaded', function () {
         const back = at('sales-back');
@@ -143,6 +162,7 @@
             button.addEventListener('click', function () {
                 document.querySelectorAll('.sales-day').forEach(function (other) {
                     other.classList.toggle('is-on', other === button);
+                    other.setAttribute('aria-pressed', String(other === button));
                 });
                 load(button.getAttribute('data-day'));
             });

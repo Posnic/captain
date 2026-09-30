@@ -209,3 +209,42 @@ test('phone alert preferences persist and failed saves leave the real setting vi
   await expect(page.locator('#me-sound')).not.toBeChecked();
   await expect(page.locator('#me-preference-message')).toHaveText('Could not save. Please try again.');
 });
+
+
+test('sales day changes never label previous figures as the selected day', async ({page}) => {
+ await onTheFloor(page);
+ let attempts=0,release;
+ await page.route('**/sales/myDay',async route=>{
+   attempts++;
+   if(attempts===2){await new Promise(resolve=>{release=resolve});return route.fulfill({status:503,json:{message:'unavailable'}});}
+   return route.fulfill({json:{type:'success',data:{total:4250,orders:12,cancelled:1,tables:[{table:'T4',total:4250,orders:12}],recent:[]}}});
+ });
+ await page.goto('/my-sales.html');
+ await expect(page.locator('#sales-count')).toHaveText('12 orders');
+ await page.locator('[data-day=yesterday]').click();
+ await expect.poll(()=>typeof release).toBe('function');
+ await expect(page.locator('#sales-total')).toBeEmpty();
+ await expect(page.locator('#sales-count')).toBeEmpty();
+ await expect(page.locator('#sales-cancelled')).toBeHidden();
+ await expect(page.locator('[data-day=yesterday]')).toHaveAttribute('aria-pressed','true');
+ release();
+ await expect(page.locator('#sales-status')).toHaveText('The till did not answer. Try again in a moment.');
+ await expect(page.locator('#sales-count')).toBeEmpty();
+ await page.locator('[data-day=today]').click();
+ await expect(page.locator('#sales-count')).toHaveText('12 orders');
+ await expect(page.locator('#sales-status')).toBeEmpty();
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page).toHaveURL(/me.html$/);
+});
+
+test('same-day failed refresh keeps confirmed figures and shows an explicit error', async ({page}) => {
+ await onTheFloor(page);
+ let fail=false;
+ await page.route('**/sales/myDay',route=>route.fulfill(fail?{status:503,json:{message:'unavailable'}}:{json:{type:'success',data:{total:100,orders:2,cancelled:0,tables:[],recent:[]}}}));
+ await page.goto('/my-sales.html');
+ await expect(page.locator('#sales-count')).toHaveText('2 orders');
+ fail=true;
+ await page.evaluate(()=>refreshMySales());
+ await expect(page.locator('#sales-count')).toHaveText('2 orders');
+ await expect(page.locator('#sales-status')).toHaveText('The till did not answer. Try again in a moment.');
+});

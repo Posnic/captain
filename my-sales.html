@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="assets/common/app-design.css">
 </head>
 
-<body>
+<body data-offline-page>
     <!--
         WHAT THIS WAITER HAS SOLD, AND NOWHERE ELSE.
 
@@ -47,6 +47,7 @@
     </header>
 
     <main class="me-body">
+        <p class="me-note" id="sales-status" role="status"></p>
         <section class="me-card sales-total">
             <p class="sales-total-value" id="sales-total">&nbsp;</p>
             <p class="sales-total-note" id="sales-count">&nbsp;</p>
@@ -59,8 +60,8 @@
         </section>
 
         <div class="sales-days">
-            <button type="button" class="sales-day is-on" data-day="today">Today</button>
-            <button type="button" class="sales-day" data-day="yesterday">Yesterday</button>
+            <button type="button" class="sales-day is-on" data-day="today" aria-pressed="true">Today</button>
+            <button type="button" class="sales-day" data-day="yesterday" aria-pressed="false">Yesterday</button>
         </div>
 
         <h2 class="me-heading">By table</h2>

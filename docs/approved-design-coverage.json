@@ -161,9 +161,14 @@
     },
     {
       "id": "sales",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "my-sales.html",
+        "assets/me/sales.js"
+      ],
+      "verification": [
+        "Day selection clears old totals/counts immediately, tracks the actual calendar date, exposes loading and errors, and retains confirmed same-day figures on failed refresh. Offline page and native Back keep navigation usable. Five targeted sales browser checks, 577 unit checks and production build pass. Complete visual and real-server acceptance remain."
+      ]
     },
     {
       "id": "pending",
