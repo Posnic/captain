@@ -167,7 +167,8 @@
         "assets/me/sales.js"
       ],
       "verification": [
-        "Day selection clears old totals/counts immediately, tracks the actual calendar date, exposes loading and errors, and retains confirmed same-day figures on failed refresh. Offline page and native Back keep navigation usable. Five targeted sales browser checks, 577 unit checks and production build pass. Complete visual and real-server acceptance remain."
+        "Day selection clears old totals/counts immediately, tracks the actual calendar date, exposes loading and errors, and retains confirmed same-day figures on failed refresh. Offline page and native Back keep navigation usable. Five targeted sales browser checks, 577 unit checks and production build pass. Complete visual and real-server acceptance remain.",
+        "Responsive sales breakdown uses two columns on tablets, day selection precedes totals, and Order history/Pending orders shortcuts are present with a return route from Pending orders. Long table names and large amounts inspected at 320px English and 768px Arabic; currency runs stay intact. Two layout/navigation browser checks, 577 unit checks and production build pass. Paid-total parity and complete real-server acceptance still require review."
       ]
     },
     {

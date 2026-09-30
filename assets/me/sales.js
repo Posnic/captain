@@ -64,8 +64,8 @@
             const rows = (data.tables || []).map(
                 (row) =>
                     '<div class="me-row me-row-read">' +
-                    '<span class="me-row-label">' + escape(row.table) + '</span>' +
-                    '<span class="me-row-value">' + money(row.total) + ' · ' +
+                    '<span class="me-row-label" translate="no">' + escape(row.table) + '</span>' +
+                    '<span class="me-row-value"><bdi translate="no">' + escape(money(row.total)) + '</bdi> · ' +
                     row.orders + (row.orders === 1 ? ' order' : ' orders') + '</span>' +
                     '</div>'
             );
@@ -83,7 +83,7 @@
                     escape(row.table_number ? row.table_number : 'No table') +
                     '<span class="me-row-sub">' + escape(when(row.created_at)) + '</span>' +
                     '</span>' +
-                    '<span class="me-row-value">' + money(row.total_amount) + '</span>' +
+                    '<span class="me-row-value" translate="no"><bdi>' + escape(money(row.total_amount)) + '</bdi></span>' +
                     '</div>'
             );
             recent.innerHTML = rows.length ? rows.join('') : '<p class="me-note">No orders yet.</p>';
@@ -151,6 +151,7 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
+        at('sales-pending').addEventListener('click', () => sessionStorage.setItem('captain_pending_return', 'my-sales.html'));
         const back = at('sales-back');
         if (back) {
             back.addEventListener('click', function () {

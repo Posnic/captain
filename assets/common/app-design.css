@@ -181,3 +181,23 @@ body:has(#help-back) .me-row { box-sizing: border-box; text-align: start; flex-w
 #table-edit-form .ui-field { box-sizing: border-box; width: 100%; }
 #table-edit-form .table-neighbours, #table-edit-form .profile-actions { grid-column: 1 / -1; }
 @media (min-width: 700px) { #table-edit-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.sales-page .me-body { max-width: 1040px; }
+.sales-page .sales-days { margin: 0 0 16px; }
+.sales-page .sales-day { min-height: 48px; }
+.sales-page .sales-total { margin-bottom: 8px; }
+.sales-page .sales-total-value { overflow-wrap: anywhere; }
+.sales-page .me-row-label { min-width: 0; overflow-wrap: anywhere; }
+.sales-page .me-row-value { white-space: normal; text-align: end; overflow-wrap: anywhere; }
+.sales-page .me-row { text-align: start; }
+.sales-page .sales-links { margin-top: 24px; }
+.sales-page #sales-status:empty { display: none; }
+.sales-breakdown { display: grid; gap: 0 24px; }
+.sales-breakdown>section { min-width: 0; }
+@media(min-width:768px) { .sales-breakdown { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.sales-page .me-row-read { flex-wrap: wrap; }
+.sales-page .me-row-read .me-row-label { flex: 1 1 140px; }
+.sales-page .me-row-read .me-row-value { flex: 0 0 auto; max-width: 100%; }
+.sales-page .me-row-value bdi { white-space: nowrap; }
+.sales-page .sales-total-note, .sales-page .me-row-sub, .sales-page .me-heading { color: var(--ink-soft); }

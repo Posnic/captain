@@ -183,7 +183,7 @@
     if (document.getElementById("pending-orders-content")) {
       const back = () => {
         const previous = sessionStorage.getItem("captain_pending_return");
-        location.href = ["products.html", "cart.html", "kot-management.html", "order-history.html", "me.html", "help.html"].includes(previous) ? previous : "kot-management.html";
+        location.href = ["products.html", "cart.html", "kot-management.html", "order-history.html", "me.html", "help.html", "my-sales.html"].includes(previous) ? previous : "kot-management.html";
       };
       document.getElementById("pending-back").onclick = back;
       window.addEventListener("captain:back", event => { event.preventDefault(); back(); });
