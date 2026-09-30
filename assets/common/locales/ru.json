@@ -985,5 +985,6 @@
   "Tap to record, then review and send.": "Нажмите для записи, затем проверьте и отправьте.",
   "Microphone unavailable. Check app permissions.": "Микрофон недоступен. Проверьте разрешения приложения.",
   "Recording failed. Please record again.": "Не удалось записать. Повторите запись.",
-  "Playback completed": "Воспроизведение завершено"
+  "Playback completed": "Воспроизведение завершено",
+  "Customer left": "Гость ушёл"
 }

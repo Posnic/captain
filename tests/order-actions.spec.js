@@ -27,7 +27,7 @@ test('common reasons are editable and native Back cancels without retrying the c
  expect(await page.evaluate(()=>reasonResult)).toEqual({type:'success'});
  expect(await page.evaluate(()=>reasonCalls[1].change_reason)).toBe('Entered by mistake — wrong table');
  await page.evaluate(()=>{window.reasonCalls=[];window.reasonResult=CaptainOrderActions.save({order_id:'order-2',status:'cancelled'}).catch(error=>({error:error.message}));});
- await expect(page.locator('.change-reason-choices button')).toHaveCount(4);
+ await expect(page.locator('.change-reason-choices button')).toHaveCount(5);
  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
  await expect(page.locator('dialog')).toHaveCount(0);
  expect(await page.evaluate(()=>reasonCalls.length)).toBe(1);
@@ -38,7 +38,7 @@ for(const language of ['ta','ar']) test(`common reasons are translated and fit a
  await onTheMenu(page,'nothing');await page.setViewportSize({width:320,height:844});
  await page.evaluate(language=>{I18N.use(language);POSNIC.api.post=async()=>{throw new Error('Enter a reason for this change.');};window.reasonResult=CaptainOrderActions.save({order_id:'order-1'}).catch(()=>{});},language);
  const dialog=page.locator('.captain-action-dialog');await expect(dialog).toBeVisible();
- await expect(dialog.locator('.change-reason-choices button')).toHaveCount(4);
+ await expect(dialog.locator('.change-reason-choices button')).toHaveCount(5);
  expect(await dialog.locator('.change-reason-choices button').first().textContent()).not.toBe('Customer requested');
  await dialog.locator('.change-reason-choices button').first().click();
  expect(await dialog.locator('input').inputValue()).toBe(await dialog.locator('.change-reason-choices button').first().textContent());
@@ -133,4 +133,31 @@ test('delivery Back works during loading and late reports do not reopen the dial
  await page.evaluate(()=>window.finishDelivery());
  await expect(page.locator('[data-delivery-dialog]')).toHaveCount(0);
  await expect(page.locator('[data-delivery-sale]')).toBeFocused();
+});
+
+test('cancellation reasons are selectable, editable and never submit until confirmed',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>{window.reasonCalls=[];POSNIC.api.post=async(path,body)=>{reasonCalls.push({...body});if(!body.change_reason)throw new Error('Enter a reason for this change.');return {type:'success'};};window.saved=CaptainOrderActions.save({order_id:'order-1',status:'cancelled'});});
+ const dialog=page.locator('.captain-action-dialog');
+ await expect(dialog.getByRole('button',{name:'Customer requested',exact:true})).toBeFocused();
+ for(const reason of ['Customer requested','Customer left','Entered by mistake','Item unavailable','Duplicate order']){
+  const choice=dialog.getByRole('button',{name:reason,exact:true});await choice.click();
+  await expect(choice).toHaveAttribute('aria-pressed','true');await expect(dialog.getByLabel('Reason',{exact:true})).toHaveValue(reason);
+ }
+ expect(await page.evaluate(()=>reasonCalls.length)).toBe(1);
+ await dialog.getByLabel('Reason',{exact:true}).fill('Customer left before preparation');
+ await expect(dialog.locator('[aria-pressed="true"]')).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ expect(await page.evaluate(()=>window.saved)).toMatchObject({type:'success'});
+ expect(await page.evaluate(()=>reasonCalls.at(-1).change_reason)).toBe('Customer left before preparation');
+});
+
+test('native Back dismisses cancellation reason without saving',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>{window.reasonCalls=0;POSNIC.api.post=async()=>{reasonCalls++;throw new Error('Enter a reason for this change.');};window.saved=CaptainOrderActions.save({order_id:'order-1',status:'cancelled'}).catch(error=>error.message);});
+ await expect(page.locator('.captain-action-dialog')).toBeVisible();
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page.locator('.captain-action-dialog')).toHaveCount(0);
+ expect(await page.evaluate(()=>window.saved)).toBe('Changes were not saved.');
+ expect(await page.evaluate(()=>reasonCalls)).toBe(1);
 });

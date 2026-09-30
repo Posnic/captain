@@ -14,13 +14,15 @@
         : "Your shop";
     }
   }
-  let view = "address";
+  let view = "start";
   let navigationVersion = 0;
   function showView(next, focus = true) {
     view = next;
+    $("captain-onboarding").dataset.setupView = next;
     navigationVersion++;
     if (focus) { sessionStorage.setItem("posnic_editing_server", "1"); sessionStorage.setItem("posnic_connection_view", next); }
     const titles = {
+      start: "Connect to your shop",
       address: "Connect to your shop",
       code: "Enter pairing code",
       wifi: "Find shop on Wi-Fi",
@@ -31,7 +33,9 @@
 
     $("setup-address-entry").hidden = !["address", "code"].includes(next);
     $("setup-wifi-hint").hidden = next !== "address";
-    $("setup-methods").hidden = next !== "address";
+    $("setup-methods").hidden = !["start", "address"].includes(next);
+    $("captain-address-toggle").hidden = next !== "start";
+    $("setup-start-hint").hidden = next !== "start";
     $("captain-connect").hidden = next !== "address";
     $("captain-code-options").hidden = next !== "code";
     $("captain-code-options").open = next === "code";
@@ -40,7 +44,7 @@
     $("connection-addresses").open = next === "settings";
     $("captain-results").hidden = next !== "wifi";
     $("captain-search-again").hidden = next !== "wifi";
-    $("connection-back").hidden = next === "address" && !POSNIC.server.isConfigured;
+    $("connection-back").hidden = next === "start" && !POSNIC.server.isConfigured;
     note("");
     if (focus) $("setup-heading").focus();
   }
@@ -478,8 +482,7 @@
       await waitForForeground(signal, until);
       // Establish the cloud identity first; local credentials are kept separately.
       let approved;
-      try {
-        approved = await CaptainAccess.post(
+      const exchange = () => CaptainAccess.post(
           base,
           "/captain/v1/pair",
           {
@@ -489,10 +492,19 @@
           },
           signal,
         );
+      try {
+        approved = await exchange();
       } catch (error) {
-        if (error.code === "PAIR_EXPIRED")
-          throw new Error("Approval expired. Try again.");
-        throw error;
+        if (error.code !== "PAIR_EXPIRED") throw error;
+        // Consent is still valid: recover the one-use shop code once, bound to
+        // the same request and PKCE verifier, without asking for another login.
+        grant = await accountRequest("POST", "/api/mobile/token", {
+          request: pending.request, codeVerifier: verifier, recover: true,
+        }, signal);
+        if (POSNIC.server.normalize(grant.baseUrl) !== base)
+          throw new Error("Invalid cloud shop address.");
+        await waitForForeground(signal, until);
+        approved = await exchange();
       }
       await waitForForeground(signal, until);
       approved.connections = [];
@@ -542,7 +554,7 @@
     },
     open() {
       operation?.abort();
-      showView("address", false);
+      showView("start", false);
       sessionStorage.setItem("posnic_editing_server", "1");
       POSNIC.net.stop?.();
       $("login-section").style.display = "";
@@ -656,11 +668,12 @@
       note("Connection cancelled.");
     };
     $("connection-back").onclick = () => {
-      if (view === "address") return CaptainOnboarding.close();
+      if (view === "start") return CaptainOnboarding.close();
       operation?.abort();
       POSNIC_CONNECT.stopScan();
-      showView("address");
+      showView("start");
     };
+    $("captain-address-toggle").onclick = () => showView("address");
     $("connection-save").onclick = () =>
       void run(async (signal) => {
         const lan = $("connection-lan").value.trim(),
@@ -688,7 +701,7 @@
         $("connection-back").hidden = false;
         note("Saved");
       });
-    showView("address", false);
+    showView("start", false);
     showStep(
       POSNIC.server.isConfigured &&
         !sessionStorage.getItem("posnic_change_server") &&

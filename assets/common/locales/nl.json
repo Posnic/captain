@@ -985,5 +985,6 @@
   "Tap to record, then review and send.": "Tik om op te nemen, controleer daarna en verstuur.",
   "Microphone unavailable. Check app permissions.": "Microfoon niet beschikbaar. Controleer de app-machtigingen.",
   "Recording failed. Please record again.": "Opname mislukt. Neem opnieuw op.",
-  "Playback completed": "Afspelen voltooid"
+  "Playback completed": "Afspelen voltooid",
+  "Customer left": "Gast is vertrokken"
 }

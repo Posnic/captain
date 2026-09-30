@@ -985,5 +985,6 @@
   "Tap to record, then review and send.": "रेकर्ड गर्न ट्याप गर्नुहोस्, त्यसपछि जाँचेर पठाउनुहोस्।",
   "Microphone unavailable. Check app permissions.": "माइक्रोफोन उपलब्ध छैन। एपका अनुमतिहरू जाँच्नुहोस्।",
   "Recording failed. Please record again.": "रेकर्डिङ असफल भयो। कृपया फेरि रेकर्ड गर्नुहोस्।",
-  "Playback completed": "बजाएर सकियो"
+  "Playback completed": "बजाएर सकियो",
+  "Customer left": "ग्राहक गइसक्नुभयो"
 }

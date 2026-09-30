@@ -16,3 +16,5 @@
 .captain-action-dialog .change-reason-choices button { padding: 12px; text-align: start; overflow-wrap: anywhere; color: var(--ink); }
 .captain-action-dialog .change-reason-choices button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 @media(max-width:360px) { .change-reason-choices { grid-template-columns: 1fr; } }
+
+.captain-action-dialog{max-height:calc(100dvh - 32px);overflow-y:auto}

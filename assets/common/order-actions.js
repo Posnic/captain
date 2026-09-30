@@ -8,7 +8,7 @@
       heading.textContent=t(title);caption.textContent=t(label);input.type=secret?'password':'text';input.required=true;input.minLength=secret?4:3;input.maxLength=secret?8:200;input.autocomplete='off';
       if(secret){input.inputMode='numeric';input.pattern='[0-9]{4,8}';}
       const reasons=document.createElement('div');reasons.className='change-reason-choices';
-      if(!secret) for(const reason of ['Customer requested','Entered by mistake','Item unavailable','Duplicate order']) {
+      if(!secret) for(const reason of ['Customer requested','Customer left','Entered by mistake','Item unavailable','Duplicate order']) {
         const choice=document.createElement('button');choice.type='button';choice.textContent=t(reason);choice.setAttribute('aria-pressed','false');
         choice.onclick=()=>{input.value=t(reason);updateChoices();};reasons.append(choice);
       }
