@@ -2,7 +2,7 @@
 (function () {
     'use strict';
     const byId = id => document.getElementById(id);
-    let view = 'items', setting = '', beforeSetting = null, initial = null;
+    let view = 'items', setting = '', beforeSetting = null, initial = null, originalOrder = null;
     let originalLines = new WeakSet(), saving = false, saved = false, cancelling = false;
     let ownsHistory = false;
     const historyKey = 'captainOrderEditor';
@@ -69,27 +69,96 @@
     }
     function begin() {
         saved = false; saving = false; beforeSetting = null;
+        originalOrder = JSON.parse(JSON.stringify(order()));
+        document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input => input.disabled=false);
         originalLines = new WeakSet(order()?.items || []);
         initial = fingerprint();
         show('items');
     }
     function openSetting(name) {
+        if (saving) return;
+        if (order()?.seating_request_id && ['table','type'].includes(name)) {
+            const pending = CaptainGroupMove.pending(order()._id);
+            if (pending) name = pending.body.dineType ? 'type' : 'table';
+            if (initial !== null && fingerprint() !== initial) {
+                if (!confirm(window.I18N?.t('Discard changes?') || 'Discard changes?')) return;
+                setOrderBeingModified(JSON.parse(JSON.stringify(originalOrder)));
+                restore(JSON.parse(initial).details);
+                renderCurrentOrderItems();
+            }
+            if (name === 'table') {
+                const id = order()._id, modal = byId('editOrderModal');
+                saved = true;
+                modal.addEventListener('hidden.bs.modal', () => moveOrder(id), {once:true});
+                bootstrap.Modal.getInstance(modal)?.hide();
+                return;
+            }
+        }
         setting = name; beforeSetting = details();
         byId('editor-setting-title').textContent = { table: 'Move table', guests: 'Guests', type: 'Order Type' }[name];
         show('settings'); typeChanged();
+        if (order()?.seating_request_id && name === 'type') {
+            const pending = CaptainGroupMove.pending(order()._id);
+            if (pending?.body.dineType) {
+                document.querySelectorAll('input[name="edit_dine_type"]').forEach(input => input.checked = input.value === pending.body.dineType);
+                typeChanged();
+            }
+            byId('editor-setting-apply').textContent = window.I18N?.t(pending ? 'Retry' : 'Save') || (pending ? 'Retry' : 'Save');
+            document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input => input.disabled=!!pending);
+        } else byId('editor-setting-apply').textContent = window.I18N?.t('Apply') || 'Apply';
     }
     function back() {
+        if (saving) return;
         if (beforeSetting) restore(beforeSetting);
         beforeSetting = null;
         show('details');
     }
-    function apply() {
+    async function apply() {
+        if (saving) return;
         const value = details();
         if (value.type === 'Dine-in' && !value.table) {
             showToast('Choose a table first.', 'error'); return;
         }
         if (value.type === 'Dine-in' && value.tableRadio === 'edit_table_manual_radio' && !/^[A-Z0-9]{1,6}$/.test(value.table)) {
             showToast('Table must be 1–6 letters/numbers (A–Z, 0–9).', 'error'); return;
+        }
+        if (setting === 'type' && order()?.seating_request_id &&
+            (value.type !== (originalOrder.dine_type || 'Dine-in') || CaptainGroupMove.pending(order()._id))) {
+            const current = order(), takeaway = value.type === 'Take away';
+            const selectedTable = selected('edit_table_no');
+            const sameTable = value.table === originalOrder.table_number;
+            const tableIds = takeaway ? [] : sameTable ? originalOrder.seating_table_ids : [selectedTable?.dataset.id].filter(Boolean);
+            const primaryId = takeaway ? '' : sameTable ? originalOrder.seating_primary_id : tableIds[0];
+            const pending = CaptainGroupMove.pending(current._id);
+            if (!pending && !takeaway && (!tableIds?.length || !primaryId)) { showToast('Choose a table first.', 'error'); return; }
+            saving = true;
+            const controls = [...byId('editOrderModal').querySelectorAll('button,input,select')];
+            const disabled = controls.map(control => control.disabled);
+            controls.forEach(control => control.disabled=true);
+            try {
+                if (pending) await CaptainGroupMove.resume(current._id);
+                else await CaptainGroupMove.move(current._id,{tableIds,primaryId,guests:takeaway?0:Math.max(1,value.guests),dineType:value.type});
+                saved = true;
+                bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
+                await loadOrderHistory({background:true});
+                showToast(window.I18N?.t('Saved') || 'Saved', 'success');
+            } catch (error) {
+                showToast(error.message || 'Could not save. Please try again.', 'error');
+                byId('editor-setting-apply').textContent=window.I18N?.t('Retry') || 'Retry';
+            } finally {
+                saving=false;
+                controls.forEach((control,index)=>control.disabled=disabled[index]);
+                try {
+                    const unresolved = CaptainGroupMove.pending(current._id);
+                    if (unresolved) document.querySelectorAll('#edit-type-section input, #edit-table-section input').forEach(input=>input.disabled=true);
+                } catch {
+                    // Session expiry must not leave a rejected cleanup promise or editable stale order.
+                    saved = true;
+                    bootstrap.Modal.getInstance(byId('editOrderModal'))?.hide();
+                }
+                refresh();
+            }
+            return;
         }
         beforeSetting = null;
         show('items');

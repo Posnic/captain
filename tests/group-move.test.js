@@ -110,3 +110,31 @@ test('group selection counts connected seats and rejects disconnected or unknown
  tables[1].capacity=0;tables[1].max=0;
  assert.equal(a.api.selection(tables,['a','b'],'a',2).valid,false);
 });
+
+test('takeaway transition retains its type on retry and requires confirmation from the server',async()=>{
+ const a=app();
+ a.context.POSNIC.api.post=async(url,body)=>{a.calls.push({url,body});return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('complete')?'submitting':'reserved'};};
+ await assert.rejects(a.api.move('order-1',{tableIds:[],primaryId:'',guests:0,dineType:'Take away'}));
+ assert.equal(a.api.pending('order-1').body.dineType,'Take away');
+ const firstId=a.api.pending('order-1').body.request_id;
+ a.context.POSNIC.api.post=async(url,body)=>{a.calls.push({url,body});return {request_id:body.request_id,orderId:'order-1',state:url.endsWith('complete')?'submitting':'reserved',dineType:'Take away',tableIds:[]};};
+ const result=await a.api.resume('order-1');
+ assert.equal(result.dineType,'Take away');
+ assert.ok(a.calls.every(call=>call.body.request_id===firstId));
+ assert.equal(a.api.pending('order-1'),null);
+});
+
+test('an interrupted move cannot be replayed against another issuing server',async()=>{
+ const a=app();a.context.POSNIC.session.base='https://first.posnic.io/api';
+ a.context.POSNIC.api.post=async()=>{throw new Error('lost acknowledgement');};
+ await assert.rejects(a.api.move('order-1',choice));
+ const saved=a.api.pending('order-1');
+ const b=app(a.storage);b.context.POSNIC.session.base='https://second.posnic.io/api';
+ await assert.rejects(b.api.resume('order-1'),/Reconnect to the server/);
+ assert.equal(b.calls.length,0);
+ assert.equal(b.api.pending('order-1').body.request_id,saved.body.request_id);
+ b.context.POSNIC.session.base='https://first.posnic.io/api';
+ await b.api.resume('order-1');
+ assert.equal(b.calls.length,2);
+ assert.equal(b.api.pending('order-1'),null);
+});

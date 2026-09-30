@@ -238,3 +238,27 @@ test('native Back from split review returns to split setup without dismissing th
   await expect(page.locator('.guest-bill-modes')).toBeVisible();
   await expect(page.locator('#guest-bills')).toBeVisible();
 });
+
+test('an uncertain guest-bill print stays with its issuing server across route changes', async ({page}) => {
+  await setup(page);
+  const issuer = await page.evaluate(() => POSNIC.session.base || POSNIC.server.baseUrl);
+  const posts = [];
+  await page.route('**/sales/guestBills/print', route => {
+    posts.push(route.request().postDataJSON());
+    return route.fulfill({status: posts.length === 1 ? 503 : 200, json: posts.length === 1 ? {type:'error',message:'Lost acknowledgement'} : {type:'success',data:{queued:true}}});
+  });
+  await next(page);
+  await next(page);
+  await expect(page.locator('.guest-bill-error')).toContainText('Could not confirm');
+  await page.locator('#guest-bills header [data-action=close]').click();
+  await page.evaluate(() => Object.defineProperty(POSNIC.session,'base',{configurable:true,get:()=> 'https://backup.posnic.io/api'}));
+  await page.evaluate(() => GuestBills.open('T1'));
+  await next(page);
+  await expect(page.locator('.guest-bill-error')).toContainText('Reconnect to the server that authorized');
+  expect(posts).toHaveLength(1);
+  await page.evaluate(base => Object.defineProperty(POSNIC.session,'base',{configurable:true,get:()=>base}), issuer);
+  await next(page);
+  await expect(page.locator('#guest-bills')).toBeHidden();
+  expect(posts).toHaveLength(2);
+  expect(posts[0]).toEqual(posts[1]);
+});

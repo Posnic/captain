@@ -173,3 +173,50 @@ test('Android Back exits an unchanged editor without a save request',async({page
  await expect(page.locator('.modal-backdrop')).toHaveCount(0);
  expect(posts).toHaveLength(0);
 });
+
+test('claimed orders change to takeaway through a durable seating transition without resending their items',async({page})=>{
+ const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating',seating_table_ids:['table-1'],seating_primary_id:'table-1'});
+ const moves=[];
+ await page.route('**/captain/v1/tables/move/**',route=>{
+   const body=route.request().postDataJSON();moves.push({url:route.request().url(),body});
+   return route.fulfill({json:{request_id:body.request_id,orderId:'order-1',state:route.request().url().endsWith('complete')?'submitting':'reserved',dineType:'Take away',tableIds:[]}});
+ });
+ await setting(page,'type');
+ await page.locator('label[for="edit-takeaway"]').click();
+ await apply(page);
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts).toHaveLength(0);
+ expect(moves).toHaveLength(2);
+ expect(moves[0].body).toMatchObject({orderId:'order-1',tableIds:[],primaryId:'',guests:0,dineType:'Take away'});
+ expect(moves[1].body.request_id).toBe(moves[0].body.request_id);
+});
+
+test('claimed-table changes use the same capacity-aware move screen as order details',async({page})=>{
+ const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating',seating_table_ids:['table-1'],seating_primary_id:'table-1'});
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[]}}));
+ await setting(page,'table');
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ await expect(page.locator('#moveTableModal')).toBeVisible();
+ expect(posts).toHaveLength(0);
+});
+
+test('a failed claimed-order type change locks its saved intent and retries the same request',async({page})=>{
+ const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating',seating_table_ids:['table-1'],seating_primary_id:'table-1'});
+ const bodies=[];let completes=0;
+ await page.route('**/captain/v1/tables/move/**',route=>{
+   const body=route.request().postDataJSON();bodies.push(body);
+   if(route.request().url().endsWith('complete') && ++completes===1) return route.fulfill({status:503,json:{message:'Temporary problem'}});
+   return route.fulfill({json:{request_id:body.request_id,orderId:'order-1',state:route.request().url().endsWith('complete')?'submitting':'reserved',dineType:'Take away',tableIds:[]}});
+ });
+ await setting(page,'type');
+ await page.locator('label[for="edit-takeaway"]').click();
+ await apply(page);
+ await expect(page.locator('#editor-setting-apply')).toHaveText('Retry');
+ await expect(page.locator('#edit-takeaway')).toBeDisabled();
+ await expect(page.locator('#editor-setting-apply')).toBeEnabled();
+ await apply(page);
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts).toHaveLength(0);
+ expect(bodies).toHaveLength(4);
+ expect(new Set(bodies.map(body=>body.request_id)).size).toBe(1);
+});

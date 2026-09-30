@@ -1,6 +1,7 @@
 /* Durable group moves are scoped to the signed-in shop, staff and branch. */
 (function(root){
   const active = new Map();
+  const issuer = () => root.POSNIC?.session?.base || root.POSNIC?.server?.baseUrl || '';
   function identity(){
     const s=root.POSNIC?.session, branch=localStorage.getItem('branch_id');
     if(!s?.shopKey || !s.user?.id || !branch)throw new Error(root.I18N?.t('Sign in with your account') || 'Sign in with your account');
@@ -17,14 +18,17 @@
     const existing=read(order);
     if(existing)return existing;
     const owner=identity();
-    const entry={owner,body:{orderId:order,request_id:crypto.randomUUID(),tableIds:selection.tableIds,primaryId:selection.primaryId,guests:selection.guests}};
+    const entry={owner,issuer:issuer(),body:{orderId:order,request_id:crypto.randomUUID(),tableIds:selection.tableIds,primaryId:selection.primaryId,guests:selection.guests,...(selection.dineType ? {dineType:selection.dineType} : {})}};
     localStorage.setItem(key(owner,order),JSON.stringify(entry));
     return entry;
   }
   async function run(entry){
     const storageKey=key(entry.owner,entry.body.orderId);
     if(active.has(storageKey))return active.get(storageKey);
-    const same=()=>{if(identity()!==entry.owner)throw new Error(root.I18N?.t('Sign in with your account') || 'Sign in with your account');};
+    const same=()=>{
+      if(identity()!==entry.owner)throw new Error(root.I18N?.t('Sign in with your account') || 'Sign in with your account');
+      if(entry.issuer !== undefined && entry.issuer !== issuer())throw new Error(root.I18N?.t('Reconnect to the server that authorized this phone. Orders are retained.') || 'Reconnect to the server that authorized this phone. Orders are retained.');
+    };
     const operation=(async()=>{
       same();
       let cancellationConflict;
@@ -53,9 +57,9 @@
       if (cancellationConflict && !['applying','submitting'].includes(prepared.state))throw cancellationConflict;
       const result=await root.POSNIC.api.post('/captain/v1/tables/move/complete',{request_id:entry.body.request_id});
       same();
-      if(result.request_id!==entry.body.request_id || result.orderId!==entry.body.orderId || result.state!=='submitting')throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
+      if(result.request_id!==entry.body.request_id || result.orderId!==entry.body.orderId || result.state!=='submitting' || (entry.body.dineType && result.dineType!==entry.body.dineType))throw new Error(root.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.');
       localStorage.removeItem(storageKey);
-      return {type:'success',tableIds:result.tableIds};
+      return {type:'success',tableIds:result.tableIds,dineType:result.dineType};
     })();
     active.set(storageKey,operation);
     try{return await operation;}finally{active.delete(storageKey);}

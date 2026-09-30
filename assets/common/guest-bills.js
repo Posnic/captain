@@ -22,6 +22,7 @@
     collectEnabled = false,
     owner = "";
   const t = (s) => (window.I18N ? I18N.t(s) : s);
+  const base = () => POSNIC.session?.base || POSNIC.server.baseUrl;
   const money = (n) =>
     CaptainMoney.format(
       CaptainMoney.fromMinor(n, CaptainMoney.snapshot(snapshot || {})),
@@ -167,7 +168,10 @@
       render();
       return;
     }
-    if (state.pending && state.pending.owner !== owner) {
+    if (
+      state.pending &&
+      (state.pending.owner !== owner || state.pending.base !== base())
+    ) {
       error =
         "Reconnect to the server that authorized this phone. Orders are retained.";
       render();
@@ -176,6 +180,7 @@
     if (!state.pending)
       state.pending = {
         owner,
+        base: base(),
         body: {
           branchId: state.branchId,
           table_number: state.table,
