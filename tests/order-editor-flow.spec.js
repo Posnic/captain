@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test';
 import { onTheMenu } from './support/shop.js';
 import fs from 'node:fs';
 const original = { _id:'order-1', status:'pending', dine_type:'Dine-in', table_number:'1', table_id:'table-1', person_count:2, total_amount:440, updated_date:'2026-09-27T10:00:00Z', items:[{_id:'line-1',product_id:'p-biryani',name:'Chicken Biryani',quantity:2,price:220}] };
-async function editor(page, where='order-history.html', over={}) {
+async function editor(page, where='order-history.html', over={}, setup) {
   await onTheMenu(page, 'nothing');
+  if (setup) await setup();
   const posts=[];
   await page.route('**/sales/getOrderHistory', route=>route.fulfill({json:{type:'success',data:{orders:[{...original,...over}]}}}));
   await page.route('**/sales/updateOrder', route=>{posts.push(route.request().postDataJSON());return route.fulfill({json:{type:'success'}});});
@@ -387,4 +388,43 @@ test('opening and editing preserves stored unit-price precision',async({page})=>
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0].items[0].price).toBe(1.234);
  expect(Number(posts[0].total_amount)).toBe(2.468);
+});
+
+
+for (const where of ['order-history.html','kot-management.html']) test(`server pricing ignores stale totals on ${where}`,async({page})=>{
+ let release, started;
+ const waiting=new Promise(resolve=>release=resolve), first=new Promise(resolve=>started=resolve);
+ const setup=()=>page.route('**/captain/v1/orders/edit/preview',async route=>{
+  const body=route.request().postDataJSON();
+  if(body.items[0].quantity===2){started();await waiting;await route.fulfill({json:{total_amount:462}});}
+  else await route.fulfill({json:{total_amount:693}});
+ });
+ const posts=await editor(page,where,{pricing_preview:true},setup); await first;
+ await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await expect(page.locator('#editor-total-value')).toContainText('693');
+ release(); await page.waitForTimeout(100);
+ await expect(page.locator('#editor-total-value')).toContainText('693');
+ expect(posts).toHaveLength(0);
+});
+test('server pricing failure offers Retry without blocking Back',async({page})=>{
+ let calls=0;
+ const setup=()=>page.route('**/captain/v1/orders/edit/preview',route=>++calls===1?
+  route.fulfill({status:503,json:{error:{message:'Please retry.'}}}):route.fulfill({json:{total_amount:462}}));
+ await editor(page,'order-history.html',{pricing_preview:true},setup);
+ await expect(page.locator('#editor-price-retry')).toBeVisible();
+ await expect(page.locator('#editor-total-value')).toHaveText('—');
+ await page.locator('#editor-price-retry').click();
+ await expect(page.locator('#editor-total-value')).toContainText('462');
+ await page.locator('#cancel-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+});
+test('closing the editor ignores an outstanding pricing response',async({page})=>{
+ let release, started;
+ const waiting=new Promise(resolve=>release=resolve), first=new Promise(resolve=>started=resolve);
+ const setup=()=>page.route('**/captain/v1/orders/edit/preview',async route=>{started();await waiting;await route.fulfill({json:{total_amount:999}});});
+ await editor(page,'order-history.html',{pricing_preview:true},setup);await first;
+ await page.locator('#cancel-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ release();await page.waitForTimeout(100);
+ expect(await page.evaluate(()=>orderBeingModified())).toBeNull();
 });

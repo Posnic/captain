@@ -58,6 +58,40 @@
         byId('edit-table-section').style.display = '';
         byId('edit-pax-section').style.display = '';
     }
+    let priceKey = '', priceGeneration = 0, priceTimer, priceState = 'idle', confirmedTotal;
+    function resetPrice() {
+        clearTimeout(priceTimer); priceGeneration++; priceKey = ''; priceState = 'idle'; confirmedTotal = undefined;
+    }
+    function pricing(value) {
+        const current = order();
+        if (!current?.pricing_preview) return;
+        const priorType = ['amount','price','fixed'].includes(String(originalOrder?.extra_discount_type || '').toLowerCase()) ? 'amount' : 'percent';
+        const discount = Number(value.discount), changed = discount !== Number(originalOrder?.extra_discount || 0) || (discount !== 0 && value.discountType !== priorType);
+        const preserve = current.transfer_allocated === true && !changed;
+        const body = { order_id: current._id, items: linesForSave(current.items),
+            extra_discount_type: preserve ? null : value.discountType, extra_discount: preserve ? null : discount,
+            discount_description: value.discountReason, seen_at: orderSeenAt(current) };
+        const owner = identity(), key = JSON.stringify([owner, body]);
+        if (key === priceKey) return;
+        clearTimeout(priceTimer); priceKey = key; priceState = 'loading'; confirmedTotal = undefined;
+        const generation = ++priceGeneration;
+        priceTimer = setTimeout(async () => {
+            let deadline;
+            try {
+                const result = await Promise.race([
+                    POSNIC.api.post('/captain/v1/orders/edit/preview', body),
+                    new Promise((_, reject) => { deadline = setTimeout(() => reject(new Error('timeout')), 20000); })
+                ]);
+                if (generation !== priceGeneration || current !== order() || owner !== identity()) return;
+                if (typeof result.total_amount !== 'number' || !Number.isFinite(result.total_amount)) throw new Error('invalid_total');
+                confirmedTotal = result.total_amount; priceState = 'ready';
+            } catch {
+                if (generation !== priceGeneration || current !== order() || owner !== identity()) return;
+                priceState = 'error';
+            } finally { clearTimeout(deadline); }
+            refresh();
+        }, 300);
+    }
     function reviewTotal(value) {
         const current = order();
         if (!originalOrder || !current) return Number(current?.total_amount || 0);
@@ -79,6 +113,7 @@
     function refresh() {
         if (!byId('order-editor-items') || !order()) return;
         const value = details(), dineIn = value.type === 'Dine-in';
+        pricing(value);
         byId('order-editor-context').textContent = dineIn && value.table ? 'Table ' + value.table : 'Takeaway';
         const type = document.createElement('span'); type.textContent = value.type;
         const guests = document.createElement('span'); guests.textContent = 'Guests';
@@ -93,12 +128,22 @@
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
         for (const prefix of ['editor', 'picker']) {
             byId(prefix + '-item-count').textContent = count === 1 ? '1 item' : count + ' items';
-            byId(prefix + '-total-value').textContent = CaptainMoney.display(reviewTotal(value));
+            const total = byId(prefix + '-total-value');
+            total.textContent = order().pricing_preview ? (priceState === 'ready' ? CaptainMoney.display(confirmedTotal) : priceState === 'loading' ? '…' : '—') : CaptainMoney.display(reviewTotal(value));
+            total.setAttribute('aria-busy', String(!!order().pricing_preview && priceState === 'loading'));
+            let retry = byId(prefix + '-price-retry');
+            if (!retry) {
+                retry = document.createElement('button'); retry.id = prefix + '-price-retry'; retry.type = 'button';
+                retry.classList.add('btn', 'btn-sm', 'btn-link'); retry.textContent = window.I18N?.t('Retry') || 'Retry';
+                retry.addEventListener('click', () => { resetPrice(); refresh(); }); total.after(retry);
+            }
+            retry.hidden = !order().pricing_preview || priceState !== 'error';
         }
         byId('cancel-order-changes').disabled = saving;
         byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());
     }
     function begin() {
+        resetPrice();
         legacyGuestSupported = false; settingLoad++;
         saved = false; saving = false; beforeSetting = null;
         originalOrder = JSON.parse(JSON.stringify(order()));
@@ -320,6 +365,7 @@
             }
         });
         modal.addEventListener('hidden.bs.modal', () => {
+            resetPrice();
             if (ownsHistory && history.state?.[historyKey]) { ownsHistory = false; history.back(); }
             initial = null;
             setOrderBeingModified(null);
