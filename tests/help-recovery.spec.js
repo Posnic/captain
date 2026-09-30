@@ -1,0 +1,32 @@
+import {test,expect} from '@playwright/test';
+import {onTheMenu} from './support/shop.js';
+test('an outage cannot cover settings or prevent reaching recovery and saved orders',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.goto('/me.html');
+ await expect(page.locator('a[href="help.html"]')).toBeVisible();
+ await page.evaluate(()=>POSNIC.net.setOffline());
+ await expect(page.locator('#posnic-offline')).not.toBeVisible();
+ await page.locator('a[href="help.html"]').click();
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await expect(page.locator('#help-status')).toHaveText('Connected over the internet');
+ await page.evaluate(()=>{POSNIC.net.check=async()=>{POSNIC.net.setOffline();return false;};localStorage.setItem('help-test-cart','keep');});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Not connected');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await expect(page.locator('#posnic-offline')).not.toBeVisible();
+ await page.locator('#help-pending').click();
+ await page.locator('#pending-back').click();
+ await expect(page).toHaveURL(/help.html$/);
+ await page.locator('#help-back').click();
+ await expect(page).toHaveURL(/me.html$/);
+ expect(await page.evaluate(()=>localStorage.getItem('help-test-cart'))).toBe('keep');
+});
+test('a session check that returns false is never described as connected',async({page})=>{
+ await onTheMenu(page,'nothing');await page.goto('/help.html');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await page.evaluate(()=>{POSNIC.net.check=async()=>false;});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Not connected');
+ await page.locator('#help-server').click();
+ await expect(page).toHaveURL(/index.html$/);
+});

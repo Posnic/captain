@@ -2184,7 +2184,7 @@
          */
         if (!server.isConfigured || settingsOpen()) return;
         // A configured staff session can keep taking orders from its cached menu.
-        if (session.active && window.POSNIC_ORDER_QUEUE_UI) {
+        if ((session.active && window.POSNIC_ORDER_QUEUE_UI) || document.querySelector("[data-offline-page]")) {
           const old = document.getElementById('posnic-offline');
           if (old) old.style.display = 'none';
           document.documentElement.classList.remove('posnic-offline-active');

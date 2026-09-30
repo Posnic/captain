@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="assets/common/app-design.css">
 </head>
 
-<body>
+<body data-offline-page>
     <header class="me-head">
         <button type="button" class="me-back" id="me-back" aria-label="Back">&larr;</button>
         <h1 class="me-title">Me</h1>
@@ -46,6 +46,7 @@
                 <a class="me-row me-row-go" href="my-sales.html" id="me-sales"><span class="me-row-label">My sales today</span><span class="me-row-value" id="me-today"></span></a>
                 <a class="me-row me-row-go" href="pending.html" onclick="sessionStorage.setItem('captain_pending_return', 'me.html')"><span class="me-row-label">Pending orders</span></a>
             </section>
+            <section class="me-card"><a class="me-row me-row-go" href="help.html"><span class="me-row-label">Help</span></a></section>
             <h2 class="me-heading">About</h2>
             <p class="me-note" id="me-version"></p>
         </section>

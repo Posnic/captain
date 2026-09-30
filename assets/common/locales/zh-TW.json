@@ -955,5 +955,6 @@
   "No pending orders": "沒有待傳送訂單",
   "Sound alerts": "聲音提醒",
   "Vibration": "震動",
-  "Choose at least one payment method.": "請至少選擇一種付款方式。"
+  "Choose at least one payment method.": "請至少選擇一種付款方式。",
+  "Help": "說明"
 }

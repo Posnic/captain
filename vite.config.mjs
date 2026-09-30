@@ -126,6 +126,7 @@ export default defineConfig({
         'access-denied': path.resolve(ROOT, 'access-denied.html'),
         'number-card': path.resolve(ROOT, 'number-card.html'),
         me: path.resolve(ROOT, 'me.html'),
+        help: path.resolve(ROOT, 'help.html'),
         tables: path.resolve(ROOT, 'tables.html'),
         pending: path.resolve(ROOT, 'pending.html'),
         paymentSettings: path.resolve(ROOT, 'payment-settings.html'),

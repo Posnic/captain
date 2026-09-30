@@ -955,5 +955,6 @@
   "No pending orders": "Aucune commande en attente",
   "Sound alerts": "Alertes sonores",
   "Vibration": "Vibration",
-  "Choose at least one payment method.": "Choisissez au moins un mode de paiement."
+  "Choose at least one payment method.": "Choisissez au moins un mode de paiement.",
+  "Help": "Aide"
 }

@@ -955,5 +955,6 @@
   "No pending orders": "ไม่มีรายการสั่งที่รอส่ง",
   "Sound alerts": "เสียงแจ้งเตือน",
   "Vibration": "การสั่น",
-  "Choose at least one payment method.": "เลือกวิธีชำระเงินอย่างน้อยหนึ่งวิธี"
+  "Choose at least one payment method.": "เลือกวิธีชำระเงินอย่างน้อยหนึ่งวิธี",
+  "Help": "ความช่วยเหลือ"
 }

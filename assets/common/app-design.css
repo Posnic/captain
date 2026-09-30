@@ -168,3 +168,9 @@ button.bill-what { background: transparent; color: var(--ink); border: 0; paddin
 #meal-menu small { font-weight: 400; font-size: 12px; }
 
 #meal-menu button { border-radius: 999px !important; }
+
+.help-actions { padding: 0 16px 16px; }
+.help-links { margin-top: 20px; }
+body:has(#help-back) .me-row { box-sizing: border-box; text-align: start; flex-wrap: wrap; }
+#help-address { overflow-wrap: anywhere; }
+#help-status { font-size: 14px; }

@@ -366,9 +366,19 @@
     },
     {
       "id": "help",
-      "status": "audit-required",
-      "implementation": [],
-      "verification": []
+      "status": "in-progress",
+      "implementation": [
+        "help.html",
+        "assets/me/help.js",
+        "me.html",
+        "config.js",
+        "assets/common/order-queue-ui.js"
+      ],
+      "verification": [
+        "Help now offers current connection status, manual retry, shared server settings, pending orders, return to tables and installed app version. Pull-to-refresh uses the same bounded network/session recovery path; failed checks never claim a connection.",
+        "Settings, table management, branch details and payment settings opt into inline offline handling, so the full-screen network overlay cannot trap navigation. Browser checks verify outage navigation, pending-order return, preserved local data and false session-check status. 577 unit tests and production build pass (30 languages, 958 messages).",
+        "Native-device acceptance, support details and the remaining full-app readiness work are still outstanding."
+      ]
     },
     {
       "id": "signout",
