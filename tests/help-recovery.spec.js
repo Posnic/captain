@@ -30,3 +30,34 @@ test('a session check that returns false is never described as connected',async(
  await page.locator('#help-server').click();
  await expect(page).toHaveURL(/index.html$/);
 });
+
+
+test('an old address check cannot confirm a newly selected server',async({page})=>{
+ await onTheMenu(page,'nothing');await page.goto('/help.html');
+ await expect(page.locator('#help-status')).toHaveText('Connected over the internet');
+ await page.evaluate(()=>{POSNIC.net.check=()=>new Promise(resolve=>{window.finishOldCheck=resolve;});});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Checking');
+ await page.evaluate(()=>POSNIC.server.adopt('http://192.168.1.20:5555/api'));
+ await expect(page.locator('#help-address')).toHaveText('http://192.168.1.20:5555/api');
+ await expect(page.locator('#help-status')).toHaveText('Not connected');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await page.evaluate(()=>window.finishOldCheck(true));
+ await expect(page.locator('#help-status')).toHaveText('Not connected');
+ await page.evaluate(()=>{POSNIC.net.check=async()=>true;});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Connected in the shop');
+});
+
+test('a late failed check cannot erase a new server connection',async({page})=>{
+ await onTheMenu(page,'nothing');await page.goto('/help.html');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+ await page.evaluate(()=>{POSNIC.net.check=()=>new Promise((resolve,reject)=>{window.failOldCheck=reject;});});
+ await page.locator('#help-retry').click();
+ await page.evaluate(()=>{POSNIC.server.adopt('http://192.168.1.21:5555/api');POSNIC.net.check=async()=>true;});
+ await page.locator('#help-retry').click();
+ await expect(page.locator('#help-status')).toHaveText('Connected in the shop');
+ await page.evaluate(()=>window.failOldCheck(new Error('old request failed')));
+ await expect(page.locator('#help-status')).toHaveText('Connected in the shop');
+ await expect(page.locator('#help-retry')).toBeEnabled();
+});
