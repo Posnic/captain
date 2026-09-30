@@ -91,7 +91,12 @@ for (const returning of [false, true])
     expect(await page.evaluate(() => CaptainAccess.pinSet)).toBe(true);
     expect(await page.evaluate(() => POSNIC.session.base)).toBe(cloud);
   });
-async function phone(page) {
+async function fillAddress(page, value) {
+  if (await page.locator("#captain-address-toggle").isVisible()) await page.locator("#captain-address-toggle").click();
+  await page.locator("#captain-server").fill(value);
+}
+
+async function phone(page, address = true) {
   await page.addInitScript(() => {
     let session = {},
       pin = null,
@@ -163,6 +168,7 @@ async function phone(page) {
     await route.fulfill({ json: body });
   });
   await page.goto("/index.html");
+  if (address) await page.locator("#captain-address-toggle").click();
   await page.evaluate(() => {
     window.selectBranch = async (value) => {
       window.selectedCaptainBranch = value;
@@ -250,7 +256,7 @@ test("unreachable till is not mislabeled as an outdated API", async ({
     POSNIC.discovery.probe.lastFailure = { reason: "UNREACHABLE" };
   });
   await page.locator("#captain-code-toggle").click();
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await page.locator("#captain-code").fill(code);
   await page.locator("#captain-pair").click();
   await expect(page.locator("#captain-note")).toContainText("not answering");
@@ -269,14 +275,16 @@ test("a stuck network scan has a deadline and a useful retry message", async ({
   await expect(page.locator("#captain-cancel")).toBeHidden();
   await expect(page.locator("#captain-note")).toContainText("Search timed out");
 });
-test("fresh setup presents one address and visible discovery tools before staff sign-in", async ({
+test("fresh setup offers Wi-Fi first and keeps the address one tap away", async ({
   page,
 }) => {
   await page.goto("/index.html");
   await expect(
     page.getByRole("button", { name: "Scan shop QR code", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("#captain-server")).toBeVisible();
+  await expect(page.locator("#captain-server")).toBeHidden();
+  await expect(page.locator("#captain-search")).toBeVisible();
+  await expect(page.locator("#captain-address-toggle")).toBeVisible();
   await expect(page.locator("#captain-legacy")).toBeHidden();
   await expect(page.locator("#serverBanner")).toHaveCount(0);
   expect(
@@ -341,7 +349,7 @@ test("pairing code needs a selected, manager-confirmed address", async ({
 }) => {
   await phone(page);
   await page.locator("#captain-code-toggle").click();
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await page.locator("#captain-code").fill(code);
   await page.locator("#captain-pair").click();
   await expect(page.locator("#captain-note")).toContainText("confirm");
@@ -485,7 +493,7 @@ test("an entered address is verified before showing a separate staff sign-in scr
   page,
 }) => {
   await phone(page);
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await page.locator("#captain-connect").click();
   await expect(page.locator("#username")).toBeVisible();
   await expect(page.locator("#captain-onboarding")).toBeHidden();
@@ -508,7 +516,7 @@ test("unreachable and cancelled addresses do not advance or replace the shop", a
   await page.evaluate(() => {
     POSNIC.discovery.probe = async () => null;
   });
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await page.locator("#captain-connect").click();
   await expect(page.locator("#captain-note")).toContainText("Could not reach");
   await expect(page.locator("#username")).toBeHidden();
@@ -532,11 +540,11 @@ test("setup fits a small phone and keeps discovery controls reachable", async ({
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/index.html");
   for (const id of [
-    "captain-server",
+    "captain-address-toggle",
     "captain-search",
     "captain-scan",
     "captain-code-toggle",
-    "captain-connect",
+    "captain-cloud-login",
   ])
     await expect(page.locator("#" + id)).toBeVisible();
   expect(
@@ -616,7 +624,8 @@ test("a verified address update retains the current staff and pending order owne
         : info,
     }),
   );
-  await page.locator("#captain-server").fill(next);
+  await page.locator("#captain-address-toggle").click();
+  await fillAddress(page, next);
   await page.locator("#captain-connect").click();
   await expect(page.locator("#captain-note")).toContainText("Connected");
   expect(await page.evaluate(() => POSNIC.session.user.id)).toBe("staff");
@@ -669,7 +678,7 @@ test("connection details can be saved while locked without clearing the staff se
     await POSNIC.session.suspend();
     CaptainOnboarding.open();
   }, base);
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await page.locator("#captain-connect").click();
   await expect(page.locator("#captain-note")).toContainText("Saved");
   expect(
@@ -739,7 +748,7 @@ test("canceling a pending native account request never launches the browser late
 
 test("Continue always uses the address; Wi-Fi discovery has its own view", async ({ page }) => {
   await phone(page);
-  await page.locator("#captain-server").fill("");
+  await fillAddress(page, "");
   await expect(page.locator("#captain-connect")).toHaveText("Continue");
   await expect(page.locator("#captain-connect")).toBeDisabled();
   await page.evaluate(base => {
@@ -749,14 +758,14 @@ test("Continue always uses the address; Wi-Fi discovery has its own view", async
   await expect(page.locator("#captain-server")).toBeHidden();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
   await page.locator("#connection-back").click();
-  await page.locator("#captain-server").fill(base);
+  await fillAddress(page, base);
   await expect(page.locator("#captain-connect")).toHaveText("Continue");
   await expect(page.locator("#captain-connect")).toBeEnabled();
 });
 
 
 test("Try now restores a suspended native session without restarting or changing server", async ({page}) => {
-  await phone(page);
+  await phone(page, false);
   const requests=[];
   await page.route('**/captain/v1/session',route=>{
     requests.push(route.request().headers().authorization);
@@ -877,6 +886,7 @@ test("a bare domain stays editable during discovery and supports changing server
   await expect(page.locator("#captain-selected-shop")).toHaveText("azure.posnic.io");
   await expect(page.locator("#captain-change-shop")).toHaveText("Change server");
   await page.locator("#captain-change-shop").click();
+  await page.locator("#captain-address-toggle").click();
   await expect(input).toBeVisible();
   await input.fill("192.168.1.8:42590");
   await input.press("Enter");
@@ -884,9 +894,9 @@ test("a bare domain stays editable during discovery and supports changing server
 });
 
 
-test("expired cloud exchange offers fresh browser approval rather than reusing the spent code", async ({ page }) => {
+test("expired cloud exchange recovers once without another browser approval", async ({ page }) => {
   await phone(page);
-  let approvals = 0, pairs = 0;
+  let approvals = 0, pairs = 0, exchanges = 0;
   await page.evaluate(() => {
     const timeout = window.setTimeout;
     window.setTimeout = (fn, ms, ...args) => timeout(fn, ms === 5000 ? 10 : ms, ...args);
@@ -898,7 +908,9 @@ test("expired cloud exchange offers fresh browser approval rather than reusing t
       approvals++;
       return route.fulfill({json:{request:String(approvals).repeat(43),authorizationUrl:"https://www.posnic.com/api/mobile/authorize?request=fresh",expiresIn:900}});
     }
-    return route.fulfill({json:{baseUrl:"https://azure.posnic.io/api",code:approvals===1?code:"123456ABCDEF",localServers:[]}});
+    exchanges++;
+    if (exchanges === 2) expect(route.request().postDataJSON().recover).toBe(true);
+    return route.fulfill({json:{baseUrl:"https://azure.posnic.io/api",code:exchanges===1?code:"123456ABCDEF",localServers:[]}});
   });
   await page.route("https://azure.posnic.io/**", route => {
     pairs++;
@@ -907,18 +919,16 @@ test("expired cloud exchange offers fresh browser approval rather than reusing t
     return route.fulfill({json:{token:"access",sessionId:"session",expiresIn:900,shopKey:"shop",user:{id:"staff"},branches:[{branch_id:"branch",store_id:"branch"}]}});
   });
   await page.locator("#captain-cloud-login").click();
-  await expect(page.locator("#captain-note")).toHaveText("Approval expired. Try again.");
-  await expect(page.locator("#captain-server")).toBeEnabled();
-  await page.locator("#captain-cloud-login").click();
   await expect.poll(() => page.evaluate(() => window.selectedCaptainBranch)).toBe("branch");
-  expect(approvals).toBe(2);
+  expect(approvals).toBe(1);
+  expect(exchanges).toBe(2);
   expect(pairs).toBe(2);
 });
 
 
 test("pairing and backup addresses are focused views with a lossless Back action", async ({ page }) => {
   await phone(page);
-  await page.locator("#captain-server").fill("azure.posnic.io");
+  await fillAddress(page, "azure.posnic.io");
   await page.locator("#captain-code-toggle").click();
   await expect(page.locator("#captain-code")).toBeVisible();
   await expect(page.locator("#captain-cloud-login")).toBeHidden();
@@ -938,7 +948,7 @@ test("pairing and backup addresses are focused views with a lossless Back action
 
 test("Back cancels discovery and late results cannot replace the address screen", async ({ page }) => {
   await phone(page);
-  await page.locator("#captain-server").fill("azure.posnic.io");
+  await fillAddress(page, "azure.posnic.io");
   await page.evaluate(() => {
     POSNIC.discovery.scanSubnet = async (_subnet, options) => {
       window.finishDiscovery = () => options.collect({ base: "http://192.168.1.9:5555/api", info: { features: {} } });
@@ -967,7 +977,7 @@ test("leaving a selected Wi-Fi result cancels its pending navigation", async ({ 
   await expect.poll(() => page.evaluate(() => typeof window.finishSelectedAddress)).toBe("function");
   await page.locator("#connection-back").click();
   await page.evaluate(base => window.finishSelectedAddress({ base }), base);
-  await expect(page.locator("#captain-server")).toBeVisible();
+  await expect(page.locator("#captain-address-toggle")).toBeVisible();
   await expect(page.locator("#username")).toBeHidden();
   expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
 });
