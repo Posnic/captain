@@ -450,7 +450,7 @@ test('transfer screen selects preparations, reviews destination and confirms onc
  await editor(page);await page.locator('#cancel-order-changes').click();
  const source='a'.repeat(24),table='b'.repeat(24),target='c'.repeat(24),writes=[];
  await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[{id:table,tableorder_value:'8',status:'available',capacity:4,max:4}]}}));
- await page.route('**/captain/v1/tables/transfer/preview',route=>route.fulfill({json:{sourceId:source,revision:'d'.repeat(64),currencyCode:'INR',currencyDigits:2,destination:{totalMinor:5250,rounds:[{name:'Corn',quantity:1}]},source:{totalMinor:5250}}}));
+ await page.route('**/captain/v1/tables/transfer/preview',route=>route.fulfill({json:{sourceId:source,revision:'d'.repeat(64),currencyCode:'INR',currencyDigits:2,destination:{totalMinor:5250,rounds:[{name:'Corn',quantity:1,note:'Less salt',served:1}]},source:{totalMinor:5250}}}));
  await page.route('**/captain/v1/tables/transfer/complete',route=>{const body=route.request().postDataJSON();writes.push(body);return route.fulfill({json:{requestId:body.requestId,sourceId:source,destinationId:target,sourceClosed:false,state:'completed'}});});
  await page.evaluate(source=>CaptainTransferScreen.open({_id:source,kitchen_rounds:[{ordered_at:'2026-09-30T13:30:00Z',items:[{id:'c0i0',name:'Corn',quantity:2,served:1}]}]}),source);
  const dialog=page.locator('.transfer-screen');
@@ -458,7 +458,7 @@ test('transfer screen selects preparations, reviews destination and confirms onc
  await dialog.getByRole('button',{name:'Continue',exact:true}).click();
  await dialog.locator('input[type=checkbox]').check();
  await dialog.getByRole('button',{name:'Continue',exact:true}).click();
- await expect(dialog).toContainText('52.50');expect(writes).toHaveLength(0);
+ await expect(dialog).toContainText('52.50');await expect(dialog.locator('.transfer-review-line')).toContainText('Less salt');await expect(dialog.locator('.transfer-review-line')).toContainText('Served: 1');expect(writes).toHaveLength(0);
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await expect(dialog.locator('input[type=checkbox]')).toBeChecked();
  await dialog.getByRole('button',{name:'Continue',exact:true}).click();
@@ -499,4 +499,29 @@ test('transfer action requires capability and permission and opens the registere
  await page.locator('[data-transfer-order]').click();
  await expect(page.locator('.transfer-screen')).toBeVisible();
  await expect(page.locator('.transfer-screen')).toContainText('Corn');
+});
+
+
+test('transfer main table survives Back and review fits phone and RTL tablet',async({page})=>{
+ await page.setViewportSize({width:320,height:740});await editor(page);await page.locator('#cancel-order-changes').click();
+ const source='a'.repeat(24),one='b'.repeat(24),two='c'.repeat(24);
+ await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[
+  {id:one,tableorder_value:'8',status:'available',capacity:2,max:2,adjacent:[two]},
+  {id:two,tableorder_value:'9',status:'available',capacity:2,max:2,adjacent:[one]}]}}));
+ await page.route('**/captain/v1/tables/transfer/preview',route=>route.fulfill({json:{sourceId:source,revision:'d'.repeat(64),currencyCode:'INR',currencyDigits:2,destination:{totalMinor:5250,rounds:[{name:'Corn',quantity:1,note:'Less salt',served:1}]},source:{totalMinor:10500}}}));
+ await page.evaluate(source=>CaptainTransferScreen.open({_id:source,table_number:'1',kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:2,served:0}]}]}),source);
+ const dialog=page.locator('.transfer-screen');await dialog.locator('[data-quantity]').fill('1');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await dialog.locator('input[type=checkbox]').nth(0).check();await dialog.locator('input[type=checkbox]').nth(1).check();
+ await dialog.locator('#transfer-primary').selectOption(two);await dialog.locator('#transfer-guests').fill('3');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect(dialog).toContainText('105.00');await expect(dialog).toContainText('52.50');await expect(dialog).toContainText('Main table: 9');
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await page.screenshot({path:'test-artifacts/transfer-review-phone.png'});
+ await dialog.getByRole('button',{name:'Back',exact:true}).click();await expect(dialog.locator('#transfer-primary')).toHaveValue(two);
+ await expect(dialog.locator('#transfer-guests')).toHaveValue('3');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await page.setViewportSize({width:800,height:1100});await page.evaluate(()=>document.documentElement.dir='rtl');
+ expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+ await page.screenshot({path:'test-artifacts/transfer-review-tablet-rtl.png'});
 });

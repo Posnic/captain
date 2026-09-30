@@ -12,11 +12,21 @@
   const pending=root.CaptainItemTransfer.pending(order._id);
   let body='';
   if(stage==='items')body=(order.kitchen_rounds||[]).map(round=>`<section><time>${esc(round.ordered_at?new Date(round.ordered_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'')}</time>${round.items.map(line=>`<fieldset data-line="${esc(line.id)}"><legend translate="no">${esc(line.name)}</legend>${line.note?`<p translate="no">${esc(line.note)}</p>`:''}<label>${t('Items')} <input type="number" min="0" max="${line.quantity}" step="0.001" value="${items?.find(i=>i.id===line.id)?.quantity||0}" data-quantity aria-label="${t('Items')}"></label><small translate="no"> / ${line.quantity}</small><label>${t('Served')} <input type="number" min="0" max="${line.served||0}" step="0.001" value="${items?.find(i=>i.id===line.id)?.servedQuantity||0}" data-served aria-label="${t('Served')}"></label></fieldset>`).join('')}</section>`).join('');
-  if(stage==='tables')body=`<label>${t('Guests')} <input id="transfer-guests" type="number" min="1" max="1000" value="${destination?.guests||1}"></label><div class="transfer-tables">${tables.filter(row=>row.status==='available'&&!row.closing).map(row=>`<label><input type="checkbox" value="${esc(row.id)}" ${destination?.tableIds.includes(row.id)?'checked':''}> <span>${t('Table')} <b translate="no">${esc(row.tableorder_value)}</b><small>${t('Guests')}: ${row.max||row.capacity||'—'}</small></span></label>`).join('')}</div>`;
-  if(stage==='review')body=`<section><h3>${t('Items')}</h3>${preview.destination.rounds.map(line=>`<p translate="no">${esc(line.name)} × ${line.quantity}</p>`).join('')}<p>${t('Table')} <b translate="no">${destination.tableIds.map(id=>esc(tables.find(row=>row.id===id)?.tableorder_value||id)).join(', ')}</b></p><p>${t('Guests')}: ${destination.guests}</p><p>${t('Total')}: <strong translate="no">${esc(money(preview.destination.totalMinor))}</strong></p></section>`;
+  if(stage==='tables')body=`<label>${t('Guests')} <input id="transfer-guests" type="number" min="1" max="1000" value="${destination?.guests||1}"></label><div class="transfer-tables">${tables.filter(row=>row.status==='available'&&!row.closing).map(row=>`<label><input type="checkbox" value="${esc(row.id)}" ${destination?.tableIds.includes(row.id)?'checked':''}> <span>${t('Table')} <b translate="no">${esc(row.tableorder_value)}</b><small>${t('Guests')}: ${row.max||row.capacity||'—'}</small></span></label>`).join('')}</div><label id="transfer-primary-label">${t('Main table')} <select id="transfer-primary"></select></label>`;
+  if(stage==='review')body=`<section><h3>${t('Items')}</h3>${preview.destination.rounds.map(line=>`<div class="transfer-review-line"><p translate="no">${esc(line.name)} × ${line.quantity}</p>${line.note?`<small translate="no">${esc(line.note)}</small>`:''}${line.served?`<small>${t('Served')}: ${line.served}</small>`:''}</div>`).join('')}<p>${t('Table')} <b translate="no">${destination.tableIds.map(id=>esc(tables.find(row=>row.id===id)?.tableorder_value||id)).join(', ')}</b></p><p>${t('Main table')}: <b translate="no">${esc(tables.find(row=>row.id===destination.primaryId)?.tableorder_value||'')}</b></p><p>${t('Guests')}: ${destination.guests}</p><p>${t('Total')}: <strong translate="no">${esc(money(preview.destination.totalMinor))}</strong></p></section><section class="transfer-source"><h3>${t('Table')} <span translate="no">${esc(order.table_number||order.kiosk_table_no||'')}</span></h3><p>${t('Total')}: <strong translate="no">${esc(money(preview.source.totalMinor))}</strong></p></section>`;
   if(stage==='recovery')body=`<p>${t('Reconnect to the server that authorized this phone. Orders are retained.')}</p>`;
   dialog.innerHTML=`<header><button type="button" data-back>${t('Back')}</button><h2>${t('Transfer items')}</h2></header><form><main>${body}<p role="alert">${esc(error)}</p></main><footer><button type="submit" ${busy?'disabled':''}>${t(busy?'Loading':pending?'Retry':stage==='review'?'Save':'Continue')}</button></footer></form>`;
   dialog.querySelector('[data-back]').onclick=()=>{if(busy||stage==='items'||stage==='recovery'){close();return;}stage=stage==='review'?'tables':'items';render();};
+  if(stage==='tables'){
+   const primary=dialog.querySelector('#transfer-primary');
+   const sync=()=>{
+    const ids=[...dialog.querySelectorAll('input[type=checkbox]:checked')].map(input=>input.value);
+    const selected=primary.value||destination?.primaryId;
+    primary.innerHTML=ids.map(id=>`<option value="${esc(id)}" ${id===selected?'selected':''}>${esc(tables.find(row=>row.id===id)?.tableorder_value)}</option>`).join('');
+    dialog.querySelector('#transfer-primary-label').hidden=ids.length<2;
+   };
+   dialog.querySelectorAll('input[type=checkbox]').forEach(input=>input.addEventListener('change',sync));sync();
+  }
   dialog.querySelector('form').onsubmit=event=>{event.preventDefault();void next();};
  }
  async function next(){
@@ -33,7 +43,7 @@
    }else if(stage==='tables'){
     const ids=[...dialog.querySelectorAll('input[type=checkbox]:checked')].map(input=>input.value);
     const guests=Number(dialog.querySelector('#transfer-guests').value);
-    destination=root.CaptainGroupMove.selection(tables,ids,ids[0],guests);
+    destination=root.CaptainGroupMove.selection(tables,ids,dialog.querySelector('#transfer-primary').value,guests);
     if(!destination.valid||!Number.isInteger(guests)||guests<1||guests>1000)throw new Error(t('Choose a table with enough seats.'));
     busy=true;render();const result=await root.POSNIC.api.post('/captain/v1/tables/transfer/preview',{orderId:order._id,items});
     if(!valid())return;preview=result;stage='review';
