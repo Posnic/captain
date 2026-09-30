@@ -89,3 +89,16 @@
 #captain-code { display:block; width:100%; min-height:50px; padding:12px; margin-top:8px; box-sizing:border-box; font-size:16px; }
 #captain-search-again { margin-top:16px; }
 #captain-results button { min-height:56px; padding:14px; border:1px solid #cdd6e3; border-radius:12px; background:#fff; color:#17233b; }
+
+/* Wi-Fi first, account sign-in second, address on demand. */
+#captain-onboarding[data-setup-view="start"] #setup-methods { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#captain-onboarding[data-setup-view="start"] .setup-tools { display:contents; }
+#captain-onboarding[data-setup-view="start"] #captain-search { grid-column:1/-1; order:0; background:var(--brand,#2457e7); color:white; min-height:52px; }
+#captain-onboarding[data-setup-view="start"] .setup-tools span { font-size:14px; }
+#captain-onboarding[data-setup-view="start"] #setup-start-hint { grid-column:1/-1; order:1; text-align:center; margin:0 0 8px; }
+#captain-onboarding[data-setup-view="start"] .connection-cloud { grid-column:1/-1; order:2; margin:0; }
+#captain-onboarding[data-setup-view="start"] #captain-address-toggle { grid-column:1/-1; order:3; min-height:48px; }
+#captain-onboarding[data-setup-view="start"] .setup-alternatives { grid-column:1/-1; order:4; margin:8px 0; }
+#captain-onboarding[data-setup-view="start"] #captain-scan { order:5; }
+#captain-onboarding[data-setup-view="start"] #captain-code-toggle { order:6; }
+#captain-onboarding[data-setup-view="start"] #connection-settings { grid-column:1/-1; order:7; margin:0; min-height:44px; }
