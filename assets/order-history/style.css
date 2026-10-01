@@ -514,11 +514,51 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     padding: 16px;
     background: #f8f9fa;
     border-radius: 12px;
     margin-bottom: 12px;
     border: 1px solid #e9ecef;
+}
+
+/*
+ * THE TEXT TAKES THE ROOM, THE BUTTONS TAKE WHAT THEY NEED.
+ *
+ * Neither side was told what to do with the space, so the flex default left
+ * the name in a column narrow enough to break "Chicken Tikka 1 plate" over
+ * three lines and the catalogue description over eight - one item filling the
+ * panel - while the quantity buttons were squeezed until the row scrolled
+ * sideways.
+ *
+ * min-width: 0 is the half that is easy to miss: a flex item will not shrink
+ * below its longest word without it, which is what pushed the controls out.
+ */
+.item-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.item-controls {
+    flex: 0 0 auto;
+}
+
+/*
+ * The description, clamped.
+ *
+ * This is the dish's catalogue text - "Chicken Tikka sold as 1 plate,
+ * configured for a INR Restaurant Demo Dataset POS demo" - which is written
+ * for a menu, not for somebody changing a quantity. Two lines is enough to
+ * recognise a note somebody added; the rest is noise on this screen.
+ */
+.item-info .item-notes {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.4;
 }
 
 .item-info h6 {
@@ -641,11 +681,13 @@ body {
 
 .order-toast {
     position: fixed;
-    top: 16px;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    top: auto;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9999;
     display: none;
+    max-width: calc(100vw - 32px);
 }
 
 .order-toast-content {
@@ -1051,4 +1093,306 @@ body {
     color: #5c2d1f;
     margin: 4px 0 0 6px;
     opacity: 0.9;
+}
+/* ============================================ adding from the real menu */
+
+/*
+ * "+ Add items from the menu" — the way into the picker.
+ *
+ * Outlined and full width rather than a filled accent button: the filled one
+ * on this screen is "Update the order", which is the thing that actually
+ * reaches the till. Two filled buttons on one form is two primary actions,
+ * and a waiter would have to read both to find out which one commits.
+ */
+.add-items-btn {
+    width: 100%;
+    min-height: var(--touch, 48px);
+    margin-bottom: var(--s3, 12px);
+    border: 1px dashed var(--line-strong, #cbd5e1);
+    border-radius: var(--radius, 12px);
+    background: var(--surface, #fff);
+    color: var(--ink, #0f172a);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.add-items-btn:hover {
+    border-color: var(--accent, #4f46e5);
+    color: var(--accent, #4f46e5);
+}
+
+/*
+ * THE MENU, OVER EVERYTHING, WHILE ADDING.
+ *
+ * Full screen on purpose. The complaint was that adding was squeezed in beside
+ * the order, the discount, the dine type, the table and the cover count - so
+ * the answer is not a slightly bigger box in the same place, it is the whole
+ * screen doing one thing, which is what the menu screen already does.
+ */
+.item-picker {
+    position: fixed;
+    inset: 0;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    background: var(--ground, #f1f5f9);
+}
+.item-picker[hidden] {
+    display: none !important;
+}
+/* The form underneath must not scroll while this is up. */
+body.picker-open {
+    overflow: hidden;
+}
+
+.item-picker-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s3, 12px);
+    padding: calc(var(--s3, 12px) + env(safe-area-inset-top, 0px)) var(--s4, 16px) var(--s3, 12px);
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.item-picker-back {
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--ink, #0f172a);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+}
+.item-picker-title {
+    font-weight: 700;
+    font-size: var(--t-lg, 17px);
+    color: var(--ink, #0f172a);
+}
+
+/*
+ * THE SEARCH BOX, the same one the ordering screen has.
+ *
+ * Owner: "i want whole UI as same in new order search box, center menu button
+ * with categories, efective search and list of items."
+ *
+ * The inner markup and its classes come straight from products.html, so the
+ * icon, the clear cross and the focus ring are the ones a waiter already
+ * knows. Only the outer padding is written here, because in the sheet it sits
+ * under a title bar rather than under the app header.
+ */
+.item-picker-search {
+    padding: var(--s3, 12px) var(--s4, 16px);
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.item-picker-search .product-search-inner {
+    display: flex;
+    align-items: center;
+    gap: var(--s2, 8px);
+    background: var(--surface-2, #f1f5f9);
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 12px;
+    padding: 0 var(--s3, 12px);
+    min-height: var(--touch, 48px);
+}
+.item-picker-search .product-search-inner:focus-within {
+    border-color: var(--accent, #2563eb);
+    background: var(--surface, #fff);
+}
+.item-picker-search .product-search-icon {
+    color: var(--ink-soft, #64748b);
+    font-size: 15px;
+    flex: 0 0 auto;
+}
+.item-picker-search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    font-size: var(--t-md, 16px); /* 16px or iOS zooms the page on focus */
+    color: var(--ink, #0f172a);
+    padding: 0;
+}
+.item-picker-search .product-search-clear {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--line, #e2e8f0);
+    color: var(--ink-soft, #64748b);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/*
+ * The MENU button, floating over the list.
+ *
+ * menu.css already styles `.menu-index-btn` and that stylesheet is loaded
+ * here, so this only lifts it above the sheet. The sheet is `position: fixed`
+ * with its own stacking context, so the button's own z-index is measured
+ * against the sheet rather than the page.
+ */
+.picker-index-btn {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    z-index: 3;
+}
+.picker-index-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+}
+
+.item-picker-rail {
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--line, #e2e8f0);
+    overflow-x: auto;
+}
+/* Hidden while searching: a jump index over a result list is a lie about what
+   you are moving through. */
+.item-picker-rail[hidden] {
+    display: none;
+}
+
+/* The one part that scrolls, so the head and the way out never leave. */
+.item-picker-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: var(--s4, 16px);
+}
+
+.item-picker-foot {
+    padding: var(--s3, 12px) var(--s4, 16px)
+        calc(var(--s3, 12px) + env(safe-area-inset-bottom, 0px));
+    background: var(--surface, #fff);
+    border-top: 1px solid var(--line, #e2e8f0);
+}
+/*
+ * "Done" and not "Add". Nothing is added by pressing it - the dishes went onto
+ * the order as they were tapped, and this only puts the menu away. A button
+ * that says Add here would read as the moment the order changes, and the
+ * moment the order changes is "Update the order" on the screen behind.
+ */
+.item-picker-done {
+    width: 100%;
+    min-height: var(--touch, 48px);
+    border: none;
+    border-radius: var(--radius, 12px);
+    background: var(--accent, #4f46e5);
+    color: var(--accent-ink, #fff);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/*
+ * A CANCELLED LINE IS STRUCK THROUGH.
+ *
+ * Owner: "whenever order cancel or item cancel those line item name should be
+ * strick in the middle. it symbolic that we cancelled it. i want that."
+ *
+ * The line itself, not a badge at the top of the card: a waiter reading down
+ * an order wants to see which dish is off without holding a status in their
+ * head, and a rule through the name is what that has meant on paper for as
+ * long as there have been kitchens.
+ *
+ * The NAME carries the rule, not the whole row. Striking the price and the
+ * quantity as well makes the numbers hard to read at exactly the moment
+ * somebody is checking what is still owed.
+ */
+.item-preview.is-cancelled,
+.order-item-card.is-cancelled .line-name,
+tr.is-cancelled .line-name {
+    text-decoration: line-through;
+    /* Through the middle of the glyphs rather than under them. */
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--danger, #dc2626);
+    color: var(--ink-soft, #64748b);
+}
+
+/* The rest of a cancelled row steps back without disappearing: it still has
+   to be countable when somebody asks what was taken off. */
+.order-item-card.is-cancelled,
+tr.is-cancelled {
+    opacity: 0.72;
+}
+
+/* The word for what happened, where the counter used to be. */
+.item-cancelled-mark {
+    font-size: var(--t-xs, 12px);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--danger, #dc2626);
+}
+
+/*
+ * MOVING AN ORDER TO ANOTHER TABLE.
+ *
+ * Table numbers are read at arm's length by somebody already walking, so the
+ * number is the whole button and everything else on it is a footnote.
+ */
+.move-table-now {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  margin-bottom: 10px;
+}
+
+.move-table-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.move-table {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 60px;
+  padding: 8px 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+}
+
+.move-table-no {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.move-table-note {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* Already working. Allowed, and said out loud before the tap rather than
+   after it. */
+.move-table.is-busy {
+  border-color: #e0a800;
+  background: #fffaf0;
+}
+
+/* Where the order is now: shown so the waiter can see they have the right
+   order in front of them, and not tappable, because moving a table to itself
+   is a kitchen ticket for nothing. */
+.move-table.is-here {
+  opacity: 0.55;
+}
+
+.move-table.is-chosen {
+  border-color: #0d6efd;
+  border-width: 2px;
+  background: #eef5ff;
 }

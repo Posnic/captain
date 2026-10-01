@@ -1,6 +1,7 @@
 package com.posnic.captain;
 
 import android.os.Bundle;
+import androidx.activity.OnBackPressedCallback;
 import android.util.Log;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
@@ -10,8 +11,35 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(LocalNetworkPlugin.class);
+        registerPlugin(SecureSessionPlugin.class);
         super.onCreate(savedInstanceState);
+        installBackNavigation();
         runSelfTestIfAsked();
+    }
+
+    private void installBackNavigation() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            private boolean waiting = false;
+            @Override public void handleOnBackPressed() {
+                if (waiting) return;
+                final WebView webView = getBridge() == null ? null : getBridge().getWebView();
+                if (webView == null) { finish(); return; }
+                waiting = true;
+                webView.evaluateJavascript(
+                    "!window.dispatchEvent(new Event('captain:back', {cancelable:true}))",
+                    value -> {
+                        waiting = false;
+                        if ("true".equals(value)) return;
+                        if (webView.canGoBack()) webView.goBack();
+                        else {
+                            setEnabled(false);
+                            getOnBackPressedDispatcher().onBackPressed();
+                            setEnabled(true);
+                        }
+                    }
+                );
+            }
+        });
     }
 
     /**

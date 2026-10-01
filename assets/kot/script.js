@@ -9,7 +9,7 @@ function hideLoader() {
 }
 
 function refreshPage() {
-    window.location.reload();
+    return window.MobileGestures ? MobileGestures.refresh() : loadTables();
 }
 
 function goToKotHistory() {
@@ -40,6 +40,216 @@ function showChangeBranchIfUseful() {
 }
 document.addEventListener('DOMContentLoaded', showChangeBranchIfUseful);
 
+/*
+ * WHICH SHOP THIS PHONE IS POINTED AT - and only then, changing it.
+ *
+ * This used to navigate straight to the sign-in screen, which read as the app
+ * reloading itself for no reason. Most of the time the question is just "which
+ * shop am I on", and that costs nothing to answer here.
+ *
+ * Changing it genuinely does have to leave: the cached branch, menu, tables
+ * and cart all belong to the shop being left, and a Tables screen showing one
+ * shop while the app talks to another is worse than a reload. So the trip back
+ * is a button somebody presses, with the consequence written beside it.
+ */
+function changeServer() {
+    const sheet = document.getElementById('server-sheet');
+    if (!sheet) return;
+
+    const where = document.getElementById('server-where');
+    if (where) {
+        let address = '';
+        try {
+            address = POSNIC.server.baseUrl || '';
+        } catch (e) {
+            address = '';
+        }
+        where.textContent = address || 'Not connected to a shop yet';
+    }
+
+    const copies = document.getElementById('bill-copies');
+    if (copies) copies.value = storedBillCopies();
+
+    /* Whatever this phone is reading in, so the sheet opens telling the truth
+       rather than always saying English. */
+    const language = document.getElementById('app-language');
+    if (language && typeof I18N !== 'undefined') language.value = I18N.language();
+
+    /* Whose account this phone is on. A handset gets passed around. */
+    const who = document.getElementById('signed-in-as');
+    if (who) {
+        let name = '';
+        try {
+            name = (POSNIC.session && POSNIC.session.user && POSNIC.session.user.name) || '';
+        } catch (e) {
+            name = '';
+        }
+        if (name) {
+            const label = document.createElement('span');
+            label.textContent = 'Signed in as ';
+            const person = document.createElement('bdi');
+            person.setAttribute('translate', 'no');
+            person.textContent = name;
+            who.replaceChildren(label, person);
+        } else who.textContent = 'Signed in on this phone';
+    }
+
+    /* Which build this phone is on, said plainly enough to read down a
+       telephone. It was on the sign-in screen only, so signing out was the
+       only way to answer the question. */
+    const version = document.getElementById('app-version-line');
+    if (version) {
+        const build = window.POSNIC_BUILD;
+        version.textContent = build && build.version
+            ? 'Captain ' + build.version + (build.commit ? ' (' + build.commit + ')' : '')
+            : 'Captain dev build';
+    }
+
+    paintLock();
+    sheet.hidden = false;
+}
+
+/*
+ * HOW MANY COPIES THIS PHONE ASKS FOR.
+ *
+ * Owner: "its better two copies from captain itself... configuration change
+ * reequired pos guy wont have permission. lets keep in app itself." The person
+ * who wants a second copy is the one holding the phone, and sending them to
+ * find somebody with access to the till's settings page is how a setting stays
+ * wrong for a year.
+ *
+ * EMPTY MEANS "AS THE SHOP IS SET", which is the honest default and not the
+ * same as one: the till has its own setting, and a phone that has never been
+ * asked should not overrule it. Only a number chosen here travels.
+ */
+const BILL_COPIES_KEY = 'posnic.bill_copies';
+
+function storedBillCopies() {
+    try {
+        const said = localStorage.getItem(BILL_COPIES_KEY) || '';
+        return /^[123]$/.test(said) ? said : '';
+    } catch (e) {
+        /* A phone with storage blocked still takes orders. */
+        return '';
+    }
+}
+
+function rememberBillCopies(value) {
+    try {
+        if (/^[123]$/.test(String(value))) localStorage.setItem(BILL_COPIES_KEY, String(value));
+        else localStorage.removeItem(BILL_COPIES_KEY);
+    } catch (e) {
+        /* Nothing to do: the choice lasts this session and the shop's setting
+           answers on the next one. */
+    }
+}
+
+/*
+ * THE SCREEN LOCK, IN THE TWO STATES IT HAS.
+ *
+ * With no PIN it offers one. With a PIN it changes it, and a second button
+ * turns it off. Nobody reading this at speed should have to work out which
+ * state they are in, so the button says which.
+ */
+function paintLock() {
+    const set = document.getElementById('lock-set');
+    const off = document.getElementById('lock-off');
+    if (!set || !off) return;
+
+    let on = false;
+    try {
+        on = !!(window.POSNIC && POSNIC.lock && POSNIC.lock.isSet());
+    } catch (e) {
+        /* Storage this phone will not read. Nothing is locked, so the honest
+           thing to show is the offer. */
+        on = false;
+    }
+
+    set.textContent = on ? 'Change the PIN' : 'Set a PIN';
+    off.hidden = !on;
+}
+
+document.addEventListener('change', function (event) {
+    if (event.target && event.target.id === 'bill-copies') {
+        rememberBillCopies(event.target.value);
+    }
+
+    /*
+     * The language changes the screen under the waiter's thumb, with no reload
+     * and nothing lost: the English of every line is remembered per node, so
+     * this is a swap and not a redraw. A half-typed note stays half typed.
+     */
+    if (event.target && event.target.id === 'app-language' && typeof I18N !== 'undefined') {
+        I18N.use(event.target.value);
+    }
+});
+
+/* Delegated, because the sheet is in the page from the start and these three
+   controls outlive every redraw of the floor. */
+document.addEventListener('click', function (event) {
+    if (!event.target.closest) return;
+
+    if (event.target.closest('#server-close') || event.target.id === 'server-scrim') {
+        const sheet = document.getElementById('server-sheet');
+        if (sheet) sheet.hidden = true;
+        return;
+    }
+
+    if (event.target.closest('#sign-out')) {
+        signOut();
+        return;
+    }
+
+    if (event.target.closest('#lock-set')) {
+        if (window.POSNIC && POSNIC.lock) POSNIC.lock.choose().then(paintLock);
+        return;
+    }
+
+    if (event.target.closest('#lock-off')) {
+        /*
+         * The current PIN first. Whoever is holding this phone is already
+         * past the lock, so this is not stopping them getting in; it stops a
+         * phone being handed back with the lock quietly gone.
+         */
+        if (!(window.POSNIC && POSNIC.lock)) return;
+        POSNIC.lock
+            .unlock('', { why: 'Enter your PIN to turn the lock off', escape: 'Not now' })
+            .then(function (ok) {
+                if (ok) POSNIC.lock.clear();
+                paintLock();
+            });
+        return;
+    }
+
+    if (event.target.closest('#server-find')) {
+        /* The same trip, with a second flag so the sign-in screen starts the
+           sweep rather than waiting to be asked. */
+        try {
+            sessionStorage.setItem('posnic_change_server', '1');
+            sessionStorage.setItem('posnic_find_on_wifi', '1');
+        } catch (e) {
+            /* private mode: the sheet still opens, just on the menu */
+        }
+        window.location.href = 'index.html';
+        return;
+    }
+
+    if (event.target.closest('#server-change')) {
+        /*
+         * NOW it leaves, because now somebody asked it to. The connect sheet
+         * stays on index.html: it is three hundred lines of scanning, sweeping
+         * and pairing, and a second copy would drift from the first the week
+         * after it was made.
+         */
+        try {
+            sessionStorage.setItem('posnic_change_server', '1');
+        } catch (e) {
+            /* private mode: the page still opens, just without the sheet */
+        }
+        window.location.href = 'index.html';
+    }
+});
+
 async function changeBranch() {
     try {
         localStorage.setItem('kiosk_force_branch_select', '1');
@@ -49,27 +259,7 @@ async function changeBranch() {
     }
 }
 
-async function signOut() {
-    localStorage.removeItem('kiosk_selected_branch');
-    localStorage.removeItem('kiosk_branch_list');
-    localStorage.removeItem('kiosk_force_branch_select');
-    localStorage.removeItem('branch_id');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('orderType');
-    localStorage.removeItem('lastActiveCategory');
-    localStorage.removeItem('kiosk_table_no');
-    localStorage.removeItem('kiosk_table_id');
-    sessionStorage.clear();
-    try {
-        const db = await getDB();
-        const tx = db.transaction([BRANCH_STORE, STORE_NAME, CART_STORE], 'readwrite');
-        tx.objectStore(BRANCH_STORE).clear();
-        tx.objectStore(STORE_NAME).clear();
-        tx.objectStore(CART_STORE).clear();
-    } catch (e) { /* ignore */ }
-    window.location.href = 'index.html';
-}
-
+async function signOut() { return CaptainAccount.change('staff'); }
 
 async function checkBranchCount() {
     try {
@@ -128,14 +318,163 @@ function isServerConnectionError(error) {
         /Failed to fetch|NetworkError|timeout|Load failed/i.test(message);
 }
 
-async function loadTables() {
+/*
+ * Text that cannot become markup.
+ *
+ * A table number is typed by hand on the screen before this one, so it is
+ * whatever somebody's thumb produced - and it used to go into an href, a data
+ * attribute AND an onclick argument, raw, three times per card.
+ */
+/**
+ * WHAT THE KITCHEN WAS TOLD ABOUT THIS DISH.
+ *
+ * Owner: "i see notes inside kot print but inside app not showing note (ex.
+ * medium spicy). need fix. its important captain know the customization."
+ *
+ * The note reached the paper and stopped there. A waiter reading an order back
+ * to a table could see "Chicken Biryani x2" and nothing about the medium
+ * spicy - so the one screen where a mistake is still cheap to catch was the
+ * one screen that did not show it.
+ *
+ * TWO FIELD NAMES, both real. `item_description` is what the till stores and
+ * what a saved order comes back with; `notes` is what a line carries while it
+ * is still in this phone's cart. A screen that reads only one of them is
+ * right half the time, which is worse than being wrong - it works until the
+ * moment somebody checks.
+ */
+function lineNote(item) {
+    if (!item) return '';
+    return String(item.item_description || item.notes || item.item_note || '').trim();
+}
+
+function escapeFloor(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/*
+ * "THE GUEST ON TABLE FOUR WOULD LIKE THE BILL."
+ *
+ * The one half of billing the floor is trusted with. The waiter is standing at
+ * the table when the guest asks, and walking to the counter to have somebody
+ * else press a button is the errand a handset exists to remove. Every
+ * restaurant POS worth the name lets the floor fire this - Toast, Square,
+ * Lightspeed, MICROS, Petpooja.
+ *
+ * WHAT IT DOES NOT DO IS SETTLE. The person who takes the order must not be
+ * the person who declares the money received, or a cash bill can be closed and
+ * pocketed with nothing in the system to disagree. So this asks, and the
+ * cashier settles. Owner: "usually cashier / desktop person only responsible
+ * and confirm the settlement not waiter i thought" - which is the standard.
+ *
+ * AND IT PRINTS AT THE COUNTER, not here and not in the kitchen. The phone
+ * never owns a printer: it marks the ticket and the till, which owns the
+ * hardware, picks it up and prints on the receipt roll. A till that was
+ * switched off catches up when it comes back rather than losing the bill.
+ */
+document.addEventListener('click', async function (event) {
+    const button = event.target.closest && event.target.closest('#ask-for-bill');
+    if (!button) return;
+
+    const table = button.getAttribute('data-table') || '';
+    if (!table) return;
+
+    button.disabled = true;
+    const said = button.textContent;
+    button.textContent = 'Asking...';
+    try {
+        const branchId = localStorage.getItem('branch_id') || null;
+        const who = (() => {
+            try {
+                return JSON.parse(localStorage.getItem('posnic.session') || '{}').name || '';
+            } catch (e) {
+                return '';
+            }
+        })();
+
+        const answer = await POSNIC.api.post('/sales/requestBillPrint', {
+            branchId,
+            table_number: table,
+            asked_by: who,
+            /*
+             * Sent only when this phone has been told a number. Left out, the
+             * shop's own setting answers - so an older till, or a phone nobody
+             * has touched, behaves exactly as it does today. The server clamps
+             * whatever arrives, because a phone must not be able to spend a
+             * roll of paper on one table.
+             */
+            ...(storedBillCopies() ? { copies: Number(storedBillCopies()) } : {}),
+        });
+
+        /* The server answers "on its way" or "nothing is open on that table",
+           and those send a waiter to two different places - so its words are
+           shown rather than a cheerful noise of our own. */
+        showToast((answer && answer.message) || 'The bill is on its way to the counter');
+        button.textContent = 'Bill asked for';
+    } catch (error) {
+        button.disabled = false;
+        button.textContent = said;
+
+        /*
+         * A 404 HERE MEANS THE TILL IS OLD, NOT THAT SOMETHING WENT WRONG.
+         *
+         * The desktop app carries its own copy of the API inside the exe, so a
+         * shop talking to its own till is running whatever version was last
+         * installed there. /sales/requestBillPrint does not exist in a build
+         * made before it was written, and Express answers a route it has never
+         * heard of with 404 - which reached a waiter as a blank failure and
+         * cost a round of "it says table not open or something".
+         *
+         * Saying which machine needs attention is the whole difference between
+         * a message somebody can act on and one they can only report.
+         */
+        const status = error && (error.status || error.statusCode);
+        showToast(
+            status === 404
+                ? 'This till is too old to print bills from a phone. Update POSNIC on the till.'
+                : (error && error.message) || 'Could not ask for the bill',
+            'error'
+        );
+    }
+});
+
+/* Delegated, so a card carries no code of its own - which is what let the
+   table name end an onclick early when somebody typed an apostrophe. */
+document.addEventListener('click', function (event) {
+    const card = event.target.closest && event.target.closest('.floor-card');
+    if (!card) return;
+    event.preventDefault();
+    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
+});
+
+let tablesLoading = false;
+let tablesRequest = null;
+function loadTables() {
+    if (!tablesRequest) tablesRequest = loadTablesNow().finally(() => { tablesRequest = null; });
+    return tablesRequest;
+}
+async function loadTablesNow() {
     const container = document.getElementById('tables-list');
     const noOrdersMsg = document.getElementById('no-orders-message');
     
-    if (!container) return;
+    if (!container || tablesLoading) return;
+    tablesLoading = true;
+    let status = document.getElementById('floor-connection-status');
+    if (!status) {
+        status = document.createElement('p');
+        status.id = 'floor-connection-status';
+        status.setAttribute('role', 'status');
+        status.style.cssText = 'font-size:13px;color:#64748b;line-height:1.5;margin:12px 0;';
+        status.hidden = true;
+        container.before(status);
+    }
 
     try {
-        showSectionLoader('tables-list');
+        if (!container.querySelector('.floor-card')) showSectionLoader('tables-list');
         // Get branch_id from localStorage
         // kiosk_selected_branch stores the store_id (MongoDB _id) as a plain string
         const branchId = localStorage.getItem('branch_id') || null;
@@ -145,61 +484,102 @@ async function loadTables() {
         });
         
         if (data.type !== 'success' || !data.data) {
-            if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
-            container.innerHTML = '';
-            return;
+            throw new Error(data.message || 'Tables unavailable');
         }
+        status.hidden = true;
 
         const tables = data.data.tables || [];
         const hasTakeaway = data.data.has_takeaway || false;
         
         // Check if there are any orders (tables or takeaway)
         if (tables.length === 0 && !hasTakeaway) {
-            if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
+            if (noOrdersMsg) noOrdersMsg.style.display = 'block';
             container.innerHTML = '';
-            return;
+            /* And the count with it, or "3 tables open" hangs above a screen
+               that has just said nothing is. */
+            const empty = document.getElementById('floor-count');
+            if (empty) empty.textContent = '';
+            return true;
         }
 
         if (noOrdersMsg) noOrdersMsg.style.display = 'none';
 
+        /*
+         * OLDEST FIRST, and how long each has been waiting.
+         *
+         * This drew identical boxes in alphabetical order, so table 1 came
+         * first whether it had been waiting a minute or an hour - which is the
+         * same as no order at all. The two questions somebody walking back
+         * onto the floor actually has are which table has waited longest and
+         * which is nearly done, and neither could be answered from here.
+         *
+         * The server was already grouping the open tickets by table and
+         * throwing everything but the name away; it sends the count, the age
+         * and the total now. A till that has NOT been updated sends only the
+         * names, and every card below degrades to exactly what it used to be
+         * rather than to nothing.
+         */
+        const detailed = (data.data.table_details || []).length
+            ? FloorView.order(data.data.table_details)
+            : tables.map((name) => ({ table_number: name, minutes: null }));
+
+        const card = (name, detail, extraClass) => {
+            const minutes = detail ? detail.minutes : null;
+            const age = FloorView.age(minutes);
+            const said = FloorView.saidAs(minutes);
+            const meta = FloorView.summary(detail);
+            const safe = escapeFloor(name);
+
+            return '<a href="#/kot/' + encodeURIComponent(name) + '"' +
+                ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
+                (age ? ' data-age="' + age + '"' : '') +
+                /* WHAT IT IS, NOT WHAT IT SAYS. The takeaway card used to be
+                   recognised by its own label, and the label here is "Take
+                   away" while the code looking for it asked for "Takeaway". */
+                (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
+                ' data-table-number="' + safe + '">' +
+                '<div class="floor-name">' + safe + '</div>' +
+                (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
+                (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
+                '</a>';
+        };
+
         let html = '';
-        
-        // Add table cards first
-        tables.forEach(tableName => {
-            html += `
-                <a href="#/kot/${tableName}" class="kot-table-box" data-table-number="${tableName}" onclick="selectTable('${tableName}'); return false;">
-                    <h2 class="mb-0">${tableName}</h2>
-                </a>
-            `;
+        detailed.forEach((detail) => {
+            html += card(detail.table_number, detail);
         });
-        
-        // Add takeaway card at the end if there are takeaway orders
+
         if (hasTakeaway) {
-            html += `
-                <a href="#/kot/takeaway" class="kot-table-box kot-takeaway-box" data-table-number="Takeaway" onclick="selectTable('Takeaway'); return false;">
-                    <h2 class="mb-0">TA</h2>
-                    <span class="takeaway-label">Take Away</span>
-                </a>
-            `;
+            const takeaway = data.data.takeaway_detail || null;
+            const withMinutes = takeaway
+                ? { ...takeaway, minutes: FloorView.minutesSince(takeaway.since) }
+                : null;
+            html += card('Take away', withMinutes, 'is-takeaway');
         }
 
         container.innerHTML = html;
+
+        /* One count, said once, so a glance answers "how busy is it". */
+        const count = document.getElementById('floor-count');
+        if (count) {
+            const open = detailed.length + (hasTakeaway ? 1 : 0);
+            /* Just the number now: the words are on the heading beside it,
+               and "3 tables open" under "Active tables" says tables twice. */
+            count.textContent = open === 1 ? '1 open' : open + ' open';
+        }
+        return true;
     } catch (error) {
         console.error('Error loading tables:', error);
-        /* Gated on IS_LOCAL before, so a cloud shop whose connection dropped
-           sat on an empty tables list with no way back to the server screen.
-           A connection failure is a connection failure wherever the server
-           is; config.js has already tried the other address by the time this
-           runs. */
-        if (isServerConnectionError(error)) {
-            sessionStorage.setItem('server_connection_failed', error.message || 'Server connection failed');
-            stopKotTablePolling();
-            window.location.href = 'index.html';
-            return;
-        }
-        if (noOrdersMsg) noOrdersMsg.style.display = 'flex';
-        container.innerHTML = '';
+        // Keep the last table view and let background polling recover. A
+        // failed request cannot tell us that every table has been settled.
+        if (noOrdersMsg) noOrdersMsg.style.display = 'none';
+        status.textContent = container.querySelector('.floor-card')
+            ? 'Tables may be out of date. Reconnecting… You can still take a new order.'
+            : 'Tables are unavailable. Reconnecting… You can still take a new order.';
+        status.hidden = false;
+        return false;
     } finally {
+        tablesLoading = false;
         hideSectionLoader('tables-list');
     }
 }
@@ -215,6 +595,8 @@ function openSlidingPanel() {
 
 // Close sliding panel
 function closeSlidingPanel() {
+    floorDetailRevision++;
+    floorDetailLoading = false;
     const panel = document.getElementById('kot-sliding-panel');
     const overlay = document.getElementById('kot-panel-overlay');
     
@@ -227,7 +609,59 @@ function closeSlidingPanel() {
     });
 }
 
-async function selectTable(tableName) {
+/*
+ * IS THIS THE TAKEAWAY QUEUE?
+ *
+ * Owner: "one order show as take away, when tap, inside shows no active
+ * orders."
+ *
+ * The floor drew that card with the words "Take away" and this screen asked
+ * whether the name was "Takeaway" - one space apart, and nothing anywhere said
+ * so. The check failed, the else branch ran, and it went looking for a table
+ * literally called "Take away". No sale has one: a takeaway carries dine_type,
+ * not a table number. So the card was right, the queue was real, and tapping
+ * it reported nothing there.
+ *
+ * The card now says what it IS and this is told directly. The spellings are
+ * still accepted as a fallback, because order-history.js has always had to
+ * take both - the data uses both - and a caller that has only a name should
+ * not be the thing that breaks next.
+ */
+/**
+ * Was this whole ticket cancelled?
+ *
+ * The till spells it on the ticket, not on its lines, so a cancelled order
+ * has to strike every line it carries.
+ */
+function kotIsCancelled(kot) {
+    return String((kot && kot.status) || '').toLowerCase() === 'cancelled';
+}
+
+/**
+ * Was this one line taken off a live ticket?
+ *
+ * Spelled more than one way over the years, so all of them are accepted here
+ * rather than at each of the places that draws a line.
+ */
+function itemIsCancelled(item) {
+    if (!item) return false;
+    if (item.cancelled === true || item.is_cancelled === true) return true;
+    if (String(item.status || '').toLowerCase() === 'cancelled') return true;
+    const off = Number(item.cancelled_quantity || 0);
+    const had = Number(item.item_quantity || item.quantity || 0);
+    return off > 0 && had > 0 && off >= had;
+}
+
+function isTakeawayName(name) {
+    return String(name || '').replace(/\s+/g, '').toLowerCase() === 'takeaway';
+}
+
+let floorDetail = null, floorDetailRevision = 0, floorDetailLoading = false;
+async function selectTable(tableName, takeaway, options = {}) {
+    const revision = ++floorDetailRevision;
+    floorDetailLoading = true;
+    floorDetail = { id: String(tableName), takeaway: takeaway === true || isTakeawayName(tableName) };
+    const isTakeaway = takeaway === true || isTakeawayName(tableName);
     const panelContent = document.getElementById('sliding-panel-content');
     const panelTitle = document.getElementById('panel-title');
     
@@ -245,37 +679,57 @@ async function selectTable(tableName) {
     }
 
     // Update panel title
-    panelTitle.textContent = tableName === 'Takeaway' ? 'Takeaway Orders' : `Table ${tableName}`;
+    panelTitle.textContent = isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
     
     // Open the sliding panel
     openSlidingPanel();
     
     // Clear previous content
-    panelContent.innerHTML = '';
+    if (!options.refresh) panelContent.innerHTML = '';
+    window.dispatchEvent(new Event('captain:details'));
 
     try {
-        showSectionLoader('sliding-panel-content');
+        if (!options.refresh) showSectionLoader('sliding-panel-content');
         let filters = {};
         const branchId = localStorage.getItem('branch_id') || null;
-        if (tableName === 'Takeaway') {
-            filters = {
-                sale_process: 'KOT',
-                dine_type: 'Take away'
-            };
+        /*
+         * STILL OPEN. The floor already means this and this did not say it.
+         *
+         * Owner: "how come 3 orders in same table. need to check and fix."
+         *
+         * getTablesWithActiveOrders draws the floor from
+         * `{ sale_process: KOT, payment_status: 'Unpaid' }`, so a table appears
+         * because it has ONE open ticket. Tapping it asked only for the table
+         * number - no status at all - so the panel answered with every KOT ever
+         * written against that table name, including the ones settled and paid
+         * at earlier sittings, under a badge that says "Active KOTs".
+         *
+         * Three tickets on a table is also a perfectly ordinary thing: a table
+         * that orders three times has three tickets, and each is printed and
+         * cooked separately. The times on the cards tell those apart from these.
+         * What was wrong was the word ACTIVE, applied to closed ones.
+         *
+         * The same shape as the takeaway card: two queries about the same
+         * orders, agreeing on one clause and not the other.
+         */
+        const stillOpen = { sale_process: 'KOT', payment_status: 'Unpaid' };
+        if (isTakeaway) {
+            filters = { ...stillOpen, dine_type: 'Take away' };
         } else {
-            filters = {
-                sale_process: 'KOT',
-                table_number: tableName
-            };
+            filters = { ...stillOpen, table_number: tableName };
         }
         const data = await POSNIC.api.get(
             `/sales/getListKot?page=1&limit=100` +
             `&filters=${encodeURIComponent(JSON.stringify(filters))}&branchId=${branchId}`);
         
-        if (data.type !== 'success' || !data.data || !data.data.list || data.data.list.length === 0) {
-            panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-clipboard-list"></i><p>No active orders for this table</p></div>';
+        if (revision !== floorDetailRevision) return false;
+        if (data.type !== 'success' || !Array.isArray(data.data?.list)) throw new Error('Failed to load orders');
+        if (data.data.list.length === 0) {
+            panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-clipboard-list"></i><p>' +
+                (isTakeaway ? 'No active takeaway orders' : 'No active orders for this table') +
+                '</p></div>';
             currentKotOrders = []; // Clear orders
-            return;
+            return true;
         }
 
         const kots = data.data.list;
@@ -285,7 +739,13 @@ async function selectTable(tableName) {
         // Header shown once
         let headerHtml = `
             <div class="kot-details-header">
-                <span class="active-kot-badge">${kotCount} Active KOT${kotCount > 1 ? 's' : ''}</span>
+                <span class="active-kot-badge">${kotCount} orders</span>
+                ${
+                  isTakeaway
+                    ? ''
+                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                         data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
+                }
             </div>
         `;
 
@@ -321,14 +781,33 @@ async function selectTable(tableName) {
             items.forEach((item, index) => {
                 const itemName = item.sale_inline_item_name || item.item_name || 'Item';
                 const itemQty = item.item_quantity || item.sale_inline_item_qty || item.quantity || 1;
+                /*
+                 * A cancelled line is struck through here too.
+                 *
+                 * Owner: "whenever order cancel or item cancel those line item
+                 * name should be strick in the middle." The floor is where a
+                 * waiter reads the ticket back to a table, so a dish that is
+                 * off has to be visible without opening anything.
+                 */
+                const off = kotIsCancelled(kot) || itemIsCancelled(item) ? ' is-cancelled' : '';
+                /* Escaped, both of them. A dish name comes from the shop's
+                   own catalogue, but a note is free text somebody typed at a
+                   table - an apostrophe in "don't" or a "<" for "less than
+                   medium" would otherwise end the attribute or the tag. */
+                const note = lineNote(item);
                 itemsHtml += `
-                    <div class="kot-item">
+                    <div class="kot-item${off}">
                         <span class="item-index">${index + 1}.</span>
-                        <span class="item-name">${itemName}</span>
+                        <span class="item-name" translate="no">${escapeFloor(itemName)}</span>
                         <span class="item-qty">x${itemQty}</span>
+                        ${note ? `<span class="item-note" translate="no">${escapeFloor(note)}</span>` : ''}
                     </div>
                 `;
             });
+
+            if (window.ServiceRounds && Array.isArray(kot.kitchen_rounds)) {
+                itemsHtml = ServiceRounds.render(kot, !kotIsCancelled(kot));
+            }
 
             kotsCardsHtml += `
                 <div class="kot-card">
@@ -345,11 +824,11 @@ async function selectTable(tableName) {
                     </div>
                     <div class="kot-total">
                         <span>Total:</span>
-                        <span class="total-amount">₹${total}</span>
+                        <span class="total-amount">${CaptainMoney.html(total)}</span>
                     </div>
                     <div class="kot-actions">
                         <button class="kot-action-btn btn-modify" onclick="modifyKot('${kot._id}')">
-                            <i class="fas fa-edit"></i> Edit
+                            <i class="fas fa-edit"></i> Modify
                         </button>
                         <button class="kot-action-btn btn-cancel" onclick="cancelKot('${kot._id}')">
                             <i class="fas fa-times"></i> Cancel
@@ -360,11 +839,19 @@ async function selectTable(tableName) {
         });
 
         panelContent.innerHTML = headerHtml + `<div class="kot-cards-container">${kotsCardsHtml}</div>`;
+        if (!options.refresh) panelContent.scrollTop = 0;
+        return true;
     } catch (error) {
+        if (revision !== floorDetailRevision) return false;
         console.error('Error loading KOT details:', error);
-        panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-exclamation-circle"></i><p>Failed to load orders. Please try again.</p></div>';
+        if (!options.refresh) panelContent.innerHTML = '<div class="empty-kot-message"><i class="fas fa-exclamation-circle"></i><p>Failed to load orders. Please try again.</p></div>';
+        return false;
     } finally {
-        hideSectionLoader('sliding-panel-content');
+        if (revision === floorDetailRevision) {
+            floorDetailLoading = false;
+            hideSectionLoader('sliding-panel-content');
+            window.dispatchEvent(new Event('captain:details'));
+        }
     }
 }
 
@@ -391,7 +878,7 @@ function clearKotSelection() {
 
 // Note: modifyKot function is now provided by order-history/script.js
 // which is loaded after this script, so it will override this function
-// and provide the Edit Order modal functionality
+// and provide the Modify order panel
 
 let cancelKotId = null;
 let currentKotOrders = []; // Store current KOT orders
@@ -413,7 +900,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!cancelKotId) return;
             
             try {
-                showLoader();
+                /*
+                 * The button says what it is doing, and the panel behind it
+                 * stays readable.
+                 *
+                 * Cancelling used to white out the whole app while one request
+                 * went to the till. The waiter is looking at the order they
+                 * have just decided to cancel; taking it off the screen to say
+                 * something is happening removes the only thing that would let
+                 * them check they picked the right one.
+                 */
+                confirmBtn.disabled = true;
+                confirmBtn.dataset.said = confirmBtn.textContent;
+                confirmBtn.textContent = 'Cancelling...';
+                showSectionLoader('sliding-panel-content');
                 
                 // Find the order from stored currentKotOrders
                 const order = currentKotOrders.find(o => o._id === cancelKotId);
@@ -426,7 +926,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 console.log('Cancelling order:', order);
                 
-                const result = await POSNIC.api.post('/sales/updateOrder', {
+                const result = await CaptainOrderActions.save( {
                     order_id: cancelKotId,
                     items: order.items,
                     total_amount: order.sales_total || order.total_amount,
@@ -435,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Cancel response:', result);
 
                 if (result.type !== 'success') {
-                    throw new Error(result.message || 'Failed to cancel order');
+                    throw new Error(result.message || 'Could not cancel the order');
                 }
                 
                 // Close modal
@@ -450,7 +950,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearKotSelection();
                 
                 // Show success message
-                showToast('Order cancelled successfully', 'success');
+                showToast('Order cancelled', 'success');
                 
                 // Refresh only the tables list
                 setTimeout(async () => {
@@ -459,9 +959,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } catch (error) {
                 console.error('Error cancelling order:', error);
-                showToast('Failed to cancel order', 'error');
+                showToast('Could not cancel the order', 'error');
             } finally {
-                hideLoader();
+                /* Whatever happened, the button goes back to being a button.
+                   A confirm dialog left saying "Cancelling..." for ever is a
+                   waiter who cannot try again and cannot tell why. */
+                hideSectionLoader('sliding-panel-content');
+                confirmBtn.disabled = false;
+                if (confirmBtn.dataset.said) confirmBtn.textContent = confirmBtn.dataset.said;
                 cancelKotId = null;
             }
         });
@@ -482,6 +987,10 @@ function showToast(message, type = 'success') {
         toast.style.display = 'none';
     }, 3000);
 }
+
+window.addEventListener('posnic:orders-sent', () => {
+    loadTables().catch(() => {});
+});
 
 function applyDiscount(kotId) {
     window.location.href = `discount.html?kot=${kotId}`;
@@ -564,6 +1073,8 @@ document.addEventListener('visibilitychange', () => {
         stopKotTablePolling();
     } else {
         startKotTablePolling();
+        // Reads wait for secure-session restoration before contacting the till.
+        void loadTables().catch(() => {});
     }
 });
 
@@ -592,9 +1103,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check branch count and update button
     await checkBranchCount();
 
-    showLoader();
+    /*
+     * THE TABLES LOAD WHERE THE TABLES ARE.
+     *
+     * Owner: "when table loads or when canceling after clicking yes something
+     * waiting for api then show some progress bar. or loading as that
+     * component. instead of hiding whole app."
+     *
+     * showLoader() paints a white sheet over the entire screen, so waiting for
+     * one list took the header, the buttons and everything else with it - and
+     * on a slow shop Wi-Fi that reads as an app that has crashed rather than
+     * one that is fetching a list.
+     *
+     * loadTables already draws a loader inside #tables-list. This was putting
+     * a second one over the top of it.
+     */
     await loadTables();
-    hideLoader();
 
     startKotTablePolling();
 });
+
+/* ==================================================================
+ * BEING HOME
+ * ==================================================================
+ *
+ * Owner, relaying a client: "due to empty stuff, he try to go back and close
+ * the app. i tink he dont have feeling he is in main page dashboard. add some
+ * welcome text and few other stuff make him feel he is in dashboard and
+ * already in home."
+ *
+ * A quiet morning drew this screen as the word "Tables" over an empty box.
+ * Nothing named the shop, greeted anybody or suggested this was where you were
+ * supposed to have arrived - so it read as a screen that had failed to load,
+ * and the way out of a screen that has failed to load is the back button.
+ *
+ * Two lines fix that, and neither is decoration: the greeting says the app is
+ * working and knows what time it is, and the branch name says WHICH SHOP this
+ * phone is pointed at - which on an estate of handsets is a real question and
+ * has been answered nowhere else on this screen.
+ */
+
+/** Morning, afternoon or evening, as a person would say it. */
+function timeOfDay(now) {
+    const hour = (now || new Date()).getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+/**
+ * The branch this handset is working in.
+ *
+ * The list and the choice are stored separately - the list came from sign-in,
+ * the choice from the branch picker - so the name has to be looked up rather
+ * than read. A shop with one branch never saw the picker, so the single entry
+ * IS the answer there.
+ */
+function branchName() {
+    try {
+        const branches = JSON.parse(localStorage.getItem('kiosk_branch_list') || '[]') || [];
+        if (!branches.length) return '';
+        const chosen = localStorage.getItem('kiosk_selected_branch');
+        const match = branches.find(
+            (b) => String(b.store_id) === String(chosen) || String(b.branch_id) === String(chosen)
+        );
+        return (match || branches[0]).branch_name || '';
+    } catch (e) {
+        /* A handset mid-setup has no list yet. The greeting still stands. */
+        return '';
+    }
+}
+
+function sayWhereWeAre() {
+    const hello = document.getElementById('floor-hello');
+    const shop = document.getElementById('floor-shop');
+    if (hello) hello.textContent = timeOfDay();
+
+    const name = branchName();
+    /* "Your shop" rather than a blank line while the name is unknown: an empty
+       heading reopens the hole this was written to close. */
+    if (shop) {
+        shop.setAttribute('translate', name ? 'no' : 'yes');
+        shop.textContent = name || 'Your shop';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', sayWhereWeAre);
+
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, #guest-bills[open]')) return;
+    if (document.getElementById('kot-sliding-panel')?.classList.contains('open')) {
+        event.preventDefault();
+        closeSlidingPanel();
+    }
+});
+
+window.addEventListener('captain:payment-recorded', () => { closeSlidingPanel(); loadTables(); });
+const captainPaymentButtons = new MutationObserver(() => {
+    const button = document.querySelector('[data-collect-table][hidden]:not([data-payment-checked])');
+    if (!button || !window.CaptainPayments) return;
+    button.dataset.paymentChecked='true';
+    CaptainPayments.available().then(enabled => { if (button.isConnected) button.hidden=!enabled; });
+});
+captainPaymentButtons.observe(document.body,{childList:true,subtree:true});
+
+window.FloorMobileDetails = {
+    root: () => document.querySelector('#kot-sliding-panel.open'),
+    header: '.sliding-panel-header', body: '#sliding-panel-content',
+    current: () => floorDetail?.id,
+    entries: () => [...document.querySelectorAll('#tables-list .floor-card')].map(card => ({id:card.dataset.tableNumber, takeaway:card.dataset.takeaway === 'true'})),
+    busy: () => floorDetailLoading || !!document.querySelector('[data-serving="true"]'),
+    show: entry => selectTable(entry.id, entry.takeaway),
+    refresh: () => floorDetail && selectTable(floorDetail.id, floorDetail.takeaway, {refresh:true}),
+    dismiss: closeSlidingPanel,
+};

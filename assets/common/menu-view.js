@@ -71,6 +71,82 @@
   }
 
   /** What this dish costs now, what it cost before, and the saving. */
+  /**
+   * Is this dish priced on the day rather than on the card?
+   *
+   * Whole fish, crab, lobster: the shop cannot print a number because it does
+   * not know one until the morning's market. Two of them went out of a real
+   * kitchen worth nothing, because every layer took the missing price
+   * literally - the row showed 0.00 and the order was accepted.
+   *
+   * THE FLAG CONTRACT: daily_price says the rate comes from the market, and
+   * price_set_on says when somebody last entered it. Priced TODAY the dish is
+   * ordinary and the waiter is asked nothing - which is the whole point of the
+   * shop setting it when they open, and the difference between a handset that
+   * helps and one that interrogates. Priced YESTERDAY it is not ordinary:
+   * yesterday's rate for a pomfret is not today's, and charging it quietly is
+   * worse than the zero this started as, because it looks right on the bill.
+   *
+   * `open_price` is always-ask and stays that way: the shop is saying the
+   * price is settled at the counter, every single time.
+   *
+   * A shop that has set no flag at all says the same thing by leaving the
+   * price empty, which is how these dishes are set up today, so that counts
+   * too - this has to work before the flag reaches every shop.
+   */
+  function askPrice(product) {
+    if (!product) return false;
+    if (product.open_price === true) return true;
+    if (product.daily_price === true && !pricedToday(product.price_set_on)) return true;
+    return !(Number(product.price) > 0);
+  }
+
+  /**
+   * Was that price entered today, on this handset's calendar?
+   *
+   * The phone's day, not the server's. The handset is standing in the shop, so
+   * they are the same day; and the server decides in the SHOP's timezone and
+   * refuses anything stale, so the worst a wrong answer here can do is ask a
+   * waiter for a number that is already on the screen.
+   *
+   * An absent or unreadable date is "not today", which is the safe way round:
+   * a question, rather than a stale price carried onto a bill.
+   */
+  /*
+   * THE TRADING DAY STARTS AT SEVEN IN THE MORNING, NOT AT MIDNIGHT.
+   *
+   * Owner: "daily price starts in the morning only. means 7am. not midnight
+   * coz up to 1am restaurant might open."
+   *
+   * A kitchen sets its fish prices when it opens and serves until one. On a
+   * calendar day those prices expire in the middle of service: at midnight the
+   * handset would start asking waiters for numbers they were given at eleven
+   * that morning, and the till would refuse the dishes until somebody re-typed
+   * them - during the last push of the night.
+   *
+   * Shifting the clock back seven hours before the date is read moves the
+   * boundary into the dead hour instead. A price entered at 11am is still
+   * current at half past midnight and goes stale at 7am, when the shop is
+   * opening anyway and about to set the new day's rates.
+   *
+   * The same seven as the till. Four screens ask this question separately and
+   * must answer it the same way, or a waiter is asked for a price the bill
+   * already knows.
+   */
+  const DAY_STARTS_AT_HOUR = 7;
+
+  function tradingDay(d) {
+    const shifted = new Date(d.getTime() - DAY_STARTS_AT_HOUR * 60 * 60 * 1000);
+    return `${shifted.getFullYear()}-${shifted.getMonth() + 1}-${shifted.getDate()}`;
+  }
+
+  function pricedToday(setOn) {
+    if (!setOn) return false;
+    const when = new Date(setOn);
+    if (Number.isNaN(when.getTime())) return false;
+    return tradingDay(when) === tradingDay(new Date());
+  }
+
   function pricing(product) {
     const price = Number(product.price) || 0;
     const off = Number(product.discount_price) || 0;
@@ -99,7 +175,7 @@
     };
   }
 
-  const money = (amount, symbol) => escape(symbol || '₹') + (Number(amount) || 0).toFixed(2);
+  const money = (amount, symbol) => typeof CaptainMoney !== 'undefined' ? escape(symbol ? CaptainMoney.format(amount,{currency:symbol}) : CaptainMoney.display(amount)) : escape(symbol || '₹') + (Number(amount) || 0).toFixed(2);
 
   /**
    * One dish, one row.
@@ -133,6 +209,18 @@
     const classes = ['dish'];
     if (held.out) classes.push('is-out');
     else if (qty > 0) classes.push('is-in');
+
+    /*
+     * The number, where a waiter will read it without looking for it.
+     *
+     * Shown on every row rather than only on a card by the till, because that
+     * is how anybody learns them: the number sits beside the dish they are
+     * tapping anyway, and after a week they stop tapping and start typing.
+     */
+    const number = opts.numbers instanceof Map ? opts.numbers.get(String(product.id)) : null;
+    const numberMark = number
+      ? '<span class="dish-no" aria-label="Number ' + number + '">' + number + '</span>'
+      : '';
 
     /*
      * The picture, or the dish's own icon.
@@ -184,11 +272,16 @@
       '<div class="dish-text">' +
       (mark ? '<span class="dish-diet is-' + mark + '" title="' + mark + '"></span>' : '') +
       (popular ? '<span class="dish-badge">Bestseller</span>' : '') +
-      '<p class="dish-name">' +
-      escape(product.name) +
+      '<p class="dish-name" translate="no">' +
+      numberMark +
+      escape(globalThis.ItemLanguage ? globalThis.ItemLanguage.name(product) : product.name) +
       '</p>' +
       '<div class="dish-price">' +
-      money(cost.now, opts.currency) +
+      /*
+       * "Today's price" rather than 0.00. A zero on a menu row reads as free,
+       * and a waiter who believes it sends a table a fish for nothing.
+       */
+      (askPrice(product) ? '<span class="dish-ask">Today\'s price</span>' : money(cost.now, opts.currency)) +
       (cost.was
         ? '<span class="dish-was">' +
           money(cost.was, opts.currency) +
@@ -197,8 +290,8 @@
           '% off</span>'
         : '') +
       '</div>' +
-      (note ? '<p class="dish-note">' + escape(note) + '</p>' : '') +
-      (prep ? '<div class="dish-prep">⏱ ' + prep + ' min</div>' : '') +
+      (note ? '<p class="dish-note" translate="no">' + escape(note) + '</p>' : '') +
+      (prep ? '<div class="dish-prep">⏱ ' + prep + ' <span>min</span></div>' : '') +
       '</div>' +
       '<div class="dish-media">' +
       media +
@@ -235,6 +328,27 @@
    * The "all" key it also builds is skipped - it is every dish over again, and
    * drawing it would double the menu.
    */
+  /*
+   * THE TILL'S FLAT LIST, AS SECTIONS.
+   *
+   * IndexedDB hands back one long list, and every screen that draws the menu
+   * wants it grouped by category in the shop's own order. Two screens grouping
+   * it separately is two chances to group it differently, and a dish's NUMBER
+   * is its position in that order: a difference is a waiter reading 33 off the
+   * wall and tapping something else.
+   *
+   * So the grouping lives here once, and the card on the wall and the picker
+   * in the hand cannot drift apart without this function changing.
+   */
+  function fromFlat(list, options) {
+    const grouped = {};
+    for (const item of list || []) {
+      const key = item.category_name || 'Menu';
+      (grouped[key] = grouped[key] || []).push(item);
+    }
+    return sections(grouped, options || {});
+  }
+
   function sections(products, options) {
     const opts = options || {};
     const out = [];
@@ -302,7 +416,7 @@
         escape(section.key) +
         '">' +
         '<div class="menu-section-head">' +
-        '<span class="menu-section-name">' +
+        '<span class="menu-section-name" translate="no">' +
         escape(section.name) +
         '</span>' +
         '<span class="menu-section-count">' +
@@ -319,13 +433,62 @@
     return html;
   }
 
+  /**
+   * A NUMBER FOR EVERY DISH, the way a counter till has always had one.
+   *
+   * Owner: "self manage number. app user itself auto assign 1 to 200 for 200
+   * items. if enter 33 then it shows."
+   *
+   * The oldest trick in the trade and still the fastest: a waiter who sells the
+   * same forty dishes learns their numbers in a week and stops reading at all.
+   * Typing two digits beats typing four letters and beats scrolling outright.
+   *
+   * THE NUMBER COMES FROM THE SHOP'S OWN MENU ORDER, not from this phone.
+   * Nothing is stored and nothing is assigned: it is the position of the dish
+   * in the menu the till sends, counted straight through the sections. So
+   * every handset in the building shows the same number for the same dish,
+   * without agreeing about anything - and a card printed from the same order
+   * matches all of them. A number a phone invented for itself would be a
+   * number on one phone, which is worse than no number at all.
+   *
+   * IT MOVES WHEN THE SHOP MOVES A DISH, and that is why typing a number
+   * SHOWS the dish rather than adding it. A waiter's memory of 33 can go stale
+   * between a Monday and a Tuesday; the name on the row is what stops a stale
+   * memory becoming a wrong plate. Confirmed by a tap, never fired blind.
+   */
+  function numbers(list) {
+    const map = new Map();
+    let n = 0;
+    for (const section of list || []) {
+      for (const item of section.items || []) {
+        n += 1;
+        map.set(String(item.id), n);
+      }
+    }
+    return map;
+  }
+
+  /** The dish a number names, or nothing if the menu is shorter than that. */
+  function atNumber(list, wanted) {
+    const want = Number(wanted);
+    if (!Number.isFinite(want) || want < 1) return null;
+    let n = 0;
+    for (const section of list || []) {
+      for (const item of section.items || []) {
+        n += 1;
+        if (n === want) return item;
+      }
+    }
+    return null;
+  }
+
   /** The jump index across the top. */
   function rail(list, options) {
     const opts = options || {};
     let html = '';
     for (let i = 0; i < list.length; i += 1) {
       html +=
-        '<button type="button" class="menu-chip' +
+        '<button type="button" translate="no" class="menu-chip' +
         (i === 0 && opts.markFirst !== false ? ' is-here' : '') +
         '" data-category="' +
         escape(list[i].key) +
@@ -349,5 +512,28 @@
     );
   }
 
-  return { dish, sections, render, rail, nothing, noPhoto, plain, diet, pricing, stock, escape };
+  return {
+    dish,
+    sections,
+    render,
+    rail,
+    nothing,
+    noPhoto,
+    plain,
+    diet,
+    pricing,
+    /* Exported because the screens have to ask the same question before they
+       put a dish in a cart, and two answers to it is how one of them sends a
+       free fish. */
+    askPrice,
+    fromFlat,
+    numbers,
+    atNumber,
+    /* Exported so a test can ask when this screen turns its day. Four
+       surfaces answer that separately and must agree; nothing in the app
+       calls it. */
+    dayStartsAtHour: () => DAY_STARTS_AT_HOUR,
+    stock,
+    escape,
+  };
 });

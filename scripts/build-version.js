@@ -141,4 +141,68 @@ function stampBundle(distDir, build) {
   return true;
 }
 
-module.exports = { resolveVersion, resolveCommit, versionCode, stampGradle, stampBundle };
+/*
+ * ONE STAMP ON EVERY SCRIPT, WRITTEN BY THE BUILD.
+ *
+ * The pages carried cache busters somebody typed: `indexedDB.js?v=5` on six
+ * screens and `?v=6` on a seventh, and `products/script.js` the same way.
+ * Hand-typed numbers drift, because updating one page and not the other five
+ * is a thing a person does on a Tuesday.
+ *
+ * Two costs, and the second is the bad one. The same file behind two query
+ * strings is two entries in the WebView's cache, downloaded twice. And after
+ * an update a screen pinned at ?v=5 can go on serving the copy it cached
+ * while the screen next to it gets the new one: two versions of one file
+ * inside a single session, which is what "I fixed it but the phone still does
+ * the old thing" actually is.
+ *
+ * So the build stamps them, all of them, with the version it is building. The
+ * literals in the source stop mattering, and the next release invalidates
+ * everything at once or nothing at all, which are the only two honest
+ * answers.
+ */
+function stampAssetLinks(distDir, stamp) {
+  const token = String(stamp || '').trim().replace(/[^\w.-]/g, '');
+  if (!token || !fs.existsSync(distDir)) return 0;
+
+  let touched = 0;
+
+  for (const name of fs.readdirSync(distDir)) {
+    if (!name.endsWith('.html')) continue;
+
+    const file = path.join(distDir, name);
+    const before = fs.readFileSync(file, 'utf8');
+
+    const after = before.replace(
+      /(<(?:script|link)\b[^>]*?\b(?:src|href)=")([^"?]+)(\?[^"]*)?(")/gi,
+      (whole, head, url, query, tail) => {
+        /* Somebody else's server. Its caching is its own business, and a
+           query string we invented could miss their cache entirely. */
+        if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return whole;
+
+        /* Only the things that cache badly and change often. A font or an
+           icon sheet that never changes gains nothing from a new URL every
+           release except a download. */
+        if (!/\.(js|css)$/i.test(url)) return whole;
+
+        return `${head}${url}?v=${token}${tail}`;
+      }
+    );
+
+    if (after !== before) {
+      fs.writeFileSync(file, after, 'utf8');
+      touched += 1;
+    }
+  }
+
+  return touched;
+}
+
+module.exports = {
+  resolveVersion,
+  resolveCommit,
+  versionCode,
+  stampGradle,
+  stampBundle,
+  stampAssetLinks,
+};

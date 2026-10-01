@@ -28,6 +28,28 @@
   const $ = (selector) => document.querySelector(selector);
 
   /**
+   * Play a one-shot animation again, on an element that already has it.
+   *
+   * A CSS animation fires when the class ARRIVES, so re-adding a class that is
+   * already there does nothing at all - which is exactly the case that matters
+   * here, because the second and third taps on the same dish are the ones
+   * somebody is least sure registered.
+   *
+   * Reading offsetWidth between the remove and the add forces the style to be
+   * recalculated, so the browser sees the class genuinely leave and come back.
+   * It is the standard trick and it is load-bearing: without the read, the two
+   * changes are batched into one frame and cancel out.
+   */
+  function replay(element, className, ms) {
+    if (!element) return;
+    element.classList.remove(className);
+    /* eslint-disable-next-line no-unused-expressions */
+    void element.offsetWidth;
+    element.classList.add(className);
+    setTimeout(() => element.classList.remove(className), ms);
+  }
+
+  /**
    * Draw the whole menu.
    *
    * `products` is the category-keyed object loadProducts builds. Everything
@@ -145,15 +167,29 @@
     });
 
     /*
-     * And bring the lit chip into view.
+     * And bring the lit chip into view - BY MOVING THE RAIL, NOT THE PAGE.
      *
      * A rail that says "you are in Desserts" while Desserts is off the
-     * right-hand edge has told you nothing. `nearest` so it only moves when it
-     * has to: re-centring on every section makes the rail slide about under
-     * the thumb for no reason.
+     * right-hand edge has told you nothing. This used to be scrollIntoView
+     * with `inline: 'nearest'`, which looks like it only scrolls the rail and
+     * does not: scrollIntoView walks every scrollable ancestor, the document
+     * included, and it does it with its own smooth animation.
+     *
+     * TWO SMOOTH SCROLLS ON ONE SCROLLER DO NOT ADD UP - the second replaces
+     * the first. goTo() starts the page moving and then calls this, so the
+     * chip's animation cut the page's off partway and the section stopped
+     * wherever it had got to. Tapping a chip near the right-hand end of the
+     * rail, which is the case that makes the rail scroll at all, landed 80px
+     * short; tapping one already on screen was fine. That is exactly the shape
+     * of "sometimes the category jump does nothing".
+     *
+     * Setting scrollLeft on the rail itself cannot touch the document.
      */
-    if (lit && lit.scrollIntoView) {
-      lit.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    const rail = lit && lit.parentElement;
+    if (rail && typeof rail.scrollTo === 'function' && rail.scrollWidth > rail.clientWidth) {
+      const centred = lit.offsetLeft - (rail.clientWidth - lit.offsetWidth) / 2;
+      const most = rail.scrollWidth - rail.clientWidth;
+      rail.scrollTo({ left: Math.max(0, Math.min(most, centred)), behavior: 'smooth' });
     }
   }
 
@@ -198,7 +234,7 @@
         (section) =>
           '<button type="button" class="menu-index-row" data-category="' +
           MenuView.escape(section.key) +
-          '"><span>' +
+          '"><span translate="no">' +
           MenuView.escape(section.name) +
           '</span><span class="menu-index-count">' +
           section.items.length +
@@ -247,7 +283,23 @@
     const count = $('#bill-count');
     const sum = $('#bill-total');
     if (count) count.textContent = qty === 1 ? '1 item' : qty + ' items';
-    if (sum) sum.textContent = (currency || '₹') + (Number(total) || 0).toFixed(2);
+
+    const money = CaptainMoney.display(total);
+    /*
+     * Nudged only when the number actually MOVED.
+     *
+     * updateCart runs on every render, including ones that change nothing -
+     * a redraw, a returning page. A bar that jumps when nothing happened is
+     * worse than one that never jumps, because it stops meaning anything.
+     */
+    const moved = sum && sum.textContent !== money;
+    if (sum) sum.textContent = money;
+
+    if (moved && qty > 0) {
+      replay(bar, 'is-bumped', 400);
+      replay(sum, 'is-bumped', 360);
+      replay(document.querySelector('.cart-count'), 'is-bumped', 420);
+    }
   }
 
   /* -------------------------------------------------------------- a row */
@@ -270,12 +322,18 @@
        offering a dish the kitchen has run out of. */
     if (row.classList.contains('is-out')) return;
 
+    /* Where the finger was, before anything at the bottom of the screen. */
+    replay(row, 'is-taking', 720);
+
     row.classList.toggle('is-in', qty > 0);
 
     if (qty > 0) {
       const shown = slot.querySelector('.dish-qty');
       if (shown) {
         shown.textContent = qty;
+        /* The stepper is already there, so nothing arrives to be noticed. The
+           number itself has to do the noticing. */
+        replay(shown, 'is-bumped', 320);
       } else {
         slot.innerHTML =
           '<div class="dish-step">' +
@@ -310,9 +368,38 @@
         media.appendChild(mark);
       }
       if (mark) {
-        if (left) mark.textContent = 'Only ' + left + ' left';
+        if (left) mark.textContent = 'Stock: ' + left;
         else mark.remove();
       }
+    }
+  }
+
+  /**
+   * These dishes arrived because somebody SAID so.
+   *
+   * Voice puts several lines on the bill in one go, and several rows changing
+   * in the same frame is a flicker rather than an event. Staggered, each row
+   * lands just after the one above it, so the order reads down the menu in the
+   * sequence it was spoken - which is also the order it gets read back to the
+   * table.
+   *
+   * 70ms apart: below about 50 the rows read as simultaneous, and above about
+   * 100 a five-item order takes long enough that somebody starts scrolling
+   * through it while it is still arriving.
+   */
+  function heard(ids) {
+    if (!Array.isArray(ids) || !ids.length) return;
+    ids.forEach((id, at) => {
+      const row = document.querySelector('.dish[data-id="' + String(id).replace(/"/g, '\\"') + '"]');
+      if (!row) return;
+      setTimeout(() => replay(row, 'is-heard', 560), at * 70);
+    });
+
+    /* And put the first of them on screen, because a dish that was added out
+       of sight was, to the waiter, not added. */
+    const first = document.querySelector('.dish[data-id="' + String(ids[0]).replace(/"/g, '\\"') + '"]');
+    if (first && first.scrollIntoView) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -352,5 +439,5 @@
     window.addEventListener('orientationchange', () => setTimeout(stick, 200));
   }
 
-  return { draw, goTo, setRow, bill, stick, openIndex, closeIndex, start, point };
+  return { draw, goTo, setRow, bill, stick, openIndex, closeIndex, start, point, heard };
 });

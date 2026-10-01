@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 /*
  * How the app decides which server to talk to.
@@ -25,10 +26,15 @@ const CLOUD = 'https://azure.posnic.io/api';
 const CLOUD_ORIGIN = 'https://azure.posnic.io';
 
 /** Answer /runtime-info like a Posnic server, and everything else emptily. */
-function serve(page, origin, { info = RUNTIME_INFO, extra = {}, seen } = {}) {
+function serve(page, origin, { info = RUNTIME_INFO, extra = {}, seen, delayMs = 0 } = {}) {
   return page.route(`${origin}/**`, async route => {
     const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
-    if (seen && path !== '/runtime-info') seen.push(path);
+    if (seen && path !== '/runtime-info') seen.push(origin + path);
+    /* A server that is reachable but SLOW, which is the case a hedge exists
+       for: nothing fails, so nothing fails over, and the waiter waits. */
+    if (delayMs && path !== '/runtime-info') {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
     const body = path === '/runtime-info' ? info : (extra[path] || { type: 'success', data: {} });
     await route.fulfill({
       status: 200, contentType: 'application/json', body: JSON.stringify(body)
@@ -49,6 +55,24 @@ const signedInAs = (page, shopKey) => page.addInitScript(
   shopKey);
 
 const baseUrl = (page) => page.evaluate(() => POSNIC.server.baseUrl);
+
+/**
+ * A handset signed in, holding BOTH addresses, active on the one named.
+ *
+ * Both have to be recorded against the same shop key or the app will not move
+ * between them - which is the guard that stops it adopting a stranger's till,
+ * and the reason a hedge may use the other door at all.
+ */
+async function signedInAt(page, active) {
+  await signedInAs(page, 'shop-a');
+  await seed(page, {
+    active,
+    lan: LAN,
+    cloud: CLOUD,
+    servers: { [LAN]: 'shop-a', [CLOUD]: 'shop-a' },
+  });
+  await page.goto('/index.html');
+}
 
 test('a shop code becomes the shop’s online address', async ({ page }) => {
   await page.goto('/index.html');
@@ -277,20 +301,16 @@ test('a rejected credential is dropped rather than resent', async ({ page }) => 
   expect(await page.evaluate(() => POSNIC.session.token)).toBeNull();
 });
 
-test('auto detect checks the known local server before sweeping', async ({ page }) => {
-  await seed(page, { lan: LAN, active: LAN });
-  await serve(page, LAN_ORIGIN);
-
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Find the till on this Wi-Fi').click();
-
-  await expect(page.locator('#serverSaveMsg')).toContainText(`Found the till at ${LAN}`);
-  /* One button, always usable. Test and Save were two, in a required order,
-     so the obvious one did nothing until the other had been pressed. */
-  await expect(page.locator('#serverSaveBtn')).toBeEnabled();
-  await expect(page.locator('#serverSaveBtn')).toHaveText('Connect');
-  await expect(page.locator('#serverUrlInput')).toHaveValue(LAN);
+test('Wi-Fi discovery checks the known local server before sweeping', async ({ page }) => {
+  await seed(page,{lan:LAN,active:LAN});await serve(page,LAN_ORIGIN);
+  await page.addInitScript(()=>{window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:async()=>({wifi:true,ip:'192.168.1.4'})}}};});
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
+  await page.locator('#captain-search').click();
+  await expect(page.locator('#captain-results button')).toContainText(LAN);
+  await page.locator('#captain-results button').click();
+  await expect(page.locator('#captain-legacy')).toBeVisible();
+  expect(await baseUrl(page)).toBe(LAN);
 });
 
 test('signing in against an older server still finds the shop', async ({ page }) => {
@@ -352,14 +372,15 @@ test('an older server refusing a password says so, rather than looking broken', 
   await expect(page.locator('#login-message')).toContainText('Invalid account');
 });
 
-test('signing in with no server chosen says so, instead of failing the password', async ({ page }) => {
+test('fresh setup offers Wi-Fi discovery before exposing staff credentials', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#login-message')).toContainText('Choose your shop server first');
-  await expect(page.locator('#serverModal')).toBeVisible();
+  await expect(page.locator('#username')).toBeHidden();
+  await page.locator('#captain-search').click();
+  await expect(page.locator('#captain-note')).toContainText('Wi-Fi search works in the installed phone app');
+  await page.locator('#connection-back').click();
+  await page.locator('#captain-server').fill('https://shop.example.com');
+  await expect(page.locator('#captain-connect')).toHaveText('Continue');
+  await expect(page.locator('#username')).toBeHidden();
 });
 
 test('a locked-out device is told to wait, not that its password is wrong', async ({ page }) => {
@@ -401,33 +422,16 @@ test('a locked-out device is told to wait, not that its password is wrong', asyn
  * them. The screen used to be a text box, which only serves the third.
  */
 
-test('the connect screen offers all three ways, and asks nothing first', async ({ page }) => {
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
-  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
-  await expect(page.getByText('Type the shop code')).toBeVisible();
-
-  /* The text box is not the front door any more. Opening the sheet also must
-     not start a network sweep: that held the screen for seconds against a
-     network with no till on it. */
-  await expect(page.locator('#connectManual')).toBeHidden();
-  await expect(page.locator('#serverSaveMsg')).toHaveText('');
+test('connection settings offer browser approval, one address, Wi-Fi, QR and pairing code', async ({ page }) => {
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  for(const id of ['captain-cloud-login','captain-server','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
+  await expect(page.locator('#captain-cancel')).toBeHidden();
 });
-
-test('typing is one of the three, reached deliberately', async ({ page }) => {
-  await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Type the shop code').click();
-
-  await expect(page.locator('#connectManual')).toBeVisible();
-  await expect(page.locator('#serverUrlInput')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect' })).toBeVisible();
-
-  // And there is a way back to the other two.
-  await page.locator('#connectBackBtn').click();
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
+test('address entry remains directly available alongside the discovery tools', async ({ page }) => {
+  await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-server').fill('myshop');
+  await expect(page.locator('#captain-connect')).toBeVisible();
+  await expect(page.locator('#captain-scan')).toBeVisible();
 });
 
 test('a scanned code is read however it was written', async ({ page }) => {
@@ -462,12 +466,12 @@ test('a device with no camera says so instead of failing silently', async ({ pag
     });
   });
   await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Scan the shop code').click();
+  await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-scan').click();
 
   await expect(page.locator('#scanNote')).toContainText('No camera available');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByText('Find the till on this Wi-Fi')).toBeVisible();
+  await expect(page.locator('#captain-search')).toBeVisible();
 });
 
 test('a blocked camera explains the way out', async ({ page }) => {
@@ -478,8 +482,8 @@ test('a blocked camera explains the way out', async ({ page }) => {
     });
   });
   await page.goto('/index.html');
-  await page.getByTitle('Server Settings').click();
-  await page.getByText('Scan the shop code').click();
+  await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-scan').click();
 
   /* Refusing the camera is a decision, not a fault: say what to do next
      rather than reporting a DOMException at somebody. */
@@ -506,10 +510,10 @@ test('a till that stops answering is named as the thing that is down', async ({ 
   // The address it is trying, so nobody guesses which shop it means.
   await expect(page.locator('#posnic-offline-url')).toContainText(LAN);
   // What would actually fix it.
-  await expect(page.locator('#posnic-offline-body')).toContainText('POSNIC is open on it');
+  await expect(page.locator('#posnic-offline-body')).toContainText('Posnic is running on the till');
   // Both ways out are offered.
   await expect(page.getByRole('button', { name: 'Try now' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Change server' })).toBeVisible();
+  await expect(overlay.getByRole('button', { name: 'Change server' })).toBeVisible();
 });
 
 test('the outage screen shows that it keeps trying by itself', async ({ page }) => {
@@ -864,42 +868,25 @@ test('a working address still succeeds on the first road, untouched', async ({ p
  * line at the top and the three choices stay under it the whole time.
  */
 
-test('a handset that has never connected starts looking on its own', async ({ page }) => {
+test('first-time setup presents QR without scanning the network automatically', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#serverModal')).toBeVisible();
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await expect(page.locator('#connectAutoNote')).toContainText(/Looking|Checking|Searching/);
+  await expect(page.locator('#captain-scan')).toBeVisible();
+  await expect(page.locator('#serverModal')).toBeHidden();
+  await expect(page.locator('#captain-legacy')).not.toHaveAttribute('open', '');
 });
 
-test('and does not take the screen while it looks', async ({ page }) => {
-  /* The reason it was removed. All three ways in stay on offer, so somebody
-     who knows their shop code never waits for a search to give up. */
+test('other connection options remain available without a cloud account', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await expect(page.locator('#connectChoices')).toBeVisible();
-  await expect(page.getByText('Type the shop code')).toBeVisible();
-  await expect(page.getByText('Scan the shop code')).toBeVisible();
+  await expect(page.locator('#captain-search')).toBeVisible();
+  await expect(page.locator('#captain-code-toggle')).toBeVisible();
+  await expect(page.locator('#captain-server')).toBeVisible();
 });
 
-test('choosing by hand ends the search nobody asked for', async ({ page }) => {
+test('manual address entry opens directly without waiting for discovery', async ({ page }) => {
   await page.goto('/index.html');
-  await page.locator('#username').fill('someone');
-  await page.locator('#password').fill('a-password');
-  await page.locator('#login-btn').click();
-
-  await expect(page.locator('#connectAuto')).toBeVisible();
-  await page.getByText('Type the shop code').click();
-
+  await page.locator('#captain-server').click();
   await expect(page.locator('#connectAuto')).toBeHidden();
-  await expect(page.locator('#serverUrlInput')).toBeVisible();
+  await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('a shop that is already set up starts on the menu, not on a search', async ({ page }) => {
@@ -915,6 +902,762 @@ test('a shop that is already set up starts on the menu, not on a search', async 
   await page.waitForFunction(() => typeof window.openServerModal === 'function');
   await page.evaluate(() => window.openServerModal());
 
-  await expect(page.locator('#connectChoices')).toBeVisible();
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
   await expect(page.locator('#connectAuto')).toBeHidden();
+});
+
+/* ------------------------------------ changing it, without being argued with */
+
+/*
+ * Owner, from a handset: "still change server not working. still looking for
+ * same not working old config and after two try its showing option to edit."
+ *
+ * Tapping Change shop server sets a flag and comes to this page. config.js's
+ * own DOMContentLoaded listener then started a health check against the very
+ * address the person had just said was wrong - and a dead address does not
+ * fail quickly, it spends its whole timeout, fails, schedules a retry and goes
+ * round again. The editor was open underneath all of it.
+ *
+ * settingsOpen() already guards the outage overlay and misses this completely:
+ * net.start() runs ON DOMContentLoaded and the modal opens sixty milliseconds
+ * after it, so the probe is away before there is a modal to see.
+ */
+
+test('coming here to change the server does not dial the old one', async ({ page }) => {
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
+
+  /* Long enough that a health check would have gone out. */
+  await page.waitForTimeout(1500);
+  expect(tried, `the app probed the address it was asked to replace: ${tried.join(', ')}`).toEqual([]);
+});
+
+test('and the address it is on is there to edit, already selected', async ({ page }) => {
+  /* The commonest edit is a small one - a digit of an IP, a letter of a shop
+     code - so it is shown. The second commonest is replacing it outright, so
+     it is selected rather than left to be cleared one backspace at a time. */
+  await refuse(page, LAN_ORIGIN);
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
+  await expect(page.locator('#captain-server')).toHaveValue(LAN);
+
+  await page.waitForTimeout(400);
+  const selected = await page.evaluate(() => {
+    const field = document.getElementById('captain-server');
+    return field.selectionEnd - field.selectionStart;
+  });
+  expect(selected).toBeGreaterThan(0);
+});
+
+test('closing the editor starts the health checks it had been holding off', async ({ page }) => {
+  /* Held off, not cancelled. Without the schedule coming back the app would
+     sit there never noticing the server had returned. */
+  const tried = [];
+  await page.route(`${LAN_ORIGIN}/**`, (route) => {
+    tried.push(new URL(route.request().url()).pathname);
+    return route.abort('connectionrefused');
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
+
+  await page.goto('/index.html');
+  await expect(page.locator('#captain-onboarding')).toBeVisible();
+  expect(tried).toEqual([]);
+
+  await page.locator('#captain-onboarding').evaluate(() => closeServerModal());
+  await page.waitForTimeout(1200);
+  expect(tried.length, 'nothing resumed after the editor closed').toBeGreaterThan(0);
+});
+
+/* ------------------------------------- a body the bridge could not read */
+
+test('a server whose answer the first road cannot read is still found', async ({ page }) => {
+  /*
+   * From the emulator, against a live cloud server that answers curl with two
+   * hundred bytes of perfectly good JSON:
+   *
+   *   {"ok":false,"road":"first",
+   *    "why":{"reason":"UNREADABLE","message":"It answered with something
+   *           this app could not read."}}
+   *
+   * `road: "first"` is the whole story - it never tried a second. probe() gave
+   * up the moment response.json() threw, so the ONE failure the fallback roads
+   * exist for was the one failure that never reached them.
+   *
+   * Capacitor's patched fetch is the thing in the middle and is already known
+   * to mishandle this call in other ways: it ignores an AbortSignal and can
+   * simply never come back. A response whose body will not parse is the same
+   * class of fault, so it now takes the same road out.
+   */
+  let served = 0;
+  await page.route(`${LAN_ORIGIN}/**`, async (route) => {
+    served += 1;
+    const path = new URL(route.request().url()).pathname.replace(/^\/api/, '');
+    if (path !== '/runtime-info') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    }
+    /* The first ask gets something no parser can read; the road after it gets
+       the truth, which is what a bridge fault actually looks like. */
+    if (served === 1) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(RUNTIME_INFO),
+    });
+  });
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const found = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 8000).then((hit) => !!hit),
+    LAN
+  );
+  expect(found, 'the probe gave up on the first unreadable answer').toBe(true);
+});
+
+test('and when no road can read it, it says so rather than blaming the address', async ({ page }) => {
+  /* "Could not reach it" sends somebody to check the address and the Wi-Fi.
+     "It answered with something this app could not read" says the address is
+     fine, which is two different places to go and look. */
+  await page.route(`${LAN_ORIGIN}/**`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '<<not json>>' })
+  );
+
+  await seed(page, { pinned: LAN, active: LAN });
+  await page.goto('/index.html');
+
+  const why = await page.evaluate(
+    (url) => POSNIC.discovery.probe(url, 6000).then(() => POSNIC.discovery.probe.lastFailure),
+    LAN
+  );
+  expect(why && why.reason).toBe('UNREADABLE');
+});
+
+/* ------------------------------------- one scan, both of a shop's addresses */
+
+/*
+ * Owner: "when QR scan desktop app should able to share both online url and
+ * offline lan url or host name."
+ *
+ * A phone needs two addresses: the till on the shop Wi-Fi, which answers in
+ * single-digit milliseconds with the shop's internet down, and the cloud
+ * address, which answers from the car park. A scan used to set ONE, so a
+ * handset set up at the counter had no cloud address the first time somebody
+ * walked out of range - and one set up from a code ran every order over the
+ * internet from two metres away.
+ */
+
+const bothFrom = (page, text) =>
+  page.evaluate((code) => POSNIC_CONNECT.addressesFromScan(code), text);
+
+test('a code carrying both addresses is read as both', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const asLink = await bothFrom(
+    page,
+    'https://posnic.io/setup?server=azure&lan=http://192.168.1.8:5555'
+  );
+  expect(asLink).toEqual({ lan: LAN, cloud: CLOUD });
+
+  const asJson = await bothFrom(page, '{"server":"azure","lan":"192.168.1.8"}');
+  expect(asJson).toEqual({ lan: LAN, cloud: CLOUD });
+});
+
+test('a bare host on the LAN side is filled in the way a typed one is', async ({ page }) => {
+  /* The till prints what it knows - a hostname, an IP, sometimes a full URL -
+     and all three have to arrive as the same address. */
+  await page.goto('/index.html');
+  const said = await bothFrom(page, 'https://posnic.io/setup?server=azure&lan=192.168.1.8:5555');
+  expect(said.lan).toBe(LAN);
+});
+
+test('the codes already stuck to walls keep working', async ({ page }) => {
+  /*
+   * The reason this reads a pair rather than replacing the old shape: a code
+   * printed last month carries one address, and it is on a wall.
+   */
+  await page.goto('/index.html');
+
+  expect(await bothFrom(page, 'azure')).toEqual({ lan: null, cloud: CLOUD });
+  expect(await bothFrom(page, 'http://192.168.1.8:5555')).toEqual({ lan: LAN, cloud: null });
+  expect(await bothFrom(page, 'https://posnic.io/join?server=azure')).toEqual({
+    lan: null,
+    cloud: CLOUD,
+  });
+});
+
+test("somebody else's QR code is still not a shop", async ({ page }) => {
+  await page.goto('/index.html');
+  expect(await bothFrom(page, '')).toEqual({ lan: null, cloud: null });
+  expect(await bothFrom(page, '{not json at all')).toEqual({ lan: null, cloud: null });
+});
+
+test('both addresses are written down, and neither is chosen by the writing', async ({ page }) => {
+  /*
+   * Remembering and choosing are separate on purpose. Resolution picks
+   * whichever answers, LAN first - so a phone scanned at the counter is
+   * connected immediately through the cloud and moves itself onto the till
+   * within a tick, without anybody tapping anything.
+   */
+  await page.goto('/index.html');
+
+  const kept = await page.evaluate(() =>
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' })
+  );
+  expect(kept).toEqual({ lan: LAN, cloud: CLOUD });
+
+  const stored = await page.evaluate(() => ({
+    lan: POSNIC.server.lan,
+    cloud: POSNIC.server.cloud,
+    candidates: POSNIC.server.candidates(),
+  }));
+  expect(stored.lan).toBe(LAN);
+  expect(stored.cloud).toBe(CLOUD);
+  /* LAN first, which is what makes the handset come home by itself. */
+  expect(stored.candidates[0]).toBe(LAN);
+});
+
+test('an address filed in the wrong box still lands in the right slot', async ({ page }) => {
+  /* A shop that pastes its cloud address into the LAN box should end up with a
+     working pair, not two entries in the wrong places. */
+  await page.goto('/index.html');
+
+  const kept = await page.evaluate(() =>
+    POSNIC.server.remember({ lan: 'azure', cloud: 'http://192.168.1.8:5555' })
+  );
+  expect(kept).toEqual({ lan: LAN, cloud: CLOUD });
+});
+
+/* ----------------------------- how fast a dead door is noticed, and skipped */
+
+/*
+ * Owner: "is there any way to smart switch between lan and internet between
+ * communication."
+ *
+ * The switching always worked. What made it feel broken was how long the app
+ * waited before deciding: a till that answers in under ten milliseconds was
+ * given ten seconds to be declared dead, so the first tap after a router
+ * reboot froze for ten seconds - and every tap after it paid the same, because
+ * nothing remembered that the address had just failed.
+ */
+
+test('a till on the Wi-Fi gets a LAN deadline, the internet keeps a long one', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const said = await page.evaluate(() => ({
+    lan: POSNIC.constants.lanRequestTimeoutMs,
+    cloud: POSNIC.constants.requestTimeoutMs,
+  }));
+
+  /* Still two hundred and fifty times a healthy LAN round trip. */
+  expect(said.lan).toBeLessThanOrEqual(3000);
+  expect(said.cloud).toBeGreaterThanOrEqual(8000);
+});
+
+test('an address that just failed is tried LAST, not first', async ({ page }) => {
+  /*
+   * The breaker, and the whole of it: a dead till is not re-dialled ahead of a
+   * working cloud address by every request in a burst. A waiter taking a five
+   * dish order should wait once, not five times.
+   */
+  await page.goto('/index.html');
+
+  const order = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    const before = POSNIC.server.candidates();
+    POSNIC.debugTiming.noteFailure(before[0]);
+    return { before, after: POSNIC.debugTiming.order() };
+  });
+
+  /* LAN is first when nothing has failed - that is the whole design. */
+  expect(order.before[0]).toBe(LAN);
+  /* And last the moment it does, without being dropped from the list. */
+  expect(order.after[order.after.length - 1]).toBe(LAN);
+  expect(order.after).toHaveLength(order.before.length);
+});
+
+test('a failure is forgotten once the address answers again', async ({ page }) => {
+  /* Otherwise a phone that walked out of range and back would stay on the
+     internet all shift, which is the thing this app exists not to do. */
+  await page.goto('/index.html');
+
+  const back = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    const lan = POSNIC.server.candidates()[0];
+    POSNIC.debugTiming.noteFailure(lan);
+    const cold = POSNIC.debugTiming.order()[0];
+    POSNIC.debugTiming.noteSuccess(lan);
+    return { cold, warm: POSNIC.debugTiming.order()[0] };
+  });
+
+  expect(back.cold).toBe(CLOUD);
+  expect(back.warm).toBe(LAN);
+});
+
+test('when every door is cold the list is still walked, not abandoned', async ({ page }) => {
+  /*
+   * The breaker only ever reorders. Refusing to try anything because
+   * everything failed recently would mean a phone sitting offline beside a
+   * server that came back a second ago.
+   */
+  await page.goto('/index.html');
+
+  const walked = await page.evaluate(() => {
+    POSNIC.server.remember({ lan: 'http://192.168.1.8:5555', cloud: 'azure' });
+    POSNIC.server.candidates().forEach((url) => POSNIC.debugTiming.noteFailure(url));
+    return POSNIC.debugTiming.order();
+  });
+
+  expect(walked).toHaveLength(2);
+  expect(walked).toContain(LAN);
+  expect(walked).toContain(CLOUD);
+});
+
+/* ------------------------------------------- both doors, when waiting costs */
+
+/*
+ * Owner: "is there any way to smart switch between lan and internet between
+ * communication."
+ *
+ * Everything else here switches AFTER a failure: something goes wrong, is
+ * noticed, and is recovered from, and a waiter watches all three. A hedge does
+ * not wait to be wrong - the request goes to the till, and if the till has not
+ * answered in a moment it goes to the cloud as well.
+ *
+ * Safe for exactly one request: an order carries an idempotency key and the
+ * till holds a unique index on it, so a copy arriving through the other door
+ * is refused by the database rather than cooked twice.
+ */
+
+test('a till that answers quickly is the only door used', async ({ page }) => {
+  /* The common case, and the one that must cost nothing: a shop whose Wi-Fi is
+     fine never sends a second request. */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, { seen, extra: { '/sales/qrOrder': { type: 'success' } } });
+  await serve(page, CLOUD_ORIGIN, { seen, extra: { '/sales/qrOrder': { type: 'success' } } });
+  await signedInAt(page, LAN);
+
+  await page.evaluate(() => POSNIC.api.post('/sales/qrOrder', { x: 1 }, { hedge: true }));
+
+  const hedged = await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged);
+  expect(hedged).toBe(false);
+  expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/qrOrder')).toHaveLength(0);
+});
+
+test('a till that hesitates does not make the waiter wait for it', async ({ page }) => {
+  /*
+   * THE POINT. The till is reachable but slow - a saturated Wi-Fi, a router
+   * mid-reboot - so nothing has failed and nothing will fail over. Without a
+   * hedge the waiter watches it until the deadline.
+   */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, {
+    seen,
+    extra: { '/sales/qrOrder': { type: 'success', from: 'lan' } },
+    delayMs: 2000,
+  });
+  await serve(page, CLOUD_ORIGIN, {
+    seen,
+    extra: { '/sales/qrOrder': { type: 'success', from: 'cloud' } },
+  });
+  await signedInAt(page, LAN);
+
+  const started = Date.now();
+  const answer = await page.evaluate(() =>
+    POSNIC.api.post('/sales/qrOrder', { x: 1 }, { hedge: true })
+  );
+  const took = Date.now() - started;
+
+  expect(answer.from).toBe('cloud');
+  /* Well inside the two seconds the till was going to take. */
+  expect(took).toBeLessThan(1500);
+  expect(await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged)).toBe(true);
+});
+
+test('a request not marked for it never touches the other door', async ({ page }) => {
+  /*
+   * Only the order may do this, because only the order carries the key that
+   * makes a double arrival harmless. A read sent twice would be waste; a
+   * write without a key sent twice would be a second order.
+   */
+  const seen = [];
+  await serve(page, LAN_ORIGIN, {
+    seen,
+    extra: { '/sales/getListKot': { type: 'success' } },
+    delayMs: 1200,
+  });
+  await serve(page, CLOUD_ORIGIN, { seen, extra: { '/sales/getListKot': { type: 'success' } } });
+  await signedInAt(page, LAN);
+
+  await page.evaluate(() => POSNIC.api.post('/sales/getListKot', {}));
+
+  expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/getListKot')).toHaveLength(0);
+});
+
+test('checkout uses the durable queue and never races independent writers', async () => {
+  /* A guard on the source, because the safety argument is about the key and
+     nothing else in the app carries one. */
+  /* Read from disk, not through the page: this asks a question about the
+     SOURCE, and a test that needs a browser to read a file it could open
+     directly is a test with a reason to fail for nothing. */
+  /* From the project root, which is where Playwright runs. `import.meta` is
+     not available in this file the way the runner loads it. */
+  const store = readFileSync('indexedDB.js', 'utf8');
+  const hedges = store.match(/hedge:\s*true/g) || [];
+  expect(hedges).toHaveLength(0);
+  expect(store).toContain('OrderQueue.add({key: orderKey');
+  const delivery = readFileSync('assets/common/order-queue-ui.js', 'utf8');
+  expect(delivery).not.toMatch(/hedge:\s*true/);
+});
+
+/*
+ * THE WAY OUT OF AN OUTAGE HAS TO WORK.
+ *
+ * Owner: "now change server not allowing actually." And, on who is holding the
+ * phone: "they are mostly un educated and doing job part time... so app needs
+ * to be very very smart on this."
+ *
+ * Which means the outage screen is not a report, it is the last thing standing
+ * between a waiter and a table. Every button on it has to do what it says, and
+ * the words have to name something a part-timer can act on.
+ */
+
+test('CHANGE SERVER OPENS THE EDITOR, which it did not', async ({ page }) => {
+  /*
+   * It set `posnic.open-server-settings`, a key nothing in the app has ever
+   * read. So it navigated to the sign-in screen, no editor opened, the app
+   * dialled the same dead address and the outage screen came straight back.
+   * From the outside: a button that does nothing, twice.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await page.locator('#posnic-offline').getByRole('button', { name: 'Change server' }).click();
+
+  await expect(page.locator('#captain-onboarding')).toBeVisible({ timeout: 15000 });
+});
+
+test('the internet is offered only where there is one to offer', async ({ page }) => {
+  /*
+   * Owner: "not able contact local server, would you like to connect via
+   * internet server or change server."
+   *
+   * A shop with a cloud address can keep taking orders while somebody sorts
+   * the Wi-Fi out. A shop without one must not be offered a road that does not
+   * exist, which is a button that can only disappoint.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-cloud')).toBeHidden();
+});
+
+test('and it is offered when the shop has one', async ({ page }) => {
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, cloud: CLOUD });
+  await refuse(page, LAN_ORIGIN);
+  await refuse(page, CLOUD_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-cloud')).toBeVisible();
+});
+
+test('A TILL THAT IS SIMPLY OFF IS NAMED AS THE THING THAT IS OFF', async ({ page }) => {
+  /*
+   * Owner: "sometime local desktop not started and not available. that also we
+   * need to tell user deskttop app not started."
+   *
+   * The phone is on the network the till was last reached on, so the network
+   * is fine and the address is fine. What is left is the computer. "Not
+   * responding" made people restart the phone, because the phone is the thing
+   * in their hand; naming the computer sends them to the thing that is off.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, lanSubnet: '192.168.1' });
+  /*
+   * The phone's own address, as the native plugin reports it on a handset.
+   * A desktop browser will not give one up - Chromium hides the local IP
+   * behind an mDNS candidate - and the app is right to say nothing when it
+   * cannot tell. Saying nothing is not what is under test here.
+   */
+  await page.addInitScript(() => {
+    window.Capacitor = window.Capacitor || {};
+    window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+    window.Capacitor.Plugins.LocalNetwork = { getLocalIp: async () => ({ ip: '192.168.1.57' }) };
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  /* The check needs the network interface, so it lands a moment after the
+     screen rather than holding it up. */
+  await expect(page.locator('#posnic-offline-title')).toContainText('not running POSNIC', {
+    timeout: 15000,
+  });
+  await expect(page.locator('#posnic-offline-body')).toContainText('right Wi-Fi');
+});
+
+test('and a phone that has wandered off is told which thing moved', async ({ page }) => {
+  /*
+   * Same symptom, opposite cause, and the two are indistinguishable from the
+   * till's silence alone. Sending somebody to switch on a computer that is
+   * already on is how an app loses the benefit of the doubt.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN, lanSubnet: '192.168.1' });
+  await page.addInitScript(() => {
+    window.Capacitor = window.Capacitor || {};
+    window.Capacitor.Plugins = window.Capacitor.Plugins || {};
+    window.Capacitor.Plugins.LocalNetwork = { getLocalIp: async () => ({ ip: '10.0.0.44' }) };
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await expect(page.locator('#posnic-offline-title')).toContainText('different Wi-Fi', {
+    timeout: 15000,
+  });
+});
+
+/*
+ * WHY IT CANNOT CONNECT, IN WORDS SOMEBODY CAN ACT ON.
+ *
+ * Owner: "app smart enough to find why not able to connect. as i said earlier
+ * wifi change, or internet not available or server not responding or server not
+ * allowing (403) etc. proper notifications is mandatory. whey app not working
+ * user should know the reason."
+ *
+ * Four causes, one symptom, and each has a different person doing a different
+ * thing about it. Getting the cause wrong is worse than saying nothing: it
+ * sends somebody to restart a computer that is working.
+ */
+
+test('NO NETWORK AT ALL IS NAMED BEFORE ANYTHING ELSE', async ({ page }) => {
+  /*
+   * The one cause a phone can be certain of on its own, and the one a waiter
+   * can fix in five seconds. Told the till is not responding while their Wi-Fi
+   * is simply off, somebody goes and restarts a working till.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'onLine', { get: () => false });
+  });
+  await refuse(page, LAN_ORIGIN);
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  await expect(page.locator('#posnic-offline-title')).toContainText('not on any network', {
+    timeout: 15000,
+  });
+  await expect(page.locator('#posnic-offline-body')).toContainText('Turn Wi-Fi on');
+});
+
+test('A TILL THAT REFUSES SAYS SO, mid-service', async ({ page }) => {
+  /*
+   * Owner listed it as its own cause: "server not allowing (403)".
+   *
+   * Nothing in the app did anything with a 403. The SEARCH path knew about
+   * refusals and said which till refused, but that screen is only reached
+   * while somebody is looking for a server. A phone already signed in and
+   * working never goes there, so mid-service a refusal arrived as whatever
+   * generic error the calling screen happened to show - which sends a waiter
+   * to find the manager, who restarts a till that is working perfectly.
+   *
+   * A dead address gives a connection error. Only a server sends a status. So
+   * 403 means the till is ON, on this Wi-Fi, and has no room for this phone.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.route(`${LAN_ORIGIN}/**`, async (route) =>
+    route.fulfill({ status: 403, contentType: 'application/json', body: '{"message":"no slot"}' })
+  );
+
+  await page.goto('/index.html');
+  await page.waitForFunction(() => typeof POSNIC !== 'undefined' && POSNIC.api);
+
+  /* A request from a screen that is already working, which is the case the
+     search path never sees. */
+  await page.evaluate(() => POSNIC.api.get('/sales/getListKot').catch(() => {}));
+
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('#posnic-offline-title')).toContainText('turning this phone away');
+  await expect(page.locator('#posnic-offline-body')).toContainText('handset slots');
+});
+
+test('and it does not throw the waiter back to a sign-in screen', async ({ page }) => {
+  /*
+   * A 401 means this credential is no good and signing in again is the answer.
+   * A 403 means the credential is fine and the shop has no room, so clearing
+   * the session makes somebody type a password in order to be refused twice.
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      'posnic.session',
+      JSON.stringify({ token: 'still-good', shopKey: 'shop', expiresAt: Date.now() + 8.64e7 })
+    )
+  );
+  await page.route(`${LAN_ORIGIN}/**`, async (route) =>
+    route.fulfill({ status: 403, contentType: 'application/json', body: '{}' })
+  );
+
+  await page.goto('/index.html');
+  await page.waitForFunction(() => typeof POSNIC !== 'undefined' && POSNIC.api);
+  await page.evaluate(() => POSNIC.api.get('/sales/getListKot').catch(() => {}));
+
+  expect(await page.evaluate(() => POSNIC.session.token)).toBe('still-good');
+});
+
+test('and Try now retries the server it is already on', async ({ page }) => {
+  /*
+   * Owner: "if not working then let user to retry same server."
+   *
+   * It always did, but nothing proved it, so a change to the candidate order
+   * could have quietly turned Try now into "go and find a different till".
+   */
+  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+
+  let up = false;
+  const asked = [];
+  await page.route(`${LAN_ORIGIN}/**`, async (route) => {
+    asked.push(route.request().url());
+    if (!up) return route.abort('connectionrefused');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(RUNTIME_INFO),
+    });
+  });
+
+  await page.goto('/index.html');
+  await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
+
+  up = true;
+  await page.getByRole('button', { name: 'Try now' }).click();
+
+  await expect(page.locator('#posnic-offline')).toBeHidden({ timeout: 15000 });
+  expect(asked.some((u) => u.startsWith(LAN_ORIGIN))).toBe(true);
+});
+
+/* ------------------------------------------- choosing an address by hand */
+
+test('CHOOSING THE SAME SHOP AT ANOTHER ADDRESS KEEPS THE SIGN-IN', async ({ page }) => {
+  /*
+   * Owner: "i chose different server then its logged out."
+   *
+   * Pinning ended the session on ANY change of address, reasoning that a
+   * credential signed by the server being left behind is worthless at the new
+   * one. True between two shops; wrong for the case this app is built around,
+   * which is one shop reached at its counter address and at its cloud address.
+   * Moving between those is the ordinary thing a handset does when the Wi-Fi
+   * comes and goes, and it cost a waiter their sign-in every time.
+   */
+  await signedInAt(page, LAN);
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
+  expect(await baseUrl(page)).toBe(CLOUD);
+});
+
+test('and a DIFFERENT shop still signs you out', async ({ page }) => {
+  /*
+   * The half of the old reasoning that was right. A token signed by one shop
+   * is not a credential at another, and carrying it over would produce 401s
+   * nobody can explain while the screen says somebody is signed in.
+   */
+  await signedInAs(page, 'shop-a');
+  await seed(page, {
+    active: LAN,
+    lan: LAN,
+    cloud: CLOUD,
+    /* The cloud address here has proved itself to a DIFFERENT shop. */
+    servers: { [LAN]: 'shop-a', [CLOUD]: 'somebody-else' },
+  });
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(false);
+});
+
+test('an address nobody has signed into keeps the session and lets the server decide', async ({ page }) => {
+  /*
+   * Being wrong in this direction costs one refused request, which the app
+   * already handles by dropping the credential. Being wrong the other way
+   * costs a password mid-service.
+   */
+  await signedInAs(page, 'shop-a');
+  await seed(page, { active: LAN, lan: LAN, servers: { [LAN]: 'shop-a' } });
+  await serve(page, LAN_ORIGIN);
+  await serve(page, CLOUD_ORIGIN);
+  await page.goto('/index.html');
+
+  await page.evaluate((url) => POSNIC.server.pin(url), CLOUD);
+
+  expect(await page.evaluate(() => POSNIC.session.active)).toBe(true);
+});
+
+for (const stall of ['fetch', 'body']) {
+  test(`discovery recovers when native ${stall} never settles or honours abort`, async ({ page }) => {
+    await page.addInitScript(({ stall }) => {
+      const original = window.fetch.bind(window);
+      window.fetch = (...args) => {
+        if (String(args[0]).includes('shop.example')) {
+          const pending = new Promise(() => {});
+          if (stall === 'fetch') return pending;
+          return Promise.resolve({ ok: true, json: () => pending });
+        }
+        return original(...args);
+      };
+    }, { stall });
+    await page.route('https://shop.example/**', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ edition: 'cloud', apiSchema: 1 }),
+    }));
+    await page.goto('/index.html');
+    const hit = await page.evaluate(() => POSNIC.discovery.probe('https://shop.example', 100));
+    expect(hit.base).toBe('https://shop.example/api');
+    expect(await page.evaluate(() => POSNIC.discovery.probe.usedRoad)).toBeTruthy();
+  });
+}
+
+
+test('a stalled native network lookup cannot hold discovery open forever', async ({page})=>{
+  await page.goto('/index.html');
+  const result=await page.evaluate(async()=>{
+    window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:()=>new Promise(()=>{})}}};
+    window.RTCPeerConnection=undefined;window.webkitRTCPeerConnection=undefined;
+    const start=Date.now();
+    const networks=await POSNIC.discovery.localSubnets();
+    return {elapsed:Date.now()-start,networks};
+  });
+  expect(result.elapsed).toBeLessThan(4000);
+  expect(result.networks).toContain('192.168.1');
 });

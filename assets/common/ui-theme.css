@@ -8,6 +8,9 @@ body {
     "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Android 15 draws the app under the status bar, and this page has no bar of
+     its own to step around it. */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 button,

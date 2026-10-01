@@ -101,8 +101,72 @@ and order-history screens when the shop's internet is out.
 
 ```powershell
 npm.cmd install
-npx.cmd playwright test
+npm.cmd run check
 ```
+
+`check` runs both suites - the unit tests and the browser tests - which is
+everything this project has.
+
+**They run before a commit, not on a server.** There is no test workflow on
+GitHub for this repository: the checks live in a hook, and the hook is the gate.
+`npm install` arms it, so a fresh clone is gated from the first commit without
+anybody reading this paragraph. If it ever says it could not:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+A clone where that is unset commits with no checks at all and looks exactly
+like one that ran them, which is why it is not left to a step somebody has to
+remember.
+
+It takes about six minutes, which is the honest price of having no second
+opinion downstream. Commit in batches rather than every few lines, and use
+`git commit --no-verify` when you are only saving your place - knowing that
+nothing after you will catch it.
+
+### On a real phone
+
+Some failures only happen inside an Android WebView - a fetch that behaves
+differently under Capacitor, a request shape the platform refuses - and no
+amount of desktop Chromium proves anything about those. With a phone plugged in
+(USB debugging on) or an emulator running:
+
+```powershell
+npm.cmd run check:device
+npm.cmd run check:device -- https://your-shop.posnic.io/api
+```
+
+It builds the APK, installs it, starts it pointed at a server and reads back
+the one line the app prints about its own networking. With nothing attached it
+says so and stops - it is a tool for when you have changed how the app talks to
+a server, not a gate, because a gate that needs somebody to find a phone is a
+gate that gets switched off.
+
+### Before a release
+
+Two checks that do not run on every commit, because one needs an Android and
+the other takes a few seconds nobody should pay per commit:
+
+```powershell
+npm.cmd run check:native
+npm.cmd run check:device
+```
+
+`check:native` lays out the Android project from scratch, syncs the bundle and
+the plugins, and confirms the files `build-apk.js` patches are still where it
+expects them. **No SDK, no Java, no phone** - about five seconds. It is what
+catches a Capacitor upgrade that moves something, which would otherwise surface
+at a tag with a shopkeeper waiting.
+
+`check:device` is the real thing on a real Android, and the release build is
+the last word.
+
+### What still runs on GitHub
+
+`release.yml`, and nothing else. Building a signed APK needs a JDK, an Android
+SDK, a keystore and a macOS runner for the iOS half, and none of that belongs
+on a laptop.
 
 ## Building it yourself
 

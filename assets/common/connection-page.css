@@ -1,0 +1,104 @@
+.connection-cloud {
+  margin: 24px 0;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line, #e2e8f0);
+}
+.connection-cloud p {
+  margin: 10px 0 0;
+  color: var(--ink-soft, #64748b);
+  font-size: 13px;
+  text-align: center;
+}
+#connection-addresses {
+  margin: 18px 0;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 12px;
+  padding: 14px;
+}
+#connection-addresses summary {
+  min-height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+}
+#connection-addresses .ui-field {
+  width: 100%;
+  min-height: 48px;
+  margin: 6px 0 16px;
+  direction: ltr;
+}
+#connection-message {
+  font-size: 13px;
+  margin-top: 12px;
+}
+#scanSheet[hidden] {
+  display: none !important;
+}
+
+.auth-header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(76px, 100px) 44px;
+  gap: 8px;
+}
+.auth-header .setup-language {
+  margin: 0;
+  min-width: 0;
+}
+.auth-header .setup-language select {
+  width: 100%;
+  max-width: 100%;
+  padding-inline: 6px;
+}
+.auth-header .setup-settings {
+  margin: 0;
+}
+#connection-addresses .ui-field {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* One primary local action; cloud approval is a clear alternative. */
+.connection-cloud { margin:20px 0 0; padding:20px 0 0; border-bottom:0; border-top:1px solid var(--line,#e2e8f0); }
+#captain-cloud-login { background:var(--surface,#fff); border:1px solid var(--line,#cbd5e1); color:var(--ink,#17233b); }
+#captain-cloud-login:hover { background:var(--surface-sunk,#f1f5f9); }
+#captain-open-browser:not([hidden]) { display:inline-flex; align-items:center; min-height:48px; padding:12px 16px; border:1px solid var(--line,#cbd5e1); border-radius:10px; margin:12px 0; }
+#captain-note:not(:empty) { scroll-margin-block:20px; }
+
+/* Keep the complete domain readable on narrow phones. */
+.setup-address { flex-wrap:wrap; padding:0; border:0; background:transparent; box-shadow:none; }
+#captain-server { flex:1 0 100%; width:100%; min-height:52px; border:1px solid #cdd6e3; border-radius:12px; padding:14px; direction:ltr; }
+#captain-server:focus { border-color:#2457e7; box-shadow:0 0 0 3px #2457e714; }
+.setup-tools { width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.setup-tools button { width:100%; min-height:52px; border:1px solid #dfe5ef; border-radius:10px; background:#f8fafc; }
+.setup-tools button span { font-size:11px; }
+.setup-shop { display:flex; align-items:center; gap:12px; }
+.setup-shop > div { flex:1; min-width:0; }
+.setup-shop .setup-link { flex-shrink:0; padding:8px 0; }
+
+.setup-address:focus-within { box-shadow:none; }
+
+/* Secondary methods never share a form with pairing or address settings. */
+#setup-heading { margin-bottom:24px; }
+#setup-heading:focus { outline:none; }
+.setup-alternatives { display:flex; align-items:center; gap:12px; margin:24px 0 0; color:#69758a; font-size:12px; }
+.setup-alternatives::before, .setup-alternatives::after { content:""; flex:1; height:1px; background:#e3e8f0; }
+.connection-cloud { margin:12px 0 0; padding:0; border:0; }
+#connection-settings { display:block; margin:12px auto 0; color:#52617a; }
+#connection-addresses { margin:0; padding:0; border:0; }
+#connection-addresses > summary { display:none; }
+#captain-code-options { margin-top:20px; }
+#captain-code { display:block; width:100%; min-height:50px; padding:12px; margin-top:8px; box-sizing:border-box; font-size:16px; }
+#captain-search-again { margin-top:16px; }
+#captain-results button { min-height:56px; padding:14px; border:1px solid #cdd6e3; border-radius:12px; background:#fff; color:#17233b; }
+
+/* Wi-Fi first, account sign-in second, address on demand. */
+#captain-onboarding[data-setup-view="start"] #setup-methods { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#captain-onboarding[data-setup-view="start"] .setup-tools { display:contents; }
+#captain-onboarding[data-setup-view="start"] #captain-search { grid-column:1/-1; order:0; background:var(--brand,#2457e7); color:white; min-height:52px; }
+#captain-onboarding[data-setup-view="start"] .setup-tools span { font-size:14px; }
+#captain-onboarding[data-setup-view="start"] #setup-start-hint { grid-column:1/-1; order:1; text-align:center; margin:0 0 8px; }
+#captain-onboarding[data-setup-view="start"] .connection-cloud { grid-column:1/-1; order:2; margin:0; }
+#captain-onboarding[data-setup-view="start"] #captain-address-toggle { grid-column:1/-1; order:3; min-height:48px; }
+#captain-onboarding[data-setup-view="start"] .setup-alternatives { grid-column:1/-1; order:4; margin:8px 0; }
+#captain-onboarding[data-setup-view="start"] #captain-scan { order:5; }
+#captain-onboarding[data-setup-view="start"] #captain-code-toggle { order:6; }
+#captain-onboarding[data-setup-view="start"] #connection-settings { grid-column:1/-1; order:7; margin:0; min-height:44px; }

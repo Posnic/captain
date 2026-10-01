@@ -1,3 +1,28 @@
+// Serialize complete read/modify/write operations, not only IndexedDB writes.
+// Otherwise two quick taps can save snapshots that erase each other's dishes.
+let cartMutationTail = Promise.resolve();
+function queueCartMutation(operation) {
+    const pending = cartMutationTail.then(operation);
+    cartMutationTail = pending.catch(() => {});
+    return pending;
+}
+const cartActions = new Set();
+function trackCartAction(action) {
+    const pending = (async () => action())();
+    cartActions.add(pending);
+    pending.then(() => cartActions.delete(pending), () => cartActions.delete(pending));
+    return pending;
+}
+function cartAction(action) {
+    return function (...args) {
+        return trackCartAction(() => action.apply(this, args));
+    };
+}
+async function waitForCartMutations() {
+    while (cartActions.size) await Promise.all(Array.from(cartActions));
+    await cartMutationTail;
+}
+
 const DB_NAME = "KioskDB";
 const DB_VERSION = 3;
 const STORE_NAME = "products";
@@ -85,6 +110,7 @@ function clearKioskLocalCache(options = {}) {
         "kiosk_force_branch_select",
         "branch_id",
         "kiosk_tableorders",
+        "kiosk_table_service",
         "orderType",
         "lastActiveCategory",
         "kiosk_table_no",
@@ -225,6 +251,40 @@ async function getData(storeName) {
 }
 
 // ✅ Save Data to IndexedDB (Now Removes Outdated Products)
+/**
+ * PUT SOME ROWS WITHOUT THROWING THE REST AWAY.
+ *
+ * `saveData` below is a REPLACE: it clears the store and writes what it was
+ * handed, which is exactly right for "here is the whole menu from the API" and
+ * catastrophic for anything else.
+ *
+ * Two callers used it to save ONE dish. Owner, on the first: "i added one item
+ * and try to search other items add nothing listed." He was not describing a
+ * search bug. Adding a one-off item had deleted the entire menu and left the
+ * one row behind, and search was reporting that honestly.
+ *
+ * The second was the sold-out long press, which meant a waiter marking one
+ * dish as finished wiped every dish on the handset until the next full sync.
+ * That shipped in v1.2.30.
+ *
+ * So: one door that replaces, one that does not, and the difference is in the
+ * name rather than in a flag somebody has to remember.
+ */
+async function saveOne(storeName, rows) {
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readwrite");
+        const store = transaction.objectStore(storeName);
+
+        (Array.isArray(rows) ? rows : [rows]).forEach((row) => {
+            if (row && row.id !== undefined) store.put(row);
+        });
+
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
 async function saveData(storeName, newData) {
     const db = await getDB();
     return new Promise((resolve, reject) => {
@@ -238,6 +298,22 @@ async function saveData(storeName, newData) {
             const existingIds = existingData.map(item => item.id);
             const newIds = newData.map(item => item.id);
 
+            /*
+             * WHAT THE MENU DOES NOT CARRY, AND SHOULD NOT LOSE.
+             *
+             * A quick sale item is INSTANT at the till, which keeps it out of
+             * the menu this data comes from. Clearing the store therefore
+             * deleted it, and every screen that looks a cart line up by id -
+             * the stepper, the bill, the send - found nothing.
+             *
+             * Kept only for the CURRENT session's lines. These are not menu
+             * rows and they are not stock; they exist because somebody sold
+             * one this evening.
+             */
+            const keepInstant = existingData.filter(
+                (row) => row && row.instant === true && !newIds.includes(row.id)
+            );
+
             // ✅ Remove outdated items that are no longer in API response
             existingIds.forEach(id => {
                 if (!newIds.includes(id)) {
@@ -249,6 +325,7 @@ async function saveData(storeName, newData) {
             // ✅ Clear and insert new data
             store.clear();
             newData.forEach(item => store.put(item));
+            keepInstant.forEach(item => store.put(item));
 
             transaction.oncomplete = () => {
                 console.log(`✅ Updated ${storeName} in IndexedDB`);
@@ -334,7 +411,7 @@ function updateKioskImageUI(data = {}) {
 
 
 // ✅ Fetch and Store Branch Data
-async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) {
+async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, preserveCart = false) {
     try {
         const db = await getDB();
         const existingBranches = await getData(BRANCH_STORE);
@@ -352,12 +429,38 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
         console.log("🔄 API Response:", result);
 
         if (result.type === "success" && result.data) {
+            if (result.data.money && window.CaptainMoney) {
+                CaptainMoney.remember(result.data.money);
+                CaptainMoney.remember(result.data.money, branchId);
+            }
+            window.ServiceDetails?.remember?.(result.data.restaurant_service_v1, branchId);
             let products = [];
 
             const categories = result.data.products;
             const kioskImages = result.data.kiosk_images;
             const tableorders = result.data.tableorders || [];
             localStorage.setItem('kiosk_tableorders', JSON.stringify(tableorders));
+
+            /*
+             * WHETHER THIS SHOP DOES TABLE SERVICE AT ALL.
+             *
+             * An empty floor plan means two completely different things: a
+             * restaurant that has not typed its tables in yet, and a shop that
+             * does not seat anybody. Both arrived as an empty array, so the
+             * handset drew the same bare "Enter Table Number" box for a waiter
+             * at a restaurant mid-setup and for somebody signing in at a
+             * grocer, and told neither of them which.
+             *
+             * The server sends the branch's own switch now, so the screen can
+             * say the true thing. Stored as a string because localStorage has
+             * no other kind, and read back with an explicit compare - '' and
+             * 'false' are both truthy here, which is how a switch ends up
+             * permanently on.
+             */
+            localStorage.setItem(
+                'kiosk_table_service',
+                result.data.table_service === true ? 'yes' : 'no'
+            );
 
             /*
              * What this SHOP decided about voice ordering.
@@ -380,6 +483,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 
             // 🔴 IF NO PRODUCTS → show error, then force Choose Branch AFTER OK
             if (!Array.isArray(categories) || categories.length === 0) {
+                // Refresh failures preserve the current shop, cached menu and draft.
+                if (!redirect) return false;
                 /*
                  * AN EMPTY MENU IS NOT A REASON TO FORGET WHICH SHOP THIS IS.
                  *
@@ -479,6 +584,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                     products.push({
                         id: item.id?.$oid || item.id?.toString() || Date.now(),
                         name: item.name || "Unknown",
+                        ...window.PosnicItemText.snapshot(item),
                         available_quantity: item.available_quantity || 0,
                         negative_stock: !!item.negative_stock,
                         // ✅ use backend fields as-is
@@ -507,10 +613,65 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
                         prep_minutes: Number(item.prep_minutes) || 0,
                         /* The dish's own description, for the menu row. */
                         description: item.description || "",
-                        /* And the same words as the DEFAULT NOTE on a line,
-                           which is what item_description has always meant to
-                           the cart and the kitchen ticket. */
-                        item_description: item.description || item.item_description || ""
+                        /*
+                         * NOT THE NOTE. THE NOTE IS WHAT A WAITER TYPED.
+                         *
+                         * This used to seed item_description with the dish's
+                         * own description, calling it a default note. But
+                         * item_description is the note everywhere else: the
+                         * till stores the waiter's words in it, the KOT view
+                         * reads it as a note, and the notes box writes it.
+                         *
+                         * So every dish arrived carrying its menu copy as a
+                         * note, and the kitchen printed it:
+                         *
+                         *   MIXED TANDOORI CHICKEN PLATTER            x1
+                         *     ** A platter of the tandoor's chicken: kebabs,
+                         *     tikka and wings, served sizzling with onion and
+                         *     lime. Built to share. **
+                         *
+                         * That is writing for a guest choosing dinner, not an
+                         * instruction for somebody cooking it. A ticket that
+                         * long for two dishes is one a cook stops reading, and
+                         * the one line that mattered - no onion - would be
+                         * somewhere in the middle of it.
+                         *
+                         * The description is still carried above, for the menu
+                         * row that is meant to show it.
+                         */
+                        /*
+                         * HOW THIS DISH IS PRICED.
+                         *
+                         * `open_price` means the price is settled at the
+                         * counter, every time. `daily_price` means it comes
+                         * from the morning's market, and `price_set_on` says
+                         * when somebody last entered it - priced today it is
+                         * an ordinary dish, priced yesterday it is not,
+                         * because yesterday's rate for a pomfret is not
+                         * today's.
+                         *
+                         * THIS LIST IS A WHITELIST, and that is the whole
+                         * reason these are here. A field the server sends and
+                         * this loop does not name is gone by the time any
+                         * screen sees it - open_price was read by the menu row
+                         * for months and never once arrived. See askPrice in
+                         * assets/common/menu-view.js.
+                         */
+                        open_price: item.open_price === true,
+                        daily_price: item.daily_price === true,
+                        price_set_on: item.price_set_on || "",
+                        /*
+                         * The shop's option sets for this dish - extra cheese,
+                         * half plate, how spicy - whole, with their prices.
+                         *
+                         * A field this loader does not NAME is dropped. That is
+                         * how open_price was dead for months, and how the
+                         * extras stayed invisible here while the till offered
+                         * them and expected somebody to charge for them.
+                         */
+                        modifier_groups: Array.isArray(item.modifier_groups)
+                            ? item.modifier_groups
+                            : []
                     });
                 });
             });
@@ -530,7 +691,10 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 
             // ✅ Only validate cart + reload UI when we are actually refreshing the screen
             // ✅ Update cart + UI based on mode
-            if (refreshUI) {
+            if (preserveCart) {
+                // A deliberate menu refresh never discards the order being taken.
+                await loadProducts();
+            } else if (refreshUI) {
                 // normal flow (login / first load / manual refresh): clean cart + reload UI
                 await validateCartWithProducts(products);
                 await loadProducts();
@@ -551,6 +715,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
             }
         } else {
             console.warn("❌ No data received from API.");
+            return false;
         }
     } catch (error) {
         console.error("❌ Error updating product data:", error);
@@ -559,14 +724,34 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true) 
 }
 
 
-async function validateCartWithProducts(updatedProducts) {
+function validateCartWithProducts(updatedProducts) {
+    return queueCartMutation(() => validateCartWithProductsNow(updatedProducts));
+}
+async function validateCartWithProductsNow(updatedProducts) {
     const cartData = await getCartData();
     const productMap = new Map(updatedProducts.map(p => [p.id, p])); // 🔁 Map for quick access
 
     // 🔄 Update cart items with latest product info
     const syncedCart = cartData
         .map(item => {
-            const updatedProduct = productMap.get(item.id);
+            const updatedProduct = productMap.get(cartProductId(item));
+
+            /*
+             * A ONE-OFF HAS NO DISH BEHIND IT, AND THAT IS NOT AN ERROR.
+             *
+             * The same rule as syncCartSilently below, and this is the copy
+             * that actually ran: the cart page refreshes the branch in the
+             * FOREGROUND, so fixing only the silent one left the line being
+             * deleted on the way to the screen meant to show it. Two functions
+             * doing one job, and a fix that landed in one of them.
+             *
+             * A quick sale is INSTANT at the till, which keeps it off the menu
+             * on purpose. The line carries its own name and price, which is
+             * all the bill and the kitchen ticket need.
+             */
+            if (!updatedProduct && item && item.instant === true) {
+                return item;
+            }
 
             // product not found in latest list → remove from cart
             if (!updatedProduct) {
@@ -578,7 +763,9 @@ async function validateCartWithProducts(updatedProducts) {
                 return {
                     ...item,
                     name: updatedProduct.name,
+                    ...window.PosnicItemText.snapshot(updatedProduct),
                     img: updatedProduct.img,
+                    icon: updatedProduct.icon || "",
                     price: Number(updatedProduct.price || item.price || 0),
                     discount_price: Number(updatedProduct.discount_price || item.discount_price || 0),
                     tax_price: Number(updatedProduct.tax_price || item.tax_price || 0),
@@ -602,22 +789,38 @@ async function validateCartWithProducts(updatedProducts) {
     }
 }
 
-async function syncCartSilently(updatedProducts) {
+function syncCartSilently(updatedProducts) {
+    return queueCartMutation(() => syncCartSilentlyNow(updatedProducts));
+}
+async function syncCartSilentlyNow(updatedProducts) {
     const cartData = await getCartData();
     const productMap = new Map(updatedProducts.map(p => [p.id, p]));
 
     const syncedCart = cartData
         .map(item => {
-            const updatedProduct = productMap.get(item.id);
+            const updatedProduct = productMap.get(cartProductId(item));
             if (updatedProduct) {
                 return {
                     ...item,
                     name: updatedProduct.name,
+                    ...window.PosnicItemText.snapshot(updatedProduct),
                     img: updatedProduct.img,
+                    icon: updatedProduct.icon || "",
                     price: updatedProduct.price,
                     tax_price: updatedProduct.tax_price,
                 };
             }
+            /*
+             * A ONE-OFF HAS NO DISH BEHIND IT, AND THAT IS NOT AN ERROR.
+             *
+             * This dropped any line whose product is not in the latest menu,
+             * which is right for a dish the shop has deleted and wrong for a
+             * quick sale: those are INSTANT at the till precisely so they stay
+             * off the menu. The line carries its own name and price, which is
+             * everything the bill and the kitchen ticket need.
+             */
+            if (item && item.instant === true) return item;
+
             // product not found in latest list → remove from cart
             return null;
         })
@@ -631,156 +834,286 @@ async function syncCartSilently(updatedProducts) {
 }
 
 // ✅ Optimized renderCart function
+/*
+ * THE BILL. The screen a waiter reads back to the table.
+ *
+ * Rewritten with the menu, because tapping "View bill" used to leave one
+ * design and arrive in another, and an app that changes character between two
+ * screens somebody crosses forty times a night does not read as one app.
+ *
+ * Three things were wrong beyond the look, and all three are fixed here:
+ *
+ *   THE NAMES WERE CUT at twenty-five characters with an ellipsis, in
+ *   JavaScript, on the one screen that gets read out loud to a customer.
+ *
+ *   EVERY LINE HAD ITS OWN ACCORDION holding that line's subtotal, discount
+ *   and tax. Nobody adds up twelve accordions. The question is what the WHOLE
+ *   thing comes to, and it is asked once, at the bottom.
+ *
+ *   NOTHING WAS ESCAPED. Dish names come from the shop's own database and
+ *   notes now come from a speech recogniser, and both went into innerHTML raw.
+ */
 async function renderCart(cartData = null, skipRedirect = false) {
     try {
         if (!cartData) {
-            cartData = await getCartData(); // ✅ Fetch only if not already available
+            cartData = await getCartData();
         }
 
-        // remember which extra panels are currently open
-        const expandedIds = new Set(
-            Array.from(document.querySelectorAll('.cart-item-extra'))
-                .filter(el => el.style.display !== 'none')
-                .map(el => el.id.replace('cart-item-extra-', ''))
-        );
-
-        let totalPrice = 0;
-        let totalQty = 0;
-        let html = "";
+        const host = document.getElementById('cart-summary');
+        const loader = document.getElementById('page-loader');
 
         if (cartData.length === 0) {
             $("#next-btn").prop("disabled", true);
-            $("#cart-summary").html("<p class='text-center'>Cart is empty</p>");
             $("#cart-total,#cart-qty,#mobile-cart-count").text("0.00");
-            $("#summary-display").text(`0 Items | ₹0.00`);
+            $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', '0').replace('{1}', CaptainMoney.display(0)));
+            setBillTotals(null);
 
-            if (!skipRedirect) {
-                setTimeout(() => {
-                    window.location.href = "kot-management.html";
-                }, 2000);
+            if (host) {
+                host.innerHTML =
+                    '<div class="bill-empty">' +
+                    '<div class="bill-empty-face">\u{1f9fe}</div>' +
+                    '<div class="bill-empty-said">Nothing on this bill yet</div>' +
+                    '<div class="bill-empty-why">Add something from the menu and it will show up here.</div>' +
+                    '<a href="products.html">Back to the menu</a>' +
+                    '</div>';
             }
+
+            /*
+             * AND NO TIMED REDIRECT.
+             *
+             * This used to throw you back to the table list two seconds after
+             * you removed the last line - the app deciding you had finished.
+             * Somebody who takes an item off is usually about to add a
+             * different one, and being moved mid-thought is how an order gets
+             * started again from scratch. The way back is a button now, which
+             * is a decision rather than a countdown.
+             *
+             * skipRedirect stays in the signature because callers still pass
+             * it, and one of them is a queue flush that must not navigate.
+             */
+            if (loader) loader.style.display = 'none';
             return;
         }
 
-        cartData.forEach(item => {
+        let totalQty = 0;
+        let subtotalAll = 0;
+        let discountAll = 0;
+        let taxAll = 0;
+        let totalPrice = 0;
+        let html = '';
+
+        for (const item of cartData) {
             const qty = item.quantity || 0;
-            const subtotal = Number(item.subtotal || 0);
-            const discountUnit = Number(item.discount_price || 0);
-            const taxUnit = Number(item.tax_price || 0);
-            const finalUnit = Number(item.final_price || 0);
+            const asked = Number(item.askedPrice) || 0;
+            /* Today's price is the whole price: the catalogue has no rate for
+               this dish, so it has no discount or tax on it either. */
+            const subtotal = asked > 0 ? asked : Number(item.subtotal || 0);
+            const discountUnit = asked > 0 ? 0 : Number(item.discount_price || 0);
+            const taxUnit = asked > 0 ? 0 : Number(item.tax_price || 0);
+            const finalUnit = unitPrice(item);
 
             const lineSubtotal = subtotal * qty;
             const lineDiscount = discountUnit * qty;
             const lineTax = taxUnit * qty;
-            const lineFinal = finalUnit
-                ? finalUnit * qty
-                : lineSubtotal - lineDiscount + lineTax;
+            const lineFinal = finalUnit ? finalUnit * qty : lineSubtotal - lineDiscount + lineTax;
 
             totalQty += qty;
-            totalPrice += lineFinal;   // use final for footer total
+            subtotalAll += lineSubtotal;
+            discountAll += lineDiscount;
+            taxAll += lineTax;
+            totalPrice += lineFinal;
 
-            const item_name = item.name.length > 25 ? item.name.substring(0, 25) + '...' : item.name;
-            const isExpanded = expandedIds.has(String(item.id));
+            const id = billText(item.id);
 
-            html += `
-    <div class="cart-item" id="cart-item-${item.id}">
-        <button class="expand-toggle ${isExpanded ? 'expanded' : ''}"
-                onclick="toggleCartItemDetails('${item.id}', event)">
-            <span class="expand-icon">${isExpanded ? '▴' : '▾'}</span>
-        </button>
-        <img src="${thumbUrl(item.img)}" alt="${item_name}" class="item-image">
-        <div class="item-content">
-            <div class="item-details">
-                <div class="item-name">${item_name}</div>
-                ${item.notes ? `<div class="item-notes">${item.notes}</div>` : ""}
-                <div class="item-prices">
-                    <span class="unit-price">₹${finalUnit.toFixed(2)} per item</span>
-                    <span class="total-price">₹${lineFinal.toFixed(2)}</span>
-                </div>
-            </div>
+            /* The photograph, or the dish's own icon - the same fallback the
+               menu uses, so a shop with no pictures looks deliberate on both
+               screens rather than broken on one. */
+            const thumb = item.img
+                ? '<img class="bill-thumb" src="' + billText(thumbUrl(item.img)) + '" alt="">'
+                : '<div class="bill-thumb" aria-hidden="true">' + billText(item.icon || '\u{1f37d}') + '</div>';
 
-            <div class="quantity-control">
-                <button class="qty-btn" onclick="updateCartQuantity('${item.id}', -1)">-</button>
-                <span class="qty-value" id="qty-${item.id}">${qty}</span>
-                <button class="qty-btn" onclick="updateCartQuantity('${item.id}', 1)">+</button>
-            </div>
-        </div>
+            html +=
+                '<div class="bill-line" id="cart-item-' + id + '">' +
+                thumb +
+                '<div class="bill-body">' +
+                /* WHOLE. Wrapped by CSS at two lines, never cut at
+                   twenty-five characters in JavaScript. */
+                '<p class="bill-name" translate="no">' + billText(window.ItemLanguage.name(item)) + '</p>' +
+                /*
+                 * What the table asked for on it, under the name where a note
+                 * already goes. A waiter reading back an order needs to see
+                 * "extra cheese" on the line, not only on the kitchen ticket:
+                 * the whole reason this was typed into the notes box for years
+                 * is that it is the first thing anybody checks.
+                 *
+                 * Without a price. The till prices these and this screen has
+                 * not asked it yet, and a number here that turned out to be a
+                 * different number on the bill would be worse than none.
+                 */
+                ((item.modifiers || []).length
+                    ? '<div class="bill-note bill-extras" translate="no">' +
+                      billText(item.modifiers.map((one) => one.name).join(', ')) +
+                      '</div>'
+                    : '') +
+                (item.notes ? '<div class="bill-note" translate="no">' + billText(item.notes) + '</div>' : '') +
+                ServiceDetails.summary(item) + (ServiceDetails.supported() ? '<button type="button" class="preparation-link" data-preparation-cart="' + id + '">Preparation</button>' : '') +
+                /*
+                 * TODAY'S PRICE CAN BE CORRECTED HERE.
+                 *
+                 * A dish priced on the day is whatever the waiter was told
+                 * this morning, typed into a box - and 850 for a lobster that
+                 * costs 8500 is one missed key. The menu screen deliberately
+                 * does not ask again when a second plate is added, because the
+                 * table was quoted once, so without this the only way back is
+                 * to strike the line off and start it again.
+                 *
+                 * Only for a line that carries one: an ordinary dish is priced
+                 * by the shop, and a waiter must not be able to retype that.
+                 */
+                (askedOn(item)
+                    ? '<button type="button" class="bill-each is-askable" data-bill="price" data-id="' +
+                      id + '" aria-label="Change today&#39;s price">' +
+                      billText(I18N.t('{0} each').replace('{0}', CaptainMoney.display(finalUnit))) + '</button>'
+                    : '<div class="bill-each">' + billText(I18N.t('{0} each').replace('{0}', CaptainMoney.display(finalUnit))) + '</div>') +
+                '</div>' +
+                '<div class="bill-right">' +
+                '<span class="bill-amount">' + CaptainMoney.html(lineFinal) + '</span>' +
+                '<div class="bill-step">' +
+                '<button type="button" data-bill="less" data-id="' + id + '" aria-label="One fewer">&minus;</button>' +
+                '<span class="bill-qty" id="qty-' + id + '">' + qty + '</span>' +
+                '<button type="button" data-bill="more" data-id="' + id + '" aria-label="One more">+</button>' +
+                '</div>' +
+                '</div>' +
+                '</div>';
+        }
 
-        <!-- Hidden extra price details -->
-        <div class="cart-item-extra" id="cart-item-extra-${item.id}" style="${isExpanded ? '' : 'display:none;'}">
-            <div class="cart-item-extra-inner">
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Subtotal</span>
-                    <span class="cart-line-value">₹${lineSubtotal.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Discount</span>
-                    <span class="cart-line-value">‑₹${lineDiscount.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line">
-                    <span class="cart-line-label">Tax</span>
-                    <span class="cart-line-value">₹${lineTax.toFixed(2)}</span>
-                </div>
-                <div class="cart-item-line cart-item-final">
-                    <span class="cart-line-label">Total</span>
-                    <span class="cart-line-value">
-                        ₹${finalUnit.toFixed(2)} × ${qty} = ₹${lineFinal.toFixed(2)}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>`;
+        if (host) host.innerHTML = html;
+
+        setBillTotals({
+            subtotal: subtotalAll,
+            discount: discountAll,
+            tax: taxAll,
+            total: totalPrice,
+            quantity: totalQty,
         });
 
-        $("#cart-summary").html(html);
-        $("#summary-display").text(`${totalQty} Items | ₹${totalPrice.toFixed(2)}`);
-        $('#cart-qty,#mobile-cart-count').html(totalQty);
-        $("#cart-total").text(totalPrice.toFixed(2));
-        // Auto-adjust font size based on content length
-        const cartTotalEl = document.getElementById('cart-total');
-        const cartSummary = document.querySelector('.discount-cart-summary');
-        if (cartTotalEl && cartSummary) {
-            const totalText = cartTotalEl.textContent;
-            cartSummary.classList.remove('long-content', 'very-long-content');
+        $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', totalQty).replace('{1}', CaptainMoney.display(totalPrice)));
+        $('#cart-qty,#mobile-cart-count').text(totalQty);
+        $("#cart-total").text(CaptainMoney.display(totalPrice));
+        $("#next-btn").prop("disabled", totalQty === 0);
 
-            if (totalText.length > 8) {
-                cartSummary.classList.add('very-long-content');
-            } else if (totalText.length > 6) {
-                cartSummary.classList.add('long-content');
-            }
-        }
-        const loader = document.getElementById('page-loader');
-        loader.style.display = 'none';
-
+        if (loader) loader.style.display = 'none';
     } catch (error) {
         console.error("❌ Error rendering cart:", error);
     }
 }
 
-function toggleCartItemDetails(id, evt) {
-    if (evt) {
-        evt.stopPropagation();
-        evt.preventDefault();
+/*
+ * The steppers, delegated.
+ *
+ * Bound once rather than written into every row as an onclick. An onclick
+ * carrying an id is a string containing that id, so a dish whose name or id
+ * holds an apostrophe ends the attribute early and the button silently stops
+ * working - which is the kind of thing that happens to one shop's menu and
+ * nobody else's.
+ */
+document.addEventListener('click', function (event) {
+    const button = event.target.closest && event.target.closest('[data-bill]');
+    if (!button) return;
+    const what = button.getAttribute('data-bill');
+    if (what === 'price') {
+        changeTodaysPrice(button.getAttribute('data-id'));
+        return;
     }
-    const el = document.getElementById(`cart-item-extra-${id}`);
-    if (!el) return;
+    updateCartQuantity(button.getAttribute('data-id'), what === 'more' ? 1 : -1);
+});
 
-    const willShow = (el.style.display === 'none' || el.style.display === '');
-    el.style.display = willShow ? 'block' : 'none';
+/**
+ * Ask again for today's price on a line that already has one.
+ *
+ * Opened with the number already in the box, so correcting a missed key is one
+ * edit rather than a retype - and cancelling leaves the line exactly as it
+ * was, the same bargain the question makes when a dish is first added.
+ *
+ * A quantity change of ZERO: updateQuantity re-quotes a line whenever it is
+ * handed a price, so the count is untouched and every screen redraws itself.
+ */
+async function changeTodaysPrice(id) {
+    if (!id || !window.POSNIC || typeof POSNIC.askPrice !== 'function') return;
+    const line = (await getCartData()).find((row) => String(row.id) === String(id));
+    if (!line) return;
 
-    // update arrow icon on the same row
-    const row = document.getElementById(`cart-item-${id}`);
-    if (!row) return;
-    const btn = row.querySelector('.expand-toggle');
-    const icon = btn ? btn.querySelector('.expand-icon') : null;
-    if (btn && icon) {
-        btn.classList.toggle('expanded', willShow);
-        icon.textContent = willShow ? '▴' : '▾';
+    const asked = await POSNIC.askPrice(line.name, line.askedPrice);
+    if (!asked) return;
+
+    await updateQuantity(id, 0, { askedPrice: asked });
+    await renderCart();
+}
+
+/*
+ * Text that cannot become markup.
+ *
+ * Dish names come from the shop's own database and notes now come from a
+ * speech recogniser, and both went into innerHTML raw. Neither is a stranger's
+ * input, which is why it never broke - but "never broke" is not the same as
+ * safe.
+ */
+function billText(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/*
+ * What the whole bill comes to, in one place.
+ *
+ * A row is drawn only when it says something. A shop that charges no tax does
+ * not need a line reading "Tax 0.00", and a bill with no discount does not
+ * need to be told so - every row that is always there is a row nobody reads.
+ */
+function setBillTotals(totals) {
+    const host = document.getElementById('bill-totals');
+    if (!host) return;
+
+    if (!totals || !totals.quantity) {
+        host.innerHTML = '';
+        host.hidden = true;
+        return;
     }
+    host.hidden = false;
+
+    const money = (n) => CaptainMoney.display(n);
+    let rows = '';
+
+    /* Subtotal is only worth a line when something happens BELOW it. With no
+       discount and no tax it is the total, said twice. */
+    if (totals.discount > 0 || totals.tax > 0) {
+        rows += '<div class="bill-row"><span>Subtotal</span><span>' + money(totals.subtotal) + '</span></div>';
+    }
+    if (totals.discount > 0) {
+        rows += '<div class="bill-row is-off"><span>Discount</span><span>-' + money(totals.discount) + '</span></div>';
+    }
+    if (totals.tax > 0) {
+        rows += '<div class="bill-row"><span>Tax</span><span>' + money(totals.tax) + '</span></div>';
+    }
+    rows += '<div class="bill-row is-total"><span>Total</span><span>' + money(totals.total) + '</span></div>';
+
+    host.innerHTML = rows;
+
+    /* And on the button that commits it, so the amount and the action are one
+       thing rather than two places to look. */
+    const amount = document.getElementById('bill-send-amount');
+    if (amount) amount.textContent = money(totals.total);
 }
 
 // ✅ Optimized remove function: No redundant IndexedDB calls
-async function removeCartItem(id) {
+function removeCartItem(id) {
+    return queueCartMutation(() => removeCartItemNow(id));
+}
+async function removeCartItemNow(id) {
     let cartData = await getCartData();
     cartData = cartData.filter(i => i.id !== id); // 🔥 Remove from IndexedDB cart
 
@@ -794,19 +1127,22 @@ async function removeCartItem(id) {
 }
 
 // ✅ Optimized update function: Prevents multiple IndexedDB calls
-async function updateCartQuantity(id, change) {
+function updateCartQuantity(id, change) {
+    return queueCartMutation(() => updateCartQuantityNow(id, change));
+}
+async function updateCartQuantityNow(id, change) {
     const storedProducts = await getData("products");
-    const storedProduct = storedProducts.find(item => item.id === id);
     let cartData = await getCartData();
     let totalQty = 0;
     let item = cartData.find(i => i.id === id);
     if (!item) return;
+    const storedProduct = storedProducts.find(product => product.id === cartProductId(item));
 
     const allowNegative = storedProduct?.negative_stock === true;
     const totalStock = storedProduct?.available_quantity || 0;
 
     // 🔒 Block increment if already reached available stock (only for non-negative-stock)
-    if (!allowNegative && change > 0 && item.quantity >= totalStock) {
+    if (!allowNegative && change > 0 && cartProductQuantity(cartData, cartProductId(item)) + change > totalStock) {
         return; // nothing to do
     }
 
@@ -843,8 +1179,9 @@ async function updateCartQuantity(id, change) {
  * jump you to a section, and scrolling to a section lights the chip. Nothing
  * is ever rebuilt, so no place is ever lost. See assets/products/menu.js.
  */
-async function loadProducts() {
+async function loadProducts(shouldRender = () => true) {
     const storedProducts = await getData("products");
+    if (!shouldRender()) return;
 
     products = {};
 
@@ -868,6 +1205,7 @@ async function loadProducts() {
     const allProducts = [];
     Object.values(products).forEach(arr => allProducts.push(...arr));
     products["all"] = allProducts;
+    window._itemSearchIndex = null;
 
     /*
      * DRAWING IS THE MENU SCREEN'S JOB, and only the menu screen has one.
@@ -889,6 +1227,16 @@ async function loadProducts() {
     if (!listEl || typeof MenuScreen === 'undefined' || typeof MenuView === 'undefined') return;
 
     const loader = document.getElementById('page-loader');
+    // A menu/language refresh must keep the query the waiter is typing.
+    const search = document.getElementById('product-search-input');
+    if (search && typeof ItemSearch !== 'undefined' &&
+        ItemSearch.parseTerm(search.value.trim()).term.trim() &&
+        typeof applyProductFilter === 'function') {
+        await applyProductFilter();
+        if (loader) loader.style.display = 'none';
+        return;
+    }
+
 
     if (!storedProducts.length) {
         listEl.innerHTML = MenuView.nothing(
@@ -901,7 +1249,15 @@ async function loadProducts() {
     }
 
     const storedCart = await getCartData();
-    const cartMap = new Map(storedCart.map(i => [i.id, i]));
+    if (!shouldRender()) return;
+    if (search && typeof ItemSearch !== 'undefined' &&
+        ItemSearch.parseTerm(search.value.trim()).term.trim() &&
+        typeof applyProductFilter === 'function') {
+        await applyProductFilter();
+        if (loader) loader.style.display = 'none';
+        return;
+    }
+    const cartMap = cartProductMap(storedCart);
 
     MenuScreen.draw(products, cartMap, {
         image: resolveLocalImageUrl,
@@ -937,12 +1293,46 @@ function showCategory(category) {
 // });
 
 // ✅ Update Quantity and Save to IndexedDB
-async function updateQuantity(id, change) {
+function cartProductId(item) { return item.product_id || item.id; }
+function cartProductQuantity(cart, id) {
+    return cart.filter(item => cartProductId(item) === id).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+}
+function cartProductMap(cart) {
+    const result = new Map();
+    for (const item of cart) {
+        const id = cartProductId(item), previous = result.get(id);
+        result.set(id, { ...item, quantity: (previous?.quantity || 0) + (Number(item.quantity) || 0) });
+    }
+    return result;
+}
+function cartPreparation(item) {
+    return JSON.stringify([Number(item.askedPrice) || 0, (item.modifiers || []).map(value => [value.group || '', value.name || '']).sort()]);
+}
+function updateQuantity(id, change, options) {
+    return queueCartMutation(() => updateQuantityNow(id, change, options));
+}
+async function updateQuantityNow(id, change, options) {
     // ✅ only read needed product
-    const storedProduct = await getProductById(id);
+    const storedLine = (await getCartData()).find(line => line.id === id);
+    const storedProduct = await getProductById(storedLine ? cartProductId(storedLine) : id);
+    /* What the waiter was quoted this morning, for a dish the catalogue prices
+       on the day. Absent for every ordinary dish, which is why nothing below
+       changes for them. */
+    const quoted = Number((options && options.askedPrice) || 0) || 0;
+    /* What the table wants on it, asked once when the dish went on. The till
+       prices these from its own documents; this is only what was chosen. */
+    const chosen = Array.isArray(options && options.modifiers) ? options.modifiers : null;
 
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
+    if (change > 0 && (chosen || quoted > 0)) {
+        const preparation = cartPreparation({ askedPrice: quoted, modifiers: chosen || [] });
+        item = cartData.find(i => cartProductId(i) === id && cartPreparation(i) === preparation && !i.seat && !i.course && !i.held && !(i.allergies || []).length && !i.allergy_note);
+    }
+    if (change > 0 && !(chosen || quoted > 0) && item && (item.seat || item.course || item.held || item.allergies?.length || item.allergy_note)) {
+        item = cartData.find(i => cartProductId(i) === id && !i.seat && !i.course && !i.held && !i.allergies?.length && !i.allergy_note);
+    }
+    if (change < 0 && !item) item = cartData.filter(i => cartProductId(i) === id).at(-1);
     if (!storedProduct) return;
 
     if (!item) {
@@ -951,23 +1341,47 @@ async function updateQuantity(id, change) {
         if (!product) return;
 
         item = {
-            id: product.id,
+            id: cartData.some(i => i.id === product.id) ? crypto.randomUUID() : product.id,
+            product_id: product.id,
             name: product.name,
+            ...window.PosnicItemText.snapshot(product),
+            /* Carried onto the LINE, because the line outlives the menu row:
+               the next branch refresh deletes a one-off from the products
+               store, and the cart sync has to know this line is allowed to
+               have no dish behind it. */
+            instant: product.instant === true,
             img: product.img,
+            icon: product.icon || "",
             price: Number(product.price || 0),
             discount_price: Number(product.discount_price || 0),
             tax_price: Number(product.tax_price || 0),
             subtotal: Number(product.subtotal || 0),
             final_price: Number(product.final_price || 0),
+            /*
+             * TODAY'S PRICE, for a dish the card cannot carry one for.
+             *
+             * Whole fish, crab, lobster. The catalogue has no selling price,
+             * so the price is whatever the waiter was told this morning - and
+             * it belongs on the LINE, not on the product, because the next
+             * table may be quoted something else.
+             *
+             * `askedPrice` is set by whoever put this in the cart. Nothing
+             * reads it unless it is there, so every ordinary dish is
+             * untouched.
+             */
+            askedPrice: quoted,
+            modifiers: chosen || [],
             quantity: 0
         };
     }
+    if (quoted > 0) item.askedPrice = quoted;
+    item.line_id = item.line_id || item.id;
 
     const allowNegative = storedProduct?.negative_stock === true;
     const totalStock = storedProduct?.available_quantity || 0;
 
     // 🔒 Block increment if we already reached available stock (for non-negative-stock items)
-    if (!allowNegative && change > 0 && item.quantity >= totalStock) {
+    if (!allowNegative && change > 0 && cartProductQuantity(cartData, id) + change > totalStock) {
         return; // do nothing – keep quantity and stock badge as is
     }
 
@@ -981,7 +1395,7 @@ async function updateQuantity(id, change) {
     // Update remaining stock badge on product card (for non-negative-stock items)
     if (!allowNegative) {
         const totalStock = storedProduct.available_quantity || 0;
-        const currentQty = item.quantity || 0;
+        const currentQty = cartProductQuantity(cartData.filter(i => i.id !== item.id), id) + item.quantity;
         const remaining = Math.max(totalStock - currentQty, 0);
         const stockEl = document.getElementById(`stock-${id}`);
         if (stockEl) {
@@ -991,9 +1405,9 @@ async function updateQuantity(id, change) {
 
     // ✅ Update or remove from cart
     if (item.quantity === 0) {
-        cartData = cartData.filter(i => i.id !== id);
+        cartData = cartData.filter(i => i.id !== item.id);
     } else {
-        const index = cartData.findIndex(i => i.id === id);
+        const index = cartData.findIndex(i => i.id === item.id);
         if (index !== -1) {
             cartData[index] = item;
         } else {
@@ -1012,8 +1426,41 @@ async function updateQuantity(id, change) {
      * and the menu is the one screen where that is most of the screen.
      */
     if (typeof MenuScreen !== 'undefined') {
-        MenuScreen.setRow(id, item.quantity, storedProduct);
+        MenuScreen.setRow(id, cartProductQuantity(cartData, id), storedProduct);
     }
+    return true;
+}
+
+/**
+ * What one of these costs, on every screen that shows money.
+ *
+ * TODAY'S PRICE WINS. A dish the catalogue prices on the day carries nothing
+ * in `final_price` - that is the whole condition - so a screen that reads the
+ * catalogue shows a fish as free. The waiter was asked, typed 850, and the
+ * bill still said 0.00 each and totalled nothing: the same shock that started
+ * this work, one screen later and on the handset the waiter is holding.
+ *
+ * `askedPrice` is per LINE, because the next table may be quoted something
+ * else, and it is already what the order payload sends - so this makes every
+ * screen agree with what the kitchen and the server are told.
+ *
+ * Absent for every ordinary dish, which is why nothing else changes.
+ */
+/**
+ * Was this line's price typed in by a waiter rather than read off the card?
+ *
+ * The line carries `askedPrice` only when somebody was asked for it, so this
+ * is also the test for "may it be changed here". An ordinary dish is priced by
+ * the shop, and a waiter must not be able to retype that on the bill.
+ */
+function askedOn(item) {
+    return Number(item && item.askedPrice) > 0;
+}
+
+function unitPrice(item) {
+    const asked = Number(item && item.askedPrice) || 0;
+    if (asked > 0) return asked;
+    return Number((item && (item.final_price || item.price)) || 0);
 }
 
 async function updateCart() {
@@ -1025,7 +1472,7 @@ async function updateCart() {
 
         storedCart.forEach(item => {
             totalQty += item.quantity;
-            totalPrice += item.quantity * item.price;
+            totalPrice += item.quantity * unitPrice(item);
 
             // ✅ Update UI for each item
             $(`#qty-${item.id}`).text(item.quantity);
@@ -1044,8 +1491,8 @@ async function updateCart() {
 
 
         $("#cart-qty,#mobile-cart-count").text(totalQty);
-        $("#cart-total").text(totalPrice.toFixed(2));
-        $("#summary-display").text(`${totalQty} Items | ₹${totalPrice.toFixed(2)}`);
+        $("#cart-total").text(CaptainMoney.display(totalPrice));
+        $("#summary-display").text(I18N.t('{0} Items | {1}').replace('{0}', totalQty).replace('{1}', CaptainMoney.display(totalPrice)));
         $("#next-btn").prop("disabled", totalQty === 0);
 
         /* And the bar at the bottom, which rises only once there is something
@@ -1140,7 +1587,93 @@ async function getProductById(id) {
     });
 }
 
+/*
+ * THE NAME THIS ORDER WILL ANSWER TO.
+ *
+ * A waiter taps Send twice, or taps once on a handset that has already sent
+ * and is waiting for a reply it will never get. Both reach the till, and table
+ * 5 comes back showing the same order twice with cancelling one cancelling
+ * both. Reported from a live floor.
+ *
+ * The till has been able to recognise a resent order for as long as it has had
+ * a KOT screen, but only if the order carries a key. This app sent one - and
+ * minted it per ATTEMPT, so a queued retry was recognised and a second tap was
+ * not.
+ *
+ * The key is minted for the cart, kept while the cart stands, and cleared when
+ * the cart changes or the order lands. Ported from Table_Order, where it was
+ * written first.
+ */
+const ORDER_KEY = 'kiosk_order_key';
+const ORDER_SHAPE = 'kiosk_order_shape';
+
+function newOrderKey() {
+    try {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+    } catch (e) {
+        /* an older webview: fall through */
+    }
+    return 'ord-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+}
+
+/** The key for the cart as it stands, minting one if this cart has none. */
+function currentOrderKey() {
+    try {
+        let key = localStorage.getItem(ORDER_KEY);
+        if (!key) {
+            key = newOrderKey();
+            localStorage.setItem(ORDER_KEY, key);
+        }
+        return key;
+    } catch (e) {
+        /* Storage blocked. Better a key that cannot dedupe than no order at
+           all, so the send still goes through. */
+        return newOrderKey();
+    }
+}
+
+/** This cart is not the cart that was sent. Whatever goes next is new. */
+function resetOrderKey() {
+    try {
+        localStorage.removeItem(ORDER_KEY);
+        localStorage.removeItem(ORDER_SHAPE);
+    } catch (e) {
+        /* nothing to clear */
+    }
+}
+
+/*
+ * WHAT THE WAITER ACTUALLY CHOSE: which dish, how many, at what price, with
+ * what written on it.
+ *
+ * Deliberately not the whole line. A product refresh rewrites the cart with
+ * fresher copies of the same items, and syncCartSilently saves it back on
+ * every one of those - which is not a change the customer made. If it counted
+ * as one, a refresh landing between a dropped send and its retry would mint a
+ * new key and print the second ticket this exists to prevent.
+ */
+function cartShape(cart) {
+    return JSON.stringify(
+        (cart || []).map((line) => [
+            String(line.id ?? ''),
+            Number(line.quantity) || 0,
+            Number(line.price) || 0,
+            String(line.notes ?? line.note ?? ''),
+            Number(line.askedPrice) || 0,
+            line.modifiers || [],
+            line.line_id || line.id,
+            [line.seat || 0, line.course || '', line.held === true, line.allergies || [], line.allergy_note || ''],
+        ])
+    );
+}
+
 async function saveCartData(cart) {
+    /* A cart that is not the cart the last key was minted for gets a new one:
+       a waiter who adds a dish after a failed send must not be handed back the
+       order without it. */
+
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction("cart", "readwrite");
@@ -1149,7 +1682,19 @@ async function saveCartData(cart) {
         store.clear();
         cart.forEach(item => store.put(item));
 
-        transaction.oncomplete = () => resolve();
+        transaction.oncomplete = () => {
+    try {
+        const shape = cartShape(cart);
+        if (localStorage.getItem(ORDER_SHAPE) !== shape) {
+            localStorage.setItem(ORDER_SHAPE, shape);
+            localStorage.removeItem(ORDER_KEY);
+        }
+    } catch (e) {
+        /* Storage blocked: the send still goes, it just cannot dedupe. */
+    }
+
+            resolve();
+        };
         transaction.onerror = () => reject(transaction.error);
         transaction.onabort = () => reject(transaction.error);
     });
@@ -1171,7 +1716,7 @@ async function confirmCancelOrder() {
     // summary-display is not present on cart.html, so guard it
     const summaryEl = document.getElementById("summary-display");
     if (summaryEl) {
-        summaryEl.textContent = "0 Items | ₹0.00";
+        summaryEl.textContent = I18N.t('{0} Items | {1}').replace('{0}', '0').replace('{1}', CaptainMoney.display(0));
     }
 
     closeCancelModal(); // Close the modal
@@ -1198,6 +1743,7 @@ async function loadCart() {
 
 async function checkout(transactionId) {
     try {
+        await waitForCartMutations();
         // 🔄 Get cart data from IndexedDB
         const cartItems = await getCartData();
         console.log('cartItems:', cartItems);
@@ -1210,13 +1756,41 @@ async function checkout(transactionId) {
         // 🧾 Prepare payload: [{ id, quantity }]
         const payload = cartItems.map(item => {
             return {
-                item_id: item.id,
+                item_id: cartProductId(item),
+                line_id: item.line_id || item.id,
+                ...ServiceDetails.metadata(item),
                 item_name: item.name || item.item_name || '',
                 item_quantity: item.quantity,
-                item_price: item.final_price || item.price || 0,
-                item_subtotal: (item.final_price || item.price || 0) * item.quantity,
+                /*
+                 * A dish priced on the day sends what the waiter entered; the
+                 * server still refuses anything it did not ask for, and prices
+                 * every ordinary line from its own catalogue. See
+                 * _priceOnlineLine in the api.
+                 */
+                item_price: unitPrice(item),
+                item_subtotal:
+                    unitPrice(item) * item.quantity,
                 gst: (item.tax_price || 0) * item.quantity,
-                item_description: item.notes || ""
+                item_description: item.notes || "",
+                /*
+                 * WHAT THE TABLE ASKED FOR ON IT, by name.
+                 *
+                 * Not what it costs. The till prices these from the shop's own
+                 * option documents and ignores anything a phone claims, which
+                 * is why the names are all that travel: a client that could
+                 * name a price could name a discount nobody agreed to.
+                 *
+                 * Absent when nothing was chosen, so an ordinary dish sends
+                 * exactly what it always did.
+                 */
+                ...((item.modifiers || []).length
+                    ? {
+                          modifiers: item.modifiers.map((one) => ({
+                              group: one.group || '',
+                              name: one.name || ''
+                          }))
+                      }
+                    : {})
             };
         });
 
@@ -1251,17 +1825,65 @@ async function checkout(transactionId) {
         }
         //const savedNumber = localStorage.getItem("kiosk_mobile_number");
 
-        /* Made once, before the first attempt, and reused on every retry:
-           a key minted per attempt makes each resend look like a new order,
-           which is the thing it exists to prevent. */
-        const orderKey = OrderQueue.newKey();
+        /*
+         * THE KEY BELONGS TO THE CART, NOT TO THE TAP.
+         *
+         * It used to be OrderQueue.newKey(), minted fresh on every call - so
+         * a queued RETRY reused it correctly, but a second TAP made a new one
+         * and the till wrote a second ticket. Reported from a live floor:
+         * table 5 showing the same order twice, and cancelling one cancelling
+         * both.
+         *
+         * Cart-scoped gives the three behaviours a floor actually needs:
+         *
+         *   two taps on one cart           same key, the till answers with
+         *                                  the one order it already has
+         *   a retry after a dropped reply  same key, no second ticket
+         *   a dish added, then resend      new key, a new ticket, correctly
+         *
+         * That last line is why this is not a hash of the items: a waiter who
+         * adds a dish after a failed send must not be handed back the order
+         * without it, silently.
+         */
+        const orderKey = currentOrderKey();
 
         // 🚀 Send checkout request
         const orderBody = {
                 idempotencyKey: orderKey,
                 branch: branchId,
                 items: payload,
-                customerMobile: '+910000000000',
+                /*
+                 * A TABLE HAS NO PHONE NUMBER.
+                 *
+                 * This endpoint was built for a customer ordering from their
+                 * own phone, where the number is theirs. A waiter standing at
+                 * a table has none, and this used to send `+910000000000`
+                 * because the field looked required.
+                 *
+                 * It is not: nothing validates it, and the sale simply carries
+                 * an empty customer phone. The invented one was worse than
+                 * empty - it printed on a customer's bill under the customer
+                 * line, and it still sits in the phone column of every sales
+                 * report and every lookup by number.
+                 *
+                 * Sent as empty rather than dropped, so the shape of what this
+                 * app posts stays the same as the storefront's.
+                 */
+                customerMobile: '',
+                /*
+                 * WHICH PHONE, AND WHAT IT IS RUNNING.
+                 *
+                 * Owner: "every order should have some details. example what
+                 * mobile, user agent, ip address, mobile type or user account
+                 * whatever infromation app can know do it."
+                 *
+                 * The till adds the address it was called from and the waiter
+                 * signed in, because neither is this phone's to claim. This
+                 * half is what only the handset knows: its model, its build,
+                 * and whether it reached the till over the shop's Wi-Fi or the
+                 * cloud. See assets/common/this-device.js.
+                 */
+                client: (POSNIC.thisDevice && POSNIC.thisDevice.facts()) || {},
                 transactionId: transactionId,
                 tokenId: generateUniqueToken(),
                 payment_status: "cash",
@@ -1280,93 +1902,26 @@ async function checkout(transactionId) {
                 person_count: (orderType === 'Dine-in') ? personCount : ''
         };
 
-        /* Held so the catch below can keep exactly what was sent, rather than
-           rebuilding it from state the failure may already have changed. */
-        window._pendingOrder = { key: orderKey, branch: branchId, body: orderBody };
-
-        const result = await POSNIC.api.post("/sales/qrOrder", orderBody);
-        window._pendingOrder = null;
-
-        if (result.type === "success") {
-            const tokenId = result.data.tokenId; // 🔐 3-digit non-repeating token
-            localStorage.setItem("kioskReceipt", JSON.stringify(result.data));
-
-            /*
-             * Keep what was just ordered, so it can be ordered again.
-             *
-             * "Same again" is a normal thing to say at a table and currently
-             * means finding every item by hand a second time. Stored per
-             * branch and kept small: this is a convenience, not a record, and
-             * the sale itself is the record.
-             */
-            try {
-                localStorage.setItem('posnic.last-order', JSON.stringify({
-                    branch: branchId,
-                    at: Date.now(),
-                    items: (payload || []).map(i => ({
-                        item_id: i.item_id,
-                        item_name: i.item_name,
-                        item_quantity: i.item_quantity,
-                    })),
-                }));
-            } catch (e) { /* a convenience, never worth failing an order for */ }
-
-            // 🔄 After order, refresh branch products so stock is updated immediately
-            try {
-                if (branchId && typeof fetchAndStoreBranch === 'function') {
-                    await fetchAndStoreBranch(branchId, false, true);
-                }
-            } catch (e) {
-                console.error('Failed to refresh products after order', e);
-            }
-
-            // 🧹 Clear cart in IndexedDB and UI (skip the auto-redirect to discount.html)
-            await saveCartData([]);
-            await renderCart([], true);
-
-            // 🧹 Clear relevant localStorage items
-            localStorage.removeItem("kiosk_mobile_number");
-            localStorage.removeItem('kiosk_discount_percentage');
-            localStorage.removeItem('kiosk_discount_amount');
-            localStorage.removeItem('kiosk_discount_description');
-            localStorage.removeItem('kiosk_table_no');
-            localStorage.removeItem('kiosk_person_count');
-
-            console.log("✅ Checkout successful! Token:", tokenId);
-
-            // 🚀 Final navigation to Thank You page
-            // Use explicit .html so it works in both browser server and Capacitor WebView
-            window.location.href = `thankyou.html?token=${tokenId}`;
-        } else {
-            console.log("❌ Checkout failed:", result.message || result);
-            showErrorPopup(result.message || "Order failed. Please try again.");
-        }
-
+        // Persist before any network request; the cart stays intact if storage fails.
+        if (POSNIC.session.canTakeOrders === false)
+            throw new Error('Reconnect your account before taking new orders. Existing orders are retained.');
+        const existing = OrderQueue.all().find(row => row.key === orderKey);
+        if (!existing && !OrderQueue.add({key: orderKey, branch: branchId, body: orderBody, held: true}))
+            throw new Error('Order NOT saved. Phone storage is full or unavailable. Keep this cart and retry.');
+        await saveCartData([]);
+        if (!OrderQueue.update(orderKey, {held: false}))
+            throw new Error('Order is saved, but needs recovery. Keep app data and retry.');
+        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note']) localStorage.removeItem(key);
+        await renderCart([], true);
+        if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
+        window.POSNIC_ORDER_QUEUE_UI?.render();
+        // Delivery continues on the next screen, without making the waiter wait.
+        window.location.href = 'kot-management.html';
+        return true;
     } catch (error) {
-        console.log("❌ Error during checkout:", error);
-
-        /*
-         * An order that never reached a server is kept, not lost.
-         *
-         * Only when the request never got an answer. A server that REFUSED
-         * the order refused it for a reason - an item gone, a branch not
-         * configured - and queueing that would retry a rejection for ever.
-         */
-        const unreachable = error && (error.code === 'OFFLINE' || error.code === 'TIMEOUT');
-        if (unreachable && typeof OrderQueue !== 'undefined' && window._pendingOrder) {
-            OrderQueue.add(window._pendingOrder);
-            window._pendingOrder = null;
-            hideOrderProcessingScreen();
-            showErrorPopup(
-                "No connection to the shop, so this order is saved on the phone and " +
-                "NOT yet with the kitchen. It will be sent when the connection is back."
-            );
-            await saveCartData([]);
-            await renderCart([]);
-            return false;
-        }
-
-        showErrorPopup("Order failed. Please try again.");
+        if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
+        showErrorPopup(error.message || 'Order could not be saved. Keep this cart and retry.');
+        return false;
     }
 }
 
@@ -1462,4 +2017,3 @@ document.addEventListener('keydown', (e) => {
         hidePopup();
     }
 });
-

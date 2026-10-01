@@ -32,23 +32,58 @@ jobs:
     outputs:
       signed: ${{ steps.build.outputs.signed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # CAPACITOR 8 REQUIRES NODE >= 22, and said so by failing.
+          #
+          # `npx cap add android` exits 1 on Node 20 with no message of its
+          # own, so the log reads as a build that broke for no reason. Both
+          # platforms failed identically on v1.2.23 and neither said why.
+          #
+          # The machine this was developed on runs Node 24, which is why every
+          # local check passed. That gap is now closed in two places: the
+          # engines field below refuses an old Node with a sentence, and
+          # `npm run check:native` says so before anybody tags anything.
+          node-version: 22
           cache: npm
 
       # Android Gradle Plugin wants 17. The runner default has moved past it
       # before now, and the failure names a Gradle internal rather than the JDK.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          # CAPACITOR 8's ANDROID LIBRARY IS COMPILED FOR JAVA 21.
+          #
+          # On 17 the build reaches gradle and dies with `invalid source
+          # release: 21` inside :capacitor-android, which reads as a problem
+          # with this app rather than with the JDK the runner was handed.
+          #
+          # check:native compares this number against what the Capacitor
+          # templates actually ask for, so the two cannot drift apart again
+          # without somebody being told before they tag anything.
+          java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # THE `tools` PACKAGE NO LONGER EXISTS, so do not ask for it.
+      #
+      # setup-android installs `tools platform-tools` by default, and Google
+      # has removed `tools` from the SDK repository - it was deprecated for
+      # years and finally went. The action runs `sdkmanager tools`, gets exit
+      # code 1, and the whole job dies before a line of our code is reached.
+      #
+      # Nothing here needs it. The runner image already carries the SDK, and
+      # Gradle fetches the platform and build-tools it wants on its own.
+      #
+      # It broke on the runner, not in this repository: the same workflow
+      # passed yesterday on the same commit shape, and started failing at
+      # 07:54 on 2026-09-15 for every branch at once. That is the signature of
+      # an image or a repository change rather than a regression.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - run: npm ci
 
@@ -92,7 +127,7 @@ jobs:
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android
           path: captain*.apk
@@ -104,13 +139,23 @@ jobs:
     # rather than alongside Android.
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          # CAPACITOR 8 REQUIRES NODE >= 22, and said so by failing.
+          #
+          # `npx cap add android` exits 1 on Node 20 with no message of its
+          # own, so the log reads as a build that broke for no reason. Both
+          # platforms failed identically on v1.2.23 and neither said why.
+          #
+          # The machine this was developed on runs Node 24, which is why every
+          # local check passed. That gap is now closed in two places: the
+          # engines field below refuses an old Node with a sentence, and
+          # `npm run check:native` says so before anybody tags anything.
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -156,7 +201,7 @@ jobs:
           IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
         run: node build-ipa.js
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ios
           path: build-output/*.ipa
@@ -175,7 +220,7 @@ jobs:
     if: always() && needs.android.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: downloads
         # A missing iOS artifact is a normal outcome here, not an error.
@@ -215,11 +260,18 @@ jobs:
             echo
             echo "## Choosing a server"
             echo
-            echo "On the shop Wi-Fi, open Server settings and tap **Find server on this Wi-Fi**."
-            echo "Otherwise enter the shop code (for example \`azure\`), tap Test, then Save & Use."
+            echo "**Android and iOS:** choose **Sign in with your account**, approve Captain in your browser, and select the branch and staff member."
+            echo
+            echo "You can also enter a shop code or server address, search the shop Wi-Fi, or scan its QR. Both platforms also support pairing codes."
+            echo
+            echo "First-time setup and Change server use the same screen. Expand **Connection settings** to update the local and internet addresses, including before staff sign-in."
+            echo
+            echo "Approved local connections are preferred; the verified internet connection is used when needed. Unsent orders stay saved. An order with an uncertain delivery result waits for its original server to prevent duplicate kitchen orders."
+            echo
+            echo "**iOS:** secure browser approval, pairing and local Wi-Fi discovery are supported. An unsigned IPA still requires signing before installation."
           } > notes.md
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
           name: Captain ${{ github.event.inputs.tag || github.ref_name }}

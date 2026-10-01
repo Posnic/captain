@@ -131,7 +131,7 @@ test('the page loads the stamp, and says something sensible without it', () => {
      on every page load. */
   assert.ok(!/src="build-version\.js"/.test(html), 'the page loads the Node build script');
   /* At a desk the file is absent; the app says "dev", which is true. */
-  assert.match(html, /Captain dev build/);
+  assert.match(fs.readFileSync(path.join(root,'assets/common/connection-page.js'),'utf8'), /Captain dev build/);
 });
 
 test('a build that is NOT a release says so, rather than claiming one', () => {

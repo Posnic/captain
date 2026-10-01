@@ -58,7 +58,7 @@ async function renderAndPrint() {
 
     itemsContainer.innerHTML = `
         <div class="item header-row">        
-            <div class="item-name">Item Name</div>
+            <div class="item-name" translate="no">Item Name</div>
             <div class="item-qty">Qty</div>
             <div class="item-amt">Amount</div>
         </div>
@@ -80,15 +80,15 @@ async function renderAndPrint() {
 
         const itemTax = totalTax / qty;
         const itemDisc = discount / qty;
-        const totalLine = `₹${item.item_total.toFixed(2)}`;
+        const totalLine = `${CaptainMoney.display(item.item_total)}`;
 
         const subInfoParts = [];
-        subInfoParts.push(`₹${item.item_base_price.toFixed(2)}`);
-        if (itemTax > 0) subInfoParts.push(`₹${itemTax.toFixed(2)} tax`);
-        if (itemDisc > 0) subInfoParts.push(`-₹${itemDisc.toFixed(2)} disc`);
+        subInfoParts.push(`${CaptainMoney.display(item.item_base_price)}`);
+        if (itemTax > 0) subInfoParts.push(`${CaptainMoney.display(itemTax)} tax`);
+        if (itemDisc > 0) subInfoParts.push(`-${CaptainMoney.display(itemDisc)} disc`);
 
         row.innerHTML = `
-            <div class="item-name">
+            <div class="item-name" translate="no">
                 ${item.item_name}
                 ${subInfoParts.length ? `<div class="sub-info">${subInfoParts.join(" | ")}</div>` : ""}
             </div>
@@ -98,10 +98,10 @@ async function renderAndPrint() {
         itemsContainer.appendChild(row);
     });
 
-    $("#subtotal").text(`₹${receiptData.subtotal.toFixed(2)}`);
-    $("#discount").text(`-₹${receiptData.discount.toFixed(2)}`);
-    $("#tax").text(`₹${receiptData.tax.toFixed(2)}`);
-    $("#total").text(`₹${receiptData.total.toFixed(2)}`);
+    $("#subtotal").text(`${CaptainMoney.display(receiptData.subtotal)}`);
+    $("#discount").text(`-${CaptainMoney.display(receiptData.discount)}`);
+    $("#tax").text(`${CaptainMoney.display(receiptData.tax)}`);
+    $("#total").text(`${CaptainMoney.display(receiptData.total)}`);
     $("#orderTypePrint").text(orderType);
 
     // ✅ Generate PDF after 1s
@@ -127,10 +127,10 @@ async function generatePdfFromHtmlFile() {
     $externalDoc.find('#orderToken').text(receiptData.tokenId);
     $externalDoc.find('#orderDate').text(new Date().toLocaleString());
     $externalDoc.find('#orderTypePrint').text(orderType);
-    $externalDoc.find('#subtotal').text("₹" + receiptData.subtotal.toFixed(2));
-    $externalDoc.find('#discount').text("-₹" + receiptData.discount.toFixed(2));
-    $externalDoc.find('#tax').text("₹" + receiptData.tax.toFixed(2));
-    $externalDoc.find('#total').text("₹" + receiptData.total.toFixed(2));
+    $externalDoc.find('#subtotal').text(CaptainMoney.display(receiptData.subtotal));
+    $externalDoc.find('#discount').text("-" + CaptainMoney.display(receiptData.discount));
+    $externalDoc.find('#tax').text(CaptainMoney.display(receiptData.tax));
+    $externalDoc.find('#total').text(CaptainMoney.display(receiptData.total));
 
     const $itemsBody = $externalDoc.find('#items-body');
 
@@ -150,11 +150,11 @@ async function generatePdfFromHtmlFile() {
         const $tr = $(`
         <tr>
             <td>${item.item_name}</td>
-            <td class="right">₹${item.item_base_price.toFixed(2)}</td>
-            <td class="right">₹${itemTax.toFixed(2)}</td>
-            <td class="right">-₹${itemDisc.toFixed(2)}</td>
+            <td class="right">${CaptainMoney.display(item.item_base_price)}</td>
+            <td class="right">${CaptainMoney.display(itemTax)}</td>
+            <td class="right">-${CaptainMoney.display(itemDisc)}</td>
             <td class="right">${quantity}</td>            
-            <td class="right">₹${item.item_total.toFixed(2)}</td>
+            <td class="right">${CaptainMoney.display(item.item_total)}</td>
         </tr>
     `);
         $itemsBody.append($tr);

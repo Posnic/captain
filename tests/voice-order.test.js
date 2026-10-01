@@ -199,3 +199,129 @@ test('"without" and "no" are notes on a dish, not removals', () => {
      a removal would take the biryani off. */
   assert.deepEqual(said('one chicken biryani without onion'), ['add:1 x Chicken Biryani']);
 });
+
+/*
+ * HOW A DISH IS WANTED, and counting in the language people count in.
+ *
+ * Two things a waiter says every night that the parser used to throw away.
+ */
+
+const REQ_MENU = [
+  'Chicken Biryani', 'Mutton Biryani', 'Chicken 65', 'Filter Coffee', 'Tea', 'Masala Dosa',
+].map((name, id) => ({ id: String(id), name }));
+const REQ_INDEX = ItemSearch.index(REQ_MENU);
+const asked = (text) => VoiceOrder.understand(text, REQ_INDEX, ItemSearch);
+
+/* -------------------------------------------------------- requirements */
+
+test('a requirement after the dish is a note, not another dish', () => {
+  const [line] = asked('two chicken biryani without onion');
+  assert.equal(line.quantity, 2);
+  assert.equal(line.item.name, 'Chicken Biryani');
+  assert.equal(line.note, 'Without onion');
+});
+
+test('a requirement before the dish keeps the dish', () => {
+  /* The marker takes itself and one word. Swallowing more would eat the
+     dish it is describing. */
+  const [line] = asked('no sugar coffee');
+  assert.equal(line.item.name, 'Filter Coffee');
+  assert.equal(line.note, 'No sugar');
+
+  const [spicy] = asked('extra spicy mutton biryani');
+  assert.equal(spicy.item.name, 'Mutton Biryani');
+  assert.equal(spicy.note, 'Extra spicy');
+});
+
+test('a half plate is one line with a note, not half a line', () => {
+  const [line] = asked('half plate chicken 65');
+  assert.equal(line.quantity, 1);
+  assert.equal(line.item.name, 'Chicken 65');
+  assert.equal(line.note, 'Half plate');
+});
+
+test('one by two, which is ordered by the hundred every morning', () => {
+  /* One drink poured into two cups. It changes what the kitchen does and not
+     how many go on the bill, and it is said both ways round. */
+  assert.equal(asked('one by two tea')[0].note, 'One by two');
+  assert.equal(asked('tea one by two')[0].note, 'One by two');
+  assert.equal(asked('one by two tea')[0].item.name, 'Tea');
+});
+
+test('a dish with no requirement carries no note', () => {
+  assert.equal(asked('two chicken biryani')[0].note, '');
+});
+
+test('a requirement on its own is not a dish called onion', () => {
+  /*
+   * Nothing would be left to order, so nothing is split. Returning an empty
+   * term would have the matcher search for nothing and hand back the first
+   * thing on the menu, which is how somebody ends up with a biryani they
+   * never mentioned.
+   */
+  assert.deepEqual(VoiceOrder.splitNote('no onion'), { term: 'no onion', note: '' });
+  assert.deepEqual(VoiceOrder.splitNote('half'), { term: 'half', note: '' });
+});
+
+test('"less spicy" is a requirement, "less coffee" is a removal', () => {
+  /*
+   * THE SAME WORD, TWO JOBS. "less" is in the remove verbs and belongs there.
+   * But "less spicy" takes nothing off anything, and reading it as a removal
+   * both loses the requirement and deletes a dish nobody cancelled.
+   */
+  const mild = VoiceOrder.commands('one chicken biryani less spicy', REQ_INDEX, ItemSearch);
+  assert.equal(mild.length, 1);
+  assert.equal(mild[0].verb, 'add');
+  assert.equal(mild[0].lines[0].item.name, 'Chicken Biryani');
+  assert.equal(mild[0].lines[0].note, 'Less spicy');
+
+  const fewer = VoiceOrder.commands('less coffee', REQ_INDEX, ItemSearch);
+  assert.equal(fewer[0].verb, 'remove');
+});
+
+test('a requirement survives the whole command path', () => {
+  const out = VoiceOrder.commands('add two chicken biryani without onion', REQ_INDEX, ItemSearch);
+  assert.equal(out[0].verb, 'add');
+  assert.equal(out[0].lines[0].note, 'Without onion');
+  assert.equal(out[0].lines[0].quantity, 2);
+});
+
+/* ----------------------------------------------------- counting in Tamil */
+
+test('a waiter counts plates in Tamil whatever the rest of the sentence is', () => {
+  /*
+   * "rendu chicken biryani" is two, and it is what gets said in a Tamil Nadu
+   * dining room all evening. Spelled the way a recogniser set to English
+   * transcribes the sound, because that is the only spelling that ever
+   * arrives here.
+   */
+  assert.equal(asked('rendu chicken biryani')[0].quantity, 2);
+  assert.equal(asked('moonu coffee')[0].quantity, 3);
+  assert.equal(asked('naalu tea')[0].quantity, 4);
+  assert.equal(asked('anju masala dosa')[0].quantity, 5);
+  assert.equal(asked('onnu chicken 65')[0].quantity, 1);
+});
+
+test('and in Hindi one town over', () => {
+  assert.equal(asked('teen coffee')[0].quantity, 3);
+  assert.equal(asked('chaar tea')[0].quantity, 4);
+  assert.equal(asked('paanch masala dosa')[0].quantity, 5);
+});
+
+test('"do" is NOT two, because it is a question', () => {
+  /*
+   * It is Hindi for two and also the commonest English auxiliary there is.
+   * "do you have chicken biryani" would come through as two of something
+   * called "have chicken biryani", which matches nothing - so a perfectly
+   * good question becomes a silence. Two is the one number a waiter can
+   * always say another way.
+   */
+  assert.equal(VoiceOrder.WORDS.do, undefined);
+  const [line] = asked('do you have chicken biryani');
+  assert.equal(line.quantity, 1);
+});
+
+test('the dish still has to be found after the number', () => {
+  /* A number word alone changes nothing: the menu decides. */
+  assert.equal(asked('rendu helicopter')[0].found, false);
+});

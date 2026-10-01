@@ -44,7 +44,9 @@ window.addEventListener('beforeunload', stopOrderHistoryPolling);
 document.addEventListener('DOMContentLoaded', function () {
     /* The server is already chosen synchronously by config.js; there is
        nothing left to wait for before the first request. */
-    loadOrderHistory();
+    // The floor also loads this script for ticket editing, without a history
+    // screen. Do not fetch hidden history or show its errors over the floor.
+    if (document.getElementById('table-selection-screen')) loadOrderHistory();
     setupEventListeners();
     showTableSelectionScreen(); // Start with table selection
     restoreTableFilterState(); // Set filters to collapsed by default
@@ -62,7 +64,7 @@ function showTableSelectionScreen() {
     if (headerElement) {
         headerElement.textContent = 'Select Table';
     }
-    document.getElementById('refresh-btn').style.display = 'none';
+    document.getElementById('refresh-btn').style.display = 'block';
     selectedTable = null;
 }
 
@@ -237,6 +239,8 @@ function setupEventListeners() {
         editBtn.addEventListener('click', openEditOrderModal);
     }
 
+
+
     const confirmCancelBtn = document.getElementById('confirm-cancel-order-btn');
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', async function () {
@@ -288,8 +292,19 @@ function setupEventListeners() {
 }
 
 // Load order history from real API
-async function loadOrderHistory() {
-    showLoader();
+let historyRequest = null, historyRequestFilter = null, historyRevision = 0, historyLoaded = false;
+function loadOrderHistory(options = {}) {
+    if (historyRequest && historyRequestFilter === currentFilter) return historyRequest;
+    historyRequestFilter = currentFilter;
+    const revision = ++historyRevision;
+    const request = loadOrderHistoryNow(options, revision).finally(() => {
+        if (historyRequest === request) historyRequest = null;
+    });
+    historyRequest = request;
+    return request;
+}
+async function loadOrderHistoryNow(options, revision) {
+    if (!historyLoaded && !options.background) showLoader();
 
     try {
         let branchId = localStorage.getItem('branch_id');
@@ -317,7 +332,9 @@ async function loadOrderHistory() {
             status: currentFilter === 'all' ? null : currentFilter
         });
 
+        if (revision !== historyRevision) return false;
         if (data.type === 'success') {
+            historyLoaded = true;
             allOrders = data.data.orders || [];
             generateTableCards(); // Generate table selection cards
             if (selectedTable !== null) {
@@ -327,12 +344,13 @@ async function loadOrderHistory() {
         } else {
             throw new Error(data.message || 'Failed to load orders');
         }
+        return true;
     } catch (error) {
+        if (revision !== historyRevision) return false;
         console.error('Error loading order history:', error);
-        // Fallback to empty array if API fails
-        allOrders = [];
-        filterOrders();
-        showToast('Failed to load order history: ' + error.message, 'error');
+        // A failed refresh says nothing about which orders still exist.
+        if (!options.background) showToast('Could not load the order history: ' + error.message, 'error');
+        return false;
     } finally {
         hideLoader();
     }
@@ -343,16 +361,32 @@ async function searchProducts(query) {
     const container = document.getElementById('product-suggestions');
     if (!container) return;
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 1) {
         container.innerHTML = '';
         return;
     }
 
     try {
         const allProducts = await getData(STORE_NAME);
-        const q = query.toLowerCase();
-        const matched = allProducts
-            .filter(p => p.name && p.name.toLowerCase().includes(q))
+
+        /*
+         * THE SAME SEARCH THE MENU USES, not a second one.
+         *
+         * This was `name.toLowerCase().includes(q)` with a two-character
+         * minimum - the exact substring test the menu screen was rebuilt to
+         * get away from. It finds Chicken Biryani from "biry" and from nothing
+         * else: not from "cb", which is what somebody selling two hundred a
+         * day types, and not from "chick biry", because two words are never
+         * one substring.
+         *
+         * So a waiter who had learned to type "cb" on the menu got nothing
+         * here, on the screen where they are already in a hurry because a
+         * table is waiting on a correction. Two searches in one app that
+         * answer differently is worse than one that is merely blunt.
+         */
+        const matched = (typeof ItemSearch !== 'undefined'
+            ? ItemSearch.search(ItemSearch.index(allProducts), query, { numbers: true })
+            : allProducts.filter(p => p.name && p.name.toLowerCase().includes(query.toLowerCase())))
             .slice(0, 10)
             .map(p => ({
                 _id: p.id,
@@ -390,7 +424,7 @@ function renderProductSuggestions(products) {
         <div class="product-suggestion" onclick="addProductToOrderById('${product._id}')">
             <div class="product-info">
                 <h6>${product.name}</h6>
-                <p class="product-price">₹${sellingPrice}</p>
+                <p class="product-price">${CaptainMoney.html(sellingPrice)}</p>
                 <small class="text-muted">Available: ${product.available_quantity}</small>
             </div>
             <button class="add-product-btn">
@@ -416,8 +450,9 @@ function addProductToOrderById(productId) {
 }
 
 // Save order changes to real API
+let savingOrderChanges = false;
 async function saveOrderChanges() {
-    if (!editingOrder || !currentOrderId) return;
+    if (!editingOrder || !currentOrderId || savingOrderChanges) return;
 
     showLoader();
     const discountValue = parseFloat(
@@ -472,7 +507,7 @@ async function saveOrderChanges() {
         // Only validate table selection for Dine-in mode
         if (dineType === 'Dine-in' && !newTableNo) {
             hideLoader();
-            showToast('Please select a table.', 'error');
+            showToast('Choose a table first.', 'error');
             return;
         }
         // For Takeaway, clear table values if not selected
@@ -481,17 +516,28 @@ async function saveOrderChanges() {
             newTableId = '';
         }
     }
+    // Takeaway must never retain the hidden selection of its former table.
+    if (dineType === 'Take away') { newTableNo = ''; newTableId = ''; }
+    savingOrderChanges = true;
+    window.OrderEditor?.setSaving(true);
     try {
-        const data = await POSNIC.api.post('/sales/updateOrder', {
+        const lines = linesForSave(editingOrder.items);
+        if (lines.length === 0) {
+            /*
+             * Every dish struck off. The till reads an order by the lines it
+             * still has, so an empty list is not "cancel everything" to it -
+             * it is a request with nothing in it, and it is refused. Cancelling
+             * the ORDER is the thing the waiter means, and it is one button
+             * away, so say that rather than showing them a server error.
+             */
+            hideLoader();
+            showToast('Nothing left on this order. Use Cancel order instead.', 'error');
+            return;
+        }
+
+        const data = await CaptainOrderActions.save( {
                 order_id: currentOrderId,
-                items: editingOrder.items
-                    .filter(item => parseFloat(item.quantity || item.item_quantity || 0) > 0)
-                    .map(item => ({
-                        ...item,
-                        product_id: item.product_id || item.item_id || item.id || null,
-                        quantity: parseFloat(item.quantity || item.item_quantity || 1),
-                        price: parseFloat(item.price || item.unit_price || item.item_base_price || 0),
-                    })),
+                items: lines,
                 total_amount: editingOrder.total_amount,
                 extra_discount_type: extraType,
                 extra_discount: extraVal,
@@ -499,11 +545,13 @@ async function saveOrderChanges() {
                 table_number: newTableNo,
                 table_id: newTableId,
                 dine_type: dineType,
-                person_count: dineType === 'Dine-in' ? (editingOrder.person_count || 1) : ''
+                person_count: dineType === 'Dine-in' ? (editingOrder.person_count || 1) : '',
+                seen_at: orderSeenAt(editingOrder)
         });
 
         if (data.type === 'success') {
-            showToast(data.message || 'Order updated successfully!', 'success');
+            showToast(data.message || 'Order updated', 'success');
+            window.OrderEditor?.saved();
             
             // Close modal
             const modalElement = document.getElementById('editOrderModal');
@@ -544,8 +592,17 @@ async function saveOrderChanges() {
         }
     } catch (error) {
         console.error('Error saving order changes:', error);
-        showToast('Failed to update order: ' + error.message, 'error');
+        /* Out of date rather than broken. The waiter is shown the order as it
+           is now, and nothing they did has been lost: it was never sent. */
+        if (isAConflict(error)) {
+            await tellThemSomebodyElseGotThere();
+            return;
+        }
+
+        showToast('Could not update the order: ' + error.message, 'error');
     } finally {
+        savingOrderChanges = false;
+        window.OrderEditor?.setSaving(false);
         hideLoader();
     }
 }
@@ -710,12 +767,12 @@ function renderOrders() {
                         ${formatDateTime(order.created_at)}
                     </span>
                     <span class="order-total">
-                        ₹${order.total_amount.toFixed(2)}
+                        ${CaptainMoney.html(order.total_amount)}
                     </span>
                 </div>
                 <div class="order-items-preview">
                     ${order.items.slice(0, 2).map(item =>
-        `<span class="item-preview">${item.quantity}x ${item.name}</span>`
+        `<span class="item-preview${struck(item, order)}">${item.quantity}x ${item.name}</span>`
     ).join(', ')}
                     ${order.items.length > 2 ? `... +${order.items.length - 2} more` : ''}
                 </div>
@@ -723,10 +780,14 @@ function renderOrders() {
             ${order.status === 'cancelled' || order.status === 'completed' ? '' : `
         <div class="order-actions">
             <button class="action-btn edit-btn" onclick="event.stopPropagation(); editOrder('${order._id}')">
-                <i class="fas fa-edit"></i> Edit
+                <i class="fas fa-edit"></i> Modify
             </button>
+            ${(order.dine_type || 'Dine-in') === 'Dine-in' ? `
+            <button class="action-btn move-btn" onclick="event.stopPropagation(); moveOrder('${order._id}')">
+                <i class="fas fa-right-left"></i> Move table
+            </button>` : ''}
             <button class="action-btn cancel-btn" onclick="event.stopPropagation(); cancelOrder('${order._id}')">
-                <i class="fas fa-times"></i> Cancel Order
+                <i class="fas fa-times"></i> Cancel order
             </button>
         </div>
         `}
@@ -815,6 +876,7 @@ function viewOrderDetails(orderId) {
                 </div>
             </div>
             
+            ${window.ServiceRounds ? ServiceRounds.render(order) : ''}
             <h6>Order Items:</h6>
             <div class="order-items-table">
                 <table class="table table-sm">
@@ -826,17 +888,17 @@ function viewOrderDetails(orderId) {
                         </tr>
                     </thead>
                     <tbody>
-                        ${order.items.map(item => `
-                        <tr>
+                        ${(Array.isArray(order.kitchen_rounds) ? [] : order.items).map(item => `
+                        <tr class="${struck(item, order).trim()}">
                             <td>
-                                ${item.name}
+                                <span class="line-name">${item.name}</span>
                                 ${item.item_description
             ? `<div class="order-item-notes">${item.item_description}</div>`
             : ''
         }
                             </td>
                             <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(item.price)}</td>
                         </tr>
                     `).join('')}
                     </tbody>
@@ -844,22 +906,22 @@ function viewOrderDetails(orderId) {
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Subtotal:</th>
-                            <td style="text-align: right;">₹${subtotal.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(subtotal)}</td>
                         </tr>
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Discount:</th>
-                            <td style="text-align: right;">-₹${discount.toFixed(2)}</td>
+                            <td style="text-align: right;">-${CaptainMoney.html(discount)}</td>
                         </tr>
                         <tr>
                             <td></td>
                             <th style="text-align: right;">Tax:</th>
-                            <td style="text-align: right;">₹${tax.toFixed(2)}</td>
+                            <td style="text-align: right;">${CaptainMoney.html(tax)}</td>
                         </tr>
                         <tr style="border-top: 2px solid #eee;">
                             <th></th>
                             <th style="text-align: right; font-size: 1.1rem;">Total Amount:</th>
-                            <th style="text-align: right; font-size: 1.1rem;">₹${parseFloat(order.total_amount || 0).toFixed(2)}</th>
+                            <th style="text-align: right; font-size: 1.1rem;">${CaptainMoney.html(order.total_amount)}</th>
                         </tr>
                     </tfoot>
                 </table>
@@ -899,8 +961,9 @@ function viewOrderDetails(orderId) {
     // Show modal
     const modalElement = document.getElementById('orderDetailsModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
-        const modal = new bootstrap.Modal(modalElement);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         modal.show();
+        window.dispatchEvent(new Event('captain:details'));
     }
 }
 
@@ -918,7 +981,7 @@ function modifyKot(orderId) {
     currentOrderId = orderId;
     
     // Load order data if not already loaded
-    if (!allOrders || allOrders.length === 0) {
+    if (!allOrders || !allOrders.some(order => order._id === orderId)) {
         loadOrderHistory().then(() => {
             openEditOrderModal();
         });
@@ -935,21 +998,260 @@ window.modifyKot = modifyKot;
 //     currentOrderId = orderId;
 //     openAddItemsModal();
 // }
+/*
+ * THE TABLES THIS SHOP HAS, read once and read the same way everywhere.
+ *
+ * The till caches them under kiosk_tableorders. The edit sheet parsed that
+ * string itself, and the move sheet below would have been a second parser of
+ * the same string: two readings of one list is how a table's id goes missing
+ * on one screen and not on the other.
+ */
+function tablesFromStorage() {
+    let raw = null;
+    try {
+        raw = localStorage.getItem('kiosk_tableorders');
+    } catch (e) {
+        return [];
+    }
+    if (!raw) return [];
+
+    try {
+        return (JSON.parse(raw) || []).map((t, index) => {
+            const value = String(t.tableorder_value != null ? t.tableorder_value : index + 1);
+            return {
+                value,
+                label: value,
+                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.table_id || '',
+            };
+        });
+    } catch (e) {
+        console.error('Failed to parse kiosk_tableorders:', e);
+        return [];
+    }
+}
+
+/*
+ * MOVING AN ORDER TO ANOTHER TABLE.
+ *
+ * Guests move. A two turns into a four, a table by the door turns out to be
+ * under the air conditioner, a party joins another party.
+ *
+ * This was already possible and almost nobody could find it: Modify, scroll
+ * past every dish on the order, find the table strip, change it, Update. That
+ * is the screen for adding and cancelling dishes, so moving a table meant
+ * walking through the one place where a mis-tap changes what the kitchen
+ * cooks. Here it is its own thing, doing the one thing, and the lines go back
+ * to the till exactly as they came.
+ */
+let orderBeingMoved = null;
+
+/*
+ * BUILT HERE, not written into a page.
+ *
+ * This file is loaded by the order list AND by the KOT screen, and the button
+ * that opens this sheet is drawn by this file, so a sheet living in one
+ * page's HTML would be a button that silently does nothing on the other. The
+ * markup follows the button.
+ */
+function ensureMoveSheet() {
+    let el = document.getElementById('moveTableModal');
+    if (el) return el;
+
+    el = document.createElement('div');
+    el.className = 'modal fade';
+    el.id = 'moveTableModal';
+    el.tabIndex = -1;
+    el.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Move to another table</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="move-table-now" id="move-table-now"></div>
+                    <div class="move-table-list" id="move-table-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn action-btn edit-btn" id="move-table-go" disabled>
+                        Choose a table
+                    </button>
+                </div>
+            </div>
+        </div>`;
+    document.body.appendChild(el);
+
+    /* One listener on the list: the tables are drawn fresh on every opening,
+       so a listener per button would be a listener per opening. */
+    el.querySelector('#move-table-list').addEventListener('click', (event) => {
+        const button = event.target.closest('.move-table');
+        if (button && !button.disabled) chooseMoveTable(button);
+    });
+    el.querySelector('#move-table-go').addEventListener('click', confirmMoveTable);
+
+    /* Reopened later for a different order, the last choice must not still be
+       sitting there ready to move this one. */
+    el.addEventListener('hidden.bs.modal', () => {
+        orderBeingMoved = null;
+        const go = document.getElementById('move-table-go');
+        if (go) {
+            go.disabled = true;
+            go.textContent = 'Choose a table';
+        }
+    });
+
+    return el;
+}
+
+function moveOrder(orderId) {
+    const order = (allOrders || []).find((o) => o._id === orderId);
+    if (!order) return;
+
+    ensureMoveSheet();
+    orderBeingMoved = order;
+    renderMoveTables();
+
+    const el = ensureMoveSheet();
+    if (typeof bootstrap !== 'undefined') new bootstrap.Modal(el).show();
+}
+
+/** Where the order is now, however the till spelled it. */
+const tableOf = (order) =>
+    String((order && (order.table_number || order.kiosk_table_no)) || '');
+
+function renderMoveTables() {
+    const order = orderBeingMoved;
+    const container = document.getElementById('move-table-list');
+    if (!order || !container) return;
+
+    const now = tableOf(order);
+    const here = document.getElementById('move-table-now');
+    if (here) here.textContent = now ? `Now on table ${now}` : 'Not on a table yet';
+
+    /*
+     * Which tables are already working. Moving onto one is allowed, because
+     * two parties do share a long table and a waiter knows their own floor
+     * better than this does. Saying so first is the difference between a
+     * decision and a surprise.
+     */
+    const busy = new Set(
+        (allOrders || [])
+            .filter(
+                (o) =>
+                    o._id !== order._id && o.status !== 'cancelled' && o.status !== 'completed'
+            )
+            .map(tableOf)
+            .filter(Boolean)
+    );
+
+    const tables = tablesFromStorage();
+    if (!tables.length) {
+        container.innerHTML =
+            '<div class="text-muted">No tables configured. Whoever set up the till adds them.</div>';
+        return;
+    }
+
+    container.innerHTML = tables
+        .map((t) => {
+            const isHere = t.value === now;
+            return `
+            <button type="button"
+                class="move-table${isHere ? ' is-here' : ''}${busy.has(t.value) ? ' is-busy' : ''}"
+                data-value="${t.value}"
+                data-id="${t.id}"
+                ${isHere ? 'disabled' : ''}>
+                <span class="move-table-no">${t.label}</span>
+                ${isHere ? '<span class="move-table-note">here now</span>' : ''}
+                ${!isHere && busy.has(t.value) ? '<span class="move-table-note">has an order</span>' : ''}
+            </button>`;
+        })
+        .join('');
+}
+
+/*
+ * Chosen, then confirmed. A tap that moved an order the moment it landed
+ * would make a mis-tap into a table change the kitchen hears about, and the
+ * floor is not a place where anybody taps carefully.
+ */
+function chooseMoveTable(button) {
+    const list = document.getElementById('move-table-list');
+    if (!list) return;
+    for (const other of list.querySelectorAll('.move-table')) other.classList.remove('is-chosen');
+    button.classList.add('is-chosen');
+
+    const go = document.getElementById('move-table-go');
+    if (go) {
+        go.disabled = false;
+        go.textContent = `Move to table ${button.dataset.value}`;
+    }
+}
+
+async function confirmMoveTable() {
+    const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
+    const order = orderBeingMoved;
+    if (!chosen || !order) return;
+
+    const go = document.getElementById('move-table-go');
+    if (go) go.disabled = true;
+
+    try {
+        showLoader();
+
+        /*
+         * The same lines back, unchanged. The endpoint refuses an order with
+         * no items, so a move has to carry them; linesForSave is what the
+         * edit sheet sends, so a moved order cannot come out of this door
+         * shaped differently from a modified one.
+         */
+        const data = await CaptainOrderActions.save( {
+            order_id: order._id,
+            items: linesForSave(order.items),
+            total_amount: order.total_amount,
+            table_number: chosen.dataset.value,
+            table_id: chosen.dataset.id || '',
+            dine_type: order.dine_type || 'Dine-in',
+            person_count: order.person_count || 1,
+            seen_at: orderSeenAt(order),
+        });
+
+        if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
+
+        showToast(`Moved to table ${chosen.dataset.value}`, 'success');
+
+        const el = document.getElementById('moveTableModal');
+        if (el && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+
+        if (typeof loadTables === 'function') await loadTables();
+        await loadOrderHistory();
+    } catch (error) {
+        if (isAConflict(error)) {
+            await tellThemSomebodyElseGotThere();
+            return;
+        }
+
+        showToast(error.message || 'Could not move the order', 'error');
+        if (go) go.disabled = false;
+    } finally {
+        hideLoader();
+    }
+}
+
 function renderEditTables(tables, selectedTableNo) {
     const container = document.getElementById('edit-table-list');
     if (!container) return;
 
-    if (!tables || tables.length === 0) {
-        container.innerHTML = '<div class="text-muted">No tables configured</div>';
-        return;
-    }
-
     let html = '';
+    tables = tables || [];
+    const busy = new Set((allOrders || []).filter(order => order._id !== currentOrderId && !['cancelled', 'completed'].includes(order.status)).map(tableOf));
 
     tables.forEach(t => {
-        const value = t.value;
+        const value = editorEscape(t.value);
         const radioId = `edit_table_${value}`;
-        const tableId = t.id || '';
+        const tableId = editorEscape(t.id || '');
 
         html += `
             <div class="table-item">
@@ -959,8 +1261,8 @@ function renderEditTables(tables, selectedTableNo) {
                     name="edit_table_no"
                     value="${value}"
                     data-id="${tableId}"
-                    ${value === selectedTableNo ? 'checked' : ''}>
-                <label for="${radioId}" class="table-label">${value}</label>
+                    ${String(value) === String(selectedTableNo) ? 'checked' : ''}>
+                <label for="${radioId}" class="table-label"><span translate="no">${value}</span>${busy.has(String(t.value)) ? '<small>has an order</small>' : ''}</label>
             </div>
         `;
     });
@@ -1053,6 +1355,8 @@ function setEditPersonCount(n) {
 function initEditPersonControls(initial) {
     const buttons = document.querySelectorAll('.edit-person-btn');
     const input = document.getElementById('edit_person_input');
+    if (input?.dataset.initialized) { setEditPersonCount(initial || 1); return; }
+    if (input) input.dataset.initialized = 'true';
 
     buttons.forEach(btn => {
         btn.addEventListener('click', function () {
@@ -1119,7 +1423,7 @@ function openEditOrderModal() {
     if (!order) return;
 
     if (order.status === 'cancelled') {
-        showToast('Cancelled order cannot be edited.', 'error');
+        showToast('This order was cancelled, so it cannot be changed.', 'error');
         return;
     }
 
@@ -1165,25 +1469,7 @@ function openEditOrderModal() {
 
     const currentTableNo = order.table_number || order.kiosk_table_no || '';
     const currentPersons = order.person_count || 1;
-    const raw = localStorage.getItem('kiosk_tableorders');
-    let tables = [];
-
-    if (raw) {
-        try {
-            const tableorders = JSON.parse(raw) || [];
-            tables = tableorders.map((t, index) => {
-                const value = (t.tableorder_value ?? (index + 1)).toString();
-                const tableId = t._id?.$oid || t.table_id || ''; // adjust based on actual data
-                return {
-                    value: value,
-                    label: value,
-                    id: tableId
-                };
-            });
-        } catch (e) {
-            console.error('Failed to parse kiosk_tableorders:', e);
-        }
-    }
+    const tables = tablesFromStorage();
 
     renderEditTables(tables, currentTableNo);
     // current table no listல் இல்லனா → manual input select & prefill
@@ -1197,7 +1483,7 @@ function openEditOrderModal() {
         }
     }
 
-    editingOrder = JSON.parse(JSON.stringify(order)); // Deep copy  
+    setOrderBeingModified(JSON.parse(JSON.stringify(order))); // Deep copy
     editingOrder.person_count = currentPersons || 1;
     if (!Array.isArray(editingOrder.items)) editingOrder.items = [];
     initEditPersonControls(editingOrder.person_count);
@@ -1207,12 +1493,12 @@ function openEditOrderModal() {
         const unit = parseFloat(item.unit_price || item.item_base_price || item.price || 0);
         item.price = isNaN(unit) ? 0 : parseFloat(unit.toFixed(2));
         if (!item.selling_price) item.selling_price = item.price;
-        if (!item.quantity && item.item_quantity) item.quantity = item.item_quantity;
-        item.quantity = parseFloat(item.quantity || 1);
+        item.quantity = lineQuantity(item);
     });
 
     renderCurrentOrderItems();
     clearNewItems();
+    window.OrderEditor?.begin();
 
     const modalElement = document.getElementById('editOrderModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
@@ -1223,6 +1509,7 @@ function openEditOrderModal() {
 
 // Handle edit order type change to show/hide table and pax sections
 function handleEditOrderTypeChange() {
+    if (window.OrderEditor) { window.OrderEditor.typeChanged(); return; }
     const orderType = document.querySelector('input[name="edit_dine_type"]:checked')?.value || 'Dine-in';
     const tableSection = document.getElementById('edit-table-section');
     const paxSection = document.getElementById('edit-pax-section');
@@ -1253,11 +1540,11 @@ function cancelOrder(orderId) {
     if (!order) return;
 
     if (order.status === 'cancelled') {
-        showToast('Order already cancelled.', 'error');
+        showToast('This order was already cancelled.', 'error');
         return;
     }
     if (order.status === 'completed') {
-        showToast('Completed order cannot be cancelled.', 'error');
+        showToast('This order is already done, so it cannot be cancelled.', 'error');
         return;
     }
 
@@ -1276,7 +1563,7 @@ async function performCancelOrder(orderId) {
 
     showLoader();
     try {
-        const data = await POSNIC.api.post('/sales/updateOrder', {
+        const data = await CaptainOrderActions.save( {
             order_id: orderId,
             items: order.items,
             total_amount: order.total_amount,
@@ -1297,13 +1584,13 @@ async function performCancelOrder(orderId) {
                 viewOrderDetails(orderId);
             }
 
-            showToast(data.message || 'Order cancelled successfully.', 'success');
+            showToast(data.message || 'Order cancelled', 'success');
         } else {
-            showToast(data.message || 'Failed to cancel order', 'error');
+            showToast(data.message || 'Could not cancel the order', 'error');
         }
     } catch (e) {
         console.error('Error cancelling order:', e);
-        showToast('Failed to cancel order: ' + e.message, 'error');
+        showToast('Could not cancel the order: ' + e.message, 'error');
     } finally {
         hideLoader();
     }
@@ -1328,25 +1615,44 @@ function renderCurrentOrderItems() {
         const totalTax = perUnitTax * quantity;
         
         return `
-        <div class="order-item-card">
+        <div class="order-item-card${struck(item, editingOrder)}">
             <div class="item-info" data-index="${index}">
-                <h6>${item.name}</h6>
-                ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ₹${totalSellingPrice.toFixed(2)}</strong></p>` : ''}
-                ${item.item_description ? `<p class="item-notes small text-muted">${item.item_description}</p>` : ""}
+                <h6><span class="line-name" translate="no">${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
+                ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ${CaptainMoney.html(totalSellingPrice)}</strong></p>` : ''}
+                ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
+                ${ServiceDetails.summary(item)}
             </div>
-            <div class="item-controls">
-                <button class="qty-btn" onclick="updateItemQuantity(${index}, -1)">-</button>
+            ${!lineIsCancelled(item, editingOrder) ? `${ServiceDetails.supported() ? `<button type="button" class="preparation-link" data-preparation-order="${index}">Preparation</button>` : ''}<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
+            ${lineIsCancelled(item, editingOrder)
+        /*
+         * A cancelled line keeps no controls.
+         *
+         * Its quantity is zero and it is not going back on the bill from
+         * here, so a minus that cannot go lower and a plus that would quietly
+         * un-cancel it are two ways to be confusing. What is left is the word
+         * for what happened, beside a name with a rule through it.
+         */
+        ? `<div class="item-controls">
+                <span class="item-cancelled-mark">Cancelled</span>
+            </div>`
+        : `<div class="item-controls">
+                <button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button>
                 <span class="qty-display">${item.quantity}</span>
-                <button class="qty-btn" onclick="updateItemQuantity(${index}, 1)">+</button>
-                <button class="remove-btn" onclick="removeItem(${index})">
+                <button type="button" class="qty-btn" aria-label="Increase quantity" onclick="updateItemQuantity(${index}, 1)">+</button>
+                <button type="button" class="remove-btn" aria-label="Remove Item" onclick="removeItem(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
-            </div>
+            </div>`}
         </div>
         `;
     }).join('');
 
     container.innerHTML = itemsHtml;
+    window.OrderEditor?.refresh();
+}
+
+function editorEscape(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
 // Click on item-info → open notes modal
@@ -1442,10 +1748,138 @@ function removeItem(index) {
     showRemoveItemConfirmation(index);
 }
 
+/**
+ * HOW MANY OF THIS DISH THE ORDER SHOULD END UP WITH.
+ *
+ * ZERO IS A NUMBER, and that is the whole point of this function. A cancelled
+ * line is kept on the screen with quantity 0 so it can be shown struck through
+ * - but it still carries `item_quantity` from the till, its quantity BEFORE
+ * the waiter struck it off.
+ *
+ * The old code read `item.quantity || item.item_quantity`, and 0 is falsy, so
+ * a cancelled dish was sent back at its original quantity. The till saw no
+ * change, cancelled nothing, printed nothing, and the dish was still there
+ * when the waiter opened the order again. Reported from a live floor at Azure
+ * on 14-09-2026: "i cancel one item and updated button. it closed. i dont see
+ * any print is printed. also i went again inside same order its not
+ * cancelled."
+ *
+ * A reduction from 2 to 1 was never affected - 1 is truthy. Only cancelling
+ * was, which is why it went out looking fine.
+ */
+function lineQuantity(item) {
+    if (!item) return 0;
+    const said = [item.quantity, item.item_quantity].find(
+        (v) => v !== undefined && v !== null && v !== ''
+    );
+    const n = parseFloat(said);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * The lines to send when an order is saved.
+ *
+ * WHAT IS ABSENT IS WHAT IS CANCELLED. The till rebuilds the order from the
+ * lines it receives: a dish that arrives is kept at the quantity given, and a
+ * dish that does NOT arrive is struck off and written into the order's history
+ * as a cancellation - which is also what puts a fresh ticket in the kitchen.
+ *
+ * So a cancelled line must be left out, not sent with a zero, and a line the
+ * waiter never touched must be sent exactly as it was.
+ */
+/*
+ * WHICH VERSION OF THE ORDER THIS PHONE IS LOOKING AT.
+ *
+ * A save sends the WHOLE order and the till keeps only what arrives, which is
+ * how a cancelled dish gets cancelled. On a floor with several handsets it is
+ * also how food goes missing: another waiter adds a biryani while this screen
+ * is open, this screen saves a list that never had it, and the till removes a
+ * dish the kitchen has already cooked.
+ *
+ * So the save says what it was looking at, and the till refuses one written
+ * against an older version. Nothing is guessed here: this is the order's own
+ * timestamp, handed back exactly as it arrived.
+ */
+function orderSeenAt(order) {
+    if (!order) return null;
+    return order.updated_date || order.created_date || null;
+}
+
+/*
+ * SOMEBODY ELSE GOT THERE FIRST.
+ *
+ * Not an error message. The waiter did nothing wrong, and their change is not
+ * lost - it was never sent. What they need to know is that the order in front
+ * of them is out of date and is about to be refreshed, so they can look at it
+ * and decide again. Only a person knows whether the dish somebody else added
+ * was meant to go.
+ */
+function isAConflict(error) {
+    return !!error && (error.status === 409 || error.message === 'order_changed');
+}
+
+async function tellThemSomebodyElseGotThere() {
+    showToast('Somebody else changed this order. Showing you the latest.', 'error');
+    window.OrderEditor?.saved(); // The stale draft must close before loading the latest order.
+
+    for (const id of ['editOrderModal', 'moveTableModal']) {
+        const el = document.getElementById(id);
+        if (el && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+    }
+
+    if (typeof loadTables === 'function') await loadTables();
+    await loadOrderHistory();
+}
+
+function linesForSave(items) {
+    return (Array.isArray(items) ? items : [])
+        .map((item) => ({ item, quantity: lineQuantity(item) }))
+        .filter((row) => row.quantity > 0 && !lineIsCancelled(row.item))
+        .map((row) => ({
+            ...row.item,
+            product_id: row.item.product_id || row.item.item_id || row.item.id || null,
+            quantity: row.quantity,
+            price: parseFloat(
+                row.item.price || row.item.unit_price || row.item.item_base_price || 0
+            ),
+        }));
+}
+
 function confirmRemoveItem() {
     if (!editingOrder || pendingRemovalIndex === null) return;
     
-    editingOrder.items.splice(pendingRemovalIndex, 1);
+    const line = editingOrder.items[pendingRemovalIndex];
+
+    /*
+     * KEPT AND STRUCK, not deleted - if the kitchen ever knew about it.
+     *
+     * Owner: "strick not working. i see text without any strick."
+     *
+     * Because this ran `items.splice(index, 1)`. The line stopped existing, so
+     * the rule that strikes cancelled lines was correct and had nothing to be
+     * correct about. A dish that simply vanishes is also the thing the strike
+     * was asked for INSTEAD of: "it symbolic that we cancelled it" only means
+     * something while it is still on the screen.
+     *
+     * A dish ADDED IN THIS SESSION is different. Nobody cooked it and nobody
+     * was told about it, so there is nothing to symbolise - it goes, the way
+     * taking something out of a basket does.
+     *
+     * Quantity 0 is what keeps it off the bill: updateOrderTotal reduces over
+     * quantity, and the payload drops zero-quantity lines before they reach
+     * the till. A cancelled dish cannot be charged for.
+     */
+    const wasOrdered = !!(line && (line._id || line.sale_inline_item_id || line.item_id));
+    if (wasOrdered) {
+        line.cancelled = true;
+        line.cancelled_quantity = Number(line.quantity) || 0;
+        line.quantity = 0;
+    } else {
+        editingOrder.items.splice(pendingRemovalIndex, 1);
+    }
     pendingRemovalIndex = null;
     
     const modalEl = document.getElementById('removeItemConfirmModal');
@@ -1467,13 +1901,14 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    const existingItem = editingOrder.items.find(item => item.product_id === productId);
+    const existingItem = editingOrder.items.find(item => (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;
     } else {
         editingOrder.items.push({
             product_id: productId,
+            line_id: crypto.randomUUID(),
             name: productName,
             selling_price: productPrice,  // Use selling_price field for consistency
             price: productPrice,
@@ -1501,10 +1936,12 @@ function updateOrderTotal() {
     if (!editingOrder) return;
 
     const total = editingOrder.items.reduce((sum, item) => {
+        if (lineIsCancelled(item, editingOrder)) return sum;
         return sum + (item.quantity * item.price);
     }, 0);
 
     editingOrder.total_amount = total.toFixed(2);
+    window.OrderEditor?.refresh();
 }
 
 // Clear new items
@@ -1537,7 +1974,7 @@ function goBack() {
 }
 
 function refreshOrders() {
-    loadOrderHistory();
+    return window.MobileGestures ? MobileGestures.refresh() : loadOrderHistory();
 }
 
 function showLoader() {
@@ -1574,3 +2011,737 @@ function showToast(message, type = 'success', duration = 3000) {
         toast.style.display = 'none';
     }, duration);
 }
+/* ==================================================================
+ * ADDING TO AN ORDER, FROM THE MENU ITSELF
+ * ==================================================================
+ *
+ * Owner, relaying a client: "for adding within that screen so conjested.
+ * adding new item should have button like add item and same as first scree
+ * menu item list other so many stuff should neatly available. after adding
+ * confirmation and add to existing order."
+ *
+ * The modify screen used to offer a text box and a list of names, squeezed
+ * into half a column beside the order, the discount fields, the dine type,
+ * the table and the cover count - on a phone. A waiter hunting for a dish got
+ * none of what the menu screen gives them: categories, prices, photographs,
+ * what is sold out, and a stepper that counts.
+ *
+ * So this opens the REAL MENU, drawn by the same MenuView the menu screen
+ * uses. Not a copy: a copy would drift from the original the week after it was
+ * written, and the two would disagree about what is on the card.
+ *
+ * Nothing is saved from in here. Items land in editingOrder the way they
+ * always did, the modify screen shows them, and "Update the order" is still
+ * the one button that talks to the till. Adding is a choice; committing is a
+ * separate decision, and they stay separate.
+ */
+
+/**
+ * Has this line been cancelled?
+ *
+ * Owner: "whenever order cancel or item cancel those line item name should be
+ * strick in the middle. it symbolic that we cancelled it."
+ *
+ * Two ways a line is cancelled and they arrive differently:
+ *
+ *   THE WHOLE ORDER was cancelled - every line on it is off, and the order
+ *   carries the status rather than the lines.
+ *   ONE LINE was taken off a live order. The till records that on the item,
+ *   and it has been spelled more than one way over the years, so all of them
+ *   are accepted here rather than in four different templates.
+ *
+ * One function, because three screens show these lines and a dish struck
+ * through in one view and plain in another is worse than neither.
+ */
+function lineIsCancelled(item, order) {
+    if (order && String(order.status || '').toLowerCase() === 'cancelled') return true;
+    if (!item) return false;
+    if (item.cancelled === true || item.is_cancelled === true) return true;
+    if (String(item.status || '').toLowerCase() === 'cancelled') return true;
+    /* A line reduced to nothing is a line that was taken off. */
+    if (item.cancelled_quantity && Number(item.cancelled_quantity) >= Number(item.quantity || 0)) {
+        return true;
+    }
+    return false;
+}
+
+/** The class that strikes a line through, or nothing. */
+function struck(item, order) {
+    return lineIsCancelled(item, order) ? ' is-cancelled' : '';
+}
+
+let pickerMenu = null;
+/* The flat list behind the sections, which is what a search ranks over. Kept
+   so typing does not have to re-read IndexedDB on every keystroke. */
+let pickerAll = [];
+/*
+ * The same list, PREPARED for searching.
+ *
+ * ItemSearch.search wants what ItemSearch.index() returns, not raw rows -
+ * handing it the rows throws `indexed.words is not iterable`, which in here
+ * would have been a sheet that died the moment somebody typed. Built once when
+ * the menu loads, because the folding and the word splitting are the expensive
+ * half and doing them per keystroke is what makes a cheap Android stutter.
+ */
+let pickerIndex = null;
+/* What is in the box right now. Held rather than read off the input, because
+   the redraw that follows a keystroke happens after a debounce and the box may
+   have moved on by then. */
+let pickerTerm = '';
+
+async function openItemPicker() {
+    const sheet = document.getElementById('item-picker');
+    const body = document.getElementById('item-picker-body');
+    const rail = document.getElementById('item-picker-rail');
+    if (!sheet || !body) return;
+
+    sheet.hidden = false;
+    document.body.classList.add('picker-open');
+    body.innerHTML = '<div class="menu-nothing">Loading the menu...</div>';
+
+    try {
+        const products = await getData(STORE_NAME);
+        if (!products || !products.length) {
+            body.innerHTML = MenuView.nothing(
+                'No items for this branch yet',
+                'Whoever set up the till needs to add them.'
+            );
+            return;
+        }
+
+        pickerAll = products;
+        pickerIndex = (typeof ItemSearch !== 'undefined' && ItemSearch.index)
+            ? ItemSearch.index(products)
+            : null;
+        /* Grouped where the card on the wall groups it, so a dish has one
+           number and not one per screen. */
+        pickerMenu = MenuView.fromFlat(products);
+        pickerTerm = '';
+        const box = document.getElementById('picker-search-input');
+        if (box) box.value = '';
+        drawPicker();
+    } catch (error) {
+        console.error('Could not open the menu', error);
+        body.innerHTML = MenuView.nothing('Could not load the menu', 'Try again in a moment.');
+    }
+}
+
+/**
+ * Draw the sheet for whatever is typed in it.
+ *
+ * Two states, the same two the ordering screen has:
+ *
+ *   NOTHING TYPED   the whole menu, in the shop's own section order, with the
+ *                   rail and the MENU button to move around it
+ *   SOMETHING TYPED one flat list, ranked by ItemSearch, with the rail and the
+ *                   index hidden - a jump index is meaningless over a result
+ *                   set, and leaving it there implies the sections are still
+ *                   the thing you are moving through
+ *
+ * The rows are drawn by MenuView and ranked by ItemSearch: the two modules the
+ * ordering screen itself uses. That is the whole reason this looks and behaves
+ * the same rather than merely similar.
+ */
+/**
+ * How many of each dish are on the order being modified.
+ *
+ * MenuView draws a row as `- qty +` whenever the cart it is given has a count
+ * for it, and as ADD when it does not. Handing it an empty map - which the
+ * first version did - means every row says ADD for ever, however many times it
+ * has been tapped, and the only feedback is a word that flashes and goes away.
+ *
+ * Keyed by product_id, which is what the order carries and what the data-id on
+ * a row is. The VALUE is a line object, not a number: MenuView.render reads
+ * `cart.get(id).quantity`, so a map of plain counts makes every row draw ADD -
+ * correct right after a tap, because that path calls MenuView.dish directly
+ * with a number, and wrong after any redraw. That asymmetry is the whole trap.
+ */
+/**
+ * The order currently being modified.
+ *
+ * One named way to ask, because `editingOrder` is a `let` at the top of this
+ * file: a script-scoped binding that SHADOWS any window property of the same
+ * name. Anything outside this file - a test, a later screen - that reads
+ * `window.editingOrder` gets an object the application never writes to, which
+ * is a mistake that has already been made twice here and is invisible both
+ * times: the code runs, and quietly describes nothing.
+ *
+ * A function DECLARATION is reachable on window, so this is the seam.
+ */
+function orderBeingModified() {
+    return editingOrder;
+}
+
+/**
+ * Start modifying an order.
+ *
+ * The counterpart to orderBeingModified, and here for the same reason: a `let`
+ * at the top of this file cannot be reached from outside it, so without a
+ * named way in, nothing - no later screen, no test - can put an order into the
+ * modify flow. Two functions, one in and one out, and the binding stops being
+ * a thing only this file can talk about.
+ */
+function setOrderBeingModified(order) {
+    editingOrder = order;
+    return editingOrder;
+}
+
+function pickerCart() {
+    const cart = new Map();
+    /*
+     * `editingOrder`, NOT `window.editingOrder`.
+     *
+     * It is declared `let` at the top of this file, so it is a script-scoped
+     * binding that SHADOWS any window property of the same name. Reading the
+     * window one gets an object the application never writes to: every row
+     * would draw ADD for ever, exactly as if nothing had been added - the bug
+     * this code exists to fix, reintroduced one line lower down.
+     */
+    const order = orderBeingModified();
+    const items = (order && order.items) || [];
+    for (const item of items) {
+        if (lineIsCancelled(item, order) || Number(item.quantity) <= 0) continue;
+        const id = String(item.product_id || item.id || '');
+        if (!id) continue;
+        const had = cart.get(id);
+        const quantity = (had ? had.quantity : 0) + (Number(item.quantity) || 0);
+        cart.set(id, { quantity });
+    }
+    return cart;
+}
+
+/**
+ * Redraw ONE row, after its count changed.
+ *
+ * Not the whole menu: a full redraw loses the scroll position, and losing it
+ * after every tap is how adding three dishes becomes three journeys back down
+ * the menu.
+ */
+function pickerRefreshRow(id) {
+    /*
+     * EVERY row for this dish, not the first one.
+     *
+     * A dish can be on the screen twice now: once in a shortcut strip at the
+     * top and once in its own category below. That is deliberate - the strips
+     * are a shortcut, not a replacement, and removing a dish from its section
+     * because it happens to be popular would make the menu wrong.
+     *
+     * But two rows for one dish MUST agree. Refreshing only the first left the
+     * other showing ADD for a dish that was already on the order, which is the
+     * exact confusion the counter was put there to end.
+     */
+    const rows = document.querySelectorAll('#item-picker-body .dish[data-id="' + id + '"]');
+    if (!rows.length) return;
+    const item = pickerItem(id);
+    if (!item) return;
+    const line = pickerCart().get(String(id));
+    /* dish() takes a NUMBER; render() takes the line. Same map, two shapes. */
+    /* With the numbers, like every other row on this sheet. Without them a
+       dish LOSES its number the moment somebody taps it, which is worse than
+       never having shown one: the column goes ragged under the thumb. */
+    const fresh = MenuView.dish(item, line ? line.quantity : 0, {
+      numbers: MenuView.numbers(pickerMenu),
+    });
+    for (const row of rows) {
+        const holder = document.createElement('div');
+        holder.innerHTML = fresh;
+        if (holder.firstElementChild) row.replaceWith(holder.firstElementChild);
+    }
+}
+
+function drawPicker() {
+    const body = document.getElementById('item-picker-body');
+    const rail = document.getElementById('item-picker-rail');
+    const indexBtn = document.getElementById('picker-index-btn');
+    if (!body) return;
+
+    const term = String(pickerTerm || '').trim();
+
+    /* Every dish's number, from the shop's own menu order - the same on every
+       handset, because it is derived rather than assigned. */
+    const numbers = MenuView.numbers(pickerMenu);
+
+    if (!term) {
+        if (rail) {
+            rail.innerHTML = MenuView.rail(pickerMenu, {});
+            rail.hidden = false;
+        }
+        if (indexBtn) indexBtn.hidden = !(pickerMenu && pickerMenu.length > 1);
+        /*
+         * The shortcuts, then the whole menu. A waiter who wants the card
+         * scrolls past three short strips; one who wants another water has
+         * already found it.
+         */
+        const cart = pickerCart();
+        body.innerHTML = MenuView.render(
+            [...pickerShortcuts(pickerMenu, cart), ...pickerMenu],
+            cart,
+            { numbers }
+        );
+        return;
+    }
+
+    if (rail) rail.hidden = true;
+    if (indexBtn) indexBtn.hidden = true;
+
+    const hits = pickerIndex
+        ? ItemSearch.search(pickerIndex, term, {
+            /* "chicken sixty five" finds Chicken 65, the way it does on the
+               ordering screen. Typed numerals only - no phonetic guessing,
+               which belongs to speech and not to a keyboard. */
+            numbers: true,
+        })
+        : pickerAll.filter((i) => String(i.name || '').toLowerCase().includes(term.toLowerCase()));
+
+    /*
+     * A NUMBER TYPED IS A NUMBER MEANT - and also, sometimes, a name.
+     *
+     * Owner: "if enter 33 then it shows." Typing 33 puts dish 33 at the top.
+     *
+     * But it does NOT replace the search, because in an Indian kitchen a
+     * number IS a dish name: type 65 and a waiter may well want Chicken 65,
+     * which the text search finds and which no numbering scheme should take
+     * away from them. So the numbered dish goes FIRST, labelled, and every
+     * name match follows it. Both readings are offered and the waiter picks;
+     * neither is guessed at on their behalf.
+     */
+    const byNumber = /^[0-9]{1,4}$/.test(term) ? MenuView.atNumber(pickerMenu, term) : null;
+    const rest = byNumber ? hits.filter((i) => String(i.id) !== String(byNumber.id)) : hits;
+
+    if (!hits.length && !byNumber) {
+        body.innerHTML = MenuView.nothing(
+            'Nothing matches "' + term + '"',
+            'Try fewer letters, the first letters of each word, or a dish number.'
+        );
+        return;
+    }
+
+    /*
+     * One section, because a search result is one list. Given a name rather
+     * than left blank so the rows sit under a heading like every other row on
+     * this screen - a result list with no heading reads as a different screen.
+     */
+    const sections = [];
+    if (byNumber) {
+        sections.push({ key: 'number', name: 'No. ' + term, items: [byNumber] });
+    }
+    if (rest.length) {
+        sections.push({
+            key: 'found',
+            name: rest.length + (rest.length === 1 ? ' match' : ' matches'),
+            items: rest,
+        });
+    }
+
+    body.innerHTML = MenuView.render(sections, pickerCart(), { numbers });
+}
+
+/** Every category with a count, for the MENU sheet. */
+function pickerIndexRows() {
+    return (pickerMenu || [])
+        .map(function (section) {
+            return '<button type="button" class="menu-index-row" data-category="' + section.key + '">'
+                + '<span class="menu-index-name">' + section.name + '</span>'
+                + '<span class="menu-index-count">' + section.items.length + '</span>'
+                + '</button>';
+        })
+        .join('');
+}
+
+function openPickerIndex() {
+    const sheet = document.getElementById('picker-index');
+    const list = document.getElementById('picker-index-list');
+    if (!sheet || !list) return;
+    list.innerHTML = pickerIndexRows();
+    sheet.hidden = false;
+}
+
+function closePickerIndex() {
+    const sheet = document.getElementById('picker-index');
+    if (sheet) sheet.hidden = true;
+}
+
+/** Scroll the sheet to a section, the way the rail does. */
+function pickerGoTo(key) {
+    const section = document.getElementById('sec-' + key);
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('#item-picker-rail .menu-chip').forEach(function (chip) {
+        chip.classList.toggle('is-here', chip.dataset.category === key);
+    });
+}
+
+function closeItemPicker() {
+    const sheet = document.getElementById('item-picker');
+    if (sheet) sheet.hidden = true;
+    document.body.classList.remove('picker-open');
+    window.OrderEditor?.refresh();
+    document.getElementById('open-item-picker')?.focus({ preventScroll: true });
+}
+
+/*
+ * TYPING, debounced.
+ *
+ * Ranking a two hundred item menu is microseconds, but re-rendering it on
+ * every keystroke is not - and the phone a restaurant actually buys shows that
+ * as a keyboard that lags behind the thumb. 120ms is under the threshold where
+ * somebody notices a wait and well above the gap between two fast keystrokes.
+ */
+let pickerTyping = null;
+document.addEventListener('input', function (event) {
+    if (!event.target || event.target.id !== 'picker-search-input') return;
+    const value = event.target.value;
+    const clear = document.getElementById('picker-search-clear');
+    if (clear) clear.hidden = !value;
+    clearTimeout(pickerTyping);
+    pickerTyping = setTimeout(function () {
+        pickerTerm = value;
+        drawPicker();
+    }, 120);
+});
+
+/* One listener for the whole sheet, because the rows are redrawn. */
+document.addEventListener('click', function (event) {
+    if (!event.target.closest) return;
+
+    if (event.target.closest('#open-item-picker')) {
+        openItemPicker();
+        return;
+    }
+    if (event.target.closest('#item-picker-close') || event.target.closest('#item-picker-done')) {
+        closeItemPicker();
+        return;
+    }
+
+    /* The MENU sheet: every category at once, with counts. */
+    if (event.target.closest('#picker-index-btn')) {
+        openPickerIndex();
+        return;
+    }
+    if (event.target.id === 'picker-index-scrim' || event.target.closest('#picker-index-close')) {
+        closePickerIndex();
+        return;
+    }
+    const indexRow = event.target.closest('.menu-index-row');
+    if (indexRow && indexRow.closest('#picker-index')) {
+        closePickerIndex();
+        /* After the sheet is gone, or the scroll lands against a screen that
+           is about to change height. */
+        setTimeout(function () { pickerGoTo(indexRow.dataset.category); }, 60);
+        return;
+    }
+
+    /* A chip jumps to its section, the way the menu screen's rail does. */
+    const chip = event.target.closest('.menu-chip');
+    if (chip && chip.closest('#item-picker-rail')) {
+        pickerGoTo(chip.dataset.category);
+        return;
+    }
+
+    /* The cross in the search box. */
+    if (event.target.closest('#picker-search-clear')) {
+        const box = document.getElementById('picker-search-input');
+        if (box) {
+            box.value = '';
+            box.focus();
+        }
+        pickerTerm = '';
+        const clear = document.getElementById('picker-search-clear');
+        if (clear) clear.hidden = true;
+        drawPicker();
+        return;
+    }
+
+    /*
+     * ADD, from inside the picker.
+     *
+     * Scoped to the sheet: .btn-add is the menu screen's own class and this
+     * page must not start answering for taps that are not in here.
+     */
+    /*
+     * ONE FEWER, from inside the menu.
+     *
+     * A waiter who taps once too often should not have to close the menu, find
+     * the line on the order behind it and take one off there. Routed through
+     * updateItemQuantity so the removal confirmation, the totals and the KOT
+     * card all behave exactly as they do on the order screen.
+     */
+    const less = event.target.closest('.btn-decrease');
+    if (less && less.closest('#item-picker')) {
+        const id = less.getAttribute('data-id');
+        const order = orderBeingModified();
+        const items = (order && order.items) || [];
+        const at = items.findIndex((item) => String(item.product_id) === String(id) && !lineIsCancelled(item, order));
+        if (at > -1) {
+            updateItemQuantity(at, -1);
+            pickerRefreshRow(id);
+        }
+        return;
+    }
+
+    const add = event.target.closest('.btn-add, .btn-increase');
+    if (add && add.closest('#item-picker')) {
+        const id = add.getAttribute('data-id');
+        if (!id) return;
+
+        /*
+         * Named from the menu this sheet drew, NOT from searchedProducts.
+         *
+         * addProductToOrderById reads a map the SEARCH box fills in. Nothing
+         * in here fills it, so routing through that helper would have logged
+         * "Product not found" to a console nobody is looking at and added
+         * nothing - with a row that said "Added" over the top of it.
+         */
+        const found = pickerItem(id);
+        if (!found) return;
+
+        /*
+         * The same question the ordering screen asks, in the same words.
+         *
+         * A second round added to a table can be a whole fish just as easily
+         * as the first one was, and a sheet that skipped the question would
+         * put it on the order at nothing.
+         */
+        if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(found)) {
+            POSNIC.askPrice(found.name).then((asked) => {
+                if (!asked) return;
+                rememberRecent(id);
+                addProductToOrder(id, found.name, asked);
+                pickerRefreshRow(id);
+            });
+            return;
+        }
+
+        rememberRecent(id);
+        addProductToOrder(id, found.name, found.selling_price || found.price || 0);
+        /*
+         * The row becomes a counter. No "Added" flash and no second ADD: the
+         * count IS the feedback, and it is the same thing the ordering screen
+         * shows, so a waiter does not have to learn this screen separately.
+         */
+        pickerRefreshRow(id);
+        return;
+    }
+});
+
+/*
+ * AN EMPTY SEARCH IS NOT AN EMPTY MENU.
+ *
+ * Owner: "how to make ux of searching best while add item? when user goes to
+ * search show recent items? or show top selling or signature items? i want
+ * some big options behind search."
+ *
+ * Opening the sheet used to show the whole card from the top - which is the
+ * one thing a waiter already knows how to do and the slowest way to reach
+ * anything. Before a single letter is typed there are three faster answers,
+ * and between them they cover most of what a second round actually is:
+ *
+ *   ON THIS TABLE    what this order already has. A second round is usually
+ *                    another of something, and this is one tap.
+ *   YOU ADDED LATELY what this handset has been adding all shift. A waiter
+ *                    working the same section sells the same twenty dishes.
+ *   SELLING TODAY    the shop's own best sellers, which the app already
+ *                    fetches for the ordering screen's ranking.
+ *
+ * Each is small and each disappears when it has nothing to say. A strip that
+ * is sometimes empty and sometimes not teaches a waiter to ignore the top of
+ * the screen, so an empty one is not drawn at all.
+ *
+ * The whole menu still follows underneath, unchanged. This adds a shortcut; it
+ * does not take the long way round away from anybody.
+ */
+
+const RECENT_KEY = 'posnic.recent_items';
+const RECENT_KEEP = 8;
+
+/** What this handset has added lately, most recent first. */
+function recentItemIds() {
+    try {
+        const said = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(said) ? said.map(String) : [];
+    } catch (e) {
+        /* Storage blocked or corrupt. The sheet simply has one strip fewer. */
+        return [];
+    }
+}
+
+/** Remember one, at the front, without letting the list grow for ever. */
+function rememberRecent(id) {
+    const key = String(id || '');
+    if (!key) return;
+    try {
+        const kept = [key, ...recentItemIds().filter((other) => other !== key)].slice(0, RECENT_KEEP);
+        localStorage.setItem(RECENT_KEY, JSON.stringify(kept));
+    } catch (e) {
+        /* Nothing to remember it with; the strip is absent rather than wrong. */
+    }
+}
+
+/**
+ * The strips above the menu, in the order a waiter would want them.
+ *
+ * Deduplicated across the three: a dish already on the table is not also
+ * offered as recent and as popular, because three copies of one row is a
+ * screen that looks full and says little.
+ *
+ * @param {Array} menu     the sections this sheet is showing
+ * @param {Map}   onOrder  what the order being modified already holds
+ */
+function pickerShortcuts(menu, onOrder) {
+    const byId = new Map();
+    for (const section of menu || []) {
+        for (const item of section.items || []) byId.set(String(item.id), item);
+    }
+
+    const taken = new Set();
+    const pick = (ids, limit) => {
+        const out = [];
+        for (const id of ids) {
+            const key = String(id);
+            if (taken.has(key)) continue;
+            const item = byId.get(key);
+            if (!item) continue;
+            taken.add(key);
+            out.push(item);
+            if (out.length >= limit) break;
+        }
+        return out;
+    };
+
+    const strips = [];
+
+    const onTable = pick([...(onOrder ? onOrder.keys() : [])], 6);
+    if (onTable.length) {
+        strips.push({ key: 'on-table', name: 'On this table', items: onTable });
+    }
+
+    const recent = pick(recentItemIds(), 6);
+    if (recent.length) {
+        strips.push({ key: 'recent', name: 'You added lately', items: recent });
+    }
+
+    /* The shop's own answer, already fetched for the ordering screen. A Set,
+       so the order it arrived in is not preserved - which is fine: these are
+       all popular, and the menu order is a defensible way to show them. */
+    const popular = window._frequentItemIds instanceof Set ? [...window._frequentItemIds] : [];
+    const selling = pick(popular, 6);
+    if (selling.length) {
+        strips.push({ key: 'selling', name: 'Selling today', items: selling });
+    }
+
+    return strips;
+}
+
+/** The dish behind a row, out of the menu this sheet is showing. */
+function pickerItem(id) {
+    for (const section of pickerMenu || []) {
+        const hit = (section.items || []).find((item) => String(item.id) === String(id));
+        if (hit) return hit;
+    }
+    /*
+     * And the flat list, which is what a SEARCH RESULT was drawn from.
+     *
+     * Today every searchable item is also in a section, so this rarely runs.
+     * It is here because the failure if it ever stops being true is silent:
+     * the row says "Added", nothing reaches the order, and the waiter finds
+     * out when the kitchen does not.
+     */
+    return (pickerAll || []).find((item) => String(item.id) === String(id)) || null;
+}
+
+/*
+ * What a tap did, said on the row that was tapped.
+ *
+ * The order it lands on is behind this sheet, so without a word here a waiter
+ * taps ADD and nothing whatsoever happens in front of them.
+ */
+function say(button) {
+    const said = button.textContent;
+    button.textContent = 'Added';
+    button.disabled = true;
+    setTimeout(() => {
+        button.textContent = said;
+        button.disabled = false;
+    }, 700);
+}
+
+/*
+ * QUICK SALE FROM THE SHEET, not only from the menu screen.
+ *
+ * Owner: "inside menu pop up menu add + button or some symbol to do quick
+ * sales." Everything below the price is the ordinary add path - the same one
+ * the ADD buttons in this sheet use - so the line, the ticket and the bill
+ * know nothing unusual happened.
+ */
+document.addEventListener('click', async function (event) {
+    if (!event.target || !event.target.closest) return;
+    if (!event.target.closest('#picker-quick-sale')) return;
+
+    const box = document.getElementById('picker-search-input');
+    const said = box ? box.value.trim() : '';
+
+    /*
+     * Nothing typed is a question, not a refusal: the same sheet that asks the
+     * price asks what it is called.
+     */
+    const name = said || (await POSNIC.askName(''));
+    if (!name) return;
+
+    const price = await POSNIC.askPrice(name);
+    if (!price) return;
+
+    try {
+        /*
+         * `name`, NOT `said`. A test caught this the minute it was written:
+         * with an empty box `said` is '' and the till would have been asked to
+         * create an item with no name, which it refuses - so the button would
+         * have looked broken in a new way.
+         */
+        const made = await POSNIC.quickSale.createOneOff(name, price);
+
+        /* saveOne, never saveData: saveData clears the store first and would
+           delete the menu this sheet is drawing from. */
+        if (typeof saveOne === 'function' && typeof STORE_NAME !== 'undefined') {
+            await saveOne(STORE_NAME, [made]);
+        }
+
+        addProductToOrder(made.id, made.name, price);
+        if (box) box.value = '';
+
+        const sheet = document.getElementById('item-picker');
+        if (sheet) sheet.hidden = true;
+    } catch (error) {
+        /* showErrorPopup is what this screen already uses; POSNIC.popup has no
+           such function, and an error path that throws is an error nobody
+           ever sees. */
+        const why = (error && error.message) || 'The till would not add it. Try again.';
+        if (typeof showErrorPopup === 'function') showErrorPopup(why);
+        else console.error('quick sale failed:', error);
+    }
+});
+
+// System Back follows the same history-screen hierarchy as the visible button.
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
+    if (document.getElementById('order-list-screen') && selectedTable !== null) {
+        event.preventDefault();
+        showTableSelectionScreen();
+    }
+});
+
+window.HistoryMobileDetails = {
+    root: () => document.querySelector('#orderDetailsModal.show'),
+    header: '.modal-header', body: '.modal-body',
+    current: () => currentOrderId,
+    entries: () => filteredOrders.map(order => ({id:order._id})),
+    busy: () => !!editingOrder,
+    show: entry => { viewOrderDetails(entry.id); document.querySelector('#orderDetailsModal .modal-body')?.scrollTo(0,0); },
+    refresh: async () => {
+        const id = currentOrderId;
+        if (!await loadOrderHistory({background:true})) return false;
+        if (!document.querySelector('#orderDetailsModal.show') || currentOrderId !== id) return false;
+        if (allOrders.some(order => order._id === id)) viewOrderDetails(id);
+        else bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'))?.hide();
+        return true;
+    },
+    dismiss: () => bootstrap.Modal.getInstance(document.getElementById('orderDetailsModal'))?.hide(),
+};

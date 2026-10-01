@@ -19,7 +19,7 @@ export const RUNTIME_INFO = {
   channel: null,
   apiSchema: 1,
   syncProtocol: 1,
-  features: { account: true }
+  features: { account: true, idempotentOrders: true }
 };
 
 const branchData = {
@@ -119,7 +119,7 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page).toHaveURL(/kot-management\.html$/);
 
   await page.waitForFunction(() => typeof window.goToAddKot === 'function');
-  await page.locator('.kot-btn-add').click();
+  await page.locator('.floor-new').click();
   await expect(page).toHaveURL(/discount\.html$/);
   await expect(page.locator('#manual_table_input')).toBeVisible();
   await page.locator('#manual_table_input').fill('T1');
@@ -135,8 +135,9 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();
   await page.locator('#next-btn').click();
 
-  await expect(page).toHaveURL(/thankyou\.html\?token=A101$/);
-  await expect(page.getByText('Order Placed!')).toBeVisible();
+  await expect(page).toHaveURL(/kot-management\.html$/);
+  await expect.poll(() => apiCalls.filter(path => path === '/sales/qrOrder').length).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(0);
 
   await page.goto('/order-history.html');
   await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();

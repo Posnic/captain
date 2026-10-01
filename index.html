@@ -3,29 +3,65 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Captain · Sign in</title>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
+    <!--
+        THE ICONS ON THIS PAGE ARE INLINE SVG, NOT A FONT.
+
+        The connect sheet used `fas fa-qrcode` and its kin, and this page has
+        never loaded Font Awesome - so all three choices showed an empty box
+        where their icon should be. Nothing errors when an icon font is
+        missing; the glyph simply is not there.
+
+        Inline rather than adding the stylesheet: this is the first screen,
+        often on a bad connection, and pulling a whole icon font for three
+        glyphs is a request that buys nothing. They take currentColor, so they
+        follow the theme like everything else.
+    -->
     <!-- The decisions every screen shares, made once. -->
     <link href="assets/common/design.css" rel="stylesheet">
+    <link href="assets/common/requests-ui.css" rel="stylesheet">
+    <script src="assets/common/i18n.js"></script>
+    <script src="assets/common/languages.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
     <!-- Written at build time by build-version.js. Absent at a desk, where
          the app simply says "dev" - which is true. -->
     <script src="app-build.js" onerror="this.remove()"></script>
+    <script src="assets/common/access.js"></script>
+    <script src="assets/common/money.js"></script>
+    <link rel="stylesheet" href="assets/common/service-details.css">
+    <script src="assets/common/service-details.js"></script>
+    <script src="assets/common/order-actions.js"></script>
     <script src="config.js"></script>
+    <!-- What this phone can say about itself, sent once at sign-in so the
+         shop can see its handsets. See assets/common/this-device.js. -->
+    <script src="assets/common/this-device.js"></script>
+    <!-- A PIN unlocks, a password authenticates. See assets/common/lock.js. -->
+    <script src="assets/common/lock.js"></script>
     <script src="assets/common/order-queue.js"></script>
-    <script src="indexedDB.js?v=5"></script>
+    <!-- What a customer has asked for, where the waiter already is. -->
+    <script src="assets/common/requests.js"></script>
+    <script src="assets/common/item-localization.js"></script>
+    <script src="assets/common/item-language.js"></script>
+    <script src="indexedDB.js"></script>
+    <script src="assets/common/account.js"></script>
     <script src="assets/common/order-queue-ui.js"></script>
+    <script src="assets/common/requests-ui.js"></script>
     <script src="assets/common/popup.js"></script>
     <!-- Bundled, not fetched: setting up a handset has to work in a shop with
          no internet, which is the whole point of scanning the till's code. -->
     <script src="assets/vendor/jsqr/jsQR.js"></script>
     <script src="assets/common/connect.js"></script>
+    <script src="assets/common/onboarding.js"></script>
     <!-- Can this handset reach that server, and if not what stopped it. Runs
          only when the URL asks; see assets/common/self-test.js. -->
     <script src="assets/common/self-test.js"></script>
     <link href="assets/index/style.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
+    <link href="assets/index/setup.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/common/i18n.css">
+    <link rel="stylesheet" href="assets/common/connection-page.css">
 </head>
 
 <body>
@@ -45,107 +81,23 @@
       does not, and had no way to find out. So the three ways in are offered as
       three choices, in the order a shop will use them.
     -->
-    <div id="serverModal" class="ui-scrim" style="display:none;">
-        <div class="ui-sheet">
-            <div class="ui-sheet-head">
-                <h2 class="ui-sheet-title">Connect to your shop</h2>
-                <p class="ui-sheet-sub" id="serverModeInfo">Not connected yet</p>
-            </div>
-
-            <div class="ui-sheet-body">
-                <!-- Looking, before anybody is asked anything. Shown only on a
-                     handset that has never been connected: see openServerModal. -->
-                <div id="connectAuto" hidden>
-                    <div class="ui-working">
-                        <span class="ui-spinner"></span>
-                        <span id="connectAutoNote">Looking for your till on this Wi-Fi&hellip;</span>
-                    </div>
-                </div>
-
-                <!-- The three ways in. -->
-                <div id="connectChoices">
-                    <button class="ui-choice" onclick="chooseScan()">
-                        <span class="ui-choice-icon"><i class="fas fa-qrcode"></i></span>
-                        <span class="ui-choice-text">
-                            <span class="ui-choice-title">Scan the shop code</span>
-                            <span class="ui-choice-note">Point at the code by the till. Nothing to type.</span>
-                        </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-
-                    <button class="ui-choice" onclick="chooseSearch()">
-                        <span class="ui-choice-icon"><i class="fas fa-wifi"></i></span>
-                        <span class="ui-choice-text">
-                            <span class="ui-choice-title">Find the till on this Wi-Fi</span>
-                            <span class="ui-choice-note">For a phone already on the shop network.</span>
-                        </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-
-                    <button class="ui-choice" onclick="chooseManual()">
-                        <span class="ui-choice-icon"><i class="fas fa-keyboard"></i></span>
-                        <span class="ui-choice-text">
-                            <span class="ui-choice-title">Type the shop code</span>
-                            <span class="ui-choice-note">If your manager gave you one.</span>
-                        </span>
-                        <span class="ui-choice-chev"><i class="fas fa-chevron-right"></i></span>
-                    </button>
-                </div>
-
-                <!-- Typing it in. Hidden until chosen. -->
-                <div id="connectManual" hidden>
-                    <label class="ui-label" for="serverUrlInput">Shop code or till address</label>
-                    <input id="serverUrlInput" class="ui-field" type="text"
-                        placeholder="demo, or 192.168.1.5:5555"
-                        autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-                        oninput="handleServerUrlInput()" onkeyup="if(event.key==='Enter')applyServerUrl()">
-                    <div style="height:var(--s3);"></div>
-                    <button id="serverSaveBtn" class="ui-btn" onclick="applyServerUrl()">Connect</button>
-                </div>
-
-                <div id="serverSaveMsg" class="ui-note"></div>
-                <!-- Which build this is. Every release used to go out as
-                     versionCode 1 / versionName "1.0", so "I updated and
-                     nothing changed" could not be answered by anybody. -->
-                <div id="appVersionLine" class="ui-meta"></div>
-
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--s3);">
-                    <button id="connectBackBtn" class="ui-btn-quiet" hidden onclick="chooseNone()">&larr; Back</button>
-                    <span style="flex:1"></span>
-                    <button class="ui-btn-quiet" style="color:var(--ink-soft);margin-right:var(--s4);"
-                        onclick="refreshKioskData()">Reload menu</button>
-                    <button class="ui-btn-quiet" style="color:var(--ink-soft);"
-                        onclick="closeServerModal()">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- The camera, while scanning. -->
     <div id="scanSheet" hidden style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;">
         <video id="scanVideo" muted playsinline style="width:100%;max-width:520px;max-height:70vh;object-fit:cover;"></video>
         <div id="scanNote" style="color:#e5e7eb;font-size:14px;text-align:center;padding:16px 24px;font-family:system-ui,-apple-system,sans-serif;"></div>
-        <button onclick="cancelScan()" style="margin-bottom:28px;padding:12px 26px;border:none;border-radius:10px;background:#fff;color:#111827;font-weight:700;font-size:15px;cursor:pointer;">Cancel</button>
+        <button onclick="POSNIC_CONNECT.stopScan()" style="margin-bottom:28px;padding:12px 26px;border:none;border-radius:10px;background:#fff;color:#111827;font-weight:700;font-size:15px;cursor:pointer;">Cancel</button>
     </div>
-
-    <!-- Server mode indicator -->
-    <div id="serverBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9997;text-align:center;padding:4px;font-size:11px;font-weight:600;"></div>
-
-    <!-- Gear icon -->
-    <button onclick="openServerModal()" title="Server Settings"
-        style="position:fixed;top:14px;right:14px;z-index:999;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;color:#fff;backdrop-filter:blur(4px);">
-        ⚙️
-    </button>
 
     <div class="auth-page">
         <div class="auth-header">
             <div class="brand-circle">
-                <span class="brand-initials">TO</span>
+                <img src="assets/common/posnic-mark.svg" alt="Posnic" width="36" height="36">
             </div>
             <div class="brand-text">
                 <h1 class="brand-title">Captain</h1>
-                <p class="brand-subtitle">Quick dine‑in & takeaway ordering</p>
+                <p class="brand-subtitle">By Posnic</p>
             </div>
+            <label class="setup-language"><span class="visually-hidden">Language</span><select id="setup-language" data-language-picker aria-label="Language"></select></label>
+            <button type="button" class="setup-settings" onclick="openServerModal()" aria-label="Connection settings" title="Connection settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="white"/><circle cx="15" cy="17" r="3" fill="white"/></svg></button>
         </div>
 
         <!-- Device limit banner (shown via JS) -->
@@ -169,8 +121,50 @@
         <div class="auth-card container">
             <!-- Login Section -->
             <div id="login-section">
-                <h3 class="section-title text-center mb-4">Login</h3>
+                <section id="captain-onboarding" aria-label="Connect to your shop">
+                    <button id="connection-back" type="button" class="setup-link setup-back" hidden>Back</button>
+                    <h2 id="setup-heading" class="setup-title" tabindex="-1">Connect to your shop</h2>
+                    <div id="setup-address-entry">
+                    <label class="setup-label" for="captain-server">Shop code or server address</label>
+                    <div class="setup-address">
+                        <input id="captain-server" type="text" inputmode="url" enterkeyhint="go" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="azure.posnic.io" aria-describedby="setup-wifi-hint">
+                    </div>
+                    <p id="setup-wifi-hint" class="setup-hint"><strong>Shop Wi-Fi is fastest.</strong> Use a domain address when connecting over the internet.</p>
+                    </div>
+                    <div id="captain-results" class="setup-results"></div>
+                    <button id="captain-connect" type="button" class="setup-primary" disabled>Continue</button>
+                    <div id="setup-methods">
+                        <p id="setup-start-hint" class="setup-hint">Shop Wi-Fi is fastest.</p>
+                        <button id="captain-address-toggle" class="setup-link" type="button">Shop code or server address</button>
+                        <p class="setup-alternatives">Choose another way</p>
+                        <div class="setup-tools">
+                            <button id="captain-search" type="button" aria-label="Find shop on Wi-Fi" title="Find shop on Wi-Fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg><span aria-hidden="true">Find shop on Wi-Fi</span></button>
+                            <button id="captain-scan" type="button" aria-label="Scan shop QR code" title="Scan shop QR code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 7h3v3H7zm7 0h3v3h-3zM7 14h3v3H7zm7 0h3v3h-3z"/></svg><span aria-hidden="true">QR</span></button>
+                            <button id="captain-code-toggle" type="button" aria-label="Enter pairing code" title="Enter pairing code" aria-expanded="false" aria-controls="captain-code-options"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 10h2m2 0h2m2 0h2M7 14h10"/></svg><span aria-hidden="true">Code</span></button>
+                        </div>
+                    <div class="connection-cloud"><button id="captain-cloud-login" type="button" class="setup-primary">Sign in with your account</button><button id="captain-cloud-signup" type="button" hidden>Create account</button></div>
+                    <button id="connection-settings" type="button" class="setup-link">Connection settings</button>
+                    </div>
+                    <button id="captain-search-again" type="button" class="setup-primary" hidden>Retry</button>
+                    <p id="captain-note" role="status" aria-live="polite"></p>
+                    <button id="captain-cancel" type="button" class="setup-link" hidden>Cancel</button>
+                    <a id="captain-open-browser" class="setup-link" hidden target="_blank" rel="noopener noreferrer">Open browser</a>
+                    <details id="captain-code-options" hidden>
+                        <summary>Pair this phone</summary>
+                        <p>Enter the code from Captain settings on your shop’s POS.</p>
+                        <label for="captain-code">Pairing code</label>
+                        <input id="captain-code" class="ui-field" autocomplete="off" autocapitalize="characters" placeholder="12-character code">
+                        <label class="setup-confirm"><input id="captain-confirm" type="checkbox"> I confirmed this shop address with my manager</label>
+                        <button id="captain-pair" type="button" class="setup-primary">Pair phone</button>
+                    </details>
 
+                    <details id="connection-addresses" hidden><summary>Connection settings</summary><p class="setup-hint">Shop Wi-Fi is fastest.</p><label class="setup-label" for="connection-lan">Local server</label><input id="connection-lan" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="http://192.168.0.12:5555/api"><label class="setup-label" for="connection-cloud">Internet server</label><input id="connection-cloud" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://azure.posnic.io/api"><button id="connection-save" type="button" class="setup-primary">Save</button><p id="connection-message" role="status"></p></details>
+                </section>
+                <details id="captain-legacy" hidden>
+                <summary>Staff sign-in</summary>
+                <h2 class="setup-title">Sign in</h2>
+                <p class="setup-intro">Use your staff account to start taking orders.</p>
+                <div class="setup-shop"><div><span>SHOP</span><strong id="captain-selected-shop"></strong></div><button id="captain-change-shop" type="button" class="setup-link">Change server</button></div>
                 <div class="mb-3">
                     <label for="username" class="form-label">Username / Email</label>
                     <input type="text" id="username" class="form-control auth-input" autocomplete="username"
@@ -188,6 +182,7 @@
                 </button>
 
                 <div id="login-message" class="mt-3 text-danger text-center" style="display:none;"></div>
+                </details>
             </div>
 
             <!-- Branch Selection Section -->
@@ -218,408 +213,7 @@
         </div>
     </div>
     <script src="assets/index/script.js"></script>
-    <script>
-        /*
-         * The server line, and the settings sheet behind it.
-         *
-         * The app decides for itself which server to use (config.js explains
-         * the order). Everything here is the human override: seeing what was
-         * chosen, naming a shop, finding the till on this Wi-Fi, and pinning
-         * an address when the shop wants one particular answer.
-         */
-        function describeServer() {
-            const banner = document.getElementById('serverBanner');
-            if (!banner) return;
-            const url = POSNIC.server.baseUrl || '';
-            const pinned = POSNIC.server.pinned;
-
-            banner.style.display = 'block';
-            banner.style.color = '#fff';
-            if (!url) {
-                banner.style.background = '#b45309';
-                banner.textContent = 'No server yet - tap the gear to choose one';
-                return;
-            }
-            if (POSNIC.server.isLocal) {
-                banner.style.background = '#16a34a';
-                banner.textContent = (pinned ? '📌 ' : '🟢 ') + 'This Wi-Fi: ' + url;
-            } else {
-                banner.style.background = '#1d4ed8';
-                banner.textContent = (pinned ? '📌 ' : '☁️ ') + 'Online: ' + url;
-            }
-        }
-        describeServer();
-        window.addEventListener('posnic:server-changed', describeServer);
-    </script>
-    <script>
-        var serverAutoDetectRunning = false;
-        var serverAutoDetectCancelled = false;
-
-        /* Which build is on this phone, said plainly enough to read down a
-           telephone. A build that cannot identify itself makes every field
-           report ambiguous. */
-        function showAppVersion() {
-            const line = document.getElementById('appVersionLine');
-            if (!line) return;
-            const build = window.POSNIC_BUILD;
-            line.textContent = build && build.version
-                ? 'Captain ' + build.version + (build.commit ? ' (' + build.commit + ')' : '')
-                : 'Captain dev build';
-        }
-        document.addEventListener('DOMContentLoaded', showAppVersion);
-
-        /* An emulator has no hands. `?selftest=<url>` runs the same check a
-           person would and prints one line a log can be grepped for, which is
-           what lets a real device answer this without a day of photographs. */
-        document.addEventListener('DOMContentLoaded', function () {
-            if (window.SelfTest) SelfTest.fromLocation();
-        });
-
-        function serverMsg(text, colour) {
-            const msg = document.getElementById('serverSaveMsg');
-            if (!msg) return;
-            msg.style.color = colour || '#6b7280';
-            msg.textContent = text;
-        }
-
-        /* A packaged app on a phone, as opposed to a browser at a desk. */
-        function isHandset() {
-            try {
-                return !!(window.Capacitor && window.Capacitor.isNativePlatform
-                    && window.Capacitor.isNativePlatform());
-            } catch (e) {
-                return false;
-            }
-        }
-
-        /* Which of the three the user picked. Null means the menu itself. */
-        function showChoice(which) {
-            const choices = document.getElementById('connectChoices');
-            const manual = document.getElementById('connectManual');
-            const back = document.getElementById('connectBackBtn');
-            choices.hidden = which !== null;
-            manual.hidden = which !== 'manual';
-            back.hidden = which === null;
-            /*
-             * NOT focused for them, on a phone.
-             *
-             * Android's WebView does not raise the keyboard for a
-             * programmatic focus - and worse, it leaves the field as
-             * document.activeElement, so the waiter's tap fires no focus event
-             * either and the keyboard never comes up at all. The field looks
-             * ready and cannot be typed in, which is exactly what was
-             * reported after scanning a code.
-             *
-             * A desktop still gets the convenience, because there a focused
-             * field genuinely is ready to type in.
-             */
-            if (which === 'manual' && !isHandset()) {
-                setTimeout(() => document.getElementById('serverUrlInput').focus(), 50);
-            }
-        }
-
-        /* A search found one: show the address and the button that uses it,
-           rather than leaving the result in a box the user cannot see. */
-        function foundServer(base) {
-            /* Whatever was searching has finished, one way or another. */
-            const auto = document.getElementById('connectAuto');
-            if (auto) auto.hidden = true;
-            document.getElementById('serverUrlInput').value = base;
-            showChoice('manual');
-            serverMsg('Found the till at ' + base + '. Tap Connect.', '#16a34a');
-        }
-
-        function chooseNone() {
-            stopAutoDetectServer(false);
-            serverMsg('');
-            showChoice(null);
-        }
-
-        function chooseManual() {
-            /* A choice made by hand ends the search nobody asked for. */
-            stopAutoDetectServer(false);
-            const autoBox = document.getElementById('connectAuto');
-            if (autoBox) autoBox.hidden = true;
-            serverMsg('A shop code looks like "demo". A till on this Wi-Fi looks like 192.168.1.5:5555.');
-            showChoice('manual');
-        }
-
-        function chooseSearch() {
-            showChoice('search');
-            autoDetectServer();
-        }
-
-        function chooseScan() {
-            /* A choice made by hand ends the search nobody asked for. */
-            stopAutoDetectServer(false);
-            const autoBox = document.getElementById('connectAuto');
-            if (autoBox) autoBox.hidden = true;
-            showChoice('scan');
-            POSNIC_CONNECT.startScan(async function (base) {
-                document.getElementById('connectManual').hidden = false;
-                document.getElementById('serverUrlInput').value = base;
-                showChoice('manual');
-                serverMsg('Scanned ' + base + '. Connecting...', '#16a34a');
-                await applyServerUrl();
-            });
-        }
-
-        function cancelScan() {
-            POSNIC_CONNECT.stopScan();
-            chooseNone();
-        }
-
-        function openServerModal() {
-            const modal = document.getElementById('serverModal');
-            sessionStorage.setItem('posnic_editing_server', '1');
-            modal.style.display = 'flex';
-
-            /* The outage screen sits above everything, including this. If it
-               is up, the reason the user is here is to clear it. */
-            const overlay = document.getElementById('posnic-offline');
-            if (overlay) overlay.hidden = true;
-            document.documentElement.classList.remove('posnic-offline-active');
-
-            document.getElementById('serverUrlInput').value =
-                POSNIC.server.pinned || POSNIC.server.shopCode || '';
-            serverMsg('');
-            renderServerMode();
-
-            showChoice(null);
-
-            /*
-             * SEARCH BY ITSELF, BUT ONLY THE FIRST TIME.
-             *
-             * A handset that has never been connected has exactly one sensible
-             * next move, and making somebody tap for it is making them choose
-             * between three things they have not learned the difference
-             * between yet. So it starts looking on its own.
-             *
-             * It did this once and was removed, because it held the whole
-             * screen for seconds against a network with no till on it - and
-             * somebody who came here to type a shop code sat watching a
-             * spinner search for something they knew was not there.
-             *
-             * Both are right. The search runs and the three choices stay on
-             * screen underneath it, so the automatic thing happens for the
-             * person who wants it and blocks nobody who does not. Changing an
-             * already-working setup starts on the menu, as before: that person
-             * came here to change something specific.
-             */
-            if (!POSNIC.server.baseUrl && !POSNIC.server.pinned && !POSNIC.server.shopCode) {
-                autoDetectServer({ quiet: true });
-            }
-        }
-
-        function renderServerMode() {
-            const info = document.getElementById('serverModeInfo');
-            if (!info) return;
-            const url = POSNIC.server.baseUrl;
-            info.textContent = url
-                ? (POSNIC.server.isLocal ? 'Using the till on this Wi-Fi' : 'Using ' + url)
-                : 'Not connected to a shop yet';
-        }
-
-        function closeServerModal() {
-            POSNIC_CONNECT.stopScan();
-            stopAutoDetectServer(false);
-            sessionStorage.removeItem('posnic_editing_server');
-            document.getElementById('serverModal').style.display = 'none';
-            POSNIC.net.check(true);
-        }
-
-        function handleServerUrlInput() {
-            if (serverAutoDetectRunning) stopAutoDetectServer(true);
-        }
-
-        function toggleAutoDetectServer() {
-            if (serverAutoDetectRunning) {
-                stopAutoDetectServer(true);
-                return;
-            }
-            autoDetectServer();
-        }
-
-        function stopAutoDetectServer(showMessage) {
-            if (!serverAutoDetectRunning) return;
-            serverAutoDetectCancelled = true;
-
-            if (showMessage) {
-                serverMsg('Stopped. Enter the shop code or till address instead.');
-                const input = document.getElementById('serverUrlInput');
-                if (input) input.focus();
-            }
-        }
-
-
-
-        /**
-         * Look for the shop's own server on this Wi-Fi.
-         *
-         * The saved address is tried first and answers in under a second on
-         * every shift after the first; the sweep only runs when it does not.
-         */
-        async function autoDetectServer(options) {
-            if (serverAutoDetectRunning) return;
-            serverAutoDetectRunning = true;
-            serverAutoDetectCancelled = false;
-
-            /*
-             * Quiet means: this was nobody's decision, so it reports into its
-             * own line above the choices rather than into the message area,
-             * and it leaves the three ways in on screen the whole time.
-             */
-            const quiet = !!(options && options.quiet);
-            const auto = document.getElementById('connectAuto');
-            const autoNote = document.getElementById('connectAutoNote');
-            const say = function (text) {
-                if (quiet) {
-                    if (autoNote) autoNote.textContent = text;
-                } else {
-                    serverMsg(text);
-                }
-            };
-            if (quiet && auto) auto.hidden = false;
-
-            const input = document.getElementById('serverUrlInput');
-            say('Looking for your till on this Wi-Fi...');
-
-            try {
-                /* Whatever is already in the box is the strongest hint there
-                   is - check it before sweeping hundreds of addresses. */
-                const typed = POSNIC.server.normalize(input.value);
-                if (typed) {
-                    say('Checking ' + typed + '...');
-                    const hit = await POSNIC.discovery.probe(typed, 3000);
-                    if (serverAutoDetectCancelled) return;
-                    if (hit) {
-                        foundServer(hit.base);
-                        return;
-                    }
-                }
-
-                const found = await POSNIC.discovery.findOnWifi({
-                    shouldStop: function() { return serverAutoDetectCancelled; },
-                    onProgress: function(done, total, where) {
-                        if (!total) say('Checking ' + where + '...');
-                        else say('Searching ' + where + ' (' + done + '/' + total + ')...');
-                    }
-                });
-                if (serverAutoDetectCancelled) return;
-
-                if (found) {
-                    foundServer(found.base);
-                    return;
-                }
-
-                /* Say what to do next. "Not found" on its own leaves somebody
-                   holding a phone with no idea whose problem it is. */
-                if (quiet) {
-                    /* Nobody asked for this search, so failing it must not
-                       take over the screen. It says what it found and gets out
-                       of the way of the choices already on offer. */
-                    if (autoNote) autoNote.textContent = 'No till found on this Wi-Fi. Pick one of these instead.';
-                    if (auto) auto.classList.add('is-done');
-                } else {
-                    serverMsg('No till found on this Wi-Fi. Ask your manager for the shop code, or check POSNIC is running on the till.', '#6b7280');
-                    showChoice('manual');
-                }
-            } finally {
-                serverAutoDetectRunning = false;
-                serverAutoDetectCancelled = false;
-                if (quiet && auto && !auto.classList.contains('is-done')) auto.hidden = true;
-            }
-        }
-
-
-        function clearKioskDatabaseForServerSwitch() {
-            return new Promise(function(resolve) {
-                try {
-                    if (typeof db !== 'undefined' && db) db.close();
-                } catch (e) { /* ignore */ }
-
-                try {
-                    const req = indexedDB.deleteDatabase('KioskDB');
-                    req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
-                } catch (e) {
-                    resolve();
-                }
-            });
-        }
-
-        /**
-         * Test and save, as one action.
-         *
-         * These were two buttons in a required order, and Save stayed disabled
-         * until Test had passed, so pressing the obvious one did nothing and
-         * said why in small text. There is no reason to save an address that
-         * does not answer, so this checks and then saves.
-         */
-        async function applyServerUrl() {
-            const raw = document.getElementById('serverUrlInput').value.trim();
-            if (!raw) { serverMsg('Enter your shop code, or the till address.', '#dc2626'); return; }
-
-            const base = POSNIC.server.normalize(raw);
-            if (!base) { serverMsg('That is not a shop code or an address.', '#dc2626'); return; }
-
-            const button = document.getElementById('serverSaveBtn');
-            button.disabled = true;
-            button.textContent = 'Checking...';
-            serverMsg('Checking ' + base + '...');
-
-            try {
-                /*
-                 * Fifteen seconds, not eight.
-                 *
-                 * A real Android was measured taking up to 7.3s for a single
-                 * request to this server - so an eight second budget was one
-                 * slow response away from telling a shop their till was not
-                 * running. Somebody who has pressed Connect and is watching
-                 * will wait; being told the wrong thing quickly is worse than
-                 * being told the right thing slowly. This runs once, at setup.
-                 */
-                const hit = await POSNIC.discovery.probe(base, 15000);
-                if (!hit) {
-                    /*
-                     * WHY, not just that. "Nothing answered" covered a wrong
-                     * address, no internet, a name that does not resolve, a
-                     * certificate the phone refused, a 500, and a server that
-                     * answered perfectly and is not a Posnic one. It is the
-                     * end of a support call rather than the start of one.
-                     */
-                    const why = POSNIC.discovery.probe.lastFailure;
-                    serverMsg(
-                        'Could not use ' + base + '. ' +
-                        (why && why.message ? why.message : 'Nothing answered.') +
-                        (why && why.reason === 'UNREACHABLE'
-                            ? ' Check the shop code, or that POSNIC is running on the till.'
-                            : ''),
-                        '#dc2626'
-                    );
-                    return;
-                }
-                POSNIC.server.pin(hit.base);
-                if (!POSNIC.server.isLanUrl(hit.base) && !/[.:/]/.test(raw)) POSNIC.server.useShopCode(raw);
-                localStorage.setItem('POSNIC_IMAGE_CACHE_BUST', String(Date.now()));
-                sessionStorage.removeItem('posnic_editing_server');
-                serverMsg('Connected. Reloading...', '#16a34a');
-                await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
-            } finally {
-                button.disabled = false;
-                button.textContent = 'Connect';
-            }
-        }
-
-        /** Drop the pin: let the app choose between Wi-Fi and online again. */
-        async function resetServerUrl() {
-            sessionStorage.removeItem('posnic_editing_server');
-            POSNIC.server.unpin();
-            document.getElementById('serverUrlInput').value = '';
-            renderServerMode();
-            serverMsg('Automatic again - the app will use the shop Wi-Fi when it is there, and the online server otherwise. Reloading...', '#1d4ed8');
-            await clearKioskLocalCache({ keepServer: true, redirectTo: 'index.html' });
-        }
-    </script>
+    <script src="assets/common/connection-page.js"></script>
 </body>
 
 </html>

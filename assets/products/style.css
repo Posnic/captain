@@ -501,6 +501,56 @@ body {
     box-shadow: 0 0 0 1px rgba(255, 122, 26, 0.25);
 }
 
+/*
+ * What is in the dish. Read-only, and above the box so it cannot be mistaken
+ * for something a person typed - which is exactly what happened while it was
+ * being written into the box itself.
+ */
+.notes-about {
+    margin: -4px 0 12px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #666;
+}
+
+/*
+ * THE COMMON ONES, ONE TAP EACH.
+ *
+ * Typing "less spicy" on a phone keyboard between two tables is the reason
+ * notes go unwritten. Wrapped rather than scrolled sideways: a row that
+ * scrolls hides most of itself, and the whole point is being able to see the
+ * choices without thinking of them yourself.
+ */
+.notes-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.notes-chip {
+    min-height: 34px;
+    padding: 0 11px;
+    border: 1px solid #d0d0d0;
+    border-radius: 999px;
+    background: #fff;
+    color: #333;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 32px;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+/* On, and tappable again to take it back off - the commonest correction to a
+   tap is the same tap. */
+.notes-chip.is-on {
+    border-color: #ff7a1a;
+    background: #ff7a1a;
+    color: #fff;
+}
+
 /* Buttons row */
 .notes-footer {
     display: grid;

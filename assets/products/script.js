@@ -57,7 +57,7 @@ async function refreshProductsPage(button) {
     const selectedBranch = localStorage.getItem('kiosk_selected_branch');
     if (!selectedBranch) {
         showErrorPopup('No branch is selected. Please select a branch first.');
-        return;
+        return false;
     }
 
     const icon = button ? button.querySelector('i') : null;
@@ -66,11 +66,14 @@ async function refreshProductsPage(button) {
 
     try {
         localStorage.setItem('POSNIC_IMAGE_CACHE_BUST', String(Date.now()));
-        await fetchAndStoreBranch(selectedBranch, false, true);
+        const refreshed = await fetchAndStoreBranch(selectedBranch, false, true, true);
+        if (refreshed === false) return false;
         await setKioskImagesFromIndexedDB();
+        return true;
     } catch (error) {
         console.error('Failed to refresh product data:', error);
-        showErrorPopup('Unable to refresh products. Check the server connection and try again.');
+        if (button) showErrorPopup('Unable to refresh products. Check the server connection and try again.');
+        return false;
     } finally {
         if (icon) icon.classList.remove('fa-spin');
         if (button) button.disabled = false;
@@ -78,9 +81,22 @@ async function refreshProductsPage(button) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-    /* The rail, the index sheet and the resize handlers, attached once.
-       Before the first draw, or the chips it draws have nothing listening. */
-    MenuScreen.start();
+    /*
+     * The rail, the index sheet and the resize handlers, attached once.
+     * Before the first draw, or the chips it draws have nothing listening.
+     *
+     * ASKED FOR, NOT ASSUMED. This file is shared: the menu screen loads it,
+     * and so do the cart and the discount screen, for the add-item flow the
+     * three have in common. MenuScreen comes from products/menu.js, which
+     * only the menu screen loads - so on the other two this line threw
+     * "MenuScreen is not defined" and took the whole startup with it:
+     * loadProducts, the database, the images and every listener below.
+     *
+     * The handler is async, so the throw was an unhandled rejection nobody
+     * was shown, and both screens went on working on their fallbacks. That is
+     * the same guard already used at setRow below, for the same reason.
+     */
+    if (typeof MenuScreen !== 'undefined') MenuScreen.start();
 
     await loadProducts();
     loadFrequentItems();
@@ -144,36 +160,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // ✅ Auto-close keyboard when user interacts with product list
-    const scrollableProducts = document.querySelector('.scrollable-products');
-    if (scrollableProducts) {
-        // Close keyboard on touch start (mobile)
-        scrollableProducts.addEventListener('touchstart', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        });
-
-        /* Close keyboard on scroll. On the WINDOW, because the menu now
-           scrolls the page rather than a box inside it - a nested scroller
-           under a sticky header is where the keyboard used to leave somebody
-           looking at a strip of screen four rows tall. */
-        window.addEventListener('scroll', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        }, { passive: true });
-
-        // Close keyboard on mouse over (desktop/tablet)
-        scrollableProducts.addEventListener('mouseover', () => {
-            const searchEl = document.getElementById('product-search-input');
-            if (searchEl && document.activeElement === searchEl) {
-                searchEl.blur();
-            }
-        });
-    }
+    // Scrolling, keyboard resize and pointer hover must not end a search.
+    // Only an explicit focus change or the keyboard's own dismissal does.
+    let pointerStart = null;
+    const menuTarget = target => ({
+        row: target.closest?.('.dish, .frequent-card') || null,
+        action: target.closest?.('button, a') || null,
+    });
+    document.addEventListener('pointerdown', event => {
+        pointerStart = menuTarget(event.target);
+        // Adding a result or clearing a query should not collapse the keyboard
+        // between pointer-down and click, moving the controls under the finger.
+        if (document.activeElement === searchInput &&
+            (event.target.closest?.('#product-search-clear') ||
+             (pointerStart.row && pointerStart.action))) {
+            event.preventDefault();
+        }
+    }, true);
+    document.addEventListener('pointercancel', () => { pointerStart = null; }, true);
+    document.addEventListener('click', event => {
+        const start = pointerStart;
+        pointerStart = null;
+        // Keyboard/assistive activation has no pointer gesture to compare.
+        if (!start || event.detail === 0) return;
+        const end = menuTarget(event.target);
+        if (end.row && (start.row !== end.row || start.action !== end.action)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
 });
 
 async function loadFrequentItems() {
@@ -246,13 +261,13 @@ function renderFrequentItems(items) {
         </div>
         <div class="frequent-inner">
             <div class="frequent-img">
-                <img src="${imageUrl}" alt="${product.name}">
+                <img src="${imageUrl}" alt="${MenuView.escape(window.ItemLanguage.name(product))}" translate="no">
             </div>
             <div class="frequent-info">
-                <div class="frequent-name">
-                    ${product.name}
+                <div class="frequent-name" translate="no">
+                    ${MenuView.escape(window.ItemLanguage.name(product))}
                 </div>
-                <div class="frequent-price">₹${product.price.toFixed ? product.price.toFixed(2) : product.price}</div>
+                <div class="frequent-price">${CaptainMoney.html(product.price)}</div>
             </div>
 
             <div class="frequent-cart-empty" id="frequent-empty-${product.id}">
@@ -334,12 +349,6 @@ async function syncFrequentQtyFromMain(id) {
 }
 
 async function onFrequentAdd(id) {
-    // default notes (cart notes or product description)
-    const notes = await getDefaultNotesForProduct(id);
-    if (notes) {
-        await setCartItemNotes(id, notes);
-    }
-
     await updateQuantity(id, 1);
     await syncFrequentQtyFromMain(id);
 }
@@ -429,10 +438,12 @@ $(document).on("click", ".dish", function (e) {
     const productId = $card.data("id");
     const productName = $card.find(".dish-name").text().trim();
 
+    notesEditorSession += 1;
     currentNotesProductId = productId;
     currentNotesProductName = productName;
     loadExistingNotesForProduct(productId);
 
+    buildNoteChips();
     $("#notes-product-name").text(productName);
     $("#product-notes-modal").css("display", "flex");
 });
@@ -451,11 +462,13 @@ $(document).on("click", ".frequent-card", function (e) {
     const productId = $card.data("id");
     const productName = $card.find(".frequent-name").text().trim();
 
+    notesEditorSession += 1;
     currentNotesProductId = productId;
     currentNotesProductName = productName;
 
     loadExistingNotesForProduct(productId);
 
+    buildNoteChips();
     $("#notes-product-name").text(productName);
     $("#product-notes-modal").css("display", "flex");
 });
@@ -466,64 +479,65 @@ $(document).on("click", "#notes-cancel-btn", function () {
     currentNotesProductId = null;
 });
 
-// Apply & Add → save notes + increase quantity
-$(document).on("click", "#notes-apply-btn", async function () {
-    if (!currentNotesProductId) {
-        $("#product-notes-modal").hide();
-        return;
-    }
-
+// Capture the dish at the tap; an asynchronous save must never follow a
+// later editor selection or close a newly opened editor.
+let notesSaving = false;
+let notesEditorSession = 0;
+$(document).on("click", "#notes-apply-btn", cartAction(async function () {
+    if (!currentNotesProductId || notesSaving) return;
+    const search = searchAtAdd();
+    const id = currentNotesProductId;
+    const session = notesEditorSession;
     const notes = $("#product-notes-text").val().trim();
-
-    await setCartItemNotes(currentNotesProductId, notes);
-
-    // ✅ Only add quantity if item is not already in cart (qty = 0)
-    const cartData = await getCartData();
-    const existingItem = cartData.find(i => i.id === currentNotesProductId);
-    const currentQty = existingItem ? existingItem.quantity : 0;
-
-    if (currentQty === 0) {
-        // First time → add quantity 1
-        await updateQuantity(currentNotesProductId, 1);
+    notesSaving = true;
+    $("#notes-apply-btn").prop('disabled', true);
+    try {
+        const added = await setCartItemNotes(id, notes, true);
+        await updateCart();
+        if (session === notesEditorSession) {
+            $("#product-notes-text").val("");
+            $("#product-notes-modal").hide();
+            currentNotesProductId = null;
+            if (added) await prepareNextItem(search);
+        }
+    } catch (error) {
+        console.error('Could not save item note', error);
+        showErrorPopup("Failed to save notes. Please try again.");
+    } finally {
+        notesSaving = false;
+        $("#notes-apply-btn").prop('disabled', false);
     }
-    // else: qty already > 0 → don't change quantity, just update notes
-
-    // 🔽 backend-ku notes update request
-    // try {
-    //     await fetch("http://YOUR_API_URL/sales/qrItemNotesUpdate", {
-    //         method: "POST",
-    //         headers: { "Content-Type": "application/json" },
-    //         body: JSON.stringify({
-    //             item_id: currentNotesProductId,
-    //             item_description: notes
-    //             // தேவையான மற்ற fields: sale_id / table_id / token_id...
-    //         })
-    //     });
-    // } catch (e) {
-    //     console.error("Failed to sync notes to backend", e);
-    // }
-
-    $("#product-notes-text").val("");
-    $("#product-notes-modal").hide();
-    currentNotesProductId = null;
-});
+}));
 // Set / update notes for a cart item
-async function setCartItemNotes(id, notes) {
+function setCartItemNotes(id, notes, addIfMissing = false) {
+    return queueCartMutation(async () => {
+        await setCartItemNotesNow(id, notes);
+        if (addIfMissing) {
+            const cart = await getCartData();
+            if (!cart.find(item => item.id === id && item.quantity > 0)) {
+                return updateQuantityNow(id, 1);
+            }
+        }
+    });
+}
+async function setCartItemNotesNow(id, notes) {
     let cartData = await getCartData();
     let item = cartData.find(i => i.id === id);
 
     if (!item) {
         const storedProducts = await getData("products");
         const p = storedProducts.find(x => x.id === id);
-        if (!p) return;
+        if (!p) throw new Error("Failed to save notes. Please try again.");
         item = {
             id: p.id,
             name: p.name,
+            ...window.PosnicItemText.snapshot(p),
             price: Number(p.price || 0),
             discount_price: Number(p.discount_price || 0),
             tax_price: Number(p.tax_price || 0),
             final_price: Number(p.final_price || 0),
             img: p.img,
+            icon: p.icon || "",
             quantity: 0,
             notes: notes || ""
         };
@@ -534,17 +548,54 @@ async function setCartItemNotes(id, notes) {
 
     await saveCartData(cartData);
 }
+/*
+ * THE NOTE ALREADY ON THE LINE, AND NOTHING ELSE.
+ *
+ * This used to fall back to the dish's own description and hand it back as a
+ * "default note", and three callers stored it on the line. So a dish arrived
+ * carrying its menu copy as a note, the till stored it, and the kitchen
+ * printed it:
+ *
+ *   MIXED TANDOORI CHICKEN PLATTER                                x1
+ *     ** A platter of the tandoor's chicken: kebabs, tikka and wings,
+ *     served sizzling with onion and lime. Built to share. **
+ *
+ * Owner, holding that ticket: "those are item details. not notes."
+ *
+ * He is right, and it matters more than tidiness. That is writing for a guest
+ * choosing dinner; a cook needs "no onion". A ticket that long for two dishes
+ * is one somebody stops reading, and the line that mattered is in the middle
+ * of it.
+ *
+ * The description has not gone anywhere. It is on the menu row, where a waiter
+ * choosing the dish reads it - which is the one place it was ever for.
+ */
 async function getDefaultNotesForProduct(id) {
     const cartData = await getCartData();
     const item = cartData.find(i => i.id === id);
 
-    if (item && item.notes) {
-        return item.notes;
-    }
-
+    return (item && item.notes) || "";
+}
+/*
+ * THE NOTE IS THE WAITER'S, NOT THE MENU'S.
+ *
+ * Owner: "why notes already filled with some text. it supposed enter by waiter
+ * right?"
+ *
+ * This used to fall back to the dish's own description when the cart had no
+ * note - so opening the box on a Chicken Biryani typed "Long grain rice, slow
+ * cooked" into it, and a waiter who then pressed Apply sent the shop's own
+ * marketing copy to the kitchen as an instruction. To write a real note you
+ * first had to notice that and delete it.
+ *
+ * The description is worth SHOWING - it is what is in the dish, which is the
+ * question a table actually asks - so it is still read, and put above the box
+ * where it cannot be mistaken for something somebody typed.
+ */
+function dishDescription(id) {
     let desc = "";
-
     if (typeof products !== "undefined" && products) {
+        // products = { categoryId: [ items... ], ... }
         for (const itemsArr of Object.values(products)) {
             const p = itemsArr.find(p => p.id === id);
             if (p) {
@@ -553,59 +604,136 @@ async function getDefaultNotesForProduct(id) {
             }
         }
     }
-
     if (!desc) return "";
-
+    // HTML entities (&lt; &gt;) decode + basic tag strip
     const tmp = document.createElement("textarea");
-    tmp.innerHTML = desc;
-    desc = tmp.value
-        .replace(/<br\s*\/?>/gi, "\n")
+    tmp.innerHTML = desc;            // "&lt;p&gt;hi&lt;/p&gt;" → "<p>hi</p>"
+    return tmp.value
+        .replace(/<br\s*\/?>/gi, " ")
         .replace(/<\/?[^>]+>/g, "")
         .trim();
-
-    return desc;
 }
+
+/*
+ * WHICH OPENING THIS IS.
+ *
+ * loadExistingNotesForProduct reads the cart, which is a round trip to
+ * IndexedDB, and then writes the answer into the box. The box is on screen the
+ * whole time - so a waiter who opens the notes and starts typing straight away
+ * had their words replaced by the answer to a question asked before they
+ * started. On a desk the read finishes first and nobody sees it; on a busy
+ * handset it does not.
+ *
+ * A CI runner is slow in the same way, which is how this surfaced: a test that
+ * typed into the box and checked the chips lit went red in Actions and stayed
+ * green locally.
+ */
+let notesOpening = 0;
+
 async function loadExistingNotesForProduct(id) {
+    const mine = ++notesOpening;
+    const about = $("#notes-about");
+    const desc = dishDescription(id);
+    if (about.length) {
+        about.text(desc);
+        about.toggle(!!desc);
+    }
+    /* A chip is only "on" for as long as the box it wrote into is open. */
+    $(".notes-chip").removeClass("is-on");
+
     try {
         const cartData = await getCartData();
-        const item = cartData.find(i => i.id === id);
-
-        // 1) Cartல notes இருந்தா → அதையே show பண்ணு
-        if (item && item.notes) {
-            $("#product-notes-text").val(item.notes);
+        /* Opened again, or typed into, while this was reading. Either way the
+           answer is stale and writing it would take away something a person
+           put there. */
+        if (mine !== notesOpening) return;
+        const box = $("#product-notes-text");
+        if (box.val()) {
+            markChips();
             return;
         }
-
-        // 2) notes இல்லனா → accessQrkModelல இருந்து வந்த description use பண்ணு
-        let desc = "";
-
-        if (typeof products !== "undefined" && products) {
-            // products = { categoryId: [ items... ], ... }
-            for (const itemsArr of Object.values(products)) {
-                const p = itemsArr.find(p => p.id === id);
-                if (p) {
-                    desc = p.item_description || p.description || "";
-                    break;
-                }
-            }
-        }
-        if (desc) {
-            // HTML entities (&lt; &gt;) decode + basic tag strip
-            const tmp = document.createElement("textarea");
-            tmp.innerHTML = desc;            // "&lt;p&gt;hi&lt;/p&gt;" → "<p>hi</p>"
-            desc = tmp.value
-                .replace(/<br\s*\/?>/gi, "\n")   // <br> → new line
-                .replace(/<\/?[^>]+>/g, "")      // மற்ற HTML tags remove
-                .trim();
-            $("#product-notes-text").val(desc);
-        } else {
-            $("#product-notes-text").val("");
-        }
+        const item = cartData.find(i => i.id === id);
+        /* What is already on the line, and nothing else. An empty box is the
+           honest state for a dish nobody has asked anything about. */
+        box.val((item && item.notes) || "");
+        markChips();
     } catch (e) {
         console.error("Error loading notes:", e);
-        $("#product-notes-text").val("");
+        if (mine === notesOpening && !$("#product-notes-text").val()) {
+            $("#product-notes-text").val("");
+        }
     }
 }
+
+/*
+ * THE THINGS PEOPLE ACTUALLY ASK FOR.
+ *
+ * Owner: "when focus show some common template text like less medium, less
+ * sweet and etc."
+ *
+ * Typing "less spicy" on a phone keyboard between two tables is the reason
+ * notes go unwritten. These are one tap each, and they are deliberately the
+ * SAME WORDS voice-order.js already understands - its MARKERS crossed with its
+ * TASTE set, plus its PORTIONS - so a note tapped here and the same note
+ * spoken into the microphone arrive at the kitchen worded identically. A
+ * printed ticket should not reveal which way the waiter's hands were full.
+ */
+const NOTE_SUGGESTIONS = [
+    "Less spicy", "Medium spicy", "Extra spicy",
+    "Less salt", "Less sweet", "Less oil",
+    "No onion", "No garlic", "No ice",
+    "Extra gravy", "Half plate", "One by two",
+];
+
+/** Draw them once, the first time the modal is opened. */
+function buildNoteChips() {
+    const host = $("#notes-chips");
+    if (!host.length || host.children().length) return;
+    host.html(
+        NOTE_SUGGESTIONS.map(
+            (say) =>
+                '<button type="button" class="notes-chip" data-say="' +
+                say.replace(/"/g, "&quot;") +
+                '">' +
+                say +
+                "</button>"
+        ).join("")
+    );
+}
+
+/** The note as a list of parts, so a chip can be taken back off. */
+function notePieces() {
+    return String($("#product-notes-text").val() || "")
+        .split(",")
+        .map((piece) => piece.trim())
+        .filter(Boolean);
+}
+
+/** Light the chips that are already in the box, however they got there. */
+function markChips() {
+    const said = notePieces().map((piece) => piece.toLowerCase());
+    $(".notes-chip").each(function () {
+        const say = String($(this).data("say") || "").toLowerCase();
+        $(this).toggleClass("is-on", said.indexOf(say) !== -1);
+    });
+}
+
+/* A chip adds its words, and takes them away again if it is already on. Both
+   directions matter: the commonest correction to a tap is the same tap. */
+$(document).on("click", ".notes-chip", function () {
+    const say = String($(this).data("say") || "");
+    if (!say) return;
+    const pieces = notePieces();
+    const at = pieces.findIndex((piece) => piece.toLowerCase() === say.toLowerCase());
+    if (at === -1) pieces.push(say);
+    else pieces.splice(at, 1);
+    $("#product-notes-text").val(pieces.join(", "));
+    markChips();
+});
+
+/* Typed by hand, or edited after a tap: the chips still have to agree with
+   the box, or one of them is lying. */
+$(document).on("input", "#product-notes-text", markChips);
 // ADD button → behaves like first + click
 /**
  * Show how many the next tap will add, when it is more than one.
@@ -702,26 +830,275 @@ function showQuantityHint(quantity) {
     hint.textContent = quantity > 1 ? `x${quantity}` : '';
 }
 
-$(document).on("click", ".btn-add", async function () {
-    const id = $(this).data("id");
+/*
+ * A ONE-OFF, ASKED FOR AND PRICED AT THE TABLE.
+ *
+ * The till creates a real item marked INSTANT - which is why it never appears
+ * on anybody's menu - and this then adds it to the order like any other dish.
+ * Nothing downstream needs to know it was unusual.
+ */
+/*
+ * THE PERMANENT WAY IN.
+ *
+ * Owner: "quick sale is not adding product which not exist or not matching in
+ * the item list. Example I can add item like Fish but Fish Curry item already
+ * exist. how can i add now? its blocker."
+ *
+ * He is right and the old design was wrong. Offering this only when a search
+ * found NOTHING covers "birthday cake" and misses the case a restaurant
+ * actually hits: a short word that matches something longer. "Fish" finds Fish
+ * Curry, so the search is not empty, so the offer never appeared, and there was
+ * no other door at all.
+ *
+ * The button is always there and takes whatever is in the box as the name,
+ * because by the time somebody wants this they have usually just typed it.
+ */
+$(document).on('click', '#product-quick-sale', async function () {
+    const box = document.getElementById('product-search-input');
+    const said = box ? box.value.trim() : '';
 
-    const notes = await getDefaultNotesForProduct(id);
-    if (notes) {
-        await setCartItemNotes(id, notes);
+    /*
+     * Nothing typed is not a failure, it is a missing first step. Asking for a
+     * price for an item with no name would produce a line on a kitchen ticket
+     * that says nothing, which is worse than being sent back to the box.
+     */
+    /*
+     * NOTHING TYPED IS A QUESTION, NOT A REFUSAL.
+     *
+     * Owner: "quick sale not clickable until text added."
+     *
+     * This nudged the placeholder and did nothing else, which reads as a dead
+     * button - and a button that does nothing IS a dead button, however good
+     * its reason. It asks now, on the same sheet the price is asked on.
+     */
+    if (!said) {
+        const named = await POSNIC.askName('');
+        if (!named) return;
+        addOneOff(named);
+        return;
     }
+
+    addOneOff(said);
+});
+
+$(document).on('click', '[data-quick-sale]', async function () {
+    addOneOff(this.getAttribute('data-quick-sale') || '');
+});
+
+async function addOneOff(said) {
+    if (!said) return;
+
+    /* The same sheet a fish priced at the market uses. A waiter should not
+       learn two ways to type a number into this app. */
+    const price = await POSNIC.askPrice(said);
+    if (!price) return;
+
+    /*
+     * THE HELPERS THIS SCREEN ACTUALLY HAS.
+     *
+     * showLoader, hideLoader and showToast live in the KOT, order-list and
+     * login scripts - not here. Written against them, this threw
+     * "hideLoader is not defined" and the dish was never added, silently,
+     * because the failure happened inside the handler's own error path.
+     * popup.js is what the menu screen loads and what it already uses.
+     */
+    try {
+        const made = await POSNIC.quickSale.createOneOff(said, price);
+
+        /*
+         * Kept where every screen here reads its menu from, so the row can be
+         * drawn, counted and sent exactly like the rest.
+         *
+         * saveOne, NOT saveData. saveData clears the store first - it is the
+         * door the whole menu arrives through - so this used to delete every
+         * dish and leave the one that had just been added.
+         */
+        await saveOne(STORE_NAME, [made]);
+        await loadProducts();
+        await updateQuantity(made.id, 1);
+
+        const box = document.getElementById('product-search-input');
+        if (box) {
+            box.value = '';
+            applyProductFilter();
+        }
+    } catch (error) {
+        showErrorPopup(error.message || 'Could not add it');
+    }
+}
+
+/*
+ * A LONG PRESS ON A DISH SAYS IT HAS RUN OUT.
+ *
+ * The kitchen tells the floor before it tells anybody with a keyboard. A
+ * waiter who hears "no more fish" had to find whoever runs the till, and in
+ * the minutes that took, three more tables ordered it, three more tickets
+ * printed, and three tables were told no after they had chosen.
+ *
+ * NOT A BUTTON ON THE ROW. Forty rows with an extra control on each is a
+ * slower screen for every waiter, every service, to serve something that
+ * happens twice a night. A long press is the phone idiom for "the other thing
+ * you can do to this", and a stray press in an apron pocket does not reach it.
+ *
+ * Held on the row rather than on ADD, so the gesture never fights the tap that
+ * adds a dish.
+ */
+(function () {
+    const HELD_FOR_MS = 550;
+    let timer = null;
+    let held = false;
+
+    const rowOf = (target) => (target.closest ? target.closest('.dish, .frequent-card') : null);
+
+    async function offerToTakeItOff(row) {
+        const id = row.getAttribute('data-id');
+        if (!id) return;
+
+        const product = await getProductById(id);
+        if (!product || typeof POSNIC === 'undefined' || !POSNIC.askRunOut) return;
+
+        const answer = await POSNIC.askRunOut(product);
+        if (answer === null) return;
+
+        try {
+            const branchId = localStorage.getItem('branch_id') || '';
+            const data = await POSNIC.api.post('/items/soldOut', {
+                item: id,
+                off: answer,
+                branch: branchId
+            });
+
+            if (data.type !== 'success') throw new Error(data.message || 'Could not change it');
+
+            /*
+             * The cached menu is what every screen here draws from, so it is
+             * updated before anything is redrawn. The next sync from the till
+             * confirms it; this is so the waiter who just said it sees it.
+             */
+            const stored = await getProductById(id);
+            if (stored) {
+                stored.sold_out_today = answer;
+                /* saveOne, NOT saveData: saving one dish through the whole-menu
+                   door deleted the menu and left this row alone. */
+                await saveOne(STORE_NAME, [stored]);
+            }
+
+            await loadProducts();
+            if (typeof applyProductFilter === 'function') applyProductFilter();
+        } catch (error) {
+            /* popup.js, because showToast lives on the KOT and order screens
+               and not on this one. Written against it once already, this threw
+               inside its own error path and said nothing at all. */
+            showErrorPopup(error.message || 'Could not change it');
+        }
+    }
+
+    const start = (event) => {
+        const row = rowOf(event.target);
+        /* Not while they are aiming at a control: the stepper and ADD are taps,
+           and a slow tap on them is still a tap. */
+        if (!row || event.target.closest('button, input, a')) return;
+
+        held = false;
+        timer = setTimeout(() => {
+            held = true;
+            /* A short buzz, so the sheet is not a surprise arriving from
+               nowhere while a thumb is still down. */
+            if (navigator.vibrate) navigator.vibrate(12);
+            offerToTakeItOff(row);
+        }, HELD_FOR_MS);
+    };
+
+    const stop = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+    };
+
+    document.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('touchend', stop);
+    document.addEventListener('touchmove', stop, { passive: true });
+    document.addEventListener('mousedown', start);
+    document.addEventListener('mouseup', stop);
+    document.addEventListener('mouseleave', stop);
+
+    /* A press that became the sheet must not also be a tap that adds a dish. */
+    document.addEventListener(
+        'click',
+        (event) => {
+            if (!held) return;
+            held = false;
+            if (rowOf(event.target)) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        },
+        true
+    );
+})();
+
+// Clear only the search that produced this add. A slow save must not erase
+// the next query the waiter has already started typing.
+function searchAtAdd() {
+    const input = document.getElementById('product-search-input');
+    return input ? { input, query: input.value, revision: productSearchRevision } : null;
+}
+async function prepareNextItem(search) {
+    if (!search || !search.query.trim() || search.input.value !== search.query ||
+        search.revision !== productSearchRevision) return;
+    search.input.value = '';
+    search.input.focus({ preventScroll: true });
+    await applyProductFilter();
+}
+
+$(document).on("click", ".btn-add", cartAction(async function () {
+    const id = $(this).data("id");
+    const search = searchAtAdd();
 
     /* Whatever the search asked for, then back to one: a quantity typed for
        one item must not silently apply to the next thing touched. */
     const quantity = window._pendingQuantity || 1;
-    window._pendingQuantity = 1;
-    showQuantityHint(1);
 
-    await updateQuantity(id, quantity);
+    /*
+     * A DISH PRICED ON THE DAY IS ASKED ABOUT BEFORE IT GOES ON.
+     *
+     * Owner, from a live table: two fish reached the kitchen worth nothing.
+     * The catalogue cannot carry a price for a whole fish, so the waiter is
+     * asked for the one they were told this morning.
+     *
+     * Asked BEFORE the quantity changes, so backing out of the question leaves
+     * the order exactly as it was rather than adding a free dish and then
+     * taking it off.
+     */
+    const product = await getProductById(id);
+    let askedPrice = 0;
+    if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(product)) {
+        askedPrice = await POSNIC.askPrice(window.ItemLanguage.name(product));
+        if (!askedPrice) return;
+    }
+
+    /*
+     * AND WHAT THE TABLE WANTS ON IT.
+     *
+     * Asked once, when the dish first goes on the order - not every time the
+     * count goes up, because "two biryanis" is one question about two plates
+     * and asking twice is how a waiter learns to skip the extras.
+     *
+     * Backing out leaves the order exactly as it was, the same rule the price
+     * question follows above: null is a decision, an empty list is an answer.
+     */
+    let extras = [];
+    if (typeof POSNIC !== 'undefined' && POSNIC.askOptions) {
+        extras = await POSNIC.askOptions(product);
+        if (extras === null) return;
+    }
+
+    const added = await updateQuantity(id, quantity, { askedPrice, modifiers: extras });
+    if (added) await prepareNextItem(search);
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);
     }
-});
+}));
 /*
  * ONE MORE, ONE FEWER.
  *
@@ -743,7 +1120,8 @@ $(document).on("click", ".btn-add", async function () {
  * bill bar rises with the total on it, so the answer is already on the screen
  * twice before any picture could arrive.
  */
-$(document).on("click", ".btn-increase", async function () {
+$(document).on("click", ".btn-increase", cartAction(async function () {
+    const search = searchAtAdd();
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
@@ -762,7 +1140,8 @@ $(document).on("click", ".btn-increase", async function () {
         return;
     }
 
-    await updateQuantity(productId, 1);
+    const added = await updateQuantity(productId, 1);
+    if (added) await prepareNextItem(search);
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(productId);
     }
@@ -772,9 +1151,9 @@ $(document).on("click", ".btn-increase", async function () {
     if (!allowNegativeStock && currentCartQty + 1 >= availableQty) {
         $('.btn-increase[data-id="' + productId + '"]').prop('disabled', true).addClass('disabled');
     }
-});
+}));
 
-$(document).on("click", ".btn-decrease", async function () {
+$(document).on("click", ".btn-decrease", cartAction(async function () {
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
@@ -785,7 +1164,7 @@ $(document).on("click", ".btn-decrease", async function () {
 
     /* Going down always makes room to go back up. */
     $('.btn-increase[data-id="' + productId + '"]').prop('disabled', false).removeClass('disabled');
-});
+}));
 
 
 async function openCartSummarySheet() {
@@ -886,24 +1265,24 @@ async function renderCartSummaryIntoSheet() {
             <div class="cart-summary-chip-row">
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Subtotal</div>
-                    <div class="cart-summary-chip-value">₹${totalSubtotal.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalSubtotal)}</div>
                 </div>
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Discount</div>
-                    <div class="cart-summary-chip-value">‑₹${totalDiscount.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">‑${CaptainMoney.html(totalDiscount)}</div>
                 </div>
             </div>
 
             <div class="cart-summary-chip-row">
                 <div class="cart-summary-chip">
                     <div class="cart-summary-chip-label">Tax</div>
-                    <div class="cart-summary-chip-value">₹${totalTax.toFixed(2)}</div>
+                    <div class="cart-summary-chip-value">${CaptainMoney.html(totalTax)}</div>
                 </div>
             </div>
 
             <div class="cart-summary-total">
                 <div class="cart-summary-total-label">Final Amount</div>
-                <div class="cart-summary-total-amount">₹${finalTotal.toFixed(2)}</div>
+                <div class="cart-summary-total-amount">${CaptainMoney.html(finalTotal)}</div>
             </div>
         </div>
     `;
@@ -938,9 +1317,13 @@ function setSearchCount(text) {
  * did not. Nobody decided either of those. They happened because the same
  * thing was written twice.
  */
+let productSearchRevision = 0;
 async function applyProductFilter() {
     const input = document.getElementById('product-search-input');
     if (!input) return;
+    const revision = ++productSearchRevision;
+    const query = input.value;
+    const isCurrent = () => revision === productSearchRevision && input.value === query;
 
     /* "3 cb" is three of whatever "cb" finds. The number is remembered for
        the next add, then forgotten, so it cannot leak into a later tap. */
@@ -967,7 +1350,8 @@ async function applyProductFilter() {
 
     // 🔁 Box empty → the whole menu back, at the top of it
     if (!term) {
-        await loadProducts();
+        await loadProducts(isCurrent);
+        if (!isCurrent()) return;
         /* At the top, and only when a search actually ended. Leaving a search
            returns you to the menu, and the top is the honest place to be put
            back down - but scrolling on every keystroke that happens to clear
@@ -1002,11 +1386,22 @@ async function applyProductFilter() {
         /* What the shop actually sells, from the frequent items already
            fetched for the shortcuts row. Breaks ties only. */
         popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
+        /*
+         * "chicken sixty five" finds Chicken 65 when typed out too.
+         *
+         * A deterministic rewrite, not a guess, and it runs only when the term
+         * as typed found nothing - so no search that works today changes. NOT
+         * `heard`: phonetic matching stays off for typing, because somebody
+         * who types has seen what they typed and the same keystrokes must
+         * always give the same order.
+         */
+        numbers: true,
     });
 
     // Load cart so qty / stock status stay correct
     const storedCart = await getCartData();
-    const cartMap = new Map(storedCart.map(i => [i.id, i]));
+    if (!isCurrent()) return;
+    const cartMap = cartProductMap(storedCart);
 
     const seenIds = new Set();
     const hits = [];
@@ -1017,6 +1412,41 @@ async function applyProductFilter() {
     }
 
     const listEl = document.getElementById('product-list');
+
+    /*
+     * THE NUMBER ON THE WALL, ON THE SCREEN A WAITER SEARCHES.
+     *
+     * Owner: "number card use of that? how to use? i tried to search with that
+     * number nothing happened."
+     *
+     * Nothing happened because the number lookup was only ever wired into the
+     * Add item sheet. The card is printed for the whole shop and the screen
+     * most orders start on could not answer it, so the feature was half built
+     * and looked broken - which it was, from where he was standing.
+     *
+     * The same derivation as the card and the sheet: MenuView.numbers over the
+     * shop's own menu order, so all three agree without anybody assigning
+     * anything.
+     */
+    const menuForNumbers = Object.entries(products || {})
+        .filter(([key]) => key !== 'all')
+        .map(([key, items]) => ({
+            key,
+            name: (items[0] && items[0].category_name) || key,
+            items,
+        }));
+    const numbers = MenuView.numbers(menuForNumbers);
+
+    /*
+     * THE LOOKUP, NOT THE BADGE.
+     *
+     * Passing `numbers` here draws the number on every row, which turned every
+     * dish name into "1Chicken Biryani" and changed the look of the screen a
+     * waiter uses forty times a service. He asked to be able to USE the
+     * number, not to see it on every line. The Add item sheet still shows
+     * them, because that is the screen somebody opens with the card in front
+     * of them.
+     */
     const options = {
         image: getLocalImageUrl,
         popular: window._frequentItemIds instanceof Set ? window._frequentItemIds : new Set(),
@@ -1031,14 +1461,89 @@ async function applyProductFilter() {
          * one thing, and putting a heading above each result buries the best
          * match under the name of its category.
          */
-        listEl.innerHTML = hits.length
-            ? '<div class="menu-section-items">' +
-              hits.map(p => MenuView.dish(p, (cartMap.get(p.id) || {}).quantity || 0, options)).join('') +
+        /*
+         * THE OFFER BELONGS UNDER THE RESULTS TOO.
+         *
+         * Owner, twice, the second time furious: "i told you already... i
+         * cant add 'fish' coz already fish briyani there and no way to add."
+         *
+         * It was offered only when a search found NOTHING, which is the rare
+         * case. The common one is a search that finds something ELSE: typing
+         * Fish finds Fish Curry, so the offer never came, and the + beside the
+         * box is a 28px circle he has now looked straight past twice.
+         *
+         * So it is offered whenever what was typed is not the name of a dish
+         * on the menu, under the results, where somebody who has just read
+         * them and not found what they wanted is already looking.
+         *
+         * An exact name match suppresses it, because then the dish IS on the
+         * menu and offering to invent a second one with the same name is how
+         * a menu grows duplicates.
+         */
+        const typed = input.value.trim();
+        const exact = hits.some(
+            (p) => String(p.name || '').trim().toLowerCase() === typed.toLowerCase()
+        );
+
+        /*
+         * A NUMBER TYPED IS A NUMBER MEANT - and also, sometimes, a name.
+         *
+         * The same rule the Add item sheet follows. Typing 33 puts dish 33
+         * first, labelled; it does NOT replace the search, because in an
+         * Indian kitchen a number IS a dish name - type 65 and a waiter may
+         * well want Chicken 65. Both readings are offered and the waiter
+         * picks, rather than one being guessed on their behalf.
+         */
+        const byNumber = /^[0-9]{1,4}$/.test(typed)
+            ? MenuView.atNumber(menuForNumbers, typed)
+            : null;
+        const rest = byNumber
+            ? hits.filter((p) => String(p.id) !== String(byNumber.id))
+            : hits;
+
+        const offer =
+            '<div class="menu-quick-sale">' +
+            '<button type="button" class="menu-quick-sale-btn" data-quick-sale="' +
+            MenuView.escape(typed) +
+            '">Add &ldquo;' +
+            MenuView.escape(typed) +
+            '&rdquo; with a price</button>' +
+            '<p class="menu-quick-sale-why">For something the menu does not have. It is charged on this bill and stays off the menu.</p>' +
+            '</div>';
+
+        const numbered = byNumber
+            ? '<div class="menu-section-head"><span class="menu-section-name"><span>No.</span> <bdi translate="no">' +
+              MenuView.escape(typed) +
+              '</bdi></span></div>' +
+              '<div class="menu-section-items">' +
+              MenuView.dish(byNumber, (cartMap.get(byNumber.id) || {}).quantity || 0, options) +
               '</div>'
+            : '';
+
+        listEl.innerHTML = (byNumber || rest.length)
+            ? numbered +
+              (rest.length
+                ? '<div class="menu-section-items">' +
+                  rest.map(p => MenuView.dish(p, (cartMap.get(p.id) || {}).quantity || 0, options)).join('') +
+                  '</div>'
+                : '') +
+              (typed && !exact ? offer : '')
             : MenuView.nothing(
                 'Nothing matches "' + input.value.trim() + '"',
                 'Try fewer letters, or the first letters of each word - "cb" finds Chicken Biryani.'
-              );
+              ) +
+              /*
+               * AND THE WAY OUT, WHERE THE WAITER ALREADY IS.
+               *
+               * Owner: "able to add item and price on demand."
+               *
+               * This is the exact moment somebody discovers the thing is not
+               * on the menu - a bottle somebody brought in, a cake the kitchen
+               * agreed to plate. Offering it here costs no room on a screen
+               * used forty times a service, and it already knows what to call
+               * it, because they just typed the name.
+               */
+              offer;
     }
 
     /* Said quietly, and only while it is worth saying. */
@@ -1118,3 +1623,32 @@ async function changeBranch() {
         window.location.href = 'index.html';
     }
 }
+
+// Back dismisses the top menu layer; it must not throw away the current cart.
+window.addEventListener('captain:back', event => {
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
+    const cartNotes = document.getElementById('cart-notes-modal');
+    if (cartNotes && cartNotes.style.display !== 'none' && cartNotes.getClientRects().length) {
+        event.preventDefault(); document.getElementById('cart-notes-cancel-btn')?.click(); return;
+    }
+    const cancelOrder = document.getElementById('cancelModal');
+    if (cancelOrder && cancelOrder.style.display !== 'none' && cancelOrder.getClientRects().length) {
+        event.preventDefault(); closeCancelModal(); return;
+    }
+    const notes = document.getElementById('product-notes-modal');
+    if (notes && notes.style.display !== 'none' && notes.getClientRects().length) {
+        event.preventDefault();
+        document.getElementById('notes-cancel-btn')?.click();
+        return;
+    }
+    if (document.getElementById('menu-index') && !document.getElementById('menu-index').hidden) {
+        event.preventDefault(); MenuScreen.closeIndex(); return;
+    }
+    if (document.getElementById('cart-summary-sheet')?.classList.contains('open')) {
+        event.preventDefault(); closeCartSummarySheet(); return;
+    }
+    const search = document.getElementById('product-search-input');
+    if (search && search.value) {
+        event.preventDefault(); search.value = ''; applyProductFilter();
+    }
+});
