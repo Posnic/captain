@@ -29,28 +29,21 @@ const MENU = [
   },
 ];
 
-/** On the order history screen, with the menu cached the way a shift leaves it. */
-async function atTheHistory(page) {
+/** Open a persisted order through the same Modify action as staff. */
+async function atTheOrder(page, where) {
   await onTheMenu(page, 'nothing', { menu: MENU });
-  await page.goto('/order-history.html');
-  await page.waitForFunction(() => typeof openItemPicker === 'function');
-
-  /*
-   * THE MODIFY MODAL IS OPENED FIRST, because that is the only way in.
-   *
-   * `#open-item-picker` lives inside `#editOrderModal` on both screens, so a
-   * waiter never reaches this sheet without that modal being up. The sheet
-   * lives inside the modal too - Bootstrap 5 enforces focus and pulls it back
-   * out of anything that is not a descendant, which left the search box able
-   * to be tapped and never focused.
-   *
-   * Calling openItemPicker() on a bare page tested a path that does not exist,
-   * and it is why these read as passing while the search was dead in the hand.
-   */
-  await page.evaluate(() => {
-    new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
-  });
+  await page.route('**/sales/getOrderHistory', route => route.fulfill({json:{type:'success',data:{orders:[{
+    _id:'picker-order',status:'pending',dine_type:'Dine-in',table_number:'1',person_count:2,total_amount:10,
+    updated_date:'2026-09-27T10:00:00Z',items:[{_id:'existing-line',product_id:'old-soup',name:'Soup',quantity:1,price:10}]
+  }]}}}));
+  await page.goto('/'+where);
+  await page.waitForFunction(() => typeof modifyKot === 'function' && typeof openItemPicker === 'function');
+  await page.evaluate(() => modifyKot('picker-order'));
   await expect(page.locator('#editOrderModal')).toBeVisible();
+  await expect(page.locator('#editOrderModal .modal-dialog').first()).toHaveCSS('transform','none');
+}
+async function atTheHistory(page) {
+  await atTheOrder(page,'order-history.html');
 }
 
 test('the picker draws the real menu, with its sections', async ({ page }) => {
@@ -135,9 +128,6 @@ test('nothing is sent to the till from inside the picker', async ({ page }) => {
   });
 
   await atTheHistory(page);
-  await page.evaluate(() => {
-    window.editingOrder = { items: [], total_amount: '0.00' };
-  });
   await page.evaluate(() => openItemPicker());
   await page.locator('#item-picker .btn-add[data-id="p-1"]').click();
   await page.locator('#item-picker-done').click();
@@ -176,28 +166,8 @@ test('the form underneath cannot scroll while the menu is up', async ({ page }) 
  * Owner, checking: "inside table add item seperately given ?"
  */
 
-/** The floor screen, with the menu cached the way a shift leaves it. */
 async function atTheFloor(page) {
-  await onTheMenu(page, 'nothing', { menu: MENU });
-  await page.goto('/kot-management.html');
-  await page.waitForFunction(() => typeof openItemPicker === 'function');
-
-  /*
-   * THE MODIFY MODAL IS OPENED FIRST, because that is the only way in.
-   *
-   * `#open-item-picker` lives inside `#editOrderModal` on both screens, so a
-   * waiter never reaches this sheet without that modal being up. The sheet
-   * lives inside the modal too - Bootstrap 5 enforces focus and pulls it back
-   * out of anything that is not a descendant, which left the search box able
-   * to be tapped and never focused.
-   *
-   * Calling openItemPicker() on a bare page tested a path that does not exist,
-   * and it is why these read as passing while the search was dead in the hand.
-   */
-  await page.evaluate(() => {
-    new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
-  });
-  await expect(page.locator('#editOrderModal')).toBeVisible();
+  await atTheOrder(page,'kot-management.html');
 }
 
 test('the floor has the same way in as the order history', async ({ page }) => {
