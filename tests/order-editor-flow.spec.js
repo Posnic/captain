@@ -426,8 +426,10 @@ test('closing the editor ignores an outstanding pricing response',async({page})=
  await editor(page,'order-history.html',{pricing_preview:true},setup);await first;
  await page.locator('#cancel-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
- release();await page.waitForTimeout(100);
- expect(await page.evaluate(()=>orderBeingModified())).toBeNull();
+ release();
+ // Bootstrap hides the dialog before its backdrop transition emits hidden.bs.modal.
+ // Wait for the editor's close lifecycle, rather than sampling midway through it.
+ await expect.poll(()=>page.evaluate(()=>orderBeingModified())).toBeNull();
 });
 
 
