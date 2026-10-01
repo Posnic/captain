@@ -507,6 +507,8 @@ test('transfer action requires capability and permission and opens the registere
 
 test('transfer main table survives Back and review fits phone and RTL tablet',async({page})=>{
  await page.setViewportSize({width:320,height:740});await editor(page);await page.locator('#cancel-order-changes').click();
+ // Finish the editor's Back cleanup before opening another flow programmatically.
+ await page.waitForFunction(()=>!history.state?.captainOrderEditor);
  const source='a'.repeat(24),one='b'.repeat(24),two='c'.repeat(24);
  await page.route('**/captain/v1/tables',route=>route.fulfill({json:{tables:[
   {id:one,tableorder_value:'8',status:'available',capacity:2,max:2,adjacent:[two]},
