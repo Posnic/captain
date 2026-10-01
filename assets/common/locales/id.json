@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Tarik ke bawah di bagian atas daftar untuk menyegarkan.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Geser ke kiri atau kanan pada detail pesanan untuk beralih pesanan. Tombol panah juga bisa digunakan.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Gunakan tombol Kembali untuk kembali. Konfirmasikan sebelum membuang perubahan yang belum disimpan.",
-  "Search by item name or code. Adding an item clears the search.": "Cari berdasarkan nama atau kode item. Menambahkan item akan mengosongkan pencarian."
+  "Search by item name or code. Adding an item clears the search.": "Cari berdasarkan nama atau kode item. Menambahkan item akan mengosongkan pencarian.",
+  "Printing": "Pencetakan",
+  "Receipt printer": "Printer struk",
+  "Kitchen printers": "Printer dapur",
+  "Managed on desktop POS": "Dikelola melalui POS desktop",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Buka pesanan dan pilih Pengiriman ke dapur untuk memeriksa laporan setiap printer."
 }

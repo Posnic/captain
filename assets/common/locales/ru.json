@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Потяните вниз в начале списка, чтобы обновить его.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Смахните влево или вправо на экране сведений о заказе, чтобы перейти к другому заказу. Можно также использовать кнопки со стрелками.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Нажмите «Назад», чтобы вернуться. Перед отменой несохранённых изменений потребуется подтверждение.",
-  "Search by item name or code. Adding an item clears the search.": "Ищите товар по названию или коду. При добавлении товара поиск очищается."
+  "Search by item name or code. Adding an item clears the search.": "Ищите товар по названию или коду. При добавлении товара поиск очищается.",
+  "Printing": "Печать",
+  "Receipt printer": "Принтер чеков",
+  "Kitchen printers": "Кухонные принтеры",
+  "Managed on desktop POS": "Управляется в POS на компьютере",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Откройте заказ и выберите «Передача на кухню», чтобы проверить отчёт каждого принтера."
 }

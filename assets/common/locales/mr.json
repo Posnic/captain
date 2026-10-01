@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "यादी रिफ्रेश करण्यासाठी तिच्या सर्वात वरच्या भागातून खाली ओढा.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ऑर्डर बदलण्यासाठी ऑर्डरच्या तपशीलांवर डावीकडे किंवा उजवीकडे स्वाइप करा. बाणाची बटणेही वापरू शकता.",
   "Use Back to return. Confirm before discarding unsaved changes.": "परत जाण्यासाठी मागे बटण वापरा. जतन न केलेले बदल रद्द करण्यापूर्वी पुष्टी करा.",
-  "Search by item name or code. Adding an item clears the search.": "आयटमचे नाव किंवा कोड वापरून शोधा. आयटम जोडल्यावर शोध साफ होतो."
+  "Search by item name or code. Adding an item clears the search.": "आयटमचे नाव किंवा कोड वापरून शोधा. आयटम जोडल्यावर शोध साफ होतो.",
+  "Printing": "प्रिंटिंग",
+  "Receipt printer": "पावती प्रिंटर",
+  "Kitchen printers": "किचन प्रिंटर",
+  "Managed on desktop POS": "डेस्कटॉप POS वरून व्यवस्थापित",
+  "Open an order and choose Kitchen delivery to check each printer report.": "प्रत्येक प्रिंटरचा अहवाल पाहण्यासाठी ऑर्डर उघडा आणि किचनला पाठवणे निवडा."
 }

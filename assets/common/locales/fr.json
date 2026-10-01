@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Faites glisser vers le bas en haut d’une liste pour l’actualiser.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Dans les détails d’une commande, balayez vers la gauche ou la droite pour changer de commande. Vous pouvez aussi utiliser les boutons fléchés.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Utilisez Retour pour revenir en arrière. Confirmez avant d’abandonner les modifications non enregistrées.",
-  "Search by item name or code. Adding an item clears the search.": "Recherchez un article par son nom ou son code. L’ajout d’un article efface la recherche."
+  "Search by item name or code. Adding an item clears the search.": "Recherchez un article par son nom ou son code. L’ajout d’un article efface la recherche.",
+  "Printing": "Impression",
+  "Receipt printer": "Imprimante de tickets",
+  "Kitchen printers": "Imprimantes de cuisine",
+  "Managed on desktop POS": "Géré sur le point de vente sur ordinateur",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Ouvrez une commande et sélectionnez Transmission en cuisine pour consulter le rapport de chaque imprimante."
 }

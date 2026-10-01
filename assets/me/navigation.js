@@ -1,7 +1,7 @@
 /* One account hub; hash routes retain browser and Android Back navigation. */
 (function () {
   "use strict";
-  const titles = { home: "Me", account: "Account", language: "Language", preferences: "This phone" };
+  const titles = { home: "Me", account: "Account", language: "Language", preferences: "This phone", printers: "Printing" };
   const current = () => Object.hasOwn(titles, location.hash.slice(1)) ? location.hash.slice(1) : "home";
   let renderedHash = location.hash;
   function render() {
@@ -12,6 +12,12 @@
   }
   function back() {
     if (window.CaptainProfile?.back()) return;
+    if (current() === "printers") {
+      history.replaceState(null, "", location.pathname + location.search + '#preferences');
+      render();
+      document.querySelector('a[href="#printers"]')?.focus();
+      return;
+    }
     if (current() !== "home") {
       history.replaceState(null, "", location.pathname + location.search);
       render();

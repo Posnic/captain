@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "பட்டியலைப் புதுப்பிக்க, அதன் மேற்பகுதியில் கீழே இழுக்கவும்.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ஆர்டர்களை மாற்ற, ஆர்டர் விவரங்களில் இடது அல்லது வலதுபுறமாக ஸ்வைப் செய்யவும். அம்புக்குறி பொத்தான்களையும் பயன்படுத்தலாம்.",
   "Use Back to return. Confirm before discarding unsaved changes.": "திரும்பிச் செல்ல பின் பொத்தானைப் பயன்படுத்தவும். சேமிக்காத மாற்றங்களைக் கைவிடும் முன் உறுதிப்படுத்தவும்.",
-  "Search by item name or code. Adding an item clears the search.": "பொருளின் பெயர் அல்லது குறியீட்டைக் கொண்டு தேடவும். பொருளைச் சேர்த்ததும் தேடல் அழிக்கப்படும்."
+  "Search by item name or code. Adding an item clears the search.": "பொருளின் பெயர் அல்லது குறியீட்டைக் கொண்டு தேடவும். பொருளைச் சேர்த்ததும் தேடல் அழிக்கப்படும்.",
+  "Printing": "அச்சிடுதல்",
+  "Receipt printer": "ரசீது அச்சுப்பொறி",
+  "Kitchen printers": "சமையலறை அச்சுப்பொறிகள்",
+  "Managed on desktop POS": "டெஸ்க்டாப் POS-இல் நிர்வகிக்கப்படுகிறது",
+  "Open an order and choose Kitchen delivery to check each printer report.": "ஒவ்வொரு அச்சுப்பொறியின் அறிக்கையையும் பார்க்க, ஓர் ஆர்டரைத் திறந்து சமையலறைக்கு அனுப்புதல் என்பதைத் தேர்ந்தெடுக்கவும்."
 }

@@ -117,7 +117,7 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 #me-pages .me-row-label { min-width: 0; overflow-wrap: anywhere; }
 #me-pages .me-row-value { white-space: normal; text-align: end; }
 #me-pages .me-row-go::after { margin-inline-start: auto; }
-[dir="rtl"] #me-pages .me-row-go::after { transform: scaleX(-1); }
+[dir="rtl"] #me-pages .me-row-go::after { content: '‹'; direction: ltr; transform: none; }
 #me-pages [data-me-page][hidden] { display: none; }
 
 #me-pages .me-row { border-radius: 0; }

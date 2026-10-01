@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "ලැයිස්තුව යාවත්කාලීන කිරීමට එහි ඉහළින් පහළට අදින්න.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ඇණවුම් මාරු කිරීමට ඇණවුම් විස්තර මත වමට හෝ දකුණට ස්වයිප් කරන්න. ඊතල බොත්තම් ද භාවිත කළ හැකිය.",
   "Use Back to return. Confirm before discarding unsaved changes.": "ආපසු යාමට ආපසු බොත්තම භාවිත කරන්න. සුරැකී නැති වෙනස්කම් ඉවත දැමීමට පෙර තහවුරු කරන්න.",
-  "Search by item name or code. Adding an item clears the search.": "අයිතමයේ නම හෝ කේතය අනුව සොයන්න. අයිතමයක් එක් කළ විට සෙවුම හිස් වේ."
+  "Search by item name or code. Adding an item clears the search.": "අයිතමයේ නම හෝ කේතය අනුව සොයන්න. අයිතමයක් එක් කළ විට සෙවුම හිස් වේ.",
+  "Printing": "මුද්‍රණය",
+  "Receipt printer": "රිසිට් මුද්‍රණ යන්ත්‍රය",
+  "Kitchen printers": "මුළුතැන්ගෙයි මුද්‍රණ යන්ත්‍ර",
+  "Managed on desktop POS": "ඩෙස්ක්ටොප් POS වෙතින් කළමනාකරණය කෙරේ",
+  "Open an order and choose Kitchen delivery to check each printer report.": "එක් එක් මුද්‍රණ යන්ත්‍රයේ වාර්තාව පරීක්ෂා කිරීමට ඇණවුමක් විවෘත කර මුළුතැන්ගෙයට යැවීම තෝරන්න."
 }

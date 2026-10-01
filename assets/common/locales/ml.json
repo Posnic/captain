@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "ലിസ്റ്റ് പുതുക്കാൻ അതിന്റെ മുകളിൽ നിന്ന് താഴേക്ക് വലിക്കുക.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ഓർഡറുകൾ മാറാൻ ഓർഡർ വിശദാംശങ്ങളിൽ ഇടത്തോട്ടോ വലത്തോട്ടോ സ്വൈപ്പ് ചെയ്യുക. അമ്പടയാള ബട്ടണുകളും ഉപയോഗിക്കാം.",
   "Use Back to return. Confirm before discarding unsaved changes.": "തിരികെ പോകാൻ ബാക്ക് ബട്ടൺ ഉപയോഗിക്കുക. സേവ് ചെയ്യാത്ത മാറ്റങ്ങൾ ഉപേക്ഷിക്കുന്നതിന് മുമ്പ് സ്ഥിരീകരിക്കുക.",
-  "Search by item name or code. Adding an item clears the search.": "ഇനത്തിന്റെ പേരോ കോഡോ ഉപയോഗിച്ച് തിരയുക. ഒരു ഇനം ചേർക്കുമ്പോൾ തിരയൽ മായ്‌ക്കപ്പെടും."
+  "Search by item name or code. Adding an item clears the search.": "ഇനത്തിന്റെ പേരോ കോഡോ ഉപയോഗിച്ച് തിരയുക. ഒരു ഇനം ചേർക്കുമ്പോൾ തിരയൽ മായ്‌ക്കപ്പെടും.",
+  "Printing": "പ്രിന്റിംഗ്",
+  "Receipt printer": "രസീത് പ്രിന്റർ",
+  "Kitchen printers": "അടുക്കള പ്രിന്ററുകൾ",
+  "Managed on desktop POS": "ഡെസ്‌ക്‌ടോപ്പ് POS-ൽ നിയന്ത്രിക്കുന്നു",
+  "Open an order and choose Kitchen delivery to check each printer report.": "ഓരോ പ്രിന്ററിന്റെയും റിപ്പോർട്ട് പരിശോധിക്കാൻ ഒരു ഓർഡർ തുറന്ന് അടുക്കളയിലേക്ക് അയയ്ക്കൽ തിരഞ്ഞെടുക്കുക."
 }

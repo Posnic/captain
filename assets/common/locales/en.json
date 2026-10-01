@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Pull down at the top of a list to refresh.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Swipe left or right on order details to change orders. Arrow buttons work too.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Use Back to return. Confirm before discarding unsaved changes.",
-  "Search by item name or code. Adding an item clears the search.": "Search by item name or code. Adding an item clears the search."
+  "Search by item name or code. Adding an item clears the search.": "Search by item name or code. Adding an item clears the search.",
+  "Printing": "Printing",
+  "Receipt printer": "Receipt printer",
+  "Kitchen printers": "Kitchen printers",
+  "Managed on desktop POS": "Managed on desktop POS",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Open an order and choose Kitchen delivery to check each printer report."
 }

@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Vuta chini ukiwa juu ya orodha ili kuonyesha taarifa mpya.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Telezesha kushoto au kulia kwenye maelezo ya agizo ili kubadili maagizo. Unaweza pia kutumia vitufe vya mishale.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Tumia kitufe cha Nyuma kurudi. Thibitisha kabla ya kutupa mabadiliko ambayo hayajahifadhiwa.",
-  "Search by item name or code. Adding an item clears the search.": "Tafuta kwa jina au msimbo wa bidhaa. Kuongeza bidhaa kunafuta maandishi ya utafutaji."
+  "Search by item name or code. Adding an item clears the search.": "Tafuta kwa jina au msimbo wa bidhaa. Kuongeza bidhaa kunafuta maandishi ya utafutaji.",
+  "Printing": "Uchapishaji",
+  "Receipt printer": "Printa ya risiti",
+  "Kitchen printers": "Printa za jikoni",
+  "Managed on desktop POS": "Husimamiwa kwenye POS ya kompyuta",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Fungua agizo na uchague Utumaji jikoni ili kuangalia ripoti ya kila printa."
 }

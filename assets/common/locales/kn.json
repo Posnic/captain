@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲು ಅದರ ಮೇಲ್ಭಾಗದಲ್ಲಿ ಕೆಳಕ್ಕೆ ಎಳೆಯಿರಿ.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ಆರ್ಡರ್‌ಗಳನ್ನು ಬದಲಾಯಿಸಲು ಆರ್ಡರ್ ವಿವರಗಳ ಮೇಲೆ ಎಡಕ್ಕೆ ಅಥವಾ ಬಲಕ್ಕೆ ಸ್ವೈಪ್ ಮಾಡಿ. ಬಾಣದ ಬಟನ್‌ಗಳನ್ನೂ ಬಳಸಬಹುದು.",
   "Use Back to return. Confirm before discarding unsaved changes.": "ಹಿಂತಿರುಗಲು ಹಿಂದಕ್ಕೆ ಬಟನ್ ಬಳಸಿ. ಉಳಿಸದ ಬದಲಾವಣೆಗಳನ್ನು ತ್ಯಜಿಸುವ ಮೊದಲು ದೃಢೀಕರಿಸಿ.",
-  "Search by item name or code. Adding an item clears the search.": "ಐಟಂ ಹೆಸರು ಅಥವಾ ಕೋಡ್ ಬಳಸಿ ಹುಡುಕಿ. ಐಟಂ ಸೇರಿಸಿದಾಗ ಹುಡುಕಾಟ ತೆರವುಗೊಳ್ಳುತ್ತದೆ."
+  "Search by item name or code. Adding an item clears the search.": "ಐಟಂ ಹೆಸರು ಅಥವಾ ಕೋಡ್ ಬಳಸಿ ಹುಡುಕಿ. ಐಟಂ ಸೇರಿಸಿದಾಗ ಹುಡುಕಾಟ ತೆರವುಗೊಳ್ಳುತ್ತದೆ.",
+  "Printing": "ಮುದ್ರಣ",
+  "Receipt printer": "ರಸೀದಿ ಪ್ರಿಂಟರ್",
+  "Kitchen printers": "ಅಡುಗೆಮನೆ ಪ್ರಿಂಟರ್‌ಗಳು",
+  "Managed on desktop POS": "ಡೆಸ್ಕ್‌ಟಾಪ್ POS ನಲ್ಲಿ ನಿರ್ವಹಿಸಲಾಗುತ್ತದೆ",
+  "Open an order and choose Kitchen delivery to check each printer report.": "ಪ್ರತಿ ಪ್ರಿಂಟರ್‌ನ ವರದಿಯನ್ನು ಪರಿಶೀಲಿಸಲು ಆರ್ಡರ್ ತೆರೆಯಿರಿ ಮತ್ತು ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸುವಿಕೆ ಆಯ್ಕೆಮಾಡಿ."
 }

@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "목록 맨 위에서 아래로 당기면 새로고침됩니다.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "주문 상세 화면에서 왼쪽이나 오른쪽으로 스와이프하면 주문을 전환할 수 있습니다. 화살표 버튼도 사용할 수 있습니다.",
   "Use Back to return. Confirm before discarding unsaved changes.": "뒤로 버튼을 눌러 이전 화면으로 돌아가세요. 저장하지 않은 변경 사항을 취소하기 전에 확인하세요.",
-  "Search by item name or code. Adding an item clears the search.": "상품명이나 코드로 검색하세요. 상품을 추가하면 검색어가 지워집니다."
+  "Search by item name or code. Adding an item clears the search.": "상품명이나 코드로 검색하세요. 상품을 추가하면 검색어가 지워집니다.",
+  "Printing": "인쇄",
+  "Receipt printer": "영수증 프린터",
+  "Kitchen printers": "주방 프린터",
+  "Managed on desktop POS": "데스크톱 POS에서 관리",
+  "Open an order and choose Kitchen delivery to check each printer report.": "주문을 열고 주방 전송을 선택하여 각 프린터의 보고서를 확인하세요."
 }

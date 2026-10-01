@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Listeyi yenilemek için listenin en üstündeyken aşağı çekin.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Siparişler arasında geçiş yapmak için sipariş ayrıntılarında sola veya sağa kaydırın. Ok düğmelerini de kullanabilirsiniz.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Geri dönmek için Geri düğmesini kullanın. Kaydedilmemiş değişiklikleri silmeden önce onaylayın.",
-  "Search by item name or code. Adding an item clears the search.": "Ürün adı veya koduyla arama yapın. Ürün eklediğinizde arama temizlenir."
+  "Search by item name or code. Adding an item clears the search.": "Ürün adı veya koduyla arama yapın. Ürün eklediğinizde arama temizlenir.",
+  "Printing": "Yazdırma",
+  "Receipt printer": "Fiş yazıcısı",
+  "Kitchen printers": "Mutfak yazıcıları",
+  "Managed on desktop POS": "Masaüstü POS üzerinden yönetilir",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Her yazıcının raporunu kontrol etmek için bir sipariş açıp Mutfağa iletim seçeneğini seçin."
 }

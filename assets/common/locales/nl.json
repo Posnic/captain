@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Trek bovenaan een lijst omlaag om deze te vernieuwen.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Veeg in de bestelgegevens naar links of rechts om van bestelling te wisselen. Je kunt ook de pijlknoppen gebruiken.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Gebruik Terug om terug te gaan. Bevestig voordat je niet-opgeslagen wijzigingen weggooit.",
-  "Search by item name or code. Adding an item clears the search.": "Zoek op artikelnaam of artikelcode. Als je een artikel toevoegt, wordt de zoekopdracht gewist."
+  "Search by item name or code. Adding an item clears the search.": "Zoek op artikelnaam of artikelcode. Als je een artikel toevoegt, wordt de zoekopdracht gewist.",
+  "Printing": "Afdrukken",
+  "Receipt printer": "Bonprinter",
+  "Kitchen printers": "Keukenprinters",
+  "Managed on desktop POS": "Beheerd via de kassa op de computer",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Open een bestelling en kies Overdracht aan de keuken om het rapport van elke printer te bekijken."
 }

@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "Kéo xuống từ đầu danh sách để làm mới.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "Vuốt sang trái hoặc phải trên màn hình chi tiết đơn hàng để chuyển đơn hàng. Bạn cũng có thể dùng các nút mũi tên.",
   "Use Back to return. Confirm before discarding unsaved changes.": "Dùng nút Quay lại để trở về. Xác nhận trước khi hủy các thay đổi chưa lưu.",
-  "Search by item name or code. Adding an item clears the search.": "Tìm theo tên hoặc mã mặt hàng. Khi thêm mặt hàng, nội dung tìm kiếm sẽ được xóa."
+  "Search by item name or code. Adding an item clears the search.": "Tìm theo tên hoặc mã mặt hàng. Khi thêm mặt hàng, nội dung tìm kiếm sẽ được xóa.",
+  "Printing": "In ấn",
+  "Receipt printer": "Máy in hóa đơn",
+  "Kitchen printers": "Máy in bếp",
+  "Managed on desktop POS": "Quản lý trên POS máy tính",
+  "Open an order and choose Kitchen delivery to check each printer report.": "Mở đơn hàng và chọn Gửi xuống bếp để kiểm tra báo cáo của từng máy in."
 }

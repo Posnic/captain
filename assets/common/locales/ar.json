@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "اسحب لأسفل من أعلى القائمة لتحديثها.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "اسحب لليسار أو اليمين في تفاصيل الطلب للتنقل بين الطلبات. يمكنك أيضًا استخدام أزرار الأسهم.",
   "Use Back to return. Confirm before discarding unsaved changes.": "استخدم زر الرجوع للعودة. أكّد قبل تجاهل التغييرات غير المحفوظة.",
-  "Search by item name or code. Adding an item clears the search.": "ابحث باسم الصنف أو رمزه. تُمسح عبارة البحث عند إضافة صنف."
+  "Search by item name or code. Adding an item clears the search.": "ابحث باسم الصنف أو رمزه. تُمسح عبارة البحث عند إضافة صنف.",
+  "Printing": "الطباعة",
+  "Receipt printer": "طابعة الإيصالات",
+  "Kitchen printers": "طابعات المطبخ",
+  "Managed on desktop POS": "تُدار من نظام نقاط البيع على الكمبيوتر",
+  "Open an order and choose Kitchen delivery to check each printer report.": "افتح طلبًا واختر الإرسال إلى المطبخ للاطلاع على تقرير كل طابعة."
 }

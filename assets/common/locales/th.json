@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "ดึงลงจากด้านบนสุดของรายการเพื่อรีเฟรช",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ปัดไปทางซ้ายหรือขวาบนหน้ารายละเอียดออเดอร์เพื่อเปลี่ยนออเดอร์ หรือใช้ปุ่มลูกศรก็ได้",
   "Use Back to return. Confirm before discarding unsaved changes.": "ใช้ปุ่มย้อนกลับเพื่อกลับไปหน้าก่อนหน้า ยืนยันก่อนละทิ้งการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
-  "Search by item name or code. Adding an item clears the search.": "ค้นหาด้วยชื่อหรือรหัสสินค้า เมื่อเพิ่มสินค้า ข้อความค้นหาจะถูกล้าง"
+  "Search by item name or code. Adding an item clears the search.": "ค้นหาด้วยชื่อหรือรหัสสินค้า เมื่อเพิ่มสินค้า ข้อความค้นหาจะถูกล้าง",
+  "Printing": "การพิมพ์",
+  "Receipt printer": "เครื่องพิมพ์ใบเสร็จ",
+  "Kitchen printers": "เครื่องพิมพ์ในครัว",
+  "Managed on desktop POS": "จัดการผ่าน POS บนคอมพิวเตอร์",
+  "Open an order and choose Kitchen delivery to check each printer report.": "เปิดออเดอร์แล้วเลือกการส่งเข้าครัวเพื่อตรวจสอบรายงานของเครื่องพิมพ์แต่ละเครื่อง"
 }

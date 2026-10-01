@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "జాబితాను రిఫ్రెష్ చేయడానికి దాని పైభాగంలో కిందికి లాగండి.",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "ఆర్డర్‌లను మార్చడానికి ఆర్డర్ వివరాలపై ఎడమకు లేదా కుడికి స్వైప్ చేయండి. బాణం బటన్‌లను కూడా ఉపయోగించవచ్చు.",
   "Use Back to return. Confirm before discarding unsaved changes.": "తిరిగి వెళ్లడానికి వెనుకకు బటన్ ఉపయోగించండి. సేవ్ చేయని మార్పులను తొలగించే ముందు నిర్ధారించండి.",
-  "Search by item name or code. Adding an item clears the search.": "వస్తువు పేరు లేదా కోడ్‌తో వెతకండి. వస్తువును జోడించినప్పుడు శోధన క్లియర్ అవుతుంది."
+  "Search by item name or code. Adding an item clears the search.": "వస్తువు పేరు లేదా కోడ్‌తో వెతకండి. వస్తువును జోడించినప్పుడు శోధన క్లియర్ అవుతుంది.",
+  "Printing": "ప్రింటింగ్",
+  "Receipt printer": "రసీదు ప్రింటర్",
+  "Kitchen printers": "వంటగది ప్రింటర్‌లు",
+  "Managed on desktop POS": "డెస్క్‌టాప్ POSలో నిర్వహించబడుతుంది",
+  "Open an order and choose Kitchen delivery to check each printer report.": "ప్రతి ప్రింటర్ నివేదికను చూడటానికి ఆర్డర్ తెరిచి వంటగదికి పంపడం ఎంచుకోండి."
 }

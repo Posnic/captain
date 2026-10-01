@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "リストの一番上で下に引っ張ると更新できます。",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "注文詳細画面で左右にスワイプすると注文を切り替えられます。矢印ボタンも使えます。",
   "Use Back to return. Confirm before discarding unsaved changes.": "戻るボタンで前の画面に戻ります。未保存の変更を破棄する前に確認してください。",
-  "Search by item name or code. Adding an item clears the search.": "商品名またはコードで検索できます。商品を追加すると検索内容がクリアされます。"
+  "Search by item name or code. Adding an item clears the search.": "商品名またはコードで検索できます。商品を追加すると検索内容がクリアされます。",
+  "Printing": "印刷",
+  "Receipt printer": "レシートプリンター",
+  "Kitchen printers": "キッチンプリンター",
+  "Managed on desktop POS": "デスクトップ版POSで管理",
+  "Open an order and choose Kitchen delivery to check each printer report.": "注文を開いて「厨房への送信」を選択すると、各プリンターのレポートを確認できます。"
 }

@@ -1001,5 +1001,10 @@
   "Pull down at the top of a list to refresh.": "在列表顶部向下拉动即可刷新。",
   "Swipe left or right on order details to change orders. Arrow buttons work too.": "在订单详情页向左或向右滑动可切换订单，也可以使用箭头按钮。",
   "Use Back to return. Confirm before discarding unsaved changes.": "点击返回按钮返回上一页。放弃未保存的更改前需要确认。",
-  "Search by item name or code. Adding an item clears the search.": "按商品名称或编码搜索。添加商品后，搜索内容会自动清空。"
+  "Search by item name or code. Adding an item clears the search.": "按商品名称或编码搜索。添加商品后，搜索内容会自动清空。",
+  "Printing": "打印",
+  "Receipt printer": "小票打印机",
+  "Kitchen printers": "厨房打印机",
+  "Managed on desktop POS": "在桌面端 POS 中管理",
+  "Open an order and choose Kitchen delivery to check each printer report.": "打开订单并选择“厨房接单状态”，查看各打印机的报告。"
 }
