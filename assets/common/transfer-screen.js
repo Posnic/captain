@@ -17,6 +17,7 @@
  }
  function back(){if(busy||stage==='items'||stage==='recovery'){close();return;}stage=stage==='review'?'tables':'items';render();}
  function render(error=''){
+  if(identity!==owner()){close();return;}
   const pending=root.CaptainItemTransfer.pending(order._id);
   let body='';
   if(stage==='items')body=(order.kitchen_rounds||[]).map(round=>`<section><time>${esc(round.ordered_at?new Date(round.ordered_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'')}</time>${round.items.map(line=>`<fieldset data-line="${esc(line.id)}"><legend translate="no">${esc(line.name)}</legend>${line.note?`<p translate="no">${esc(line.note)}</p>`:''}<label>${t('Items')} <input type="number" min="0" max="${line.quantity}" step="0.001" value="${items?.find(i=>i.id===line.id)?.quantity||0}" data-quantity aria-label="${t('Items')}"></label><small translate="no"> / ${line.quantity}</small><label>${t('Served')} <input type="number" min="0" max="${line.served||0}" step="0.001" value="${items?.find(i=>i.id===line.id)?.servedQuantity||0}" data-served aria-label="${t('Served')}"></label></fieldset>`).join('')}</section>`).join('');
@@ -40,7 +41,11 @@
  async function next(){
   if(busy)return;
   const current=++generation;
-  const valid=()=>current===generation&&dialog.open&&identity===owner();
+  const valid=()=>{
+   if(current!==generation||!dialog.open)return false;
+   if(identity!==owner()){close();return false;}
+   return true;
+  };
   try{
    if(identity!==owner())throw new Error(t('Sign in with your account'));
    if(stage==='items'){
@@ -66,14 +71,14 @@
   finally{if(current===generation)busy=false;}
  }
  function open(value){
-  if(cleaningHistory){queuedOrder=value;return;}
+  if(cleaningHistory){queuedOrder={value,owner:owner()};return;}
   generation++;busy=false;order=value;identity=owner();items=null;destination=null;preview=null;tables=[];
   if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();back();});}
   stage=root.CaptainItemTransfer.pending(order._id)?'recovery':'items';render();if(!dialog.open)dialog.showModal();if(!ownsHistory)ownHistory();
  }
  root.CaptainTransferScreen={register(value){registered.set(owner()+':'+value._id,value);},open};
  window.addEventListener('popstate',event=>{
-  if(cleaningHistory){cleaningHistory=false;event.stopImmediatePropagation();if(queuedOrder){const next=queuedOrder;queuedOrder=null;open(next);}return;}
+  if(cleaningHistory){cleaningHistory=false;event.stopImmediatePropagation();if(queuedOrder){const next=queuedOrder;queuedOrder=null;if(next.owner===owner())open(next.value);}return;}
   if(!ownsHistory||!dialog?.open)return;
   event.stopImmediatePropagation();ownsHistory=false;
   const dialogs=[...document.querySelectorAll('dialog[open]')];

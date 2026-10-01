@@ -682,3 +682,32 @@ test('ambiguous menu minus opens review without changing a transferred original'
  await expect(page.locator('#current-order-items .order-item-card').nth(1).locator('.qty-btn').first()).toBeFocused();
  expect(await page.evaluate(()=>editingOrder.items[1].quantity)).toBe(2);
 });
+
+
+test('queued transfer reopen is discarded after changing branch',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ await page.waitForFunction(()=>!history.state?.captainOrderEditor);
+ await page.evaluate(()=>{
+  const order={_id:'a'.repeat(24),kitchen_rounds:[]};CaptainTransferScreen.open(order);
+  window.dispatchEvent(new Event('captain:back',{cancelable:true}));
+  CaptainTransferScreen.open(order);
+  localStorage.setItem('branch_id','another-branch');
+ });
+ await page.waitForFunction(()=>!history.state?.captainTransfer);
+ await expect(page.locator('.transfer-screen')).not.toBeVisible();
+});
+
+test('late transfer table response closes a screen belonging to another branch',async({page})=>{
+ await editor(page);await page.locator('#cancel-order-changes').click();
+ let complete;
+ await page.route('**/captain/v1/tables',async route=>{await new Promise(resolve=>{complete=resolve;});await route.fulfill({json:{tables:[]}});});
+ await page.evaluate(()=>CaptainTransferScreen.open({_id:'a'.repeat(24),kitchen_rounds:[{items:[{id:'c0i0',name:'Corn',quantity:1,served:0}]}]}));
+ const dialog=page.locator('.transfer-screen');
+ await dialog.locator('[data-quantity]').fill('1');
+ await dialog.getByRole('button',{name:'Continue',exact:true}).click();
+ await expect.poll(()=>!!complete).toBe(true);
+ await page.evaluate(()=>localStorage.setItem('branch_id','another-branch'));
+ complete();
+ await expect(dialog).not.toBeVisible();
+ await page.waitForFunction(()=>!history.state?.captainTransfer);
+});
