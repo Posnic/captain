@@ -888,3 +888,30 @@ test("cancelled address verification cannot persist a late proof or try another 
   assert.equal(f.vault().routes,undefined);
   assert.equal(f.vault().connections[0].routes,undefined);
 });
+
+
+for (const existing of [undefined, ['https://previous.example/api']])
+  test(`failed route storage preserves previous addresses and can retry (${!!existing})`, async()=>{
+    const f=fixture(), key='c'.repeat(64), candidate='http://192.168.1.55:42590/api';
+    let proofs=0;
+    const access=createAccess(f.plugin,f.storage,async (url,options)=>{
+      proofs++;
+      return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key)
+        .update(JSON.parse(options.body).nonce).digest('hex')})};
+    },webcrypto);
+    await access.session.start({...f.grant,routeKey:key,routes:existing,connections:[{...f.grant,routeKey:key}]});
+    const save=f.plugin.save;
+    f.plugin.save=async()=>{throw Error('Secure storage unavailable');};
+    await assert.rejects(access.session.addAddress(candidate),/Secure storage unavailable/);
+    assert.equal(proofs,1);
+    assert.equal(access.session.allowsBase(candidate),false);
+    assert.deepEqual(f.vault().routes,existing);
+    f.plugin.save=save;
+    // An unrelated save must not accidentally persist the failed candidate.
+    await access.session.updateProfile({id:'staff',name:'Updated'});
+    assert.deepEqual(f.vault().routes,existing);
+    await access.session.addAddress(candidate);
+    assert.equal(access.session.allowsBase(candidate),true);
+    assert.deepEqual(f.vault().routes,[...(existing||[]),candidate]);
+    assert.equal(access.session.user.id,'staff');
+  });

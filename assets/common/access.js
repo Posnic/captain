@@ -648,21 +648,31 @@
           if (!credential.routeKey) continue;
           try {
             await prove(clean, credential, false, signal);
-            if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
-            verified.add(clean);
-            credential.routes = [
-              ...new Set([...(credential.routes || []), clean]),
-            ];
-            await persist();
-            if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
-            host.POSNIC?.server.remember({
-              [local(clean) ? "lan" : "cloud"]: clean,
-            });
-            return;
           } catch {
             if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
-            /* A candidate must prove the existing session before use. */
+            // Only proof failures can try another credential. A secure-storage
+            // failure must not be presented as the wrong shop or as success.
+            continue;
           }
+          if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
+          const previousRoutes = credential.routes;
+          const nextRoutes = [...new Set([...(previousRoutes || []), clean])];
+          credential.routes = nextRoutes;
+          try {
+            await persist();
+          } catch (error) {
+            if (generation === started && credential.routes === nextRoutes) {
+              if (previousRoutes === undefined) delete credential.routes;
+              else credential.routes = previousRoutes;
+            }
+            throw error;
+          }
+          if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
+          verified.add(clean);
+          host.POSNIC?.server.remember({
+            [local(clean) ? "lan" : "cloud"]: clean,
+          });
+          return;
         }
         throw new Error(
           "This address is not the server that approved this phone.",
