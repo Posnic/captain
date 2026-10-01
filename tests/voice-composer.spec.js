@@ -227,3 +227,43 @@ test("permission denial leaves a usable microphone and no sendable empty draft",
   ).toBeEnabled();
   await expect(page.locator("#voice-send")).toBeHidden();
 });
+
+for (const existing of [false, true]) {
+  test(`draft storage failure preserves the last saved preview: existing ${existing}`, async ({ page }) => {
+    await open(page);
+    let previous = null;
+    if (existing) {
+      await page.getByRole('button', { name: 'Record voice note', exact: true }).click();
+      await expect(page.locator('#voice-duration')).toHaveText('0:01');
+      await page.getByRole('button', { name: 'Pause recording', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Resume recording', exact: true })).toBeEnabled();
+      previous = await page.locator('#voice-preview').getAttribute('src');
+    }
+    await page.evaluate(() => {
+      const original = Storage.prototype.setItem;
+      window.restoreVoiceStorage = () => { Storage.prototype.setItem = original; };
+      Storage.prototype.setItem = function(key, value) {
+        if (key.startsWith('posnic.kitchen-voice:')) throw new Error('Draft storage unavailable');
+        return original.call(this, key, value);
+      };
+    });
+    await page.getByRole('button', { name: existing ? 'Resume recording' : 'Record voice note', exact: true }).click();
+    await expect(page.locator('#voice-duration')).toHaveText(existing ? '0:02' : '0:01');
+    await page.getByRole('button', { name: 'Pause recording', exact: true }).click();
+    await expect(page.locator('#voice-error')).toHaveText('Draft storage unavailable');
+    await expect(page.locator('#voice-duration')).toHaveText(existing ? '0:01' : '0:00');
+    await expect(page.getByRole('button', { name: existing ? 'Resume recording' : 'Record voice note', exact: true })).toBeEnabled();
+    if (existing) {
+      await expect(page.locator('#voice-preview')).toHaveAttribute('src', previous);
+      await expect(page.locator('#voice-play')).toBeEnabled();
+    } else {
+      await expect(page.locator('#voice-send')).toBeHidden();
+      await expect(page.locator('#voice-play')).toBeHidden();
+      await expect(page.locator('#voice-status')).toHaveText('Tap to record, then review and send.');
+    }
+    await page.evaluate(() => window.restoreVoiceStorage());
+    await page.reload();
+    await expect(page.locator('#voice-duration')).toHaveText(existing ? '0:01' : '0:00');
+    if (existing) await expect(page.locator('#voice-preview')).toHaveAttribute('src', previous);
+  });
+}

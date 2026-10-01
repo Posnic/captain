@@ -29,9 +29,9 @@
     check();
     return result;
   };
-  function save() {
+  function save(value = draft) {
     check();
-    localStorage.setItem(key, JSON.stringify(draft));
+    localStorage.setItem(key, JSON.stringify(value));
   }
   function error(e) {
     el("voice-error").textContent = [
@@ -260,8 +260,9 @@
         initial: draft,
         saved: async (value) => {
           check();
-          draft = { ...value, created: draft?.created || Date.now() };
-          save();
+          const next = { ...value, created: draft?.created || Date.now() };
+          save(next);
+          draft = next;
         },
         changed: render,
         error,
