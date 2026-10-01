@@ -4,7 +4,7 @@
   "screens": [
     {
       "id": "tables",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "kot-management.html",
         "assets/common/connection-signals.js",
@@ -19,7 +19,7 @@
     },
     {
       "id": "new",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "discount.html",
         "assets/common/table-details.js",
@@ -36,7 +36,7 @@
     },
     {
       "id": "menu",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "products.html",
         "assets/products/script.js",
@@ -57,7 +57,7 @@
     },
     {
       "id": "cart",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "cart.html",
         "assets/common/app-design.css",
@@ -69,7 +69,7 @@
     },
     {
       "id": "note",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/products/script.js",
         "assets/cart/notes-modal.js",
@@ -82,7 +82,7 @@
     },
     {
       "id": "detail",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/service-rounds.js",
         "assets/common/service-details.js",
@@ -99,7 +99,7 @@
     },
     {
       "id": "edit-order",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "order-history.html",
         "assets/order-history/editor.js",
@@ -112,7 +112,7 @@
     },
     {
       "id": "move",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "discount.html",
         "assets/common/table-details.js",
@@ -141,7 +141,7 @@
     },
     {
       "id": "guests",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/order-history/editor.js",
         "POS/api/src/services/seating-claims.js"
@@ -153,7 +153,7 @@
     },
     {
       "id": "type",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/order-history/editor.js",
         "POS/api/src/services/seating-claims.js"
@@ -165,7 +165,7 @@
     },
     {
       "id": "cancel",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/order-actions.js",
         "assets/common/service-details.css"
@@ -176,7 +176,7 @@
     },
     {
       "id": "bill",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/bill-review.js",
         "POS/api/src/services/captain-bill.js",
@@ -188,7 +188,7 @@
     },
     {
       "id": "split",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/guest-bills.js",
         "tests/guest-bills.spec.js"
@@ -199,7 +199,7 @@
     },
     {
       "id": "guest-bills",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/guest-bills.js",
         "POS/api/src/services/guest-bill.service.js",
@@ -211,7 +211,7 @@
     },
     {
       "id": "pay",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/captain-payments.js",
         "POS/api/src/services/captain-payments.js",
@@ -223,7 +223,7 @@
     },
     {
       "id": "receipt",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/captain-payments.js"
       ],
@@ -233,7 +233,7 @@
     },
     {
       "id": "history",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "order-history.html",
         "assets/order-history/script.js",
@@ -247,7 +247,7 @@
     },
     {
       "id": "sales",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "my-sales.html",
         "assets/me/sales.js",
@@ -264,7 +264,7 @@
     },
     {
       "id": "pending",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "pending.html",
         "assets/common/order-queue-ui.js",
@@ -284,7 +284,7 @@
     },
     {
       "id": "more",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "me.html",
         "assets/me/navigation.js",
@@ -301,7 +301,7 @@
     },
     {
       "id": "profile",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "me.html",
         "assets/me/profile.js",
@@ -315,7 +315,7 @@
     },
     {
       "id": "edit-profile",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/me/profile.js",
         "POS/api/src/services/captain-profile.js",
@@ -333,7 +333,7 @@
     },
     {
       "id": "phone",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "POS/api/src/services/captain-phone.js",
         "POS/api/src/routes/captain-access.routes.js",
@@ -353,7 +353,7 @@
     },
     {
       "id": "verify-phone",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "POS/api/src/services/captain-phone.js",
         "POS/api/src/routes/captain-access.routes.js",
@@ -373,7 +373,7 @@
     },
     {
       "id": "password",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/me/profile.js",
         "POS/api/src/services/captain-profile.js"
@@ -385,7 +385,7 @@
     },
     {
       "id": "pin",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/lock.js",
         "assets/me/script.js",
@@ -397,7 +397,7 @@
     },
     {
       "id": "unlock",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/lock.js",
         "tests/pin-design.spec.js"
@@ -408,7 +408,7 @@
     },
     {
       "id": "recover",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/common/onboarding.js",
@@ -421,7 +421,7 @@
     },
     {
       "id": "language",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "me.html",
         "assets/me/navigation.js",
@@ -436,7 +436,7 @@
     },
     {
       "id": "preferences",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "me.html",
         "assets/me/navigation.js",
@@ -462,7 +462,7 @@
     },
     {
       "id": "connection",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/connection-signals.js",
         "assets/common/connection-page.js"
@@ -474,7 +474,7 @@
     },
     {
       "id": "addresses",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/onboarding.js"
       ],
@@ -485,7 +485,7 @@
     },
     {
       "id": "setup",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/common/onboarding.js",
@@ -498,7 +498,7 @@
     },
     {
       "id": "address",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/common/onboarding.js",
@@ -510,7 +510,7 @@
     },
     {
       "id": "found",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/onboarding.js",
         "tests/captain-onboarding.spec.js"
@@ -521,7 +521,7 @@
     },
     {
       "id": "connection-error",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/onboarding.js",
         "config.js",
@@ -534,7 +534,7 @@
     },
     {
       "id": "signin",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/index/script.js",
@@ -547,7 +547,7 @@
     },
     {
       "id": "approval",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/onboarding.js",
         "assets/common/access.js",
@@ -559,7 +559,7 @@
     },
     {
       "id": "qr",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/common/connect.js",
@@ -571,7 +571,7 @@
     },
     {
       "id": "pair",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/onboarding.js",
         "assets/common/access.js",
@@ -583,7 +583,7 @@
     },
     {
       "id": "branch",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "index.html",
         "assets/index/script.js",
@@ -595,7 +595,7 @@
     },
     {
       "id": "set-pin",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/lock.js",
         "tests/pin-design.spec.js"
@@ -606,7 +606,7 @@
     },
     {
       "id": "help",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "help.html",
         "assets/me/help.js",
@@ -623,7 +623,7 @@
     },
     {
       "id": "signout",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/account.js",
         "assets/me/script.js",
@@ -635,7 +635,7 @@
     },
     {
       "id": "discard",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/confirm.js",
         "assets/common/confirm.css",
@@ -648,7 +648,7 @@
     },
     {
       "id": "table-settings",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "tables.html",
         "assets/table/manage.js",
@@ -665,7 +665,7 @@
     },
     {
       "id": "table-edit",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "tables.html",
         "assets/table/manage.js",
@@ -682,7 +682,7 @@
     },
     {
       "id": "seat-confirm",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "discount.html",
         "assets/common/table-details.js",
@@ -696,7 +696,7 @@
     },
     {
       "id": "move-confirm",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/group-move.js",
         "assets/order-history/script.js"
@@ -713,7 +713,7 @@
     },
     {
       "id": "combine",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/table/manage.js",
         "POS/api/src/utils/table-details.js",
@@ -746,7 +746,7 @@
     },
     {
       "id": "transfer",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "POS/api/src/services/captain-transfer-plan.js",
         "POS/api/tests/unit/services/captain-transfer-plan.test.js",
@@ -768,7 +768,7 @@
     },
     {
       "id": "merge",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "POS/api/src/services/captain-restructure-lock.js",
         "POS/api/tests/unit/services/captain-restructure-lock.test.js",
@@ -786,7 +786,7 @@
     },
     {
       "id": "table-status",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "tables.html",
         "assets/table/manage.js",
@@ -801,7 +801,7 @@
     },
     {
       "id": "table-conflict",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "tables.html",
         "assets/table/manage.js",
@@ -816,7 +816,7 @@
     },
     {
       "id": "close-order",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/table/manage.js",
         "assets/kot/script.js",
@@ -833,7 +833,7 @@
     },
     {
       "id": "payment-review",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/captain-payments.js",
         "tests/captain-payments.spec.js",
@@ -847,7 +847,7 @@
     },
     {
       "id": "permission",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/order-actions.js",
         "assets/me/profile.js",
@@ -865,7 +865,7 @@
     },
     {
       "id": "offline",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/order-queue.js",
         "assets/common/order-queue-ui.js",
@@ -878,7 +878,7 @@
     },
     {
       "id": "session-expired",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/access.js",
         "assets/common/lock.js",
@@ -891,7 +891,7 @@
     },
     {
       "id": "overview",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/navigation.js",
         "me.html"
@@ -902,7 +902,7 @@
     },
     {
       "id": "categories",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/menu-view.js",
         "assets/products/meal-menu.js",
@@ -914,7 +914,7 @@
     },
     {
       "id": "search-demo",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/products/script.js",
         "assets/common/menu-view.js",
@@ -926,7 +926,7 @@
     },
     {
       "id": "search-empty",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/products/script.js",
         "tests/an-empty-search-is-not-an-empty-menu.spec.js"
@@ -937,7 +937,7 @@
     },
     {
       "id": "item",
-      "status": "in-progress",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/service-details.js",
         "assets/common/service-details.css"
@@ -948,7 +948,7 @@
     },
     {
       "id": "service-hours",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/serving-periods.js",
         "assets/products/meal-menu.js"
@@ -959,7 +959,7 @@
     },
     {
       "id": "gestures",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/mobile-gestures.js",
         "tests/mobile-gestures.spec.js",
@@ -975,7 +975,7 @@
     },
     {
       "id": "branch-details",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "branch-details.html",
         "assets/me/branch-details.js",
@@ -990,7 +990,7 @@
     },
     {
       "id": "upi-qr",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "assets/common/captain-payments.js",
         "POS/api/src/services/captain-payments.js"
@@ -1001,7 +1001,7 @@
     },
     {
       "id": "general-kitchen-voice",
-      "status": "implemented-needs-complete-flow-review",
+      "status": "implemented-local-acceptance-complete",
       "implementation": [
         "kitchen-message.html",
         "assets/common/kitchen-message.js",
@@ -1017,15 +1017,12 @@
     }
   ],
   "remainingPriorities": [
-    "Complete browser sign-off for seating creation/edit recovery; server-owned dispatch and concurrency checks passed and are merged in POS develop",
-    "Finish complete-flow review of transfer, shared discard/permission/recovery screens and remaining coverage ledger entries; implementation exists but broad acceptance is not yet signed off",
-    "Complete repository-wide browser/API integration, all-language/RTL and phone/tablet verification",
-    "POS/API merged to develop and local installer verified; finish Captain acceptance, merge and release Captain",
-    "Real-device microphone/camera/resume and physical multi-printer acceptance remain for end-user testing"
+    "Merge Captain release candidate through required checks and publish v1.3.30 installable artifacts from merged source",
+    "End-user device acceptance: microphone/camera, background resume, Wi-Fi/mobile-data switching and physical multi-printer output; POS installer is already built locally from develop33ef8b63"
   ],
   "releaseBaseline": "v1.3.29",
   "developmentBranch": "codex/captain-upi-collection",
-  "releaseStatus": "Full redesign is not released; development and complete-flow verification continue.",
+  "releaseStatus": "Local implementation acceptance complete with documented targeted follow-ups; v1.3.30 merge and signed release artifacts pending.",
   "localVerification": {
     "transferMetadataEditing": "Ordinary order editing now uses allocation-aware metadata reconciliation for transferred checks. Unchanged preparation identity/quantity retains its original unit prices, monetary/tax aliases and allocated components while accepting notes, guest assignment and kitchen history changes; current catalogue tax cannot silently reprice a note-only save. Financial changes are detected and currently rejected before writing, pending complete quantity/addition/removal/discount reconciliation. Seven pure cases cover zero/two/three-decimal preservation and financial-edit separation. All 158 projection/repository checks and 58 transfer service checks pass, including a real Mongo ordinary-editor save after transfer with catalogue tax changed to 99 percent. Lint has no errors and 89 existing repository warnings; diff checks pass. Quantity edits, additions/removals, discounts, collision recovery, legacy capacity migration and full UI/release/local installer remain unfinished; transfer mutations are still internal only.",
     "transferFinalization": "Internal complete now verifies both applied sales, closes only an empty source, releases its claimed seating through the checked transfer path, stores a stable result and clears both sale fences. A completed retry repeats cleanup only and returns saved IDs without overwriting later edits. Legacy sources without seating claims close only their check; automatic physical-table cleaning for those older sources is not yet implemented. All 198 transfer/seating/restructure checks pass, followed by all 57 transfer service checks including an added interruption between completed-journal persistence and lock cleanup. Tests cover partial/full transfer, shared claimed source, lost completion acknowledgement, stable destination identity and retained later notes. Lint has no errors and 21 existing model warnings; diff checks pass. Still no public transfer mutation route or UI: post-transfer ordinary edit reconciliation, bill-number collision recovery, legacy shared-cover serialization and broader acceptance remain before enabling, release and local POS packaging.",
@@ -1174,6 +1171,7 @@
     "editorCloseAcceptance": "Original full browser run found a third failure: the pricing-close test sampled orderBeingModified after a fixed100ms while Bootstrap was still completing its backdrop transition; hidden.bs.modal owns editor cleanup. Replaced the fixed delay and synchronous assertion with a polling assertion of completed cleanup, retaining release of the pending response during close. Exact targeted test passes in10.3s (editor-close-recheck.log). No production behavior or timeout changes. Full688 run remains active; retain original failure report and distinguish focused passing follow-ups from the broad run result.",
     "transferBackAcceptance": "Fourth original broad-run failure reproduced and traced to test setup opening transfer programmatically before Bootstrap editor close/history cleanup completed. Retained diagnostic stack shows editor hidden.bs.modal history.back consumed a transfer step, in addition to the intended Back click. Test now waits for editor history ownership to clear before opening transfer, matching existing browser-Back tests. Exact phone/RTL-tablet/main-table/guest-retention test passes in16.1s (transfer-back-acceptance.log). Temporary diagnostic instrumentation removed; no production change. Broad688 run remains active, last420/688; original failures and separate targeted passing evidence retained.",
     "pendingEarlyBackFix": "Fifth original broad-run failure exposed Pending Back being visible before its DOMContentLoaded click handler was installed, so a fast tap during deferred script loading did nothing. Moved click delegation and native Back registration ahead of DOMContentLoaded, retaining the safe return-page allowlist. All4 existing sales browser tests pass (sales-back-acceptance.log), including Arabic tablet return. New deterministic test stalls deferred navigation.js and confirms Back works before document completion; passes in11.8s (pending-early-back.log). Initial new test incorrectly expected loading instead of interactive and was corrected to not-complete; that assertion failure is retained. Node syntax and diff checks pass. No order persistence or send behavior changed. Final native artifact must include this fix; broad688 run remains active.",
-    "tamilJourneyRecheck": "Sixth original broad-run failure was the shared60s total budget across the multi-page Tamil journey, expiring during order-history navigation. Trace shows cumulative slow navigation (index13.6s, cart10.3s, floor8.8s) before expiry, rather than a failed translation assertion. Exact unchanged journey rerun passes in15.2s (tamil-journey-recheck.log), covering menu, cart, floor, history, account and sales. No timeout, translation or application changes. Original full688-case run remains active, last650/688; retain separate broad-failure and passing rerun evidence."
+    "tamilJourneyRecheck": "Sixth original broad-run failure was the shared60s total budget across the multi-page Tamil journey, expiring during order-history navigation. Trace shows cumulative slow navigation (index13.6s, cart10.3s, floor8.8s) before expiry, rather than a failed translation assertion. Exact unchanged journey rerun passes in15.2s (tamil-journey-recheck.log), covering menu, cart, floor, history, account and sales. No timeout, translation or application changes. Original full688-case run remains active, last650/688; retain separate broad-failure and passing rerun evidence.",
+    "finalLocalAcceptance": "Completed original688-case Edge run:682passed,6failed in2.3h. All6 failures have separately passing follow-ups recorded above:2 unchanged navigation reruns,3 test lifecycle/automatic-delivery corrections,1 production Pending Back early-load fix. Additional Help/Printing and early-Back tests passed separately. Final626 unit tests pass, production build passes with30 languages/1008messages and17pages (final-release-unit.log, final-release-build.log). POS integrated API/root evidence and merged33ef8b63 local installer remain valid. Original broad run was not entirely green; retained report plus targeted evidence establish local acceptance. Device microphone/camera/resume and actual multi-printer paper output remain end-user acceptance, not claimed tested."
   }
 }
