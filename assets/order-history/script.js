@@ -2535,7 +2535,20 @@ document.addEventListener('click', function (event) {
         const id = less.getAttribute('data-id');
         const order = orderBeingModified();
         const items = (order && order.items) || [];
-        const at = items.findIndex((item) => String(item.product_id) === String(id) && !lineIsCancelled(item, order));
+        const matches = items.map((item, index) => ({ item, index })).filter(({ item }) =>
+            String(item.product_id || item.item_id || item.id) === String(id) && !lineIsCancelled(item, order));
+        // Undo a plain portion added in this edit before touching served or
+        // specially prepared portions. Ambiguous reductions belong in review.
+        const added = matches.slice().reverse().find(({ item }) => window.OrderEditor?.isAdded(item)
+            && !String(item.item_description || item.notes || '').trim()
+            && !item.seat && !item.course && !item.held && !(item.allergies || []).length
+            && !item.allergy_note && !(item.modifiers || []).length);
+        const at = added ? added.index : matches.length === 1 && order.transfer_allocated !== true ? matches[0].index : -1;
+        if (at < 0 && matches.length) {
+            closeItemPicker();
+            document.querySelectorAll('#current-order-items .order-item-card')[matches[0].index]?.querySelector('.qty-btn')?.focus({ preventScroll: true });
+            return;
+        }
         if (at > -1) {
             updateItemQuantity(at, -1);
             pickerRefreshRow(id);

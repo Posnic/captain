@@ -658,3 +658,27 @@ test('clearing a legacy note clears both aliases before adding another portion',
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0].items[0].item_description||'').toBe('');
 });
+
+for (const where of ['order-history.html','kot-management.html']) {
+ test(`menu minus undoes new transferred portions first on ${where}`,async({page})=>{
+  const posts=await editor(page,where,{transfer_allocated:true});
+  await page.locator('#open-item-picker').click();
+  const plus=page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first();
+  await plus.click();await plus.click();
+  await page.locator('#item-picker .btn-decrease[data-id="p-biryani"]').first().click();
+  await page.locator('#item-picker-done').click();
+  await page.locator('#save-order-changes').click();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(posts[0].items.map(item=>item.quantity)).toEqual([2,1]);
+ });
+}
+
+test('ambiguous menu minus opens review without changing a transferred original',async({page})=>{
+ await editor(page,'order-history.html',{transfer_allocated:true,items:[{product_id:'p-coffee',name:'Coffee',quantity:1,price:40},...original.items]});
+ await page.locator('#open-item-picker').click();
+ await page.locator('#item-picker .btn-decrease[data-id="p-biryani"]').first().click();
+ await expect(page.locator('#item-picker')).toBeHidden();
+ await expect(page.locator('#save-order-changes')).toBeDisabled();
+ await expect(page.locator('#current-order-items .order-item-card').nth(1).locator('.qty-btn').first()).toBeFocused();
+ expect(await page.evaluate(()=>editingOrder.items[1].quantity)).toBe(2);
+});
