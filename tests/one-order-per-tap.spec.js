@@ -274,13 +274,19 @@ test("no network still saves the order and reload retains it without blocking or
   await expect(page.locator('#order-toast')).not.toHaveClass(/show/);
   await expect(page).toHaveURL(/kot-management\.html$/);
   expect(await page.evaluate(() => OrderQueue.all()[0].key)).toBe(key);
-  await page.unroute(`${SHOP_ORIGIN}/**`);
-  await shop(page);
+  // Open the saved order while still offline. Restoring connectivity may
+  // deliver it before a Retry button can be clicked; that is the desired flow.
   await page.locator('#posnic-unsent a[href="pending.html"]').click();
-  await page.getByRole("button", { name: "Retry now", exact: true }).click();
+  await expect(page).toHaveURL(/pending\.html$/);
+  const delivered = [];
+  await page.unroute(`${SHOP_ORIGIN}/**`);
+  await shop(page, { orders: delivered });
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(0);
+  expect(delivered).toHaveLength(1);
+  expect(delivered[0].idempotencyKey).toBe(key);
   await expect(page.locator("#posnic-unsent-text")).toHaveText("No pending orders");
   await page.locator("#pending-back").click();
   await expect(page.locator("#posnic-unsent")).toBeHidden();
