@@ -24,6 +24,11 @@ test('order details remain readable in both phone themes, including a live theme
     const start = script.indexOf('function viewOrderDetails(');
     const end = script.indexOf('\n// Edit order', start);
     assert.ok(start >= 0 && end > start);
+    await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'assets/common/money.js'), 'utf8') });
+    const cancelledStart = script.indexOf('function lineIsCancelled(');
+    const struckStart = script.indexOf('function struck(');
+    const struckEnd = script.indexOf('\n}', struckStart) + 2;
+    await page.addScriptTag({ content: script.slice(cancelledStart, struckEnd) });
     await page.evaluate(source => {
       window.currentOrderId = null;
       window.formatDateTime = () => '01 Oct, 13:00';
