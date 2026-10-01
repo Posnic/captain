@@ -391,7 +391,8 @@ async function searchProducts(query) {
             .map(p => ({
                 _id: p.id,
                 name: p.name,
-                selling_price: p.final_price || p.price || 0,
+                selling_price: p.price ?? 0,
+                final_price: p.final_price,
                 available_quantity: p.available_quantity || 0
             }));
 
