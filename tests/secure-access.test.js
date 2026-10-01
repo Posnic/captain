@@ -864,3 +864,27 @@ test("profile refresh only changes the current user's display name and persists 
  const restored=createAccess(f.plugin,f.storage,async()=>{},webcrypto);await restored.ready;
  assert.equal(restored.session.user.name,'Updated name');
 });
+
+
+test("cancelled address verification cannot persist a late proof or try another credential", async()=>{
+  const f=fixture(), key='a'.repeat(64), candidate='http://192.168.1.44:42590/api';
+  let release, notify, calls=0, requestSignal;
+  const started=new Promise(resolve=>{notify=resolve;});
+  const access=createAccess(f.plugin,f.storage,async (url,options)=>{
+    calls++;requestSignal=options.signal;
+    const nonce=JSON.parse(options.body).nonce;
+    notify();await new Promise(resolve=>{release=resolve;});
+    return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(nonce).digest('hex')})};
+  },webcrypto);
+  await access.session.start({...f.grant,routeKey:key,connections:[{...f.grant,routeKey:key}]});
+  const abort=new AbortController();
+  const pending=access.session.addAddress(candidate,abort.signal);
+  const rejected=assert.rejects(pending,/cancelled/);
+  await started;abort.abort();
+  assert.equal(requestSignal.aborted,true);
+  release();await rejected;
+  assert.equal(calls,1);
+  assert.equal(access.session.allowsBase(candidate),false);
+  assert.equal(f.vault().routes,undefined);
+  assert.equal(f.vault().connections[0].routes,undefined);
+});

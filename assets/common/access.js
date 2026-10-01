@@ -161,13 +161,13 @@
         return null;
       }
     };
-    async function prove(base, credential = state, remember = true) {
+    async function prove(base, credential = state, remember = true, signal) {
       const nonce = random();
       const answer = await post(
         base,
         "/captain/v1/route-proof",
         { sessionId: credential.sessionId, nonce },
-        null,
+        signal,
         2000,
       );
       const key = await cryptoApi.subtle.importKey(
@@ -637,28 +637,30 @@
         return [state, ...(state.connections || [])].some(credential =>
           credential.routeKey && [credential.base, ...(credential.routes || [])].some(base => local(base)));
       },
-      async addAddress(base) {
-        await session.whenReady();
+      async addAddress(base, signal) {
         const started = generation;
+        await session.whenReady();
+        if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
         const clean = safeRoute(base);
         if (!clean || locked) throw new Error("Unlock this phone first.");
         for (const credential of [state, ...(state.connections || [])]) {
-          if (generation !== started) throw new Error("Connection cancelled.");
+          if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
           if (!credential.routeKey) continue;
           try {
-            await prove(clean, credential, false);
-            if (generation !== started) throw new Error("Connection cancelled.");
+            await prove(clean, credential, false, signal);
+            if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
             verified.add(clean);
             credential.routes = [
               ...new Set([...(credential.routes || []), clean]),
             ];
             await persist();
-            if (generation !== started) throw new Error("Connection cancelled.");
+            if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
             host.POSNIC?.server.remember({
               [local(clean) ? "lan" : "cloud"]: clean,
             });
             return;
           } catch {
+            if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
             /* A candidate must prove the existing session before use. */
           }
         }

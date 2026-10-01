@@ -1002,3 +1002,39 @@ for (const width of [320, 900]) test(`sign-in recovery keeps staff input and nat
   await expect(page.locator('#password')).toBeFocused();
   await page.screenshot({path:`test-artifacts/signin-dark-${width}.png`,fullPage:true});
 });
+
+
+for (const screen of ['address','settings']) test(`Back during ${screen} verification ignores late completion`, async ({page})=>{
+  await phone(page);
+  await page.evaluate(async base=>{
+    await POSNIC.session.start({base,token:'retained',sessionId:'session',routeKey:'secret',
+      user:{id:'staff'},shopKey:'shop',branches:[{branch_id:'branch'}]});
+    POSNIC.discovery.probe=async base=>({base});
+    window.addressCalls=[];
+    POSNIC.session.addAddress=async (base,signal)=>{
+      window.addressCalls.push(base);
+      window.addressSignal=signal;
+      await new Promise(resolve=>window.finishAddress=resolve);
+    };
+    CaptainOnboarding.open();
+  },base);
+  if(screen==='settings'){
+    await page.locator('#connection-settings').click();
+    await page.locator('#connection-lan').fill(base);
+    await page.locator('#connection-cloud').fill('https://shop.posnic.io/api');
+    await page.locator('#connection-save').click();
+  }else{
+    await page.locator('#captain-address-toggle').click();
+    await fillAddress(page,base);
+    await page.locator('#captain-connect').click();
+  }
+  await page.waitForFunction(()=>window.finishAddress);
+  await page.locator('#connection-back').click();
+  expect(await page.evaluate(()=>window.addressSignal?.aborted)).toBe(true);
+  await page.evaluate(()=>window.finishAddress());
+  await expect(page.locator('#captain-onboarding')).toHaveAttribute('data-setup-view','start');
+  await expect(page.locator('#captain-note')).toHaveText('');
+  await expect(page.locator('#connection-settings')).toBeEnabled();
+  expect(await page.evaluate(()=>window.addressCalls.length)).toBe(1);
+  expect(await page.evaluate(()=>POSNIC.session.user.id)).toBe('staff');
+});

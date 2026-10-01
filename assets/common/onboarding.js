@@ -537,12 +537,14 @@
       return;
     }
     if (POSNIC.session.managed) {
-      await POSNIC.session.addAddress(hit.base);
+      await POSNIC.session.addAddress(hit.base, signal);
+      if (signal?.aborted || navigationVersion !== startedAt) return;
       note("Connected");
       return;
     }
     if (POSNIC.session.active && hit.base !== POSNIC.session.base)
       await POSNIC.session.end();
+    if (signal?.aborted || navigationVersion !== startedAt) return;
     POSNIC.server.pin(hit.base);
     note("");
     showStep(true);
@@ -697,6 +699,7 @@
     $("captain-address-toggle").onclick = () => showView("address");
     $("connection-save").onclick = () =>
       void run(async (signal) => {
+        const startedAt = navigationVersion;
         const lan = $("connection-lan").value.trim(),
           cloud = $("connection-cloud").value.trim();
         const addresses = [lan, cloud]
@@ -705,7 +708,10 @@
         if (!addresses.length || addresses.some((value) => !value))
           throw new Error("Check the shop code or address and try again.");
         if (POSNIC.session.managed) {
-          for (const base of addresses) await POSNIC.session.addAddress(base);
+          for (const base of addresses) {
+            if (signal.aborted || navigationVersion !== startedAt) return;
+            await POSNIC.session.addAddress(base, signal);
+          }
         } else {
           POSNIC.server.remember({ lan, cloud });
           if (window.CaptainAccess?.locked)
@@ -718,6 +724,7 @@
             POSNIC.server.unpin();
           }
         }
+        if (signal.aborted || navigationVersion !== startedAt) return;
         $("captain-server").value = POSNIC.server.baseUrl || addresses[0];
         $("connection-back").hidden = false;
         note("Saved");
