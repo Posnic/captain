@@ -180,14 +180,21 @@
     clearTimeout(timer);
     if (!document.hidden) timer = setTimeout(() => flush(), 5000);
   }
+  function backFromPending() {
+    const previous = sessionStorage.getItem("captain_pending_return");
+    location.href = ["products.html", "cart.html", "kot-management.html", "order-history.html", "me.html", "help.html", "my-sales.html"].includes(previous) ? previous : "kot-management.html";
+  }
+  // Back must work as soon as the header is visible, including while deferred
+  // scripts are still loading and DOMContentLoaded has not fired.
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("#pending-back")) backFromPending();
+  });
+  window.addEventListener("captain:back", event => {
+    if (!document.getElementById("pending-orders-content") || event.defaultPrevented || document.querySelector("dialog[open], #posnic-lock.is-open")) return;
+    event.preventDefault(); backFromPending();
+  });
   document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("pending-orders-content")) {
-      const back = () => {
-        const previous = sessionStorage.getItem("captain_pending_return");
-        location.href = ["products.html", "cart.html", "kot-management.html", "order-history.html", "me.html", "help.html", "my-sales.html"].includes(previous) ? previous : "kot-management.html";
-      };
-      document.getElementById("pending-back").onclick = back;
-      window.addEventListener("captain:back", event => { if(event.defaultPrevented || document.querySelector("dialog[open], #posnic-lock.is-open")) return; event.preventDefault(); back(); });
       window.MobileGestures?.setRefresh(() => flush(true));
     }
     render();

@@ -59,3 +59,18 @@ test('stalled sales refresh retains known figures, releases loading and ignores 
  await page.locator('#sales-back').click();
  await expect(page).toHaveURL(/me.html$/);
 });
+
+
+test('pending Back works before a deferred navigation script finishes loading',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>sessionStorage.setItem('captain_pending_return','my-sales.html'));
+ let release;
+ const waiting=new Promise(resolve=>release=resolve);
+ await page.route('**/assets/common/navigation.js',async route=>{await waiting;await route.continue();});
+ await page.goto('/pending.html',{waitUntil:'commit'});
+ await expect(page.locator('#pending-back')).toBeVisible();
+ expect(await page.evaluate(()=>document.readyState)).not.toBe('complete');
+ await page.locator('#pending-back').click({noWaitAfter:true});
+ await expect(page).toHaveURL(/my-sales.html$/);
+ release();
+});
