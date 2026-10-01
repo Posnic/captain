@@ -599,3 +599,22 @@ test('closing transfer removes its history entry and rapid reopen keeps a workin
  await page.evaluate(()=>history.back());await expect(dialog).not.toBeVisible();
  expect(await page.evaluate(()=>history.state?.captainTransfer||false)).toBe(false);
 });
+
+for (const where of ['order-history.html', 'kot-management.html']) {
+ test(`menu additions keep transferred portions separate on ${where}`, async({page})=>{
+  const posts=await editor(page,where,{transfer_allocated:true});
+  await page.locator('#current-order-items button[aria-label="Add items"]').click();
+  await expect(page.locator('#item-picker')).toBeVisible();
+  await page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first().click();
+  await page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first().click();
+  await page.locator('#item-picker-done').click();
+  await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(2);
+  await expect(page.locator('.editor-added')).toHaveCount(1);
+  await page.locator('#save-order-changes').click();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(posts).toHaveLength(1);
+  expect(posts[0].items.map(item=>[item.product_id,item.quantity])).toEqual([['p-biryani',2],['p-biryani',2]]);
+  expect(posts[0].items[1].line_id).toBeTruthy();
+  expect(posts[0].items[1].line_id).not.toBe(posts[0].items[0].line_id);
+ });
+}

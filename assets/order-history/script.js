@@ -1693,7 +1693,7 @@ function renderCurrentOrderItems() {
         : `<div class="item-controls">
                 <button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button>
                 <span class="qty-display">${item.quantity}</span>
-                <button type="button" class="qty-btn" aria-label="Increase quantity" onclick="updateItemQuantity(${index}, 1)">+</button>
+                <button type="button" class="qty-btn" aria-label="${editingOrder.transfer_allocated === true && !window.OrderEditor?.isAdded(item) ? 'Add items' : 'Increase quantity'}" onclick="updateItemQuantity(${index}, 1)">+</button>
                 <button type="button" class="remove-btn" aria-label="Remove Item" onclick="removeItem(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -1761,6 +1761,10 @@ function updateItemQuantity(index, change) {
     if (!editingOrder) return;
 
     const item = editingOrder.items[index];
+    if (change > 0 && editingOrder.transfer_allocated === true && !window.OrderEditor?.isAdded(item)) {
+        void openItemPicker();
+        return;
+    }
     const newQty = item.quantity + change;
 
     if (newQty <= 0) {
@@ -1956,7 +1960,9 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    const existingItem = editingOrder.items.find(item => (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
+    // Existing transferred portions keep their original monetary allocation.
+    // Repeated menu taps may increase only the new preparation in this edit.
+    const existingItem = editingOrder.items.find(item => (editingOrder.transfer_allocated !== true || window.OrderEditor?.isAdded(item)) && (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;
