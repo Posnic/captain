@@ -307,8 +307,11 @@ test('Wi-Fi discovery checks the known local server before sweeping', async ({ p
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
   await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
   await page.locator('#captain-search').click();
-  await expect(page.locator('#captain-results button')).toContainText(LAN);
-  await page.locator('#captain-results button').click();
+  const server = page.locator('#captain-results .setup-server-card');
+  await expect(server.locator('strong')).toHaveText(new URL(LAN).host);
+  await expect(server.locator('.setup-server-action')).toContainText('Connect');
+  await expect(page.locator('#captain-legacy')).toBeHidden();
+  await server.click();
   await expect(page.locator('#captain-legacy')).toBeVisible();
   expect(await baseUrl(page)).toBe(LAN);
 });
