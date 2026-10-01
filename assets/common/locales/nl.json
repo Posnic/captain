@@ -996,5 +996,10 @@
   "Pause playback": "Afspelen pauzeren",
   "Merge orders": "Bestellingen samenvoegen",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Beide rekeningen gaan naar de gekozen tafel. De artikelen worden niet opnieuw naar de keuken gestuurd.",
-  "Transfer items": "Artikelen overzetten"
+  "Transfer items": "Artikelen overzetten",
+  "Using gestures": "Gebaren gebruiken",
+  "Pull down at the top of a list to refresh.": "Trek bovenaan een lijst omlaag om deze te vernieuwen.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Veeg in de bestelgegevens naar links of rechts om van bestelling te wisselen. Je kunt ook de pijlknoppen gebruiken.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Gebruik Terug om terug te gaan. Bevestig voordat je niet-opgeslagen wijzigingen weggooit.",
+  "Search by item name or code. Adding an item clears the search.": "Zoek op artikelnaam of artikelcode. Als je een artikel toevoegt, wordt de zoekopdracht gewist."
 }

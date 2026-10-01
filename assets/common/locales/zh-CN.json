@@ -996,5 +996,10 @@
   "Pause playback": "暂停播放",
   "Merge orders": "合并订单",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "两张账单将转到所选餐桌。菜品不会再次发送到厨房。",
-  "Transfer items": "转移菜品"
+  "Transfer items": "转移菜品",
+  "Using gestures": "使用手势",
+  "Pull down at the top of a list to refresh.": "在列表顶部向下拉动即可刷新。",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "在订单详情页向左或向右滑动可切换订单，也可以使用箭头按钮。",
+  "Use Back to return. Confirm before discarding unsaved changes.": "点击返回按钮返回上一页。放弃未保存的更改前需要确认。",
+  "Search by item name or code. Adding an item clears the search.": "按商品名称或编码搜索。添加商品后，搜索内容会自动清空。"
 }

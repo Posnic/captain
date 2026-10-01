@@ -996,5 +996,10 @@
   "Pause playback": "වාදනය විරාම කරන්න",
   "Merge orders": "ඇණවුම් ඒකාබද්ධ කරන්න",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "බිල්පත් දෙකම තෝරාගත් මේසයට මාරු කෙරේ. අයිතම නැවත මුළුතැන්ගෙයට යවන්නේ නැත.",
-  "Transfer items": "අයිතම මාරු කරන්න"
+  "Transfer items": "අයිතම මාරු කරන්න",
+  "Using gestures": "ස්පර්ශ චලන භාවිතය",
+  "Pull down at the top of a list to refresh.": "ලැයිස්තුව යාවත්කාලීන කිරීමට එහි ඉහළින් පහළට අදින්න.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "ඇණවුම් මාරු කිරීමට ඇණවුම් විස්තර මත වමට හෝ දකුණට ස්වයිප් කරන්න. ඊතල බොත්තම් ද භාවිත කළ හැකිය.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "ආපසු යාමට ආපසු බොත්තම භාවිත කරන්න. සුරැකී නැති වෙනස්කම් ඉවත දැමීමට පෙර තහවුරු කරන්න.",
+  "Search by item name or code. Adding an item clears the search.": "අයිතමයේ නම හෝ කේතය අනුව සොයන්න. අයිතමයක් එක් කළ විට සෙවුම හිස් වේ."
 }

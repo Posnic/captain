@@ -996,5 +996,10 @@
   "Pause playback": "Tạm dừng phát",
   "Merge orders": "Gộp đơn hàng",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Cả hai hóa đơn được chuyển đến bàn đã chọn. Các món không được gửi lại đến bếp.",
-  "Transfer items": "Chuyển món"
+  "Transfer items": "Chuyển món",
+  "Using gestures": "Sử dụng cử chỉ",
+  "Pull down at the top of a list to refresh.": "Kéo xuống từ đầu danh sách để làm mới.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Vuốt sang trái hoặc phải trên màn hình chi tiết đơn hàng để chuyển đơn hàng. Bạn cũng có thể dùng các nút mũi tên.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Dùng nút Quay lại để trở về. Xác nhận trước khi hủy các thay đổi chưa lưu.",
+  "Search by item name or code. Adding an item clears the search.": "Tìm theo tên hoặc mã mặt hàng. Khi thêm mặt hàng, nội dung tìm kiếm sẽ được xóa."
 }

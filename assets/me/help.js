@@ -3,6 +3,11 @@
   "use strict";
   const at=id=>document.getElementById(id), t=text=>window.I18N?.t(text)||text;
   let flight, confirmed=false, routeRevision=0;
+  function back() {
+    const guide=at('help-gestures');
+    if(guide?.open){guide.open=false;guide.querySelector('summary').focus();return;}
+    location.href='me.html';
+  }
   function paint() {
     at('help-route').textContent=t(POSNIC.server.isLocal?'Wi-Fi':'Internet server');
     at('help-address').textContent=POSNIC.server.baseUrl || '';
@@ -29,7 +34,7 @@
     paint();return flight;
   }
   document.addEventListener('DOMContentLoaded',()=>{
-    at('help-back').onclick=()=>location.href='me.html';
+    at('help-back').onclick=back;
     at('help-retry').onclick=retry;
     at('help-server').onclick=()=>{sessionStorage.setItem('posnic_change_server','1');sessionStorage.setItem('posnic_connection_view','settings');location.href='index.html';};
     at('help-pending').onclick=()=>sessionStorage.setItem('captain_pending_return','help.html');
@@ -39,5 +44,5 @@
     void retry();
     window.addEventListener('posnic:offline',paint);window.addEventListener('posnic:online',()=>{confirmed=true;paint();});window.addEventListener('posnic:server-changed',()=>{routeRevision++;confirmed=false;flight=null;at('help-retry').disabled=false;paint();});
   });
-  window.addEventListener('captain:back',event=>{if(event.defaultPrevented || document.querySelector('dialog[open], #posnic-lock.is-open'))return;event.preventDefault();location.href='me.html';});
+  window.addEventListener('captain:back',event=>{if(event.defaultPrevented || document.querySelector('dialog[open], #posnic-lock.is-open'))return;event.preventDefault();back();});
 })();

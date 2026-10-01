@@ -996,5 +996,10 @@
   "Pause playback": "Jeda main balik",
   "Merge orders": "Gabungkan pesanan",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Kedua-dua bil dipindahkan ke meja yang dipilih. Item tidak dihantar semula ke dapur.",
-  "Transfer items": "Pindahkan item"
+  "Transfer items": "Pindahkan item",
+  "Using gestures": "Menggunakan gerak isyarat",
+  "Pull down at the top of a list to refresh.": "Tarik ke bawah di bahagian atas senarai untuk menyegarkan semula.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Leret ke kiri atau kanan pada butiran pesanan untuk beralih antara pesanan. Butang anak panah juga boleh digunakan.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Gunakan butang Kembali untuk kembali. Sahkan sebelum membuang perubahan yang belum disimpan.",
+  "Search by item name or code. Adding an item clears the search.": "Cari mengikut nama atau kod item. Menambah item akan mengosongkan carian."
 }

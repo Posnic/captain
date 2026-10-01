@@ -996,5 +996,10 @@
   "Pause playback": "પ્લેબેક થોભાવો",
   "Merge orders": "ઓર્ડર જોડો",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "બંને બિલ પસંદ કરેલા ટેબલ પર જશે. વસ્તુઓ રસોડામાં ફરી મોકલાશે નહીં.",
-  "Transfer items": "વસ્તુઓ સ્થાનાંતરિત કરો"
+  "Transfer items": "વસ્તુઓ સ્થાનાંતરિત કરો",
+  "Using gestures": "જેસ્ચરનો ઉપયોગ",
+  "Pull down at the top of a list to refresh.": "યાદી રિફ્રેશ કરવા માટે તેના સૌથી ઉપરના ભાગથી નીચે ખેંચો.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "ઑર્ડર બદલવા માટે ઑર્ડરની વિગતો પર ડાબે કે જમણે સ્વાઇપ કરો. તીરવાળાં બટનો પણ વાપરી શકો છો.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "પાછા જવા માટે પાછા બટન વાપરો. સાચવ્યા વગરના ફેરફારો રદ કરતાં પહેલાં પુષ્ટિ કરો.",
+  "Search by item name or code. Adding an item clears the search.": "આઇટમના નામ અથવા કોડથી શોધો. આઇટમ ઉમેરતાં શોધ સાફ થઈ જાય છે."
 }

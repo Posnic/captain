@@ -996,5 +996,10 @@
   "Pause playback": "Приостановить воспроизведение",
   "Merge orders": "Объединить заказы",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Оба счёта перемещаются на выбранный стол. Позиции не отправляются на кухню повторно.",
-  "Transfer items": "Перенести позиции"
+  "Transfer items": "Перенести позиции",
+  "Using gestures": "Управление жестами",
+  "Pull down at the top of a list to refresh.": "Потяните вниз в начале списка, чтобы обновить его.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Смахните влево или вправо на экране сведений о заказе, чтобы перейти к другому заказу. Можно также использовать кнопки со стрелками.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Нажмите «Назад», чтобы вернуться. Перед отменой несохранённых изменений потребуется подтверждение.",
+  "Search by item name or code. Adding an item clears the search.": "Ищите товар по названию или коду. При добавлении товара поиск очищается."
 }

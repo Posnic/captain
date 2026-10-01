@@ -996,5 +996,10 @@
   "Pause playback": "หยุดเล่นชั่วคราว",
   "Merge orders": "รวมคำสั่งซื้อ",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "บิลทั้งสองจะย้ายไปยังโต๊ะที่เลือก รายการอาหารจะไม่ถูกส่งไปครัวซ้ำ",
-  "Transfer items": "ย้ายรายการ"
+  "Transfer items": "ย้ายรายการ",
+  "Using gestures": "การใช้ท่าทางสัมผัส",
+  "Pull down at the top of a list to refresh.": "ดึงลงจากด้านบนสุดของรายการเพื่อรีเฟรช",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "ปัดไปทางซ้ายหรือขวาบนหน้ารายละเอียดออเดอร์เพื่อเปลี่ยนออเดอร์ หรือใช้ปุ่มลูกศรก็ได้",
+  "Use Back to return. Confirm before discarding unsaved changes.": "ใช้ปุ่มย้อนกลับเพื่อกลับไปหน้าก่อนหน้า ยืนยันก่อนละทิ้งการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
+  "Search by item name or code. Adding an item clears the search.": "ค้นหาด้วยชื่อหรือรหัสสินค้า เมื่อเพิ่มสินค้า ข้อความค้นหาจะถูกล้าง"
 }

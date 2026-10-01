@@ -996,5 +996,10 @@
   "Pause playback": "暫停播放",
   "Merge orders": "合併訂單",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "兩張帳單將轉到所選餐桌。餐點不會再次傳送到廚房。",
-  "Transfer items": "轉移餐點"
+  "Transfer items": "轉移餐點",
+  "Using gestures": "使用手勢",
+  "Pull down at the top of a list to refresh.": "在清單頂端向下拉動即可重新整理。",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "在訂單詳細資料頁向左或向右滑動可切換訂單，也可以使用箭頭按鈕。",
+  "Use Back to return. Confirm before discarding unsaved changes.": "點選返回按鈕回到上一頁。捨棄未儲存的變更前需要確認。",
+  "Search by item name or code. Adding an item clears the search.": "依商品名稱或代碼搜尋。新增商品後，搜尋內容會自動清空。"
 }

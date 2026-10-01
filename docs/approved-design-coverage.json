@@ -958,14 +958,18 @@
     },
     {
       "id": "gestures",
-      "status": "in-progress",
+      "status": "implemented-needs-complete-flow-review",
       "implementation": [
         "assets/common/mobile-gestures.js",
-        "tests/mobile-gestures.spec.js"
+        "tests/mobile-gestures.spec.js",
+        "help.html",
+        "assets/me/help.js",
+        "tests/help-gestures.spec.js"
       ],
       "verification": [
         "Pull-to-refresh and ordered detail navigation with visible controls implemented. Keyboard, nested scroll and editing gestures are protected; native-device acceptance remains.",
-        "Final mockup comparison found a remaining UI gap: the approved complete-app mockup includes a Help-linked gesture guide with pull-to-refresh, detail navigation, Back and search guidance. Runtime gestures exist, but help.html currently has no guide entry or equivalent instructional view. Implement a translated, accessible guide and verify Back/phone/RTL layout before signing off this screen; behavior tests alone do not cover the approved guide."
+        "Final mockup comparison found a remaining UI gap: the approved complete-app mockup includes a Help-linked gesture guide with pull-to-refresh, detail navigation, Back and search guidance. Runtime gestures exist, but help.html currently has no guide entry or equivalent instructional view. Implement a translated, accessible guide and verify Back/phone/RTL layout before signing off this screen; behavior tests alone do not cover the approved guide.",
+        "Implemented the approved gesture guidance as a Help disclosure: pull-to-refresh, detail swipes with arrow alternatives, Back/discard, and search-clear behavior. All five new messages translated in all30 catalogs (1003 messages each). Keyboard activation and native/header Back close the guide first, return focus and retain drafts; offline navigation remains available. Seven focused browser journeys pass, including Tamil320px and Arabic800px dark layouts, existing stalled/revised connection recovery. Screenshots inspected; RTL Help Back arrow mirrored. Translation audit empty and production build passes. Logs gesture-guide-browser.log and gesture-guide-build.log. Original688-case full browser run continues; new guide tests are verified separately, not included in its initial discovery. Native candidate predates guide and must be rebuilt for final release."
       ]
     },
     {
@@ -1012,7 +1016,6 @@
     }
   ],
   "remainingPriorities": [
-    "Implement the approved Help-linked gesture guide; gesture behavior exists but its instructional screen is still missing",
     "Complete seating creation and edit recovery sign-off with the production dispatch switches now enabled locally; explicit Captain, old-client/customer and desktop table submissions participate in reservations",
     "Finish complete-flow review of transfer, shared discard/permission/recovery screens and remaining coverage ledger entries; implementation exists but broad acceptance is not yet signed off",
     "Complete repository-wide browser/API integration, all-language/RTL and phone/tablet verification",

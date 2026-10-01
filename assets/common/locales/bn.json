@@ -996,5 +996,10 @@
   "Pause playback": "প্লেব্যাক বিরতি দিন",
   "Merge orders": "অর্ডার একত্র করুন",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "দুটি বিলই নির্বাচিত টেবিলে যাবে। আইটেমগুলি রান্নাঘরে আবার পাঠানো হবে না।",
-  "Transfer items": "আইটেম স্থানান্তর"
+  "Transfer items": "আইটেম স্থানান্তর",
+  "Using gestures": "জেসচার ব্যবহার",
+  "Pull down at the top of a list to refresh.": "তালিকা রিফ্রেশ করতে তালিকার একেবারে ওপর থেকে নিচে টানুন।",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "অর্ডার বদলাতে অর্ডারের বিবরণে বাঁয়ে বা ডানে সোয়াইপ করুন। তীরচিহ্নের বোতামও ব্যবহার করতে পারেন।",
+  "Use Back to return. Confirm before discarding unsaved changes.": "ফিরতে পেছনে যাওয়ার বোতাম ব্যবহার করুন। সংরক্ষণ না করা পরিবর্তন বাতিল করার আগে নিশ্চিত করুন।",
+  "Search by item name or code. Adding an item clears the search.": "আইটেমের নাম বা কোড দিয়ে খুঁজুন। আইটেম যোগ করলে অনুসন্ধান মুছে যায়।"
 }

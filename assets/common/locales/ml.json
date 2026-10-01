@@ -996,5 +996,10 @@
   "Pause playback": "പ്ലേബാക്ക് താൽക്കാലികമായി നിർത്തുക",
   "Merge orders": "ഓർഡറുകൾ ഒന്നിപ്പിക്കുക",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "രണ്ട് ബില്ലുകളും തിരഞ്ഞെടുത്ത മേശയിലേക്ക് മാറ്റും. ഇനങ്ങൾ അടുക്കളയിലേക്ക് വീണ്ടും അയയ്ക്കില്ല.",
-  "Transfer items": "ഇനങ്ങൾ മാറ്റുക"
+  "Transfer items": "ഇനങ്ങൾ മാറ്റുക",
+  "Using gestures": "ആംഗ്യങ്ങൾ ഉപയോഗിക്കൽ",
+  "Pull down at the top of a list to refresh.": "ലിസ്റ്റ് പുതുക്കാൻ അതിന്റെ മുകളിൽ നിന്ന് താഴേക്ക് വലിക്കുക.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "ഓർഡറുകൾ മാറാൻ ഓർഡർ വിശദാംശങ്ങളിൽ ഇടത്തോട്ടോ വലത്തോട്ടോ സ്വൈപ്പ് ചെയ്യുക. അമ്പടയാള ബട്ടണുകളും ഉപയോഗിക്കാം.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "തിരികെ പോകാൻ ബാക്ക് ബട്ടൺ ഉപയോഗിക്കുക. സേവ് ചെയ്യാത്ത മാറ്റങ്ങൾ ഉപേക്ഷിക്കുന്നതിന് മുമ്പ് സ്ഥിരീകരിക്കുക.",
+  "Search by item name or code. Adding an item clears the search.": "ഇനത്തിന്റെ പേരോ കോഡോ ഉപയോഗിച്ച് തിരയുക. ഒരു ഇനം ചേർക്കുമ്പോൾ തിരയൽ മായ്‌ക്കപ്പെടും."
 }

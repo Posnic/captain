@@ -996,5 +996,10 @@
   "Pause playback": "再生を一時停止",
   "Merge orders": "注文をまとめる",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "両方の伝票を選択したテーブルに移します。商品は厨房に再送信されません。",
-  "Transfer items": "商品を移動"
+  "Transfer items": "商品を移動",
+  "Using gestures": "ジェスチャーの使い方",
+  "Pull down at the top of a list to refresh.": "リストの一番上で下に引っ張ると更新できます。",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "注文詳細画面で左右にスワイプすると注文を切り替えられます。矢印ボタンも使えます。",
+  "Use Back to return. Confirm before discarding unsaved changes.": "戻るボタンで前の画面に戻ります。未保存の変更を破棄する前に確認してください。",
+  "Search by item name or code. Adding an item clears the search.": "商品名またはコードで検索できます。商品を追加すると検索内容がクリアされます。"
 }

@@ -996,5 +996,10 @@
   "Pause playback": "재생 일시 정지",
   "Merge orders": "주문 합치기",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "두 계산서를 선택한 테이블로 옮깁니다. 품목은 주방에 다시 전송되지 않습니다.",
-  "Transfer items": "항목 이동"
+  "Transfer items": "항목 이동",
+  "Using gestures": "제스처 사용하기",
+  "Pull down at the top of a list to refresh.": "목록 맨 위에서 아래로 당기면 새로고침됩니다.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "주문 상세 화면에서 왼쪽이나 오른쪽으로 스와이프하면 주문을 전환할 수 있습니다. 화살표 버튼도 사용할 수 있습니다.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "뒤로 버튼을 눌러 이전 화면으로 돌아가세요. 저장하지 않은 변경 사항을 취소하기 전에 확인하세요.",
+  "Search by item name or code. Adding an item clears the search.": "상품명이나 코드로 검색하세요. 상품을 추가하면 검색어가 지워집니다."
 }

@@ -996,5 +996,10 @@
   "Pause playback": "إيقاف التشغيل مؤقتًا",
   "Merge orders": "دمج الطلبات",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "تُنقل الفاتورتان إلى الطاولة المختارة. لا تُرسل الأصناف إلى المطبخ مرة أخرى.",
-  "Transfer items": "نقل الأصناف"
+  "Transfer items": "نقل الأصناف",
+  "Using gestures": "استخدام الإيماءات",
+  "Pull down at the top of a list to refresh.": "اسحب لأسفل من أعلى القائمة لتحديثها.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "اسحب لليسار أو اليمين في تفاصيل الطلب للتنقل بين الطلبات. يمكنك أيضًا استخدام أزرار الأسهم.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "استخدم زر الرجوع للعودة. أكّد قبل تجاهل التغييرات غير المحفوظة.",
+  "Search by item name or code. Adding an item clears the search.": "ابحث باسم الصنف أو رمزه. تُمسح عبارة البحث عند إضافة صنف."
 }

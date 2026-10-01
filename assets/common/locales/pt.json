@@ -996,5 +996,10 @@
   "Pause playback": "Pausar reprodução",
   "Merge orders": "Juntar pedidos",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "As duas contas passam para a mesa selecionada. Os itens não são enviados novamente à cozinha.",
-  "Transfer items": "Transferir itens"
+  "Transfer items": "Transferir itens",
+  "Using gestures": "Usar gestos",
+  "Pull down at the top of a list to refresh.": "Puxe para baixo no topo de uma lista para atualizar.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Deslize para a esquerda ou para a direita nos detalhes do pedido para mudar de pedido. Também pode usar os botões de seta.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Use Voltar para regressar. Confirme antes de descartar alterações não guardadas.",
+  "Search by item name or code. Adding an item clears the search.": "Pesquise pelo nome ou código do artigo. Ao adicionar um artigo, a pesquisa é limpa."
 }

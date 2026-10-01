@@ -996,5 +996,10 @@
   "Pause playback": "Sitisha uchezaji kwa muda",
   "Merge orders": "Unganisha maagizo",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Bili zote mbili zinahamishiwa kwenye meza iliyochaguliwa. Bidhaa hazitumwi jikoni tena.",
-  "Transfer items": "Hamisha bidhaa"
+  "Transfer items": "Hamisha bidhaa",
+  "Using gestures": "Kutumia ishara za kugusa",
+  "Pull down at the top of a list to refresh.": "Vuta chini ukiwa juu ya orodha ili kuonyesha taarifa mpya.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Telezesha kushoto au kulia kwenye maelezo ya agizo ili kubadili maagizo. Unaweza pia kutumia vitufe vya mishale.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Tumia kitufe cha Nyuma kurudi. Thibitisha kabla ya kutupa mabadiliko ambayo hayajahifadhiwa.",
+  "Search by item name or code. Adding an item clears the search.": "Tafuta kwa jina au msimbo wa bidhaa. Kuongeza bidhaa kunafuta maandishi ya utafutaji."
 }

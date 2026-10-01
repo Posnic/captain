@@ -996,5 +996,10 @@
   "Pause playback": "پلے بیک روکیں",
   "Merge orders": "آرڈرز یکجا کریں",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "دونوں بل منتخب میز پر منتقل ہوں گے۔ اشیاء باورچی خانے کو دوبارہ نہیں بھیجی جائیں گی۔",
-  "Transfer items": "آئٹمز منتقل کریں"
+  "Transfer items": "آئٹمز منتقل کریں",
+  "Using gestures": "اشاروں کا استعمال",
+  "Pull down at the top of a list to refresh.": "فہرست ریفریش کرنے کے لیے اس کے سب سے اوپر سے نیچے کھینچیں۔",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "آرڈر بدلنے کے لیے آرڈر کی تفصیلات پر بائیں یا دائیں سوائپ کریں۔ تیر والے بٹن بھی استعمال کر سکتے ہیں۔",
+  "Use Back to return. Confirm before discarding unsaved changes.": "لوٹنے کے لیے واپس کا بٹن استعمال کریں۔ محفوظ نہ کی گئی تبدیلیاں ختم کرنے سے پہلے تصدیق کریں۔",
+  "Search by item name or code. Adding an item clears the search.": "آئٹم کے نام یا کوڈ سے تلاش کریں۔ آئٹم شامل کرنے پر تلاش صاف ہو جاتی ہے۔"
 }

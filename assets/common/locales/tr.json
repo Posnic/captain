@@ -996,5 +996,10 @@
   "Pause playback": "Oynatmayı duraklat",
   "Merge orders": "Siparişleri birleştir",
   "Both bills move to the selected table. Items are not sent to the kitchen again.": "Her iki hesap seçilen masaya taşınır. Ürünler mutfağa tekrar gönderilmez.",
-  "Transfer items": "Ürünleri aktar"
+  "Transfer items": "Ürünleri aktar",
+  "Using gestures": "Hareketlerle kullanım",
+  "Pull down at the top of a list to refresh.": "Listeyi yenilemek için listenin en üstündeyken aşağı çekin.",
+  "Swipe left or right on order details to change orders. Arrow buttons work too.": "Siparişler arasında geçiş yapmak için sipariş ayrıntılarında sola veya sağa kaydırın. Ok düğmelerini de kullanabilirsiniz.",
+  "Use Back to return. Confirm before discarding unsaved changes.": "Geri dönmek için Geri düğmesini kullanın. Kaydedilmemiş değişiklikleri silmeden önce onaylayın.",
+  "Search by item name or code. Adding an item clears the search.": "Ürün adı veya koduyla arama yapın. Ürün eklediğinizde arama temizlenir."
 }
