@@ -725,3 +725,44 @@ for (const change of ['none','reopen','branch']) {
   else expect(await page.evaluate(()=>editingOrder.items.length)).toBe(1);
  });
 }
+
+for(const failure of [false,true]){
+ test(`late menu load cannot change a closed picker (failure=${failure})`,async({page})=>{
+  await editor(page);
+  await page.evaluate(()=>{getData=()=>new Promise((resolve,reject)=>{window.finishMenuLoad=failure=>failure?reject(new Error('late failure')):resolve([{id:'late',name:'Late dish',price:40}]);});});
+  await page.locator('#open-item-picker').click();
+  await expect(page.locator('#item-picker-body')).toContainText('Loading the menu');
+  await page.locator('#item-picker-done').click();
+  await page.evaluate(failure=>window.finishMenuLoad(failure),failure);
+  await expect(page.locator('#item-picker')).toBeHidden();
+  expect(await page.evaluate(()=>pickerAll)).toEqual([]);
+  await expect(page.locator('#item-picker-body')).not.toContainText('Late dish');
+  await expect(page.locator('#item-picker-body')).not.toContainText('Could not load');
+ });
+}
+
+test('an older menu load cannot overwrite the reopened picker',async({page})=>{
+ await editor(page);
+ await page.evaluate(()=>{window.menuLoads=[];getData=()=>new Promise(resolve=>window.menuLoads.push(resolve));});
+ await page.locator('#open-item-picker').click();
+ await page.locator('#item-picker-done').click();
+ await page.locator('#open-item-picker').click();
+ await page.evaluate(()=>window.menuLoads[1]([{id:'fresh',name:'Fresh dish',category_name:'Food',price:40}]));
+ await expect(page.locator('#item-picker-body')).toContainText('Fresh dish');
+ await page.evaluate(()=>window.menuLoads[0]([{id:'old',name:'Old dish',category_name:'Food',price:40}]));
+ await expect(page.locator('#item-picker-body')).toContainText('Fresh dish');
+ await expect(page.locator('#item-picker-body')).not.toContainText('Old dish');
+ expect(await page.evaluate(()=>pickerAll.map(item=>item.id))).toEqual(['fresh']);
+});
+
+
+test('menu load preserves a search typed while it was loading',async({page})=>{
+ await editor(page);
+ await page.evaluate(()=>{getData=()=>new Promise(resolve=>{window.finishMenuSearch=resolve;});});
+ await page.locator('#open-item-picker').click();
+ await page.locator('#picker-search-input').fill('Coffee');
+ await page.evaluate(()=>window.finishMenuSearch([{id:'coffee',name:'Coffee',category_name:'Drinks',price:40},{id:'tea',name:'Tea',category_name:'Drinks',price:20}]));
+ await expect(page.locator('#picker-search-input')).toHaveValue('Coffee');
+ await expect(page.locator('#item-picker-body .dish[data-id="coffee"]')).toBeVisible();
+ await expect(page.locator('#item-picker-body .dish[data-id="tea"]')).toHaveCount(0);
+});

@@ -2173,9 +2173,15 @@ async function openItemPicker() {
     sheet.hidden = false;
     document.body.classList.add('picker-open');
     body.innerHTML = '<div class="menu-nothing">Loading the menu...</div>';
+    const valid = pickerRequestGuard();
+    pickerAll = []; pickerMenu = []; pickerIndex = null; pickerTerm = '';
+    const box = document.getElementById('picker-search-input');
+    if (box) box.value = '';
+    if (rail) { rail.innerHTML = ''; rail.hidden = true; }
 
     try {
         const products = await getData(STORE_NAME);
+        if (!valid()) return;
         if (!products || !products.length) {
             body.innerHTML = MenuView.nothing(
                 'No items for this branch yet',
@@ -2191,11 +2197,9 @@ async function openItemPicker() {
         /* Grouped where the card on the wall groups it, so a dish has one
            number and not one per screen. */
         pickerMenu = MenuView.fromFlat(products);
-        pickerTerm = '';
-        const box = document.getElementById('picker-search-input');
-        if (box) box.value = '';
         drawPicker();
     } catch (error) {
+        if (!valid()) return;
         console.error('Could not open the menu', error);
         body.innerHTML = MenuView.nothing('Could not load the menu', 'Try again in a moment.');
     }
