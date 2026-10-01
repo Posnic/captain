@@ -124,7 +124,8 @@
 
         <div class="auth-card container">
             <!-- Login Section -->
-            <div id="login-section">
+            <div id="login-section" data-auth-step="server">
+                <ol class="setup-steps"><li id="setup-server-step" aria-current="step"><span aria-hidden="true">1</span>Connect to your shop</li><li id="setup-signin-step"><span aria-hidden="true">2</span>Staff sign-in</li></ol>
                 <section id="captain-onboarding" aria-label="Connect to your shop">
                     <button id="connection-back" type="button" class="setup-link setup-back" hidden>Back</button>
                     <h2 id="setup-heading" class="setup-title" tabindex="-1">Connect to your shop</h2>
@@ -135,7 +136,8 @@
                     </div>
                     <p id="setup-wifi-hint" class="setup-hint"><strong>Shop Wi-Fi is fastest.</strong> Use a domain address when connecting over the internet.</p>
                     </div>
-                    <div id="captain-results" class="setup-results"></div>
+                    <p id="setup-results-hint" class="setup-hint" hidden>Choose your shop server first.</p>
+                    <div id="captain-results" class="setup-results" aria-label="Choose your shop server first."></div>
                     <button id="captain-connect" type="button" class="setup-primary" disabled>Continue</button>
                     <div id="setup-methods">
                         <p id="setup-start-hint" class="setup-hint">Shop Wi-Fi is fastest.</p>
@@ -149,7 +151,7 @@
                     <div class="connection-cloud"><button id="captain-cloud-login" type="button" class="setup-primary">Sign in with your account</button><button id="captain-cloud-signup" type="button" hidden>Create account</button></div>
                     <button id="connection-settings" type="button" class="setup-link">Connection settings</button>
                     </div>
-                    <button id="captain-search-again" type="button" class="setup-primary" hidden>Retry</button>
+                    <button id="captain-search-again" type="button" class="setup-primary" hidden>Search this Wi-Fi</button>
                     <p id="captain-note" role="status" aria-live="polite"></p>
                     <button id="captain-cancel" type="button" class="setup-link" hidden>Cancel</button>
                     <a id="captain-open-browser" class="setup-link" hidden target="_blank" rel="noopener noreferrer">Open browser</a>
@@ -164,8 +166,7 @@
 
                     <details id="connection-addresses" hidden><summary>Connection settings</summary><p class="setup-hint">Shop Wi-Fi is fastest.</p><label class="setup-label" for="connection-lan">Local server</label><input id="connection-lan" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="http://192.168.0.12:5555/api"><label class="setup-label" for="connection-cloud">Internet server</label><input id="connection-cloud" class="ui-field" type="url" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="https://azure.posnic.io/api"><button id="connection-save" type="button" class="setup-primary">Save</button><p id="connection-message" role="status"></p></details>
                 </section>
-                <details id="captain-legacy" hidden>
-                <summary>Staff sign-in</summary>
+                <section id="captain-legacy" hidden aria-label="Staff sign-in">
                 <h2 class="setup-title">Sign in</h2>
                 <p class="setup-intro">Use your staff account to start taking orders.</p>
                 <div class="setup-shop"><div><span>SHOP</span><strong id="captain-selected-shop"></strong></div><button id="captain-change-shop" type="button" class="setup-link">Change server</button></div>
@@ -188,7 +189,7 @@
                 <button id="captain-login-help" class="setup-link" type="button">Help</button>
 
                 <div id="login-message" class="mt-3 text-danger text-center" style="display:none;"></div>
-                </details>
+                </section>
             </div>
 
             <!-- Branch Selection Section -->

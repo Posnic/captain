@@ -1,12 +1,20 @@
 (function () {
   "use strict";
   let operation = null;
+  let selection = null;
+  function cancelSelection() {
+    selection?.abort();
+    selection = null;
+  }
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
     if (signIn) { sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
     $("captain-onboarding").hidden = signIn;
     $("captain-legacy").hidden = !signIn;
-    $("captain-legacy").open = signIn;
+    $("login-section").dataset.authStep = signIn ? "signin" : "server";
+    $("setup-server-step").setAttribute("aria-current", signIn ? "false" : "step");
+    $("setup-signin-step").setAttribute("aria-current", signIn ? "step" : "false");
+    if (!signIn) $("password").value = "";
     if (signIn) {
       const base = POSNIC.server.baseUrl;
       $("captain-selected-shop").textContent = base
@@ -17,6 +25,7 @@
   let view = "start";
   let navigationVersion = 0;
   function showView(next, focus = true) {
+    showStep(false);
     view = next;
     $("captain-onboarding").dataset.setupView = next;
     navigationVersion++;
@@ -43,6 +52,7 @@
     $("connection-addresses").hidden = next !== "settings";
     $("connection-addresses").open = next === "settings";
     $("captain-results").hidden = next !== "wifi";
+    $("setup-results-hint").hidden = next !== "wifi";
     $("captain-search-again").hidden = next !== "wifi";
     $("connection-back").hidden = next === "start" && !POSNIC.server.isConfigured;
     note("");
@@ -83,7 +93,7 @@
       );
   }
   async function run(work) {
-    if (operation) return;
+    if (operation || selection) return;
     $("captain-open-browser").hidden = true;
     $("captain-open-browser").removeAttribute("href");
     operation = new AbortController();
@@ -259,22 +269,35 @@
       count++;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "ui-btn-quiet";
-      button.textContent =
-        hit.base +
-        (hit.info.features?.captainAccessV1
-          ? ""
-          : " · Update required for pairing");
-      button.onclick = () => {
-        if (operation && operation !== searchOperation) return;
+      button.className = "setup-server-card";
+      button.innerHTML = '<span class="setup-server-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span><span class="setup-server-info"><strong translate="no"></strong><span class="setup-server-network">Wi-Fi</span></span><span class="setup-server-action"><span>Connect</span><span aria-hidden="true">→</span></span>';
+      button.querySelector("strong").textContent = new URL(hit.base).host;
+      if (!hit.info.features?.captainAccessV1) {
+        const compatibility = document.createElement("small");
+        compatibility.textContent = "· Update required for pairing";
+        button.querySelector(".setup-server-info").append(compatibility);
+      }
+      button.onclick = async () => {
+        if (selection || (operation && operation !== searchOperation)) return;
         searchOperation.abort();
+        const controller = new AbortController();
+        selection = controller;
+        const choices = [...results.querySelectorAll("button")];
+        choices.forEach((row) => { row.disabled = true; });
+        button.setAttribute("aria-busy", "true");
+        note("Connecting to your shop…");
         $("captain-server").value = hit.base;
-        // An address change always needs a fresh manager confirmation.
         $("captain-confirm").checked = false;
         const selectedVersion = ++navigationVersion;
-        void useAddress(hit.base).catch((error) => {
-          if (navigationVersion === selectedVersion) note(error.message);
-        });
+        try {
+          await useAddress(hit.base, controller.signal);
+        } catch (error) {
+          if (!controller.signal.aborted && navigationVersion === selectedVersion) note(error.message);
+        } finally {
+          if (selection === controller) selection = null;
+          button.removeAttribute("aria-busy");
+          choices.forEach((row) => { row.disabled = false; });
+        }
       };
       results.append(button);
     };
@@ -325,7 +348,7 @@
     if (!signal.aborted)
       note(
         count
-          ? "Choose your shop server first."
+          ? ""
           : seen.length
             ? "An address answered but refused access. Ask your manager to check the till address and Captain access."
             : "No compatible till found. Check that the till is open and both devices use the shop Wi-Fi, not guest Wi-Fi. Retry or scan its QR.",
@@ -552,10 +575,11 @@
   }
   window.CaptainOnboarding = {
     get busy() {
-      return !!operation;
+      return !!operation || !!selection;
     },
     open() {
       operation?.abort();
+      cancelSelection();
       showView("start", false);
       sessionStorage.setItem("posnic_editing_server", "1");
       POSNIC.net.stop?.();
@@ -573,6 +597,7 @@
     close() {
       navigationVersion++;
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       sessionStorage.removeItem("posnic_editing_server");
       sessionStorage.removeItem("posnic_connection_view");
@@ -652,14 +677,14 @@
       $("captain-confirm").checked = false;
     });
     $("captain-scan").onclick = () => {
-      if (operation) return;
+      if (operation || selection) return;
       POSNIC_CONNECT.startScan((base) => {
         $("captain-server").value = base;
         void run((signal) => useAddress(base, signal));
       });
     };
     const findShop = () => {
-      if (operation) return;
+      if (operation || selection) return;
       showView("wifi");
       void run(search);
     };
@@ -678,7 +703,7 @@
         ),
       );
     $("captain-cloud-login").onclick = () => {
-      if (operation) return;
+      if (operation || selection) return;
       showView("cloud");
       void run((signal) => cloud("login", signal));
     };
@@ -686,6 +711,7 @@
       void run((signal) => cloud("signup", signal));
     $("captain-cancel").onclick = () => {
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       if (view === "cloud") showView("address");
       note("Connection cancelled.");
@@ -693,6 +719,7 @@
     $("connection-back").onclick = () => {
       if (view === "start") return CaptainOnboarding.close();
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       showView("start");
     };

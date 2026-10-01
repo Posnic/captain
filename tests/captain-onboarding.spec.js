@@ -1038,3 +1038,66 @@ for (const screen of ['address','settings']) test(`Back during ${screen} verific
   expect(await page.evaluate(()=>window.addressCalls.length)).toBe(1);
   expect(await page.evaluate(()=>POSNIC.session.user.id)).toBe('staff');
 });
+
+
+for (const [width, count] of [[320, 1], [900, 2]]) {
+  test(`Wi-Fi cards require Connect before staff sign-in at ${width}px`, async ({ page }) => {
+    await phone(page, false);
+    await page.setViewportSize({ width, height: 850 });
+    await page.evaluate(count => {
+      POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+        for (let i = 0; i < count; i++) options.collect({
+          base: `http://192.168.1.${8 + i}:42590/api`, info: { features: { captainAccessV1: true } },
+        });
+      };
+      POSNIC.discovery.probe = base => new Promise(resolve => {
+        window.finishServerSelection = () => resolve({ base, info: { features: {} } });
+      });
+    }, count);
+    await page.locator('#captain-search').click();
+    const cards = page.locator('#captain-results button');
+    await expect(cards).toHaveCount(count);
+    await expect(cards.first()).toContainText('Connect');
+    await expect(cards.first().locator('.setup-server-icon svg')).toBeVisible();
+    expect(await cards.first().locator('strong').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(120);
+    await expect(page.locator('#username')).toBeHidden();
+    await expect(page.locator('#password')).toBeHidden();
+    expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-artifacts/discovery-choice-${width}.png`, fullPage: true });
+    await cards.last().click();
+    await expect(cards.last()).toHaveAttribute('aria-busy', 'true');
+    await expect(page.locator('#username')).toBeHidden();
+    await page.evaluate(() => window.finishServerSelection());
+    await expect(page.locator('#captain-onboarding')).toBeHidden();
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#captain-selected-shop')).toHaveText(`192.168.1.${7 + count}:42590`);
+    await expect(page.locator('#setup-signin-step')).toHaveAttribute('aria-current', 'step');
+    await page.screenshot({ path: `test-artifacts/discovery-signin-${width}.png`, fullPage: true });
+    await page.locator('#password').fill('private-password');
+    await page.locator('#captain-change-shop').click();
+    await expect(page.locator('#username')).toBeHidden();
+    await expect(page.locator('#password')).toHaveValue('');
+    await expect(page.locator('#captain-search')).toBeVisible();
+  });
+}
+
+test('failed Wi-Fi selection keeps credentials hidden and permits another server', async ({ page }) => {
+  await phone(page, false);
+  await page.evaluate(() => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      for (const host of [8, 9]) options.collect({ base: `http://192.168.1.${host}:42590/api`, info: { features: {} } });
+    };
+    POSNIC.discovery.probe = async base => base.includes('.8:') ? null : { base, info: { features: {} } };
+  });
+  await page.locator('#captain-search').click();
+  const cards = page.locator('#captain-results button');
+  await expect(cards).toHaveCount(2);
+  await cards.first().click();
+  await expect(page.locator('#captain-note')).toContainText('Could not reach this shop');
+  await expect(page.locator('#username')).toBeHidden();
+  await expect(cards.last()).toBeEnabled();
+  await cards.last().click();
+  await expect(page.locator('#username')).toBeVisible();
+  await expect(page.locator('#captain-selected-shop')).toHaveText('192.168.1.9:42590');
+});
