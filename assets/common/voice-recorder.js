@@ -112,7 +112,8 @@
       if (this.state !== "idle" || this.duration >= limit) return;
       const generation = ++this.generation;
       const previousDuration = this.duration,
-        previousData = this.initial;
+        previousData = this.initial,
+        previousPeaks = this.peaks.slice();
       this.state = "opening";
       this.changed?.();
       try {
@@ -156,17 +157,21 @@
             if (blob.size > 1000000) throw fail();
             const data = await dataURL(blob);
             if (generation !== this.generation) return;
-            this.initial = data;
             await this.saved?.({
               data,
               duration: this.duration,
               peaks: this.peaks.slice(-48),
             });
+            if (generation === this.generation) this.initial = data;
           } catch (error) {
-            if (this.initial === previousData) this.duration = previousDuration;
             this.error?.(error);
             this.failed = true;
           } finally {
+            if (generation === this.generation && this.failed) {
+              this.initial = previousData;
+              this.duration = previousDuration;
+              this.peaks = previousPeaks;
+            }
             this.state = "idle";
             this.recorder = null;
             this.resolve(!this.failed);
