@@ -14,7 +14,7 @@
     $("login-section").dataset.authStep = signIn ? "signin" : "server";
     $("setup-server-step").setAttribute("aria-current", signIn ? "false" : "step");
     $("setup-signin-step").setAttribute("aria-current", signIn ? "step" : "false");
-    if (!signIn) $("password").value = "";
+    if (signIn) window.CaptainSignIn?.selectServer(POSNIC.server.baseUrl);
     if (signIn) {
       const base = POSNIC.server.baseUrl;
       $("captain-selected-shop").textContent = base

@@ -1077,7 +1077,7 @@ for (const [width, count] of [[320, 1], [900, 2]]) {
     await page.locator('#password').fill('private-password');
     await page.locator('#captain-change-shop').click();
     await expect(page.locator('#username')).toBeHidden();
-    await expect(page.locator('#password')).toHaveValue('');
+    await expect(page.locator('#password')).toHaveValue('private-password');
     await expect(page.locator('#captain-search')).toBeVisible();
   });
 }
@@ -1100,4 +1100,75 @@ test('failed Wi-Fi selection keeps credentials hidden and permits another server
   await cards.last().click();
   await expect(page.locator('#username')).toBeVisible();
   await expect(page.locator('#captain-selected-shop')).toHaveText('192.168.1.9:42590');
+});
+
+
+test('successful staff sign-in remembers server-scoped usernames and preserves exact passwords', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toBeVisible();
+  await page.evaluate(() => {
+    POSNIC.api.post = async (_path, payload) => {
+      window.signinPayload = payload;
+      return { user: { id: 'staff' }, branches: [{ store_id: 'one' }, { store_id: 'two' }] };
+    };
+    POSNIC.session.start = async () => {};
+  });
+  await page.locator('#username').fill('alex.staff');
+  await page.locator('#password').fill('  exact password  ');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#branch-section')).toBeVisible();
+  expect(await page.evaluate(() => window.signinPayload.password)).toBe('  exact password  ');
+  const saved = await page.evaluate(() => localStorage.getItem('posnic.signin-names.v1'));
+  expect(JSON.parse(saved)).toEqual([{ base, names: ['alex.staff'] }]);
+  expect(saved).not.toContain('password');
+  await page.reload();
+  await expect(page.locator('#username')).toHaveValue('alex.staff');
+  await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'alex.staff');
+  await expect(page.locator('#username')).toHaveAttribute('autocomplete', 'username');
+  await expect(page.locator('#password')).toHaveAttribute('autocomplete', 'current-password');
+  await expect(page.locator('#password')).toHaveAttribute('name', 'password');
+});
+
+test('same-server setup preserves typed credentials while another server clears them', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await page.locator('#username').fill('current.staff');
+  await page.locator('#password').fill('current-secret');
+  await page.locator('#captain-change-shop').click();
+  await page.locator('#captain-address-toggle').click();
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toHaveValue('current.staff');
+  await expect(page.locator('#password')).toHaveValue('current-secret');
+  await page.evaluate(() => CaptainSignIn.remember('https://other.posnic.io/api', 'other.staff'));
+  await page.route('https://other.posnic.io/**', route => route.fulfill({ json: info }));
+  await page.locator('#captain-change-shop').click();
+  await page.locator('#captain-address-toggle').click();
+  await page.locator('#captain-server').fill('other.posnic.io');
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toHaveValue('other.staff');
+  await expect(page.locator('#password')).toHaveValue('');
+  await expect(page.locator('#saved-usernames option')).toHaveCount(1);
+  await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'other.staff');
+});
+
+test('rejected login does not enter username suggestions and repeated Enter submits once', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await page.evaluate(() => {
+    window.loginCalls = 0;
+    POSNIC.api.post = () => { window.loginCalls++; return new Promise((_resolve, reject) => {
+      window.rejectLogin = () => reject(Object.assign(new Error('Not accepted'), { status: 401 }));
+    }); };
+  });
+  await page.locator('#username').fill('mistyped');
+  await page.locator('#password').fill('wrong');
+  await page.evaluate(() => { doLogin(); doLogin(); });
+  expect(await page.evaluate(() => window.loginCalls)).toBe(1);
+  await page.evaluate(() => window.rejectLogin());
+  await expect(page.locator('#login-message')).toHaveText('Not accepted');
+  expect(await page.evaluate(() => localStorage.getItem('posnic.signin-names.v1'))).toBeNull();
 });
