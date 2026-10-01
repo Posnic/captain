@@ -1,0 +1,89 @@
+/* Order history and every dialog it opens use paired surface/text colours.
+   design.css supplies the same light/dark palette as the menu. */
+:root {
+  color-scheme: light;
+  --light-bg: var(--ground);
+  --secondary-color: var(--ink);
+  --border-color: var(--line-strong);
+  --bs-body-color: var(--ink);
+  --bs-body-bg: var(--surface);
+  --bs-secondary-color: var(--ink-soft);
+  --bs-border-color: var(--line-strong);
+  --bs-light-rgb: 248, 250, 252;
+}
+
+body { background: var(--ground); color: var(--ink); }
+.modal-content {
+  --bs-modal-bg: var(--surface);
+  --bs-modal-color: var(--ink);
+  --bs-modal-border-color: var(--line-strong);
+  --bs-modal-header-border-color: var(--line-strong);
+  --bs-modal-footer-border-color: var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+.table {
+  --bs-table-color: var(--ink);
+  --bs-table-bg: var(--surface);
+  --bs-table-border-color: var(--line-strong);
+  --bs-table-striped-color: var(--ink);
+  --bs-table-striped-bg: var(--surface-sunk);
+  color: var(--ink);
+}
+.table > :not(caption) > * > * { color: var(--ink); border-color: var(--line-strong); }
+.text-muted { color: var(--ink-soft) !important; }
+.status-cancelled { background: #f8d7da; color: #842029; }
+.order-items-table tfoot tr:last-child { border-top: 2px solid var(--line-strong) !important; }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bs-light-rgb: 13, 21, 38;
+    --bs-primary-rgb: 147, 197, 253;
+    --bs-success-rgb: 134, 239, 172;
+    --bs-danger-rgb: 252, 165, 165;
+  }
+  .mobile-header, .table-card:not(.all-tables), .order-card,
+  .search-filter-container, .product-suggestions,
+  #editItemNotesModal .modal-content {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+  .order-item-card, .item-preview, .empty-state, .product-suggestion:hover {
+    background: var(--surface-sunk);
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+  .screen-header p, .order-meta, .order-items-preview, .item-info .item-price,
+  .edit-notes-hint, .search-box i, .table-number,
+  .order-items-table .order-item-notes { color: var(--ink-soft); }
+  .modal h6, .modal .modal-title, .qty-display, .item-info h6,
+  #editOrderModal h6, #editOrderModal .modal-title,
+  #editItemNotesModal .edit-notes-header .modal-title { color: var(--ink); }
+  input:not([type=checkbox]):not([type=radio]), textarea, select, .form-control,
+  .qty-btn, .filter-btn:not(.active), .close-btn, .cancel-notes-btn,
+  #editOrderModal .modal-footer .close-btn {
+    color: var(--ink);
+    background-color: var(--surface-sunk);
+    border-color: var(--line-strong);
+  }
+  input::placeholder, textarea::placeholder { color: var(--ink-soft); opacity: 1; }
+  .form-control:focus, input:focus, textarea:focus, select:focus {
+    color: var(--ink);
+    background-color: var(--surface-sunk);
+    border-color: #93c5fd;
+  }
+  .modal-header, .modal-footer, .order-actions, .order-header,
+  #editOrderModal .modal-header { border-color: var(--line-strong); }
+  .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .85; }
+  .text-dark { color: var(--ink) !important; }
+  .order-count { background: #16304e; color: #bfdbfe; }
+  .order-count.no-orders { background: #1e293b; color: #cbd5e1; }
+  .status-pending, .order-count.has-pending { background: #422d0b; color: #fde68a; }
+  .status-completed { background: #123c36; color: #a7f3d0; }
+  .status-cancelled { background: #491f2b; color: #fecdd3; }
+  .edit-btn, #editOrderModal .modal-footer .edit-btn { background: #1d4ed8; color: #fff; }
+  .cancel-btn, .remove-btn { background: #b91c1c; color: #fff; }
+  #page-loader { background: var(--ground); }
+}

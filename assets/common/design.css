@@ -36,6 +36,7 @@
  */
 
 :root {
+  color-scheme: light;
   /* Ink, from strongest to faintest. Named by ROLE, so a screen never has to
      know which grey it is asking for. */
   --ink: #0f172a;
@@ -96,6 +97,7 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --ink: #f1f5f9;
     --ink-soft: #cbd5e1;
     --ink-faint: #94a3b8;
