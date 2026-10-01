@@ -1742,7 +1742,7 @@ $(document).on('click', '#edit-item-notes-apply', function () {
     const notes = $('#edit-item-notes-text').val().trim();
 
     item.item_description = notes;
-    // item.notes = notes;
+    if ('notes' in item) item.notes = notes;
 
     // UI refresh
     renderCurrentOrderItems();
@@ -1962,7 +1962,7 @@ function addProductToOrder(productId, productName, productPrice) {
 
     // Existing transferred portions keep their original monetary allocation.
     // Repeated menu taps may increase only the new preparation in this edit.
-    const existingItem = editingOrder.items.find(item => (editingOrder.transfer_allocated !== true || window.OrderEditor?.isAdded(item)) && (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
+    const existingItem = editingOrder.items.find(item => (editingOrder.transfer_allocated !== true || window.OrderEditor?.isAdded(item)) && (item.product_id || item.item_id || item.id) === productId && !String(item.item_description || item.notes || '').trim() && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;

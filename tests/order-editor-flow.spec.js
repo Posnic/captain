@@ -618,3 +618,43 @@ for (const where of ['order-history.html', 'kot-management.html']) {
   expect(posts[0].items[1].line_id).not.toBe(posts[0].items[0].line_id);
  });
 }
+
+for (const where of ['order-history.html','kot-management.html']) {
+ test(`new menu portions do not inherit another preparation note on ${where}`,async({page})=>{
+  const posts=await editor(page,where,{transfer_allocated:true});
+  await page.locator('#open-item-picker').click();
+  await page.locator('#item-picker .btn-add[data-id="p-coffee"]').first().click();
+  await page.locator('#item-picker-done').click();
+  await page.locator('#current-order-items .order-item-card').nth(1).locator('.editor-note-link').click();
+  await page.locator('#edit-item-notes-text').fill('Less sweet');
+  await page.locator('#edit-item-notes-apply').click();
+  await expect(page.locator('#editItemNotesModal')).toBeHidden();
+  await page.locator('#open-item-picker').click();
+  await page.locator('#item-picker .btn-increase[data-id="p-coffee"]').first().click();
+  await page.locator('#item-picker .btn-increase[data-id="p-coffee"]').first().click();
+  await page.locator('#item-picker-done').click();
+  await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(3);
+  await page.locator('#save-order-changes').click();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(posts[0].items.slice(1).map(item=>[item.quantity,item.item_description||''])).toEqual([[1,'Less sweet'],[2,'']]);
+  expect(posts[0].items[1].line_id).not.toBe(posts[0].items[2].line_id);
+ });
+}
+
+test('clearing a legacy note clears both aliases before adding another portion',async({page})=>{
+ const posts=await editor(page,'order-history.html',{items:[{...original.items[0],notes:'Less salt'}]});
+ await page.locator('.editor-note-link').click();
+ await expect(page.locator('#edit-item-notes-text')).toHaveValue('Less salt');
+ await page.waitForFunction(()=>{const modal=bootstrap.Modal.getInstance(document.getElementById('editItemNotesModal'));return modal && !modal._isTransitioning;});
+ await page.locator('#edit-item-notes-text').fill('');
+ await expect(page.locator('#edit-item-notes-text')).toHaveValue('');
+ await page.locator('#edit-item-notes-apply').click();
+ await expect(page.locator('#editItemNotesModal')).toBeHidden();
+ await page.locator('.editor-note-link').click();
+ await expect(page.locator('#edit-item-notes-text')).toHaveValue('');
+ await page.locator('#edit-item-notes-apply').click();
+ await expect(page.locator('#editItemNotesModal')).toBeHidden();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts[0].items[0].item_description||'').toBe('');
+});
