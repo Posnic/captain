@@ -127,6 +127,11 @@ export default defineConfig({
         'number-card': path.resolve(ROOT, 'number-card.html'),
         me: path.resolve(ROOT, 'me.html'),
         kitchenMessage: path.resolve(ROOT, 'kitchen-message.html'),
+        help: path.resolve(ROOT, 'help.html'),
+        tables: path.resolve(ROOT, 'tables.html'),
+        pending: path.resolve(ROOT, 'pending.html'),
+        paymentSettings: path.resolve(ROOT, 'payment-settings.html'),
+        branchDetails: path.resolve(ROOT, 'branch-details.html'),
         'my-sales': path.resolve(ROOT, 'my-sales.html')
       }
     }

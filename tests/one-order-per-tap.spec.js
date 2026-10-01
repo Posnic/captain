@@ -187,6 +187,7 @@ async function toCartWithAMeal(page) {
   await expect(page).toHaveURL(/discount\.html$/);
   await page.locator("#manual_table_input").fill("T1");
   await page.getByRole("button", { name: /Next/ }).click();
+  await page.locator("#seat-confirmation button[value=continue]").click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await page.locator('.btn-add[data-id="product-1"]').click();
@@ -229,7 +230,7 @@ test("rejected orders stay visible and only retry deliberately with the same key
   await expect(page).toHaveURL(/kot-management\.html$/);
   await expect(page.getByRole("button", { name: "Retry now", exact: true })).toBeHidden();
   await page.screenshot({ path: 'test-artifacts/captain-pending-collapsed.png', fullPage: true });
-  await page.locator("#posnic-unsent-details summary").click();
+  await page.locator('#posnic-unsent a[href="pending.html"]').click();
   await expect(
     page.getByText("Item unavailable", { exact: true }),
   ).toBeVisible();
@@ -273,15 +274,22 @@ test("no network still saves the order and reload retains it without blocking or
   await expect(page.locator('#order-toast')).not.toHaveClass(/show/);
   await expect(page).toHaveURL(/kot-management\.html$/);
   expect(await page.evaluate(() => OrderQueue.all()[0].key)).toBe(key);
+  // Open the saved order while still offline. Restoring connectivity may
+  // deliver it before a Retry button can be clicked; that is the desired flow.
+  await page.locator('#posnic-unsent a[href="pending.html"]').click();
+  await expect(page).toHaveURL(/pending\.html$/);
+  const delivered = [];
   await page.unroute(`${SHOP_ORIGIN}/**`);
-  await shop(page);
-  await page.locator("#posnic-unsent-details summary").click();
-  await page.getByRole("button", { name: "Retry now", exact: true }).click();
+  await shop(page, { orders: delivered });
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
   await expect
     .poll(() => page.evaluate(() => window.OrderQueue?.count()))
     .toBe(0);
+  expect(delivered).toHaveLength(1);
+  expect(delivered[0].idempotencyKey).toBe(key);
+  await expect(page.locator("#posnic-unsent-text")).toHaveText("No pending orders");
+  await page.locator("#pending-back").click();
   await expect(page.locator("#posnic-unsent")).toBeHidden();
-  await expect(page.locator('#floor-connection-status')).toBeHidden();
 });
 
 test("full storage leaves the cart intact and sends nothing", async ({
@@ -331,10 +339,67 @@ for (const stall of ['fetch', 'body']) {
     // A settled failed attempt is recorded; a stuck flight never gets this far.
     await expect.poll(() => page.evaluate(() => OrderQueue.all()[0]?.nextAt), { timeout: 15000 }).toBeGreaterThan(0);
     await page.evaluate(() => sessionStorage.removeItem('stall-kitchen'));
-    await page.locator('#posnic-unsent-details summary').click();
+    await page.locator('#posnic-unsent a[href="pending.html"]').click();
     await page.getByRole('button', { name: 'Retry now', exact: true }).click();
     await expect.poll(() => page.evaluate(() => OrderQueue.count())).toBe(0);
     expect(orders.length).toBe(2);
     expect(orders.every(order => order.idempotencyKey === key)).toBe(true);
   });
 }
+
+for (const width of [320, 768]) {
+  test(`pending orders protect ownership and fit ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 1024});
+    await shop(page, {reply: {value: {type: "error", message: "Item unavailable"}}});
+    await toCartWithAMeal(page);
+    await page.locator("#next-btn").click();
+    await expect(page).toHaveURL(/kot-management\.html$/);
+    await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(1);
+    await page.evaluate(() => {
+      const rows = OrderQueue.all();
+      const foreign = structuredClone(rows[0]);
+      foreign.key += "-other";
+      foreign.owner.user = "another-staff";
+      foreign.body.items[0].item_name = "Private staff item";
+      foreign.body.kiosk_table_no = "Private table";
+      localStorage.setItem("posnic.pending-orders", JSON.stringify([...rows, foreign]));
+      POSNIC_ORDER_QUEUE_UI.render();
+    });
+    await page.locator('#posnic-unsent a[href="pending.html"]').click();
+    await expect(page.locator(".pending-order-card")).toHaveCount(1);
+    await expect(page.locator(".pending-order-card")).toContainText("Smoke Test Meal");
+    await expect(page.getByText("Private staff item")).toHaveCount(0);
+    await expect(page.getByText("Private table")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path:`test-artifacts/pending-orders-${width}.png`,fullPage:true});
+    await page.locator("#pending-back").click();
+    await expect(page).toHaveURL(/kot-management\.html$/);
+    await page.goto('/me.html');
+    await page.locator('.me-row[href="pending.html"]').click();
+    await expect(page.locator(".pending-order-card")).toHaveCount(1);
+    await page.evaluate(() => window.dispatchEvent(new Event("captain:back", {cancelable:true})));
+    await expect(page).toHaveURL(/me\.html$/);
+  });
+}
+
+test("pulling pending orders retries delivery and keeps the same request ID", async ({page}) => {
+  const orders = [], reply = {value:{type:"error",message:"Item unavailable"}};
+  await shop(page, {orders, reply});
+  await toCartWithAMeal(page);
+  await page.locator("#next-btn").click();
+  await expect(page).toHaveURL(/kot-management\.html$/);
+  await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(1);
+  await expect.poll(() => page.evaluate(() => OrderQueue.all()[0]?.state)).toBe("attention");
+  await page.evaluate(() => OrderQueue.update(OrderQueue.all()[0].key, {state:"waiting",nextAt:Date.now()+60000}));
+  reply.value = orderReply;
+  await page.locator('#posnic-unsent a[href="pending.html"]').click();
+  await expect(page.locator('.pending-order-card')).toHaveCount(1);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{x:150,y:170}]});
+  for(let y=190;y<=350;y+=20) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:150,y}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await cdp.detach();
+  await expect(page.locator('#posnic-unsent-text')).toHaveText('No pending orders');
+  expect(orders).toHaveLength(2);
+  expect(orders[0].idempotencyKey).toBe(orders[1].idempotencyKey);
+});

@@ -97,7 +97,9 @@ function showServerSettingsForConnectionFailure(error) {
     }
 }
 
+let loginInProgress = false;
 async function doLogin() {
+    if (loginInProgress) return;
     const usernameEl = document.getElementById("username");
     const passwordEl = document.getElementById("password");
 
@@ -107,7 +109,7 @@ async function doLogin() {
     }
 
     const username = (usernameEl.value || "").trim();
-    const password = (passwordEl.value || "").trim();
+    const password = passwordEl.value || "";
 
     showLoginMessage("");
 
@@ -134,6 +136,8 @@ async function doLogin() {
         return;
     }
 
+    const loginServer = POSNIC.server.baseUrl;
+    loginInProgress = true;
     showLoader();
 
     try {
@@ -194,6 +198,7 @@ async function doLogin() {
             return;
         }
 
+        window.CaptainSignIn?.remember(loginServer, username);
         localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
         const userId = (result.user && result.user.id) || branches[0].user_id;
         if (userId) localStorage.setItem("user_id", userId);
@@ -256,6 +261,7 @@ async function doLogin() {
             showLoginMessage(error.message || "Could not sign in.");
         }
     } finally {
+        loginInProgress = false;
         hideLoader();
     }
 }

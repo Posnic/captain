@@ -447,6 +447,7 @@ document.addEventListener('click', async function (event) {
 document.addEventListener('click', function (event) {
     const card = event.target.closest && event.target.closest('.floor-card');
     if (!card) return;
+    if (card.dataset.awaitingClose === 'true') return;
     event.preventDefault();
     selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
 });
@@ -499,6 +500,7 @@ async function loadTablesNow() {
                that has just said nothing is. */
             const empty = document.getElementById('floor-count');
             if (empty) empty.textContent = '';
+            window.FloorDashboard?.update(data.data);
             return true;
         }
 
@@ -524,13 +526,15 @@ async function loadTablesNow() {
             : tables.map((name) => ({ table_number: name, minutes: null }));
 
         const card = (name, detail, extraClass) => {
-            const minutes = detail ? detail.minutes : null;
+            const awaitingClose = detail?.awaiting_close === true;
+            const minutes = awaitingClose ? null : detail ? detail.minutes : null;
             const age = FloorView.age(minutes);
             const said = FloorView.saidAs(minutes);
             const meta = FloorView.summary(detail);
             const safe = escapeFloor(name);
 
-            return '<a href="#/kot/' + encodeURIComponent(name) + '"' +
+            return '<a href="' + (awaitingClose ? 'tables.html?source=floor&table=' + encodeURIComponent(name) : '#/kot/' + encodeURIComponent(name)) + '"' +
+                (awaitingClose ? ' data-awaiting-close="true"' : '') +
                 ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
                 (age ? ' data-age="' + age + '"' : '') +
                 /* WHAT IT IS, NOT WHAT IT SAYS. The takeaway card used to be
@@ -539,6 +543,7 @@ async function loadTablesNow() {
                 (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
                 ' data-table-number="' + safe + '">' +
                 '<div class="floor-name">' + safe + '</div>' +
+                (awaitingClose ? '<div class="floor-meta">' + escapeFloor(window.I18N?.t('Paid') || 'Paid') + ' · ' + escapeFloor(window.I18N?.t('Close order') || 'Close order') + '</div>' : '') +
                 (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
                 (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
                 '</a>';
@@ -567,6 +572,7 @@ async function loadTablesNow() {
                and "3 tables open" under "Active tables" says tables twice. */
             count.textContent = open === 1 ? '1 open' : open + ' open';
         }
+        window.FloorDashboard?.update(data.data);
         return true;
     } catch (error) {
         console.error('Error loading tables:', error);
@@ -743,7 +749,7 @@ async function selectTable(tableName, takeaway, options = {}) {
                 ${
                   isTakeaway
                     ? ''
-                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" data-review-bill="${escapeFloor(tableName)}">Bill</button><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
                          data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>
@@ -1191,7 +1197,7 @@ function sayWhereWeAre() {
 document.addEventListener('DOMContentLoaded', sayWhereWeAre);
 
 window.addEventListener('captain:back', event => {
-    if (event.defaultPrevented || document.querySelector('.modal.show, #guest-bills[open]')) return;
+    if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open], #posnic-lock.is-open')) return;
     if (document.getElementById('kot-sliding-panel')?.classList.contains('open')) {
         event.preventDefault();
         closeSlidingPanel();

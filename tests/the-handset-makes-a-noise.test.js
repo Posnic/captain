@@ -82,6 +82,7 @@ function load({ stored = {}, canBuzz = true, canHear = true } = {}) {
 
   context.window = context;
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../assets/common/phone-preferences.js'), 'utf8'), context);
   vm.runInContext(SOURCE, context);
   return { ui: context.PosnicRequests, notes, buzzes, store };
 }
@@ -240,4 +241,21 @@ test('the handset never repeats, because the till is the one that does', () => {
     'the handset was given a repeating alarm'
   );
   assert.match(SOURCE, /ONCE PER REQUEST, NEVER REPEATED/);
+});
+
+test('phone sound and vibration preferences silence alerts independently without dropping requests', () => {
+  for (const [sound, vibration] of [[true,false],[false,true],[false,false]]) {
+    const handset = load({stored:{'posnic.phone.sound':sound?'on':'off','posnic.phone.vibration':vibration?'on':'off'}});
+    handset.ui.saw([call()]);
+    assert.equal(handset.notes.length > 0, sound);
+    assert.equal(handset.buzzes.length > 0, vibration);
+    handset.store['posnic.phone.sound'] = 'on';
+    handset.store['posnic.phone.vibration'] = 'on';
+    const previous = [handset.notes.length, handset.buzzes.length];
+    handset.ui.saw([call()]);
+    assert.deepEqual([handset.notes.length, handset.buzzes.length], previous, 'unmuting must not replay old alerts');
+    handset.ui.saw([call({sale_id:'new-call',call_id:'new-call'})]);
+    assert.ok(handset.notes.length > previous[0]);
+    assert.ok(handset.buzzes.length > previous[1]);
+  }
 });

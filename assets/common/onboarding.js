@@ -1,12 +1,20 @@
 (function () {
   "use strict";
   let operation = null;
+  let selection = null;
+  function cancelSelection() {
+    selection?.abort();
+    selection = null;
+  }
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
-    if (signIn) sessionStorage.removeItem("posnic_editing_server");
+    if (signIn) { sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
     $("captain-onboarding").hidden = signIn;
     $("captain-legacy").hidden = !signIn;
-    $("captain-legacy").open = signIn;
+    $("login-section").dataset.authStep = signIn ? "signin" : "server";
+    $("setup-server-step").setAttribute("aria-current", signIn ? "false" : "step");
+    $("setup-signin-step").setAttribute("aria-current", signIn ? "step" : "false");
+    if (signIn) window.CaptainSignIn?.selectServer(POSNIC.server.baseUrl);
     if (signIn) {
       const base = POSNIC.server.baseUrl;
       $("captain-selected-shop").textContent = base
@@ -17,10 +25,11 @@
   let view = "start";
   let navigationVersion = 0;
   function showView(next, focus = true) {
+    showStep(false);
     view = next;
     $("captain-onboarding").dataset.setupView = next;
     navigationVersion++;
-    if (focus) sessionStorage.setItem("posnic_editing_server", "1");
+    if (focus) { sessionStorage.setItem("posnic_editing_server", "1"); sessionStorage.setItem("posnic_connection_view", next); }
     const titles = {
       start: "Connect to your shop",
       address: "Connect to your shop",
@@ -43,6 +52,7 @@
     $("connection-addresses").hidden = next !== "settings";
     $("connection-addresses").open = next === "settings";
     $("captain-results").hidden = next !== "wifi";
+    $("setup-results-hint").hidden = next !== "wifi";
     $("captain-search-again").hidden = next !== "wifi";
     $("connection-back").hidden = next === "start" && !POSNIC.server.isConfigured;
     note("");
@@ -83,7 +93,7 @@
       );
   }
   async function run(work) {
-    if (operation) return;
+    if (operation || selection) return;
     $("captain-open-browser").hidden = true;
     $("captain-open-browser").removeAttribute("href");
     operation = new AbortController();
@@ -259,22 +269,35 @@
       count++;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "ui-btn-quiet";
-      button.textContent =
-        hit.base +
-        (hit.info.features?.captainAccessV1
-          ? ""
-          : " · Update required for pairing");
-      button.onclick = () => {
-        if (operation && operation !== searchOperation) return;
+      button.className = "setup-server-card";
+      button.innerHTML = '<span class="setup-server-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span><span class="setup-server-info"><strong translate="no"></strong><span class="setup-server-network">Wi-Fi</span></span><span class="setup-server-action"><span>Connect</span><span aria-hidden="true">→</span></span>';
+      button.querySelector("strong").textContent = new URL(hit.base).host;
+      if (!hit.info.features?.captainAccessV1) {
+        const compatibility = document.createElement("small");
+        compatibility.textContent = "· Update required for pairing";
+        button.querySelector(".setup-server-info").append(compatibility);
+      }
+      button.onclick = async () => {
+        if (selection || (operation && operation !== searchOperation)) return;
         searchOperation.abort();
+        const controller = new AbortController();
+        selection = controller;
+        const choices = [...results.querySelectorAll("button")];
+        choices.forEach((row) => { row.disabled = true; });
+        button.setAttribute("aria-busy", "true");
+        note("Connecting to your shop…");
         $("captain-server").value = hit.base;
-        // An address change always needs a fresh manager confirmation.
         $("captain-confirm").checked = false;
         const selectedVersion = ++navigationVersion;
-        void useAddress(hit.base).catch((error) => {
-          if (navigationVersion === selectedVersion) note(error.message);
-        });
+        try {
+          await useAddress(hit.base, controller.signal);
+        } catch (error) {
+          if (!controller.signal.aborted && navigationVersion === selectedVersion) note(error.message);
+        } finally {
+          if (selection === controller) selection = null;
+          button.removeAttribute("aria-busy");
+          choices.forEach((row) => { row.disabled = false; });
+        }
       };
       results.append(button);
     };
@@ -325,7 +348,7 @@
     if (!signal.aborted)
       note(
         count
-          ? "Choose your shop server first."
+          ? ""
           : seen.length
             ? "An address answered but refused access. Ask your manager to check the till address and Captain access."
             : "No compatible till found. Check that the till is open and both devices use the shop Wi-Fi, not guest Wi-Fi. Retry or scan its QR.",
@@ -537,12 +560,14 @@
       return;
     }
     if (POSNIC.session.managed) {
-      await POSNIC.session.addAddress(hit.base);
+      await POSNIC.session.addAddress(hit.base, signal);
+      if (signal?.aborted || navigationVersion !== startedAt) return;
       note("Connected");
       return;
     }
     if (POSNIC.session.active && hit.base !== POSNIC.session.base)
       await POSNIC.session.end();
+    if (signal?.aborted || navigationVersion !== startedAt) return;
     POSNIC.server.pin(hit.base);
     note("");
     showStep(true);
@@ -550,10 +575,11 @@
   }
   window.CaptainOnboarding = {
     get busy() {
-      return !!operation;
+      return !!operation || !!selection;
     },
     open() {
       operation?.abort();
+      cancelSelection();
       showView("start", false);
       sessionStorage.setItem("posnic_editing_server", "1");
       POSNIC.net.stop?.();
@@ -561,8 +587,8 @@
       $("branch-section").style.display = "none";
       $("connection-back").hidden = !POSNIC.server.isConfigured;
       $("captain-server").value = POSNIC.server.baseUrl || "";
-      $("connection-lan").value = POSNIC.server.lan || "";
-      $("connection-cloud").value = POSNIC.server.cloud || "";
+      $("connection-lan").value = POSNIC.server.lan || (POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
+      $("connection-cloud").value = POSNIC.server.cloud || (!POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
       showStep(false);
       note("");
       updateConnectAction();
@@ -571,8 +597,10 @@
     close() {
       navigationVersion++;
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       sessionStorage.removeItem("posnic_editing_server");
+      sessionStorage.removeItem("posnic_connection_view");
       if (POSNIC.session.active) window.location.href = "kot-management.html";
       else showStep(POSNIC.server.isConfigured);
       POSNIC.net.start();
@@ -591,9 +619,30 @@
       return true;
     },
   };
+  function recoveryHelp() {
+    if (document.getElementById("captain-recovery")) return;
+    const dialog = document.createElement("dialog");
+    dialog.id = "captain-recovery";
+    dialog.className = "captain-action-dialog";
+    dialog.setAttribute("aria-labelledby", "captain-recovery-title");
+    dialog.innerHTML = '<h2 id="captain-recovery-title">Help</h2><p>Ask your manager to reconnect this phone. Your orders are saved.</p><div class="recovery-actions"><button type="button" data-recovery="password">Use my password instead</button><button type="button" data-recovery="account">Sign in with your account</button><button type="button" data-recovery="back">Back</button></div>';
+    const close = () => {window.removeEventListener("captain:back", back, true);dialog.close();dialog.remove();$("captain-login-help").focus();};
+    const back = event => {event.preventDefault();event.stopImmediatePropagation();close();};
+    dialog.addEventListener("cancel", back);
+    window.addEventListener("captain:back", back, true);
+    dialog.addEventListener("click", event => {
+      const action = event.target.closest("[data-recovery]")?.dataset.recovery;
+      if (!action) return;
+      close();
+      if (action === "password") $("password").focus();
+      if (action === "account") {CaptainOnboarding.open();$("captain-cloud-login").click();}
+    });
+    document.body.append(dialog);window.I18N?.apply(dialog);dialog.showModal();
+  }
   document.addEventListener("DOMContentLoaded", () => {
     $("captain-server").value = POSNIC.server.baseUrl || "";
     updateConnectAction();
+    $("captain-login-help").onclick = recoveryHelp;
     $("captain-code-toggle").onclick = showCode;
     $("captain-change-shop").onclick = () => CaptainOnboarding.open();
     $("captain-connect").onclick = () => {
@@ -628,22 +677,22 @@
       $("captain-confirm").checked = false;
     });
     $("captain-scan").onclick = () => {
-      if (operation) return;
+      if (operation || selection) return;
       POSNIC_CONNECT.startScan((base) => {
         $("captain-server").value = base;
         void run((signal) => useAddress(base, signal));
       });
     };
     const findShop = () => {
-      if (operation) return;
+      if (operation || selection) return;
       showView("wifi");
       void run(search);
     };
     $("captain-search").onclick = findShop;
     $("captain-search-again").onclick = findShop;
     $("connection-settings").onclick = () => {
-      $("connection-lan").value = POSNIC.server.lan || "";
-      $("connection-cloud").value = POSNIC.server.cloud || "";
+      $("connection-lan").value = POSNIC.server.lan || (POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
+      $("connection-cloud").value = POSNIC.server.cloud || (!POSNIC.server.isLocal ? POSNIC.server.baseUrl : "") || "";
       showView("settings");
     };
     $("captain-pair").onclick = () =>
@@ -654,7 +703,7 @@
         ),
       );
     $("captain-cloud-login").onclick = () => {
-      if (operation) return;
+      if (operation || selection) return;
       showView("cloud");
       void run((signal) => cloud("login", signal));
     };
@@ -662,6 +711,7 @@
       void run((signal) => cloud("signup", signal));
     $("captain-cancel").onclick = () => {
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       if (view === "cloud") showView("address");
       note("Connection cancelled.");
@@ -669,12 +719,14 @@
     $("connection-back").onclick = () => {
       if (view === "start") return CaptainOnboarding.close();
       operation?.abort();
+      cancelSelection();
       POSNIC_CONNECT.stopScan();
       showView("start");
     };
     $("captain-address-toggle").onclick = () => showView("address");
     $("connection-save").onclick = () =>
       void run(async (signal) => {
+        const startedAt = navigationVersion;
         const lan = $("connection-lan").value.trim(),
           cloud = $("connection-cloud").value.trim();
         const addresses = [lan, cloud]
@@ -683,7 +735,10 @@
         if (!addresses.length || addresses.some((value) => !value))
           throw new Error("Check the shop code or address and try again.");
         if (POSNIC.session.managed) {
-          for (const base of addresses) await POSNIC.session.addAddress(base);
+          for (const base of addresses) {
+            if (signal.aborted || navigationVersion !== startedAt) return;
+            await POSNIC.session.addAddress(base, signal);
+          }
         } else {
           POSNIC.server.remember({ lan, cloud });
           if (window.CaptainAccess?.locked)
@@ -696,6 +751,7 @@
             POSNIC.server.unpin();
           }
         }
+        if (signal.aborted || navigationVersion !== startedAt) return;
         $("captain-server").value = POSNIC.server.baseUrl || addresses[0];
         $("connection-back").hidden = false;
         note("Saved");
@@ -703,7 +759,8 @@
     showView("start", false);
     showStep(
       POSNIC.server.isConfigured &&
-        !sessionStorage.getItem("posnic_change_server"),
+        !sessionStorage.getItem("posnic_change_server") &&
+        !sessionStorage.getItem("posnic_editing_server"),
     );
   });
 })();

@@ -12,9 +12,10 @@ test('general voice note records without an order and retries the same upload af
    Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}});
    window.MediaRecorder=class{constructor(){this.state='inactive';this.mimeType='audio/webm';}start(){this.state='recording';}stop(){this.state='inactive';this.ondataavailable({data:new Blob(['test'],{type:'audio/webm'})});this.onstop();}};
   });
+  await page.addScriptTag({path:'assets/common/voice-recorder.js'});
   await page.addScriptTag({path:'assets/common/kitchen-message.js'});
   await page.getByRole('button',{name:'Record voice note',exact:true}).click();
-  await page.getByRole('button',{name:'Stop recording',exact:true}).click();
+  await page.getByRole('button',{name:'Pause recording',exact:true}).click();
   await page.getByRole('button',{name:'Send to kitchen',exact:true}).click();
   await page.waitForFunction(()=>document.getElementById('voice-error').textContent==='Connection lost');
   await page.getByRole('button',{name:'Send to kitchen',exact:true}).click();
@@ -26,7 +27,7 @@ test('general voice note records without an order and retries the same upload af
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.getByRole('button',{name:'Close',exact:true}).click();
   await page.getByRole('button',{name:'Record voice note',exact:true}).click();
-  await page.getByRole('button',{name:'Stop recording',exact:true}).click();
+  await page.getByRole('button',{name:'Pause recording',exact:true}).click();
   await page.waitForFunction(()=>document.getElementById('voice-send').hidden===false);
   await page.evaluate(()=>{POSNIC.session.user.id='other';});
   const before=await page.evaluate(()=>calls.length);

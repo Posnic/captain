@@ -307,8 +307,11 @@ test('Wi-Fi discovery checks the known local server before sweeping', async ({ p
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
   await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
   await page.locator('#captain-search').click();
-  await expect(page.locator('#captain-results button')).toContainText(LAN);
-  await page.locator('#captain-results button').click();
+  const server = page.locator('#captain-results .setup-server-card');
+  await expect(server.locator('strong')).toHaveText(new URL(LAN).host);
+  await expect(server.locator('.setup-server-action')).toContainText('Connect');
+  await expect(page.locator('#captain-legacy')).toBeHidden();
+  await server.click();
   await expect(page.locator('#captain-legacy')).toBeVisible();
   expect(await baseUrl(page)).toBe(LAN);
 });
@@ -378,6 +381,7 @@ test('fresh setup offers Wi-Fi discovery before exposing staff credentials', asy
   await page.locator('#captain-search').click();
   await expect(page.locator('#captain-note')).toContainText('Wi-Fi search works in the installed phone app');
   await page.locator('#connection-back').click();
+  await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').fill('https://shop.example.com');
   await expect(page.locator('#captain-connect')).toHaveText('Continue');
   await expect(page.locator('#username')).toBeHidden();
@@ -424,11 +428,12 @@ test('a locked-out device is told to wait, not that its password is wrong', asyn
 
 test('connection settings offer browser approval, one address, Wi-Fi, QR and pairing code', async ({ page }) => {
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
-  for(const id of ['captain-cloud-login','captain-server','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
+  for(const id of ['captain-cloud-login','captain-address-toggle','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
   await expect(page.locator('#captain-cancel')).toBeHidden();
 });
 test('address entry remains directly available alongside the discovery tools', async ({ page }) => {
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').fill('myshop');
   await expect(page.locator('#captain-connect')).toBeVisible();
   await expect(page.locator('#captain-scan')).toBeVisible();
@@ -879,11 +884,13 @@ test('other connection options remain available without a cloud account', async 
   await page.goto('/index.html');
   await expect(page.locator('#captain-search')).toBeVisible();
   await expect(page.locator('#captain-code-toggle')).toBeVisible();
+  await page.locator('#captain-address-toggle').click();
   await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('manual address entry opens directly without waiting for discovery', async ({ page }) => {
   await page.goto('/index.html');
+  await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').click();
   await expect(page.locator('#connectAuto')).toBeHidden();
   await expect(page.locator('#captain-server')).toBeVisible();

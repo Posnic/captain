@@ -105,7 +105,8 @@ test('history refresh preserves the selected table and last results on failure; 
   await expect(page.locator('#orders-list .order-card')).toHaveCount(1);
   await expect(page.locator('#page-loader')).toBeHidden();
   await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
-  await expect(page.locator('#table-selection-screen')).toBeVisible();
+  await expect(page.locator('#order-list-screen')).toBeVisible();
+  await expect(page.locator('#header-title')).toHaveText('All Orders');
 });
 
 

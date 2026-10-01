@@ -58,7 +58,7 @@
    */
   function draw(products, cartMap, options) {
     const opts = options || {};
-    const list = MenuView.sections(products);
+    const list = MenuView.sections(globalThis.MealMenu ? MealMenu.apply(products) : products);
     const rail = $('#category-list');
     const body = $('#product-list');
     if (!body) return list;

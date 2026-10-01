@@ -46,6 +46,9 @@ async function onTheOrderList(page, order = ORDER) {
   await page.route('**/sales/getOrderHistory', (route) =>
     route.fulfill({ json: { type: 'success', data: { orders: [order] } } })
   );
+  await page.route('**/captain/v1/tables', route =>
+    route.fulfill({json:{tables:TABLES}})
+  );
 
   await page.goto('/order-history.html');
   await page.waitForFunction(() => typeof moveOrder === 'function');

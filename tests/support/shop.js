@@ -173,6 +173,7 @@ export async function onTheMenu(page, heard, options = {}) {
    * wrong. The action is the one unambiguous thing about this button.
    */
   await page.locator('[onclick*="goToProductsWithTableCheck"]').click();
+  await page.locator('#seat-confirmation button[value=continue]').click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.locator('.dish').first()).toBeVisible();

@@ -114,8 +114,8 @@ test('the count is shown only where it changes what a waiter does', () => {
 
 test('a full table says so before the walk, not after', () => {
   const html = read('discount.html');
-  assert.match(html, /title="\$\{isOccupied \? 'This table is full' : ''\}"/);
-  assert.match(html, /const isOccupied = isFull\(value\);/);
+  assert.match(html, /isOccupied \? 'This table is full' : ''/);
+  assert.match(html, /const isOccupied = isFull\(value\) \|\|/);
   assert.ok(
     !/const isOccupied = occupiedTables\.includes\(value\)/.test(html),
     'the screen asks whether the table is busy again, not whether it is full'

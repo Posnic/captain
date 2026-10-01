@@ -9,11 +9,20 @@
     <script src="assets/common/i18n.js"></script>
     <script src="assets/common/languages.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
-    <script src="assets/common/access.js"></script>
+    <link rel="stylesheet" href="assets/common/confirm.css">
+<script src="assets/common/confirm.js"></script>
+<script src="assets/common/access.js"></script>
     <script src="assets/common/money.js"></script>
+    <script src="assets/common/table-details.js"></script>
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/group-move.js"></script>
+    <script src="assets/common/guest-update.js"></script>
+    <script src="assets/common/item-transfer.js"></script>
+    <script src="assets/common/transfer-screen.js"></script>
+    <link rel="stylesheet" href="assets/common/transfer-screen.css">
+    <script src="assets/common/phone-preferences.js"></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <script src="assets/common/order-queue.js"></script>
@@ -42,6 +51,7 @@
     <link href="assets/products/menu.css" rel="stylesheet">
     <link href="assets/order-history/style.css" rel="stylesheet">
     <link href="assets/order-history/table-selection.css" rel="stylesheet">
+    <link href="assets/common/design.css" rel="stylesheet">
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
@@ -49,9 +59,11 @@
     <script src="assets/common/mobile-gestures.js" defer></script>
     <link rel="stylesheet" href="assets/common/service-rounds.css">
     <script src="assets/common/service-rounds.js" defer></script>
+    <link rel="stylesheet" href="assets/common/app-design.css">
+<script src="assets/common/navigation.js" defer></script>
 </head>
 
-<body>
+<body class="history-screen">
     <!-- Page Loader -->
     <div id="page-loader">
         <div class="loader"></div>
@@ -62,7 +74,9 @@
         <button class="back-btn" aria-label="Back" onclick="handleBackButton()">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <button class="refresh-btn" data-mobile-refresh aria-label="Refresh" onclick="refreshOrders()" id="refresh-btn" style="display: none;">
+        <h1 id="header-title">Order history</h1>
+        <button type="button" class="history-table-picker" onclick="showTableSelectionScreen()">Tables</button>
+        <button class="refresh-btn" data-mobile-refresh aria-label="Refresh" id="refresh-btn" style="display: none;">
             <i class="fas fa-sync-alt"></i>
         </button>
     </div>
@@ -85,10 +99,6 @@
         <!-- Search and Filter Section -->
         <section class="section-block">
             <div class="search-filter-container">
-                <div class="table-filter-header" onclick="toggleTableFilters()">
-                    <span class="filter-header-text">Filters</span>
-                    <i class="fas fa-chevron-down" id="table-filter-arrow"></i>
-                </div>
                 <div class="all-filters-container" id="all-filters-container">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
@@ -124,7 +134,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Order Details</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="order-details-content">
                     <!-- Order details will be loaded here -->
@@ -132,7 +142,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn close-btn" data-bs-dismiss="modal">Close</button>
                     <button type="button" class="btn action-btn edit-btn" id="edit-order-btn">Modify</button>
-                    <button type="button" class="btn action-btn cancel-btn" id="cancel-order-btn">Cancel Order</button>
+
                 </div>
             </div>
         </div>
@@ -167,6 +177,7 @@
                             <button type="button" data-editor-setting="table"><span>Move table</span><strong id="editor-table-value" translate="no"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                             <button type="button" data-editor-setting="guests"><span>Guests</span><strong id="editor-guests-value" translate="no"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                             <button type="button" data-editor-setting="type"><span>Order Type</span><strong id="editor-type-value"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                            <button type="button" data-editor-setting="discount"><span>Discount</span><strong id="editor-discount-value" translate="no"></strong><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                         </div>
                     </section>
                     <section id="order-editor-settings" hidden>
@@ -350,7 +361,7 @@
             <div class="modal-content edit-notes-content">
                 <div class="modal-header edit-notes-header">
                     <h5 class="modal-title" id="edit-notes-product-name" translate="no">Item Notes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body edit-notes-body">
                     <label for="edit-item-notes-text" class="edit-notes-label">Notes</label>

@@ -171,3 +171,54 @@ test('an older server keeps ordinary ordering and does not offer unsupported pre
  await expect(page.locator('[data-preparation-cart]')).toHaveCount(0);
  await expect(page.locator('.bill-qty').first()).toHaveText('1');
 });
+
+
+test('preparation Back keeps unsaved allergy details until discard is confirmed', async ({page}) => {
+ await onTheMenu(page,'nothing',{menu});
+ await page.evaluate(async()=>updateQuantity('mushroom',1));
+ await page.goto('/cart.html');
+ await page.locator('[data-preparation-cart="mushroom"]').click();
+ const dialog=page.locator('#preparation-dialog');
+ await dialog.locator('summary').click();
+ await dialog.locator('[name=allergy_note]').fill('Ask chef about peanuts');
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await page.locator('#captain-discard [data-confirm-action=keep]').click();
+ await expect(dialog.locator('[name=allergy_note]')).toHaveValue('Ask chef about peanuts');
+ await expect(page).toHaveURL(/cart.html/);
+ await page.keyboard.press('Escape');
+ await page.locator('#captain-discard [data-confirm-action=discard]').click();
+ await expect(dialog).toHaveCount(0);
+ await expect(page.locator('[data-preparation-cart="mushroom"]')).toBeFocused();
+ const cart=await page.evaluate(()=>getCartData());
+ expect(cart[0].allergy_note||'').toBe('');
+});
+
+test('preparation stays open during save and retains its draft on failure', async ({page}) => {
+ await onTheMenu(page,'nothing',{menu});
+ await page.goto('/cart.html');
+ await page.evaluate(()=>ServiceDetails.open({name:'Soup'},()=>new Promise((resolve,reject)=>{window.failPreparation=()=>reject(new Error('Could not save. Please try again.'));})));
+ const dialog=page.locator('#preparation-dialog');
+ await dialog.locator('[name=seat]').fill('2');
+ await dialog.locator('[type=submit]').click();
+ await expect(dialog).toHaveAttribute('aria-busy','true');
+ await expect(dialog.locator('[name=seat]')).toBeDisabled();
+ await page.keyboard.press('Escape');
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(dialog).toBeVisible();
+ await page.evaluate(()=>window.failPreparation());
+ await expect(dialog.locator('[role=alert]')).toHaveText('Could not save. Please try again.');
+ await expect(dialog.locator('[name=seat]')).toBeEnabled();
+ await expect(dialog.locator('[name=seat]')).toHaveValue('2');
+});
+
+for(const width of [320,768]) test(`preparation follows the dark theme and fits ${width}px`, async ({page})=>{
+ await page.emulateMedia({colorScheme:'dark'});
+ await page.setViewportSize({width,height:1024});
+ await onTheMenu(page,'nothing',{menu});
+ await page.goto('/cart.html');
+ await page.evaluate(()=>ServiceDetails.open({name:'Mushroom starter',allergies:['milk']},async()=>{}));
+ const dialog=page.locator('#preparation-dialog');
+ expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgb(255, 255, 255)');
+ const bounds=await dialog.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
+ await page.screenshot({path:`test-artifacts/preparation-dark-${width}.png`,fullPage:true});
+});

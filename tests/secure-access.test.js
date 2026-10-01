@@ -852,3 +852,66 @@ test("a discovery proof finishing after a shop change cannot authorize an addres
   assert.equal(f.vault().shopKey,'another-shop');
   assert.equal(f.vault().routes,undefined);
 });
+
+test("profile refresh only changes the current user's display name and persists it", async () => {
+ const f=fixture();const access=createAccess(f.plugin,f.storage,async()=>{},webcrypto);
+ await access.session.start(f.grant);
+ const user=access.session.user;
+ assert.equal(await access.session.updateProfile({id:'another-user',name:'Wrong person'}),false);
+ assert.deepEqual(access.session.user,user);
+ assert.equal(await access.session.updateProfile({id:user.id||user._id,name:'Updated name',role:'admin'}),true);
+ assert.deepEqual(access.session.user,{...user,name:'Updated name'});
+ const restored=createAccess(f.plugin,f.storage,async()=>{},webcrypto);await restored.ready;
+ assert.equal(restored.session.user.name,'Updated name');
+});
+
+
+test("cancelled address verification cannot persist a late proof or try another credential", async()=>{
+  const f=fixture(), key='a'.repeat(64), candidate='http://192.168.1.44:42590/api';
+  let release, notify, calls=0, requestSignal;
+  const started=new Promise(resolve=>{notify=resolve;});
+  const access=createAccess(f.plugin,f.storage,async (url,options)=>{
+    calls++;requestSignal=options.signal;
+    const nonce=JSON.parse(options.body).nonce;
+    notify();await new Promise(resolve=>{release=resolve;});
+    return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(nonce).digest('hex')})};
+  },webcrypto);
+  await access.session.start({...f.grant,routeKey:key,connections:[{...f.grant,routeKey:key}]});
+  const abort=new AbortController();
+  const pending=access.session.addAddress(candidate,abort.signal);
+  const rejected=assert.rejects(pending,/cancelled/);
+  await started;abort.abort();
+  assert.equal(requestSignal.aborted,true);
+  release();await rejected;
+  assert.equal(calls,1);
+  assert.equal(access.session.allowsBase(candidate),false);
+  assert.equal(f.vault().routes,undefined);
+  assert.equal(f.vault().connections[0].routes,undefined);
+});
+
+
+for (const existing of [undefined, ['https://previous.example/api']])
+  test(`failed route storage preserves previous addresses and can retry (${!!existing})`, async()=>{
+    const f=fixture(), key='c'.repeat(64), candidate='http://192.168.1.55:42590/api';
+    let proofs=0;
+    const access=createAccess(f.plugin,f.storage,async (url,options)=>{
+      proofs++;
+      return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key)
+        .update(JSON.parse(options.body).nonce).digest('hex')})};
+    },webcrypto);
+    await access.session.start({...f.grant,routeKey:key,routes:existing,connections:[{...f.grant,routeKey:key}]});
+    const save=f.plugin.save;
+    f.plugin.save=async()=>{throw Error('Secure storage unavailable');};
+    await assert.rejects(access.session.addAddress(candidate),/Secure storage unavailable/);
+    assert.equal(proofs,1);
+    assert.equal(access.session.allowsBase(candidate),false);
+    assert.deepEqual(f.vault().routes,existing);
+    f.plugin.save=save;
+    // An unrelated save must not accidentally persist the failed candidate.
+    await access.session.updateProfile({id:'staff',name:'Updated'});
+    assert.deepEqual(f.vault().routes,existing);
+    await access.session.addAddress(candidate);
+    assert.equal(access.session.allowsBase(candidate),true);
+    assert.deepEqual(f.vault().routes,[...(existing||[]),candidate]);
+    assert.equal(access.session.user.id,'staff');
+  });

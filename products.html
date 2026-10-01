@@ -9,11 +9,14 @@
     <script src="assets/common/i18n.js"></script>
     <script src="assets/common/languages.js"></script>
     <script src="assets/jquery-3.6.0.min.js"></script>
-    <script src="assets/common/access.js"></script>
+    <link rel="stylesheet" href="assets/common/confirm.css">
+<script src="assets/common/confirm.js"></script>
+<script src="assets/common/access.js"></script>
     <script src="assets/common/money.js"></script>
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/phone-preferences.js"></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <!-- What a dish SOUNDS like, for matching a transcript. Before
@@ -27,6 +30,7 @@
     <script src="assets/common/quick-sale.js"></script>
     <script src="assets/common/ask-options.js"></script>
     <script src="assets/common/ask-run-out.js"></script>
+    <script src="assets/common/serving-periods.js"></script>
     <script src="assets/common/menu-view.js"></script>
     <script src="assets/common/order-queue.js"></script>
     <script src="assets/common/this-device.js"></script>
@@ -46,6 +50,7 @@
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/common/mobile-gestures.css">
     <script src="assets/common/mobile-gestures.js" defer></script>
+    <link rel="stylesheet" href="assets/common/app-design.css">
 </head>
 
 <body>
@@ -175,10 +180,10 @@
         than spending a strip of a small screen on "0 items - ₹0.00".
     -->
     <div class="bill-bar" id="bill-bar">
-        <div class="bill-what">
+        <button type="button" class="bill-what" aria-label="Bill Summary" onclick="openCartSummarySheet()">
             <span class="bill-count" id="bill-count">0 items</span>
             <span class="bill-total" id="bill-total">₹0.00</span>
-        </div>
+        </button>
         <!-- The spinner goes up before the navigation, because the gap between
              tapping this and the bill page starting to load is part of the wait
              too, and nothing else covers it. -->
@@ -271,6 +276,7 @@
         </div>
     </div>
 
+    <script src="assets/products/meal-menu.js"></script>
     <script src="assets/products/menu.js"></script>
     <script src="assets/products/script.js"></script>
 </body>

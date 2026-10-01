@@ -11,9 +11,13 @@
     <script src="assets/jquery-3.6.0.min.js"></script>
     <script src="assets/common/access.js"></script>
     <script src="assets/common/money.js"></script>
+    <script src="assets/common/table-details.js"></script>
     <link rel="stylesheet" href="assets/common/service-details.css">
-    <script src="assets/common/service-details.js"></script>
+    <link rel="stylesheet" href="assets/common/confirm.css">
+<script src="assets/common/confirm.js"></script>
+<script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/phone-preferences.js"></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <script src="assets/common/order-queue.js"></script>
@@ -59,11 +63,13 @@
     }
     </style>
     <link rel="stylesheet" href="assets/common/i18n.css">
+    <link rel="stylesheet" href="assets/common/app-design.css">
 </head>
 
 <body class="seat-screen">
     <div class="discount-page">
         <div class="seat-head">
+            <button type="button" class="route-signal" onclick="goBackToKot()" aria-label="Back">←</button>
             <span class="seat-head-title">New order</span>
         </div>
 
@@ -108,17 +114,10 @@
                     placeholder="Reason for discount (optional)"></textarea>
             </div>
 
-            <div class="table-section-center">
-                <div class="section-title">Table</div>
-                <div class="table-list">
-                    <!-- JS will fill here -->
-                </div>
-            </div>
-
             <!-- Person Count -->
             <!-- Person Count -->
             <div class="person-count-section">
-                <div class="section-title">Pax</div>
+                <div class="section-title">Guests</div>
 
                 <!--
                     TWO TAPS, AND NO KEYBOARD.
@@ -157,17 +156,15 @@
                 <input type="hidden" id="person_count" value="1">
             </div>
 
-            <div class="btn-footer">
-                <button type="button" class="btn btn-next" onclick="goBackToKot()"
-                    style="border: 1px solid #ddd !important;background: #ff7a3c;color: #fff;">
-                    ← Back
-                </button>
-
-                <div class="discount-cart-summary">
-                    <button class="header-btn" onclick="openOrderHistory()" title="Order History">
-                        <i class="fas fa-history"></i>
-                    </button>
+            <div class="table-section-center">
+                <div class="section-title">Choose a table</div>
+                <div id="seat-area-filter" class="seat-area-filter" hidden></div>
+                <div class="table-list">
+                    <!-- JS will fill here -->
                 </div>
+            </div>
+
+            <div class="btn-footer">
                 <button type="button" class="btn btn-next" onclick="goToProductsWithTableCheck()">
                     Next →
                 </button>
@@ -183,7 +180,9 @@
         </div>
     </div>
     <script>
-        function goToProductsWithTableCheck() {
+        let seatingInProgress = false;
+        async function goToProductsWithTableCheck() {
+            if(seatingInProgress)return;
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -245,6 +244,23 @@
             }
 
             const personCount = parseInt(document.getElementById('person_count').value || '0', 10) || 0;
+            const chosenTable = CaptainTables.cached(tableNo);
+            if (orderType === 'Dine-in' && chosenTable && !CaptainTables.fits(chosenTable,personCount)) {
+                showErrorPopup('Choose a table with enough seats.');
+                return;
+            }
+
+
+            if(orderType === 'Dine-in') {
+                seatingInProgress=true;
+                let confirmed=false;
+                try {confirmed=await CaptainTables.confirmSeating({table:chosenTable || {tableorder_value:tableNo},guests:personCount});}
+                finally {seatingInProgress=false;}
+                if(!confirmed)return;
+                if((tableRadio && tableRadio.disabled) || (CaptainTables.cached(tableNo) && !CaptainTables.fits(CaptainTables.cached(tableNo),personCount))) {
+                    showErrorPopup('Choose a table with enough seats.');return;
+                }
+            }
 
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
@@ -253,7 +269,7 @@
             localStorage.setItem('kiosk_discount_description', description);
 
             // Only store table/pax if Dine-in OR if they were selected
-            if (orderType === 'Dine-in' || tableNo) {
+            if (orderType === 'Dine-in') {
                 localStorage.setItem('kiosk_table_no', tableNo);
                 localStorage.setItem('kiosk_table_id', tableId);
             } else {
@@ -261,7 +277,7 @@
                 localStorage.setItem('kiosk_table_id', '');
             }
 
-            if (orderType === 'Dine-in' || personCount > 0) {
+            if (orderType === 'Dine-in') {
                 localStorage.setItem('kiosk_person_count', personCount);
             } else {
                 localStorage.setItem('kiosk_person_count', '0');
@@ -340,11 +356,13 @@
         }
 
         let previousTableMode = '';
+        let tableLoadGeneration = 0;
 
         async function loadTablesFromTableorders(isPollingUpdate = false) {
+            const generation = ++tableLoadGeneration;
             const container = document.querySelector('.table-list');
             if (!container) return;
-            const choice = rememberTableChoice();
+            let choice = rememberTableChoice();
 
             // wrapper <div> that contains BOTH: .section-title + .table-list
             const sectionWrapper = container.closest('.discount-container > div') || container.parentElement;
@@ -427,6 +445,8 @@
                 `;
                 
                 container.innerHTML = html;
+            CaptainTables.updateChoices(document.getElementById('person_count').value);
+            CaptainTables.areaFilter();
                 
                 // Setup input validation
                 const manualInput = document.getElementById('manual_table_input');
@@ -484,6 +504,11 @@
             } catch (error) {
                 console.error('Failed to fetch active orders:', error);
             }
+            if (generation !== tableLoadGeneration) return;
+            // A delayed occupancy lookup must not overwrite newer typing or
+            // dismiss the keyboard. The next poll refreshes after editing ends.
+            if (document.activeElement?.id === 'manual_table_input') return;
+            choice = rememberTableChoice();
 
             /* How many orders this table already has. Falls back to the name
                list for a server that sends no per-table detail: one order is
@@ -508,7 +533,7 @@
             const newOccupiedKey = JSON.stringify(
                 [...occupiedTables].sort().map((name) => name + ':' + openOn(name))
             ) + '|' + tableOrderLimit;
-            const newTableordersKey = JSON.stringify(tableorders.map(t => t.tableorder_id || t.tableorder_value));
+            const newTableordersKey = JSON.stringify(tableorders.map(t => [t.id || t.tableorder_id || t.tableorder_value,t.capacity,t.max_capacity,t.area,t.shape,t.service_state]));
             if (isPollingUpdate && previousTableMode === 'list') {
                 if (newOccupiedKey === previousOccupiedTablesKey && newTableordersKey === previousTableordersKey) {
                     return; // No changes, skip DOM update
@@ -531,7 +556,7 @@
             tableorders.forEach((t, index) => {
                 const value = (t.tableorder_value ?? (index + 1)).toString();
                 const id = `table_${value}`;
-                const isOccupied = isFull(value);
+                const isOccupied = isFull(value) || ['held','cleaning'].includes(t.service_state);
                 const openHere = openOn(value);
                 /* Under "at most N" a table can be busy and still take another
                    order, and a waiter has no way to know how close it is. The
@@ -544,15 +569,16 @@
                     : '';
 
                 html += `
-                    <div class="table-item ${isOccupied ? 'table-occupied' : ''}">
+                    <div class="table-item ${isOccupied ? 'table-occupied' : ''}" data-dining-area="${CaptainTables.esc(t.area || '')}">
                         <input type="radio" class="table-radio"
                             id="${id}"
                             name="table_no"
                             value="${value}"
-                            data-id="${t.id}"
+                            data-id="${CaptainTables.esc(t.id || t.tableorder_id || '')}"
+                            data-capacity="${CaptainTables.metadata(t).max}" data-occupied="${isOccupied}" data-service-state="${CaptainTables.esc(t.service_state || '')}"
                             ${isOccupied ? 'disabled' : ''}>
                         <label for="${id}" class="table-label ${isOccupied ? 'disabled' : ''}"
-                            title="${isOccupied ? 'This table is full' : ''}">${value}${countBadge}</label>
+                            title="${CaptainTables.esc(window.I18N?.t(t.service_state === 'cleaning' ? 'Cleaning' : t.service_state === 'held' ? 'Held' : isOccupied ? 'This table is full' : '') || '')}">${CaptainTables.esc(value)}${countBadge}${['held','cleaning'].includes(t.service_state) ? `<small>${CaptainTables.esc(window.I18N?.t(t.service_state === 'held' ? 'Held' : 'Cleaning') || t.service_state)}</small>` : ''}<small class="table-seat-info">${CaptainTables.esc(CaptainTables.description(t))}</small></label>
                     </div>
                 `;
             });
@@ -577,6 +603,8 @@
             `;
 
             container.innerHTML = html;
+            CaptainTables.updateChoices(document.getElementById('person_count').value);
+            CaptainTables.areaFilter();
             
             // ✅ Restore previous selection if still valid
             if (selectedValue) {
@@ -810,32 +838,12 @@
             handleOrderTypeChange();
         }
 
-        // Handle order type change to auto-select/deselect table and pax
+        // Choosing a mode stays on this page until the explicit Next action.
         function handleOrderTypeChange() {
-            const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
-
-            if (orderType === 'Dine-in') {
-                // Auto-select first table if available
-                const firstTable = document.querySelector('input[name="table_no"]');
-                if (firstTable && !document.querySelector('input[name="table_no"]:checked')) {
-                    firstTable.checked = true;
-                }
-
-                // Ensure pax is at least 1
-                const personCount = parseInt(document.getElementById('person_count').value || '0', 10);
-                if (personCount === 0) {
-                    setPersonCount(1);
-                }
-            } else {
-                // Takeaway mode - go directly to products page
-                localStorage.setItem('orderType', 'Take away');
-                localStorage.setItem('kiosk_table_no', '');
-                localStorage.setItem('kiosk_table_id', '');
-                localStorage.setItem('kiosk_person_count', '0');
-                
-                // Navigate to products page immediately
-                window.location.href = 'products.html';
-            }
+            const dineIn=document.getElementById('order_type_dinein').checked;
+            document.querySelector('.table-section-center').hidden=!dineIn;
+            document.querySelector('.person-count-section').hidden=!dineIn;
+            if(dineIn && !(Number(document.getElementById('person_count').value)>0))setPersonCount(1);
         }
 
         // Call after DOM loaded
@@ -876,6 +884,7 @@
             if (less) less.disabled = val <= 1;
             const more = document.getElementById('pax_more');
             if (more) more.disabled = val >= 99;
+            window.CaptainTables?.updateChoices(val);
 
             // highlight small buttons (1..6 only)
             const container = document.getElementById('person_icon_container');
@@ -1055,6 +1064,7 @@
         function goBackToKot() {
             window.location.href = 'kot-management.html';
         }
+        window.addEventListener('captain:back', event => {if(document.querySelector('#seat-confirmation[open]'))return;event.preventDefault();goBackToKot();});
     </script>
 </body>
 

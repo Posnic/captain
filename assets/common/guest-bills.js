@@ -19,15 +19,33 @@
     snapshot = null,
     error = "",
     draftKey = "",
-    collectEnabled = false;
+    collectEnabled = false,
+    owner = "";
   const t = (s) => (window.I18N ? I18N.t(s) : s);
-  const money = (n) => CaptainMoney.format(CaptainMoney.fromMinor(n, CaptainMoney.snapshot(snapshot || {})), CaptainMoney.snapshot(snapshot || {}));
   const base = () => POSNIC.session?.base || POSNIC.server.baseUrl;
+  const money = (n) =>
+    CaptainMoney.format(
+      CaptainMoney.fromMinor(n, CaptainMoney.snapshot(snapshot || {})),
+      CaptainMoney.snapshot(snapshot || {}),
+    );
+  const identity = () =>
+    JSON.stringify([
+      POSNIC.session?.shopKey || POSNIC.session?.base || POSNIC.server.baseUrl,
+      POSNIC.session?.user?.id,
+      localStorage.getItem("branch_id"),
+    ]);
+  function checkOwner() {
+    if (identity() !== owner) {
+      dialog?.close();
+      throw new Error("Sign in with your account");
+    }
+  }
   function persist() {
     try {
+      checkOwner();
       localStorage.setItem(
         draftKey,
-        JSON.stringify({ snapshot, state, stage }),
+        JSON.stringify({ owner, snapshot, state, stage }),
       );
       return true;
     } catch {
@@ -61,7 +79,7 @@
     if (!snapshot)
       body = `<p>${busy ? "Loading..." : "Could not load the bill."}</p><button data-action="reload">Retry</button>`;
     else if (stage === "setup")
-      body = `<fieldset class="guest-bill-modes"><legend>How would you like to split?</legend><label><input type="radio" name="guest-split-mode" value="equal" ${state.plan.mode === "equal" ? "checked" : ""}><span><strong>Equal split</strong><small>Divide the total equally between guests.</small></span></label><label><input type="radio" name="guest-split-mode" value="items" ${state.plan.mode === "items" ? "checked" : ""}><span><strong>By guest / items</strong><small>Assign items to guests and share dishes.</small></span></label></fieldset>${snapshot.lines.some(line => line.seat > 0) ? '<button type="button" data-action="by-seat">Assign by seat</button>' : ''}<div class="guest-bill-count"><span>Guests</span><button data-action="less" aria-label="Decrease guests" ${count <= 2 ? "disabled" : ""}>−</button><strong translate="no">${count}</strong><button data-action="more" aria-label="Increase guests" ${count >= 20 ? "disabled" : ""}>+</button></div><details><summary>Guest names</summary>${state.plan.guests.map((name, i) => `<label class="guest-bill-name"><span>${esc(t("Guest {0}").replace("{0}", i + 1))}</span><input data-name="${i}" maxlength="60" value="${esc(name)}" translate="no"></label>`).join("")}</details>`;
+      body = `<fieldset class="guest-bill-modes"><legend>How would you like to split?</legend><label><input type="radio" name="guest-split-mode" value="equal" ${state.plan.mode === "equal" ? "checked" : ""}><span><strong>Equal split</strong><small>Divide the total equally between guests.</small></span></label><label><input type="radio" name="guest-split-mode" value="items" ${state.plan.mode === "items" ? "checked" : ""}><span><strong>By guest / items</strong><small>Assign items to guests and share dishes.</small></span></label></fieldset>${snapshot.lines.some((line) => line.seat > 0) ? '<button type="button" data-action="by-seat">Assign by seat</button>' : ""}<div class="guest-bill-count"><span>Guests</span><button data-action="less" aria-label="Decrease guests" ${count <= 2 ? "disabled" : ""}>−</button><strong translate="no">${count}</strong><button data-action="more" aria-label="Increase guests" ${count >= 20 ? "disabled" : ""}>+</button></div><details><summary>Guest names</summary>${state.plan.guests.map((name, i) => `<label class="guest-bill-name"><span>${esc(t("Guest {0}").replace("{0}", i + 1))}</span><input data-name="${i}" maxlength="60" value="${esc(name)}" translate="no"></label>`).join("")}</details>`;
     else if (stage === "items")
       body = `<p>Choose who pays for each item. Use Share for a shared dish.</p>${snapshot.lines
         .map((line) => {
@@ -104,12 +122,14 @@
     error = "";
     render();
     try {
+      checkOwner();
       const response = await POSNIC.api.get(
         "/sales/guestBills/table?branchId=" +
           encodeURIComponent(state.branchId) +
           "&table_number=" +
           encodeURIComponent(state.table),
       );
+      checkOwner();
       if (response.type !== "success" || !response.data?.revision)
         throw new Error("Could not load the bill.");
       const changed = snapshot && snapshot.revision !== response.data.revision;
@@ -141,13 +161,17 @@
   async function send() {
     if (busy) return;
     try {
+      checkOwner();
       guests();
     } catch (e) {
       error = e.message;
       render();
       return;
     }
-    if (state.pending && state.pending.base !== base()) {
+    if (
+      state.pending &&
+      (state.pending.owner !== owner || state.pending.base !== base())
+    ) {
       error =
         "Reconnect to the server that authorized this phone. Orders are retained.";
       render();
@@ -155,6 +179,7 @@
     }
     if (!state.pending)
       state.pending = {
+        owner,
         base: base(),
         body: {
           branchId: state.branchId,
@@ -179,6 +204,7 @@
         "/sales/guestBills/print",
         state.pending.body,
       );
+      checkOwner();
       if (response.type !== "success" || !response.data?.queued)
         throw new Error("Could not send the guest bills.");
       localStorage.removeItem(draftKey);
@@ -250,14 +276,36 @@
         else if (a === "back") back();
         else if (a === "reload") reload();
         else if (a === "by-seat") {
-          const seats=[...new Set(snapshot.lines.map(line=>Number(line.seat)||0).filter(Boolean))].sort((a,b)=>a-b);
-          if(seats.length<2||seats.length>20){error='Choose between 2 and 20 guests.';render();return;}
-          state.plan.mode='items';
-          state.plan.guests=seats.map(seat=>t('Seat {0}').replace('{0}',seat));
-          state.plan.allocations=Object.fromEntries(snapshot.lines.map(line=>[line.id,seats.map(seat=>!line.seat||seat===Number(line.seat)?1:0)]));
-          state.pending=null;stage='items';error='';persist();render();
-        }
-        else if (a === "more" || a === "less")
+          const seats = [
+            ...new Set(
+              snapshot.lines
+                .map((line) => Number(line.seat) || 0)
+                .filter(Boolean),
+            ),
+          ].sort((a, b) => a - b);
+          if (seats.length < 2 || seats.length > 20) {
+            error = "Choose between 2 and 20 guests.";
+            render();
+            return;
+          }
+          state.plan.mode = "items";
+          state.plan.guests = seats.map((seat) =>
+            t("Seat {0}").replace("{0}", seat),
+          );
+          state.plan.allocations = Object.fromEntries(
+            snapshot.lines.map((line) => [
+              line.id,
+              seats.map((seat) =>
+                !line.seat || seat === Number(line.seat) ? 1 : 0,
+              ),
+            ]),
+          );
+          state.pending = null;
+          stage = "items";
+          error = "";
+          persist();
+          render();
+        } else if (a === "more" || a === "less")
           resetCount(state.plan.guests.length + (a === "more" ? 1 : -1));
         else if (a === "share-all") {
           state.plan.allocations[b.dataset.lineId] = state.plan.guests.map(
@@ -319,6 +367,8 @@
         } else render();
       });
     }
+    owner = identity();
+    collectEnabled = false;
     state = {
       branchId: localStorage.getItem("branch_id"),
       table,
@@ -328,11 +378,14 @@
     snapshot = null;
     stage = "setup";
     error = "";
-    draftKey =
-      "posnic.guest-bills:" + base() + ":" + state.branchId + ":" + table;
+    draftKey = "posnic.guest-bills:v2:" + owner + ":" + table;
     try {
       const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
-      if (saved?.state && saved.snapshot) {
+      if (
+        saved?.owner === owner &&
+        saved?.state?.table === table &&
+        saved.snapshot
+      ) {
         state = saved.state;
         snapshot = saved.snapshot;
         stage = saved.stage || "setup";
@@ -346,7 +399,16 @@
       stage = "review";
       render();
     } else {
-      collectEnabled = (await window.CaptainPayments?.available()) || false;
+      busy = true;
+      render();
+      try {
+        collectEnabled = (await window.CaptainPayments?.available()) || false;
+        checkOwner();
+      } catch {
+        busy = false;
+        return;
+      }
+      busy = false;
       await reload();
     }
   }
@@ -354,11 +416,17 @@
     const button = e.target.closest("[data-split-table]");
     if (button) open(button.dataset.splitTable);
   });
-  window.addEventListener("captain:back", (event) => {
-    if (dialog?.open) {
-      event.preventDefault();
-      back();
-    }
-  });
+  window.addEventListener(
+    "captain:back",
+    (event) => {
+      if (dialog?.open) {
+        if (document.querySelector("#captain-payments[open]")) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        back();
+      }
+    },
+    true,
+  );
   window.GuestBills = { open };
 })();
