@@ -2153,8 +2153,18 @@ let pickerIndex = null;
    the redraw that follows a keystroke happens after a debounce and the box may
    have moved on by then. */
 let pickerTerm = '';
+let pickerGeneration = 0;
+function pickerRequestGuard() {
+    const current = orderBeingModified(), generation = pickerGeneration;
+    const owner = () => JSON.stringify([POSNIC.session?.shopKey, POSNIC.session?.user?.id,
+        localStorage.getItem('branch_id'), POSNIC.session?.base || POSNIC.server?.baseUrl]);
+    const identity = owner();
+    return () => current && current === orderBeingModified() && generation === pickerGeneration
+        && identity === owner() && !document.getElementById('item-picker')?.hidden;
+}
 
 async function openItemPicker() {
+    pickerGeneration++;
     const sheet = document.getElementById('item-picker');
     const body = document.getElementById('item-picker-body');
     const rail = document.getElementById('item-picker-rail');
@@ -2436,6 +2446,7 @@ function pickerGoTo(key) {
 }
 
 function closeItemPicker() {
+    pickerGeneration++;
     const sheet = document.getElementById('item-picker');
     if (sheet) sheet.hidden = true;
     document.body.classList.remove('picker-open');
@@ -2580,8 +2591,9 @@ document.addEventListener('click', function (event) {
          * put it on the order at nothing.
          */
         if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(found)) {
+            const valid = pickerRequestGuard();
             POSNIC.askPrice(found.name).then((asked) => {
-                if (!asked) return;
+                if (!asked || !valid()) return;
                 rememberRecent(id);
                 addProductToOrder(id, found.name, asked);
                 pickerRefreshRow(id);
@@ -2754,6 +2766,7 @@ document.addEventListener('click', async function (event) {
     if (!event.target || !event.target.closest) return;
     if (!event.target.closest('#picker-quick-sale')) return;
 
+    const valid = pickerRequestGuard();
     const box = document.getElementById('picker-search-input');
     const said = box ? box.value.trim() : '';
 
@@ -2762,10 +2775,10 @@ document.addEventListener('click', async function (event) {
      * price asks what it is called.
      */
     const name = said || (await POSNIC.askName(''));
-    if (!name) return;
+    if (!name || !valid()) return;
 
     const price = await POSNIC.askPrice(name);
-    if (!price) return;
+    if (!price || !valid()) return;
 
     try {
         /*
@@ -2775,6 +2788,7 @@ document.addEventListener('click', async function (event) {
          * have looked broken in a new way.
          */
         const made = await POSNIC.quickSale.createOneOff(name, price);
+        if (!valid()) return;
 
         /* saveOne, never saveData: saveData clears the store first and would
            delete the menu this sheet is drawing from. */
@@ -2782,12 +2796,14 @@ document.addEventListener('click', async function (event) {
             await saveOne(STORE_NAME, [made]);
         }
 
+        if (!valid()) return;
         addProductToOrder(made.id, made.name, price);
         if (box) box.value = '';
 
         const sheet = document.getElementById('item-picker');
         if (sheet) sheet.hidden = true;
     } catch (error) {
+        if (!valid()) return;
         /* showErrorPopup is what this screen already uses; POSNIC.popup has no
            such function, and an error path that throws is an error nobody
            ever sees. */

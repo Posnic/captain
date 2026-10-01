@@ -711,3 +711,17 @@ test('late transfer table response closes a screen belonging to another branch',
  await expect(dialog).not.toBeVisible();
  await page.waitForFunction(()=>!history.state?.captainTransfer);
 });
+
+for (const change of ['none','reopen','branch']) {
+ test(`delayed menu price respects picker identity: ${change}`,async({page})=>{
+  await editor(page);await page.locator('#open-item-picker').click();
+  await page.evaluate(()=>{MenuView.askPrice=()=>true;POSNIC.askPrice=()=>new Promise(resolve=>{window.resolveMenuPrice=resolve;});});
+  await page.locator('#item-picker .btn-add[data-id="p-coffee"]').first().click();
+  await page.waitForFunction(()=>typeof window.resolveMenuPrice==='function');
+  if(change==='reopen')await page.evaluate(async()=>{closeItemPicker();await openItemPicker();});
+  if(change==='branch')await page.evaluate(()=>localStorage.setItem('branch_id','other-branch'));
+  await page.evaluate(()=>window.resolveMenuPrice(85));
+  if(change==='none')await expect.poll(()=>page.evaluate(()=>editingOrder.items.length)).toBe(2);
+  else expect(await page.evaluate(()=>editingOrder.items.length)).toBe(1);
+ });
+}
