@@ -4,8 +4,8 @@
   const keys = { sound: "posnic.phone.sound", vibration: "posnic.phone.vibration" };
   function enabled(name) {
     if (!Object.hasOwn(keys, name)) return false;
-    try { return globalThis.localStorage.getItem(keys[name]) !== "off"; }
-    catch { return true; }
+    try { return globalThis.localStorage.getItem(keys[name]) === "on"; }
+    catch { return false; }
   }
   function set(name, value) {
     if (!Object.hasOwn(keys, name) || typeof value !== "boolean") return false;
