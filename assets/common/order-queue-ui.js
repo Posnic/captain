@@ -236,7 +236,7 @@
           await POSNIC.session.retryAccess();
         await reconcileCart();
         if (manual && !OrderQueue.count()) await POSNIC.net.check(true);
-        const result = await OrderQueue.flush(sendOne, { force: manual, key });
+        const result = await OrderQueue.flush(sendOne, { force: manual, key, eligible: ownerMatches });
         if (result.sent) window.dispatchEvent(new Event('posnic:orders-sent'));
         if (result.sent && typeof showToast === "function")
           showToast(`Sent ${result.sent} to the kitchen.`);
