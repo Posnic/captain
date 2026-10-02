@@ -588,7 +588,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                         available_quantity: item.available_quantity || 0,
                         negative_stock: !!item.negative_stock,
                         // ✅ use backend fields as-is
-                        price: parseFloat(item.final_price) || 0,   // 201.60
+                        price: parseFloat(item.final_price) || 0,   // display amount
+                        selling_price: Number(item.price),
                         discount_price: parseFloat(item.discount_price) || 0,  // 6.56
                         tax_price: parseFloat(item.tax_price) || 0,   // 44.10
                         subtotal: parseFloat(item.price) || 0,   // 164.06
@@ -769,6 +770,7 @@ async function validateCartWithProductsNow(updatedProducts) {
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: Number(updatedProduct.price || item.price || 0),
+                    selling_price: updatedProduct.selling_price ?? updatedProduct.subtotal,
                     discount_price: Number(updatedProduct.discount_price || item.discount_price || 0),
                     tax_price: Number(updatedProduct.tax_price || item.tax_price || 0),
                     subtotal: Number(updatedProduct.subtotal || item.subtotal || 0),
@@ -809,6 +811,9 @@ async function syncCartSilentlyNow(updatedProducts) {
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: updatedProduct.price,
+                    selling_price: updatedProduct.selling_price ?? updatedProduct.subtotal,
+                    subtotal: updatedProduct.subtotal,
+                    final_price: updatedProduct.final_price,
                     tax_price: updatedProduct.tax_price,
                 };
             }
@@ -1355,6 +1360,7 @@ async function updateQuantityNow(id, change, options) {
             img: product.img,
             icon: product.icon || "",
             price: Number(product.price || 0),
+            selling_price: product.selling_price ?? product.subtotal ?? product.price,
             discount_price: Number(product.discount_price || 0),
             tax_price: Number(product.tax_price || 0),
             subtotal: Number(product.subtotal || 0),
@@ -1463,6 +1469,18 @@ function unitPrice(item) {
     const asked = Number(item && item.askedPrice) || 0;
     if (asked > 0) return asked;
     return Number((item && (item.final_price || item.price)) || 0);
+}
+
+// Display totals include tax. The till validates the configured selling price
+// and applies its own tax rules. Older cached lines kept that price in subtotal.
+function submittedUnitPrice(item) {
+    // Entered prices are the base quote; the server adds configured extras.
+    if (askedOn(item)) return Number(item.askedPrice);
+    const value = item.selling_price ?? (item.instant ? item.price : item.subtotal) ?? item.price;
+    const price = Number(value);
+    if (value == null || value === '' || !Number.isFinite(price))
+        throw new Error('Could not load the menu');
+    return price + (item.modifiers || []).reduce((sum, option) => sum + (Number(option.price_delta) || 0), 0);
 }
 
 async function updateCart() {
@@ -1770,9 +1788,9 @@ async function checkout(transactionId) {
                  * every ordinary line from its own catalogue. See
                  * _priceOnlineLine in the api.
                  */
-                item_price: unitPrice(item),
+                item_price: submittedUnitPrice(item),
                 item_subtotal:
-                    unitPrice(item) * item.quantity,
+                    submittedUnitPrice(item) * item.quantity,
                 gst: (item.tax_price || 0) * item.quantity,
                 item_description: item.notes || "",
                 /*

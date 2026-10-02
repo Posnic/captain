@@ -71,6 +71,10 @@
   finally{if(current===generation)busy=false;}
  }
  function open(value){
+  // Closing the editor removes its browser-history entry asynchronously.
+  // Do not let that late Back remove this screen's entry or change its stage.
+  const requestedOwner=owner(),closingEditor=root.OrderEditor?.whenClosed?.();
+  if(closingEditor)return closingEditor.then(()=>{if(requestedOwner===owner())return open(value);});
   if(cleaningHistory){queuedOrder={value,owner:owner()};return;}
   generation++;busy=false;order=value;identity=owner();items=null;destination=null;preview=null;tables=[];
   if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();back();});}
