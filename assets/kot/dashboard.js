@@ -134,6 +134,12 @@
             t("Saved on this phone · Not sent to kitchen"),
           ),
         );
+        if (order.message) {
+          card.append(element("div", "floor-meta", t(order.message)));
+        }
+        card.append(element("span", "floor-pending-action", t(
+          order.state === "attention" ? "Needs attention" : "View",
+        ) + " ›"));
         shown.push(card);
       }
     }

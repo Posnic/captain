@@ -125,7 +125,7 @@ test("saved orders stay grey on the floor and the navigation count excludes othe
       key: "pending-own",
       body: { kiosk_table_no: "7", items: [] },
     });
-    OrderQueue.update("pending-own", { state: "attention" });
+    OrderQueue.update("pending-own", { state: "attention", message: "Table is unavailable" });
     const rows = OrderQueue.all();
     rows.push({
       ...rows[0],
@@ -138,6 +138,8 @@ test("saved orders stay grey on the floor and the navigation count excludes othe
   });
   await expect(page.locator(".floor-card.is-pending")).toHaveCount(1);
   await expect(page.locator(".floor-card.is-pending")).toContainText("7");
+  await expect(page.locator(".floor-card.is-pending")).toContainText("Table is unavailable");
+  await expect(page.locator(".floor-card.is-pending")).toContainText("Needs attention");
   await expect(page.locator(".navigation-count")).toHaveText("1");
   await expect(page.getByText("Private table")).toHaveCount(0);
   await expect(page.locator("#no-orders-message")).toBeHidden();

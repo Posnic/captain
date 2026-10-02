@@ -257,3 +257,6 @@ body.floor-screen {height:auto;min-height:100dvh;overflow-y:auto;overflow-x:hidd
 .floor-screen .kot-container {flex:none;overflow:visible;}
 .floor-screen .kot-tables-section {height:auto;min-height:0;overflow:visible;}
 .floor-screen .floor-grid {flex:none;overflow:visible;}
+
+.floor-pending-action {display:block;margin-top:12px;color:var(--accent);font-size:14px;font-weight:600;}
+.floor-card.is-pending .floor-meta {overflow-wrap:anywhere;}
