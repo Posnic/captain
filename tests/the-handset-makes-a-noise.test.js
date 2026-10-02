@@ -37,7 +37,8 @@ const SOURCE = fs.readFileSync(
 function load({ stored = {}, canBuzz = true, canHear = true } = {}) {
   const notes = [];
   const buzzes = [];
-  const store = { ...stored };
+  // These tests exercise notifications after the user has enabled them.
+  const store = { 'posnic.phone.sound': 'on', 'posnic.phone.vibration': 'on', ...stored };
 
   const context = {
     Requests,

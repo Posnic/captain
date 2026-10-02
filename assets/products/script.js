@@ -1039,7 +1039,7 @@ async function addOneOff(said) {
     );
 })();
 
-// Clear only the search that produced this add. A slow save must not erase
+// Select only the search that produced this add. A slow save must not select
 // the next query the waiter has already started typing.
 function searchAtAdd() {
     const input = document.getElementById('product-search-input');
@@ -1048,9 +1048,8 @@ function searchAtAdd() {
 async function prepareNextItem(search) {
     if (!search || !search.query.trim() || search.input.value !== search.query ||
         search.revision !== productSearchRevision) return;
-    search.input.value = '';
     search.input.focus({ preventScroll: true });
-    await applyProductFilter();
+    search.input.select();
 }
 
 $(document).on("click", ".btn-add", cartAction(async function () {
