@@ -8,7 +8,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
-  workers: 1,
+  workers: process.env.CAPTAIN_TEST_WORKERS ? Number(process.env.CAPTAIN_TEST_WORKERS) : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:41731',

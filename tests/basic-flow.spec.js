@@ -86,9 +86,26 @@ const RESPONSES = {
   '/sales/getOrderHistory': { type: 'success', data: { orders: [] } }
 };
 
-test('login to order history basic flow', async ({ page }) => {
+for (const native of [false, true]) test(`login to order history basic flow (native=${native})`, async ({ page }) => {
   const apiCalls = [];
   const authHeaders = [];
+
+  if (native) await page.addInitScript(() => {
+    const status = () => {
+      const session = JSON.parse(sessionStorage.getItem('test-secure-session') || '{}');
+      return { session, pinSet: false, locked: false,
+        profile: session.user ? { user: session.user, shopKey: session.shopKey, base: session.base } : null };
+    };
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: { SecureSession: {
+        status: async () => status(),
+        save: async ({ session }) => { sessionStorage.setItem('test-secure-session', JSON.stringify(session)); return status(); },
+        clear: async () => { sessionStorage.removeItem('test-secure-session'); return status(); },
+        lock: async () => {},
+      } },
+    };
+  });
 
   await page.addInitScript((url) => {
     localStorage.setItem('posnic.server', JSON.stringify({ pinned: url, active: url }));

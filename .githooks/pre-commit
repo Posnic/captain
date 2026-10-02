@@ -32,4 +32,7 @@
 # release.yml stays on GitHub: it needs a JDK, an Android SDK, a keystore and a
 # macOS runner, and none of that belongs on a laptop.
 
+# Tests create temporary repositories. Do not let the parent commit's Git
+# environment point those fixtures back at this worktree.
+unset $(git rev-parse --local-env-vars)
 npm run check

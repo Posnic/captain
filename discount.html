@@ -357,6 +357,35 @@
 
         let previousTableMode = '';
         let tableLoadGeneration = 0;
+        let tableMenuLoad = null;
+
+        async function recoverTableMenu(container) {
+            if (tableMenuLoad) return tableMenuLoad;
+            container.textContent = window.I18N?.t('Loading tables...') || 'Loading tables...';
+            tableMenuLoad = (async () => {
+                try {
+                    const branch = localStorage.getItem('kiosk_selected_branch');
+                    if (!branch) return;
+                    await fetchAndStoreBranch(branch, false, false, true);
+                    if (localStorage.getItem('kiosk_tableorders')) {
+                        await loadTablesFromTableorders(true);
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Could not load the menu:', error);
+                }
+                const message = document.createElement('p');
+                message.setAttribute('role', 'status');
+                message.textContent = window.I18N?.t('Could not load the menu') || 'Could not load the menu';
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.classList.add('btn', 'btn-primary');
+                retry.textContent = window.I18N?.t('Retry') || 'Retry';
+                retry.onclick = () => recoverTableMenu(container);
+                container.replaceChildren(message, retry);
+            })().finally(() => { tableMenuLoad = null; });
+            return tableMenuLoad;
+        }
 
         async function loadTablesFromTableorders(isPollingUpdate = false) {
             const generation = ++tableLoadGeneration;
@@ -369,18 +398,9 @@
 
             const raw = localStorage.getItem('kiosk_tableorders');
             if (!raw && !isPollingUpdate) {
-                // Data not yet loaded — wait up to 5s for fetchAndStoreBranch to populate it
-                container.innerHTML = '<div style="text-align:center;padding:16px;color:#aaa;">Loading tables...</div>';
-                let waited = 0;
-                const retryInterval = setInterval(() => {
-                    waited += 500;
-                    const retryRaw = localStorage.getItem('kiosk_tableorders');
-                    if (retryRaw || waited >= 5000) {
-                        clearInterval(retryInterval);
-                        loadTablesFromTableorders(false);
-                    }
-                }, 500);
-                return;
+                // Download missing data once; waiting for another screen to do
+                // it restarted the five-second timer forever after failed login.
+                return recoverTableMenu(container);
             }
             if (!raw) {
                 // Polling update with no data — skip rendering
