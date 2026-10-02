@@ -1006,5 +1006,8 @@
   "Receipt printer": "पावती प्रिंटर",
   "Kitchen printers": "किचन प्रिंटर",
   "Managed on desktop POS": "डेस्कटॉप POS वरून व्यवस्थापित",
-  "Open an order and choose Kitchen delivery to check each printer report.": "प्रत्येक प्रिंटरचा अहवाल पाहण्यासाठी ऑर्डर उघडा आणि किचनला पाठवणे निवडा."
+  "Open an order and choose Kitchen delivery to check each printer report.": "प्रत्येक प्रिंटरचा अहवाल पाहण्यासाठी ऑर्डर उघडा आणि किचनला पाठवणे निवडा.",
+  "Item prices": "वस्तूंच्या किमती",
+  "Including tax": "करासह",
+  "Excluding tax": "कर वगळून"
 }

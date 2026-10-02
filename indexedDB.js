@@ -579,7 +579,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                      * code all show the same thing for the same dish. See
                      * assets/common/menu-view.js.
                      */
-                    const hasPhoto = item.img && item.img.trim() !== "" && item.img !== "item.svg";
+                    const photo = item.img || item.image || item.item_image;
+                    const hasPhoto = typeof photo === 'string' && photo.trim() !== '' && photo !== 'item.svg';
 
                     products.push({
                         id: item.id?.$oid || item.id?.toString() || Date.now(),
@@ -592,9 +593,11 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                         selling_price: Number(item.price),
                         discount_price: parseFloat(item.discount_price) || 0,  // 6.56
                         tax_price: parseFloat(item.tax_price) || 0,   // 44.10
+                        tax: Math.max(0, Number(item.tax) || 0),
+                        tax_type: item.tax_type,
                         subtotal: parseFloat(item.price) || 0,   // 164.06
                         final_price: parseFloat(item.final_price) || 0,   // 201.60
-                        img: hasPhoto ? resolveLocalImageUrl(item.img) : "",
+                        img: hasPhoto ? resolveLocalImageUrl(photo) : "",
                         /*
                          * The emoji for this dish, picked from its name by the
                          * server. Empty when the name suggests nothing, which

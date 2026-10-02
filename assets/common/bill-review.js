@@ -179,7 +179,8 @@
     },
     true,
   );
-  window.addEventListener("captain:payment-recorded", () => {
+  window.addEventListener("captain:payment-recorded", event => {
+    if (event.detail?.completed) { close(); return; }
     if (dialog?.open) void load();
   });
   window.CaptainBill = { open };

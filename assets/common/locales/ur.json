@@ -1006,5 +1006,8 @@
   "Receipt printer": "رسید پرنٹر",
   "Kitchen printers": "کچن پرنٹرز",
   "Managed on desktop POS": "ڈیسک ٹاپ POS سے انتظام کیا جاتا ہے",
-  "Open an order and choose Kitchen delivery to check each printer report.": "ہر پرنٹر کی رپورٹ دیکھنے کے لیے آرڈر کھولیں اور باورچی خانے کو ترسیل منتخب کریں۔"
+  "Open an order and choose Kitchen delivery to check each printer report.": "ہر پرنٹر کی رپورٹ دیکھنے کے لیے آرڈر کھولیں اور باورچی خانے کو ترسیل منتخب کریں۔",
+  "Item prices": "اشیاء کی قیمتیں",
+  "Including tax": "ٹیکس سمیت",
+  "Excluding tax": "ٹیکس کے بغیر"
 }

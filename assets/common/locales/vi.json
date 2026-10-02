@@ -1006,5 +1006,8 @@
   "Receipt printer": "Máy in hóa đơn",
   "Kitchen printers": "Máy in bếp",
   "Managed on desktop POS": "Quản lý trên POS máy tính",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Mở đơn hàng và chọn Gửi xuống bếp để kiểm tra báo cáo của từng máy in."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Mở đơn hàng và chọn Gửi xuống bếp để kiểm tra báo cáo của từng máy in.",
+  "Item prices": "Giá món",
+  "Including tax": "Đã gồm thuế",
+  "Excluding tax": "Chưa gồm thuế"
 }

@@ -1006,5 +1006,8 @@
   "Receipt printer": "เครื่องพิมพ์ใบเสร็จ",
   "Kitchen printers": "เครื่องพิมพ์ในครัว",
   "Managed on desktop POS": "จัดการผ่าน POS บนคอมพิวเตอร์",
-  "Open an order and choose Kitchen delivery to check each printer report.": "เปิดออเดอร์แล้วเลือกการส่งเข้าครัวเพื่อตรวจสอบรายงานของเครื่องพิมพ์แต่ละเครื่อง"
+  "Open an order and choose Kitchen delivery to check each printer report.": "เปิดออเดอร์แล้วเลือกการส่งเข้าครัวเพื่อตรวจสอบรายงานของเครื่องพิมพ์แต่ละเครื่อง",
+  "Item prices": "ราคาสินค้า",
+  "Including tax": "รวมภาษี",
+  "Excluding tax": "ไม่รวมภาษี"
 }

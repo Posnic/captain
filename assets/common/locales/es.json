@@ -1006,5 +1006,8 @@
   "Receipt printer": "Impresora de recibos",
   "Kitchen printers": "Impresoras de cocina",
   "Managed on desktop POS": "Se gestiona en el TPV de escritorio",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Abre un pedido y selecciona Entrega a cocina para consultar el informe de cada impresora."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Abre un pedido y selecciona Entrega a cocina para consultar el informe de cada impresora.",
+  "Item prices": "Precios de artículos",
+  "Including tax": "Impuestos incluidos",
+  "Excluding tax": "Sin impuestos"
 }

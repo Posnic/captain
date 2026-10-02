@@ -225,3 +225,24 @@ test('an item saved before categories existed still reaches a section', () => {
   assert.equal(list.length, 1);
   assert.equal(list[0].name, 'uncategorised');
 });
+
+test('price display switches tax treatment without mutating discounted catalogue values', () => {
+  const inclusive = dishOf({price:210, discount_price:21, tax:5, tax_type:'inclusive', tax_price:0});
+  const snapshot = JSON.stringify(inclusive);
+  assert.equal(MenuView.displayPricing(inclusive, 'including').now,189);
+  assert.equal(MenuView.displayPricing(inclusive, 'excluding').now,180);
+  assert.equal(MenuView.displayPricing(inclusive, 'excluding').was,200);
+  assert.equal(MenuView.displayPricing(inclusive, 'excluding').tax,9);
+  const exclusive=dishOf({price:200,discount_price:20,tax:5,tax_type:'exclusive',tax_price:9});
+  assert.equal(MenuView.displayPricing(exclusive,'including').now,189);
+  assert.equal(MenuView.displayPricing(exclusive,'including').was,210);
+  assert.equal(MenuView.displayPricing(exclusive,'excluding').now,180);
+  assert.equal(JSON.stringify(inclusive),snapshot);
+  assert.equal(MenuView.displayPricing(dishOf({tax:0}),'excluding').label,'');
+});
+test('menu uses image aliases and never adds a price-details action',()=>{
+  const row=MenuView.dish(dishOf({image:'dish.jpg',tax:5,tax_type:'inclusive'}),0,{image:u=>'/photos/'+u});
+  assert.ok(row.includes('/photos/dish.jpg'));
+  assert.ok(row.includes('Including tax'));
+  assert.ok(!row.includes('Price details'));
+});

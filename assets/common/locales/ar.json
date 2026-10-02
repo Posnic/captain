@@ -1006,5 +1006,8 @@
   "Receipt printer": "طابعة الإيصالات",
   "Kitchen printers": "طابعات المطبخ",
   "Managed on desktop POS": "تُدار من نظام نقاط البيع على الكمبيوتر",
-  "Open an order and choose Kitchen delivery to check each printer report.": "افتح طلبًا واختر الإرسال إلى المطبخ للاطلاع على تقرير كل طابعة."
+  "Open an order and choose Kitchen delivery to check each printer report.": "افتح طلبًا واختر الإرسال إلى المطبخ للاطلاع على تقرير كل طابعة.",
+  "Item prices": "أسعار الأصناف",
+  "Including tax": "شامل الضريبة",
+  "Excluding tax": "غير شامل الضريبة"
 }

@@ -1006,5 +1006,8 @@
   "Receipt printer": "Imprimante de tickets",
   "Kitchen printers": "Imprimantes de cuisine",
   "Managed on desktop POS": "Géré sur le point de vente sur ordinateur",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Ouvrez une commande et sélectionnez Transmission en cuisine pour consulter le rapport de chaque imprimante."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Ouvrez une commande et sélectionnez Transmission en cuisine pour consulter le rapport de chaque imprimante.",
+  "Item prices": "Prix des articles",
+  "Including tax": "Taxes comprises",
+  "Excluding tax": "Hors taxes"
 }

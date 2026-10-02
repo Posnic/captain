@@ -1006,5 +1006,8 @@
   "Receipt printer": "രസീത് പ്രിന്റർ",
   "Kitchen printers": "അടുക്കള പ്രിന്ററുകൾ",
   "Managed on desktop POS": "ഡെസ്‌ക്‌ടോപ്പ് POS-ൽ നിയന്ത്രിക്കുന്നു",
-  "Open an order and choose Kitchen delivery to check each printer report.": "ഓരോ പ്രിന്ററിന്റെയും റിപ്പോർട്ട് പരിശോധിക്കാൻ ഒരു ഓർഡർ തുറന്ന് അടുക്കളയിലേക്ക് അയയ്ക്കൽ തിരഞ്ഞെടുക്കുക."
+  "Open an order and choose Kitchen delivery to check each printer report.": "ഓരോ പ്രിന്ററിന്റെയും റിപ്പോർട്ട് പരിശോധിക്കാൻ ഒരു ഓർഡർ തുറന്ന് അടുക്കളയിലേക്ക് അയയ്ക്കൽ തിരഞ്ഞെടുക്കുക.",
+  "Item prices": "ഇനങ്ങളുടെ വില",
+  "Including tax": "നികുതി ഉൾപ്പെടെ",
+  "Excluding tax": "നികുതി ഒഴികെ"
 }

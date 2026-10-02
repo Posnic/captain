@@ -1006,5 +1006,8 @@
   "Receipt printer": "收據印表機",
   "Kitchen printers": "廚房印表機",
   "Managed on desktop POS": "在桌面版 POS 中管理",
-  "Open an order and choose Kitchen delivery to check each printer report.": "開啟訂單並選擇「廚房接單狀態」，查看各印表機的報告。"
+  "Open an order and choose Kitchen delivery to check each printer report.": "開啟訂單並選擇「廚房接單狀態」，查看各印表機的報告。",
+  "Item prices": "商品價格",
+  "Including tax": "含稅",
+  "Excluding tax": "未稅"
 }

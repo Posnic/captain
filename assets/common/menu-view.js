@@ -161,6 +161,33 @@
     };
   }
 
+  // Presentation only: retain the server's catalogue values for ordering.
+  function displayPricing(product, mode = globalThis.CaptainPhone?.priceMode() || 'including') {
+    const storedPrice = product.selling_price ?? product.subtotal;
+    const normalized = storedPrice != null && Number.isFinite(Number(storedPrice));
+    const cost = pricing(normalized ? { ...product, price: Number(storedPrice) } : product);
+    const rate = Math.max(0, Number(product.tax) || 0) / 100;
+    const inclusive = product.tax_type === 'inclusive';
+    const factor = globalThis.CaptainMoney?.current?.().factor || 100;
+    const round = n => Math.round((n + Number.EPSILON) * factor) / factor;
+    const extra = Math.max(0, Number(product.tax_price) || 0);
+    const total = normalized && Number.isFinite(Number(product.final_price)) ? Number(product.final_price) :
+      inclusive ? cost.now : cost.now + (extra || cost.now * rate);
+    const tax = inclusive ? (rate ? total - total / (1 + rate) : 0) : (extra || cost.now * rate);
+    const before = round(total - tax);
+    const effectiveRate = rate || (before > 0 ? tax / before : 0);
+    const convert = n => mode === 'excluding' ? (inclusive ? n / (1 + effectiveRate) : n) : (inclusive ? n : n * (1 + effectiveRate));
+    return { ...cost, now: round(mode === 'excluding' ? before : total),
+      was: cost.was ? round(convert(cost.was)) : 0, tax: round(tax),
+      label: tax > 0 ? (mode === 'excluding' ? 'Excluding tax' : 'Including tax') : '' };
+  }
+
+  function priceLabel(cost) {
+    if (!cost.label) return '';
+    return '<span class="dish-tax">' + escape(globalThis.I18N?.t(cost.label) || cost.label) +
+      (cost.label === 'Excluding tax' ? ' · + ' + money(cost.tax) : '') + '</span>';
+  }
+
   /** Whether it can be ordered, and what to say if not. */
   function stock(product, inCart) {
     const unlimited = product.negative_stock === true;
@@ -190,7 +217,7 @@
     const qty = Number(quantity) || 0;
     const id = escape(product.id);
     const held = stock(product, qty);
-    const cost = pricing(product);
+    const cost = displayPricing(product);
     const mark = diet(product.diet);
     const note = plain(product.description);
     const prep = Number(product.prep_minutes) || 0;
@@ -206,7 +233,8 @@
      * a browser re-request the page itself. Asking it first would hand this
      * row a grey square and the icon below would never be reached.
      */
-    const image = product.img ? (opts.image ? opts.image(product.img) : product.img) : '';
+    const photo = product.img || product.image || product.item_image;
+    const image = photo ? (opts.image ? opts.image(photo) : photo) : '';
 
     const classes = ['dish'];
     if (held.out) classes.push('is-out');
@@ -293,6 +321,7 @@
           '% off</span>'
         : '') +
       '</div>' +
+      (!askPrice(product) ? priceLabel(cost) : '') +
       (note ? '<p class="dish-note" translate="no">' + escape(note) + '</p>' : '') +
       (prep ? '<div class="dish-prep">⏱ ' + prep + ' <span>min</span></div>' : '') +
       '</div>' +
@@ -525,6 +554,8 @@
     plain,
     diet,
     pricing,
+    displayPricing,
+    priceLabel,
     /* Exported because the screens have to ask the same question before they
        put a dish in a cart, and two answers to it is how one of them sends a
        free fish. */

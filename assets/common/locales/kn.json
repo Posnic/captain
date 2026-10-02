@@ -1006,5 +1006,8 @@
   "Receipt printer": "ರಸೀದಿ ಪ್ರಿಂಟರ್",
   "Kitchen printers": "ಅಡುಗೆಮನೆ ಪ್ರಿಂಟರ್‌ಗಳು",
   "Managed on desktop POS": "ಡೆಸ್ಕ್‌ಟಾಪ್ POS ನಲ್ಲಿ ನಿರ್ವಹಿಸಲಾಗುತ್ತದೆ",
-  "Open an order and choose Kitchen delivery to check each printer report.": "ಪ್ರತಿ ಪ್ರಿಂಟರ್‌ನ ವರದಿಯನ್ನು ಪರಿಶೀಲಿಸಲು ಆರ್ಡರ್ ತೆರೆಯಿರಿ ಮತ್ತು ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸುವಿಕೆ ಆಯ್ಕೆಮಾಡಿ."
+  "Open an order and choose Kitchen delivery to check each printer report.": "ಪ್ರತಿ ಪ್ರಿಂಟರ್‌ನ ವರದಿಯನ್ನು ಪರಿಶೀಲಿಸಲು ಆರ್ಡರ್ ತೆರೆಯಿರಿ ಮತ್ತು ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸುವಿಕೆ ಆಯ್ಕೆಮಾಡಿ.",
+  "Item prices": "ವಸ್ತುಗಳ ಬೆಲೆಗಳು",
+  "Including tax": "ತೆರಿಗೆ ಸೇರಿ",
+  "Excluding tax": "ತೆರಿಗೆ ಹೊರತುಪಡಿಸಿ"
 }

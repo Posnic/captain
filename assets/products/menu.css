@@ -1060,3 +1060,5 @@ body.is-searching .fixed-categories {
   font-size: 0.8rem;
   opacity: 0.7;
 }
+
+.dish-tax{display:block;color:var(--ink-soft,#667085);font-size:12px;line-height:1.5;margin-top:3px}

@@ -1006,5 +1006,8 @@
   "Receipt printer": "Bonprinter",
   "Kitchen printers": "Keukenprinters",
   "Managed on desktop POS": "Beheerd via de kassa op de computer",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Open een bestelling en kies Overdracht aan de keuken om het rapport van elke printer te bekijken."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Open een bestelling en kies Overdracht aan de keuken om het rapport van elke printer te bekijken.",
+  "Item prices": "Artikelprijzen",
+  "Including tax": "Inclusief belasting",
+  "Excluding tax": "Exclusief belasting"
 }

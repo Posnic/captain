@@ -1006,5 +1006,8 @@
   "Receipt printer": "रसिद प्रिन्टर",
   "Kitchen printers": "भान्साका प्रिन्टरहरू",
   "Managed on desktop POS": "डेस्कटप POS बाट व्यवस्थापन गरिन्छ",
-  "Open an order and choose Kitchen delivery to check each printer report.": "हरेक प्रिन्टरको रिपोर्ट जाँच्न अर्डर खोल्नुहोस् र भान्सामा पठाउने कार्य छान्नुहोस्।"
+  "Open an order and choose Kitchen delivery to check each printer report.": "हरेक प्रिन्टरको रिपोर्ट जाँच्न अर्डर खोल्नुहोस् र भान्सामा पठाउने कार्य छान्नुहोस्।",
+  "Item prices": "वस्तुको मूल्य",
+  "Including tax": "कर सहित",
+  "Excluding tax": "कर बाहेक"
 }

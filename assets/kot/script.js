@@ -1208,7 +1208,10 @@ window.addEventListener('captain:back', event => {
     }
 });
 
-window.addEventListener('captain:payment-recorded', () => { closeSlidingPanel(); loadTables(); });
+window.addEventListener('captain:payment-recorded', event => {
+    if (event.detail?.completed) { closeSlidingPanel(); showToast(event.detail.message); }
+    loadTables();
+});
 const captainPaymentButtons = new MutationObserver(() => {
     const button = document.querySelector('[data-collect-table][hidden]:not([data-payment-checked])');
     if (!button || !window.CaptainPayments) return;

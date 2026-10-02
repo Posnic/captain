@@ -1006,5 +1006,8 @@
   "Receipt printer": "Pencetak resit",
   "Kitchen printers": "Pencetak dapur",
   "Managed on desktop POS": "Diurus melalui POS desktop",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Buka pesanan dan pilih Penghantaran ke dapur untuk menyemak laporan setiap pencetak."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Buka pesanan dan pilih Penghantaran ke dapur untuk menyemak laporan setiap pencetak.",
+  "Item prices": "Harga item",
+  "Including tax": "Termasuk cukai",
+  "Excluding tax": "Tidak termasuk cukai"
 }

@@ -1006,5 +1006,8 @@
   "Receipt printer": "রসিদ প্রিন্টার",
   "Kitchen printers": "রান্নাঘরের প্রিন্টার",
   "Managed on desktop POS": "ডেস্কটপ POS থেকে পরিচালিত",
-  "Open an order and choose Kitchen delivery to check each printer report.": "প্রতিটি প্রিন্টারের রিপোর্ট দেখতে একটি অর্ডার খুলুন এবং রান্নাঘরে পাঠানো বেছে নিন।"
+  "Open an order and choose Kitchen delivery to check each printer report.": "প্রতিটি প্রিন্টারের রিপোর্ট দেখতে একটি অর্ডার খুলুন এবং রান্নাঘরে পাঠানো বেছে নিন।",
+  "Item prices": "পণ্যের দাম",
+  "Including tax": "করসহ",
+  "Excluding tax": "কর ছাড়া"
 }

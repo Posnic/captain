@@ -17,5 +17,14 @@
     try { return !!globalThis.navigator?.vibrate?.(pattern); }
     catch { return false; }
   }
-  root.CaptainPhone = { enabled, set, vibrate };
+  function priceMode() {
+    try { return localStorage.getItem('posnic.phone.item-prices') === 'excluding' ? 'excluding' : 'including'; }
+    catch { return 'including'; }
+  }
+  function setPriceMode(value) {
+    if (!['including', 'excluding'].includes(value)) return false;
+    try { localStorage.setItem('posnic.phone.item-prices', value); return true; }
+    catch { return false; }
+  }
+  root.CaptainPhone = { enabled, set, vibrate, priceMode, setPriceMode };
 })(globalThis);

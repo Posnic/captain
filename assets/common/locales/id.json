@@ -1006,5 +1006,8 @@
   "Receipt printer": "Printer struk",
   "Kitchen printers": "Printer dapur",
   "Managed on desktop POS": "Dikelola melalui POS desktop",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Buka pesanan dan pilih Pengiriman ke dapur untuk memeriksa laporan setiap printer."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Buka pesanan dan pilih Pengiriman ke dapur untuk memeriksa laporan setiap printer.",
+  "Item prices": "Harga barang",
+  "Including tax": "Termasuk pajak",
+  "Excluding tax": "Belum termasuk pajak"
 }
