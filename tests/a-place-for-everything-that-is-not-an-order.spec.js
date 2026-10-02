@@ -200,6 +200,11 @@ test('phone alert preferences persist and failed saves leave the real setting vi
   await page.addInitScript(() => Object.defineProperty(navigator, 'vibrate', {configurable:true,value:()=>true}));
   await onTheFloor(page);
   await page.goto('/me.html#preferences');
+  await expect(page.locator('#me-sound')).not.toBeChecked();
+  await expect(page.locator('#me-vibration')).not.toBeChecked();
+  await page.locator('#me-sound').check();
+  await page.locator('#me-vibration').check();
+  await page.reload();
   await expect(page.locator('#me-sound')).toBeChecked();
   await expect(page.locator('#me-vibration')).toBeChecked();
   await page.locator('#me-sound').uncheck();

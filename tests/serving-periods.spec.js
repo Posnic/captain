@@ -28,7 +28,9 @@ test('meal choices filter browsing but search can still find and add any menu it
  await page.locator('#product-search-input').fill('coffee');
  await expect(page.locator('.dish-name')).toHaveText('Coffee');
  await page.locator('.btn-add[data-id="p-all"]').click();
- await expect(page.locator('#product-search-input')).toHaveValue('');
+ await expect(page.locator('#product-search-input')).toHaveValue('coffee');
+ await expect(page.locator('.dish-name')).toHaveText('Coffee');
+ await page.locator('#product-search-clear').click();
  await expect(page.locator('#meal-menu button[data-period=""]')).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('.dish')).toHaveCount(3);
  await expect(page.locator('#bill-count')).toHaveText('2 items');
