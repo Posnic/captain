@@ -6,8 +6,7 @@
     tables = [],
     ready = new Set(),
     filter = "active",
-    area = "",
-    shapes = false;
+    area = "";
   let revision = 0,
     tablesKnown = false,
     readyKnown = false,
@@ -86,7 +85,11 @@
         )
           ? row.shape
           : "square";
-        if (shapes) card.prepend(element("span", "floor-table-shape"));
+        if (["square", "round", "rectangle"].includes(row.shape)) {
+          const shape = element("span", "floor-table-shape");
+          shape.setAttribute("aria-hidden", "true");
+          card.prepend(shape);
+        }
         const description = [
           row.area,
           row.capacity ? t("Seat capacity") + ": " + row.capacity : "",
@@ -135,7 +138,6 @@
       }
     }
     grid.replaceChildren(...shown);
-    grid.classList.toggle("with-shapes", shapes);
     document
       .querySelectorAll("[data-floor-filter]")
       .forEach((button) =>
@@ -144,7 +146,6 @@
           String(button.dataset.floorFilter === filter),
         ),
       );
-    byId("floor-shapes").setAttribute("aria-pressed", String(shapes));
     const unavailable =
       (filter === "all" && !tablesKnown) || (filter === "ready" && !readyKnown);
     const status = byId("floor-filter-status");
@@ -220,10 +221,6 @@
     });
     byId("floor-area")?.addEventListener("change", (event) => {
       area = event.target.value;
-      render();
-    });
-    byId("floor-shapes")?.addEventListener("click", () => {
-      shapes = !shapes;
       render();
     });
   });

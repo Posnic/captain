@@ -21,8 +21,9 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 @media(prefers-reduced-motion:reduce) {button,.btn {transition:none!important;}button:active,.btn:active {transform:none!important;}}
 
 .floor-screen .kot-container {background:var(--ground);padding:8px 16px 0;}
-.floor-screen .kot-tables-section {background:var(--surface);border:0;border-radius:0;box-shadow:none;}
-.floor-screen .floor-section {padding:12px 0 16px;}
+.floor-screen .kot-tables-section {background:var(--surface);border:0;border-radius:0;box-shadow:none;padding:0;}
+.floor-screen .floor-section {margin:0 0 12px;padding:0;min-height:36px;}
+.floor-screen .floor-section .floor-count {padding:0;}
 .floor-screen .floor-section-name {font-size:26px;letter-spacing:-.6px;text-transform:none;font-weight:650;color:var(--ink);}
 .floor-screen .floor-grid {padding-inline:0;}
 .floor-screen .floor-empty {min-height:260px;}

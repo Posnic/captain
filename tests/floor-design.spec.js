@@ -65,6 +65,13 @@ for (const width of [320, 768])
     await page.goto("/kot-management.html");
     await expect(page.locator(".floor-ready")).toHaveText("Ready");
     await expect(page.locator(".floor-card")).toHaveCount(2);
+    const gap = await page.evaluate(() =>
+      document.querySelector('.floor-section').getBoundingClientRect().top -
+      document.querySelector('.floor-head').getBoundingClientRect().bottom);
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(12);
+    await expect(page.getByRole('link', {name: 'Message kitchen'})).toHaveAttribute('href', 'kitchen-message.html');
+
     await page.locator("[data-floor-filter=ready]").click();
     await expect(page.locator(".floor-card")).toHaveCount(1);
     await expect(page.locator(".floor-name")).toHaveText("2");
@@ -72,7 +79,7 @@ for (const width of [320, 768])
     await expect(page.locator(".floor-card")).toHaveCount(3);
     await page.locator("#floor-area").selectOption("Main");
     await expect(page.locator(".floor-card")).toHaveCount(2);
-    await page.locator("#floor-shapes").click();
+    await expect(page.locator("#floor-shapes")).toHaveCount(0);
     await expect(page.locator(".floor-table-shape")).toHaveCount(2);
     await expect(
       page.locator('.floor-card[data-table-number="3"]'),
