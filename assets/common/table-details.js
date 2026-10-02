@@ -13,6 +13,16 @@
         })[c],
     );
   const t = (value) => window.I18N?.t(value) || value;
+  function serviceState(value, cleaningEnabled) {
+    return value === 'cleaning' && cleaningEnabled !== true ? 'available' : value;
+  }
+  function liveRows(response) {
+    return response.tables.map(row => ({
+      ...row,
+      status: serviceState(row.status, response.cleaningEnabled),
+      service_state: serviceState(row.service_state, response.cleaningEnabled),
+    }));
+  }
   function metadata(row = {}) {
     const capacity =
       Number.isInteger(Number(row.capacity)) && Number(row.capacity) > 0
@@ -88,6 +98,8 @@
     document.querySelectorAll('[data-dining-area]').forEach(node=>node.hidden=!!area&&node.dataset.diningArea!==area);
   }
   window.CaptainTables = {
+    serviceState,
+    liveRows,
     metadata,
     fits,
     description,

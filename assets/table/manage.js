@@ -29,7 +29,7 @@
       const data = await POSNIC.api.get("/captain/v1/tables");
       if (!Array.isArray(data.tables))
         throw new Error("invalid_table_response");
-      rows = data.tables;
+      rows = CaptainTables.liveRows(data);
       cleaningEnabled = data.cleaningEnabled === true;
       canManage = data.canManage === true;
       try { localStorage.setItem(

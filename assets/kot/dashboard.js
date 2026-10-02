@@ -179,7 +179,7 @@
       results[0].status === "fulfilled" &&
       Array.isArray(results[0].value?.tables)
     ) {
-      tables = results[0].value.tables;
+      tables = CaptainTables.liveRows(results[0].value);
       tablesKnown = true;
     }
     if (
