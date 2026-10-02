@@ -119,9 +119,8 @@ test("uncertain request persists across closing and retries the same payment ide
     });
   });
   await page.locator("#captain-payments [data-action=record]").click();
-  await expect(page.locator("#captain-payments")).toContainText(
-    "Payment recorded",
-  );
+  await expect(page.locator("#captain-payments")).not.toBeVisible();
+  await expect(page.locator("#order-toast-message")).toContainText("Payment recorded");
   expect(
     posts.every((p) => JSON.stringify(p) === JSON.stringify(posts[0])),
   ).toBe(true);
@@ -228,4 +227,18 @@ test('payment review Back preserves entry and confirmation is blocked while savi
  await expect(page.locator('#captain-payments')).toBeVisible();
  await expect(page.locator('[data-action=record]')).toBeDisabled();
  complete();await expect(page.locator('#captain-payments')).toContainText('Payment recorded');
+ await expect(page.locator('.cp-receipt')).toContainText('₹19.99');
+ await page.locator('#captain-payments footer [data-action=close]').click();
+ await expect(page.locator('#captain-payments')).not.toBeVisible();
+ await expect(page.locator('#order-toast-message')).toContainText('Payment recorded');
+});
+
+test('confirmed full card payment returns to tables with a receipt toast', async ({page})=>{
+ const plan=await setup(page);
+ await page.route('**/captain/v1/payments/record',r=>{const body=r.request().postDataJSON();return r.fulfill({json:{...plan,dueMinor:0,paidMinor:plan.totalMinor,confirmed:body.request_id}});});
+ await page.locator('[data-method=Card]').click();await page.locator('#cp-verified').check();
+ await page.locator('[data-action=record]').click();await page.locator('[data-action=record]').click();
+ await expect(page.locator('#captain-payments')).not.toBeVisible();
+ await expect(page.locator('#order-toast-message')).toContainText('Payment recorded · ₹100.01 · Card');
+ expect(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('posnic.payment:')))).toEqual([]);
 });

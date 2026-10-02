@@ -1006,5 +1006,8 @@
   "Receipt printer": "レシートプリンター",
   "Kitchen printers": "キッチンプリンター",
   "Managed on desktop POS": "デスクトップ版POSで管理",
-  "Open an order and choose Kitchen delivery to check each printer report.": "注文を開いて「厨房への送信」を選択すると、各プリンターのレポートを確認できます。"
+  "Open an order and choose Kitchen delivery to check each printer report.": "注文を開いて「厨房への送信」を選択すると、各プリンターのレポートを確認できます。",
+  "Item prices": "商品価格",
+  "Including tax": "税込",
+  "Excluding tax": "税抜"
 }

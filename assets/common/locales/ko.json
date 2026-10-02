@@ -1006,5 +1006,8 @@
   "Receipt printer": "영수증 프린터",
   "Kitchen printers": "주방 프린터",
   "Managed on desktop POS": "데스크톱 POS에서 관리",
-  "Open an order and choose Kitchen delivery to check each printer report.": "주문을 열고 주방 전송을 선택하여 각 프린터의 보고서를 확인하세요."
+  "Open an order and choose Kitchen delivery to check each printer report.": "주문을 열고 주방 전송을 선택하여 각 프린터의 보고서를 확인하세요.",
+  "Item prices": "상품 가격",
+  "Including tax": "세금 포함",
+  "Excluding tax": "세금 별도"
 }

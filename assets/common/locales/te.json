@@ -1006,5 +1006,8 @@
   "Receipt printer": "రసీదు ప్రింటర్",
   "Kitchen printers": "వంటగది ప్రింటర్‌లు",
   "Managed on desktop POS": "డెస్క్‌టాప్ POSలో నిర్వహించబడుతుంది",
-  "Open an order and choose Kitchen delivery to check each printer report.": "ప్రతి ప్రింటర్ నివేదికను చూడటానికి ఆర్డర్ తెరిచి వంటగదికి పంపడం ఎంచుకోండి."
+  "Open an order and choose Kitchen delivery to check each printer report.": "ప్రతి ప్రింటర్ నివేదికను చూడటానికి ఆర్డర్ తెరిచి వంటగదికి పంపడం ఎంచుకోండి.",
+  "Item prices": "వస్తువుల ధరలు",
+  "Including tax": "పన్నుతో సహా",
+  "Excluding tax": "పన్ను మినహాయించి"
 }

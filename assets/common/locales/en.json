@@ -1006,5 +1006,8 @@
   "Receipt printer": "Receipt printer",
   "Kitchen printers": "Kitchen printers",
   "Managed on desktop POS": "Managed on desktop POS",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Open an order and choose Kitchen delivery to check each printer report."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Open an order and choose Kitchen delivery to check each printer report.",
+  "Item prices": "Item prices",
+  "Including tax": "Including tax",
+  "Excluding tax": "Excluding tax"
 }

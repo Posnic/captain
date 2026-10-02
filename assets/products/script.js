@@ -267,7 +267,7 @@ function renderFrequentItems(items) {
                 <div class="frequent-name" translate="no">
                     ${MenuView.escape(window.ItemLanguage.name(product))}
                 </div>
-                <div class="frequent-price">${CaptainMoney.html(product.price)}</div>
+                <div class="frequent-price">${CaptainMoney.html(MenuView.displayPricing(product).now)}${MenuView.priceLabel(MenuView.displayPricing(product))}</div>
             </div>
 
             <div class="frequent-cart-empty" id="frequent-empty-${product.id}">

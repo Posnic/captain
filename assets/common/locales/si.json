@@ -1006,5 +1006,8 @@
   "Receipt printer": "රිසිට් මුද්‍රණ යන්ත්‍රය",
   "Kitchen printers": "මුළුතැන්ගෙයි මුද්‍රණ යන්ත්‍ර",
   "Managed on desktop POS": "ඩෙස්ක්ටොප් POS වෙතින් කළමනාකරණය කෙරේ",
-  "Open an order and choose Kitchen delivery to check each printer report.": "එක් එක් මුද්‍රණ යන්ත්‍රයේ වාර්තාව පරීක්ෂා කිරීමට ඇණවුමක් විවෘත කර මුළුතැන්ගෙයට යැවීම තෝරන්න."
+  "Open an order and choose Kitchen delivery to check each printer report.": "එක් එක් මුද්‍රණ යන්ත්‍රයේ වාර්තාව පරීක්ෂා කිරීමට ඇණවුමක් විවෘත කර මුළුතැන්ගෙයට යැවීම තෝරන්න.",
+  "Item prices": "භාණ්ඩ මිල",
+  "Including tax": "බදු ඇතුළුව",
+  "Excluding tax": "බදු හැර"
 }

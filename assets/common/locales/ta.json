@@ -1006,5 +1006,8 @@
   "Receipt printer": "ரசீது அச்சுப்பொறி",
   "Kitchen printers": "சமையலறை அச்சுப்பொறிகள்",
   "Managed on desktop POS": "டெஸ்க்டாப் POS-இல் நிர்வகிக்கப்படுகிறது",
-  "Open an order and choose Kitchen delivery to check each printer report.": "ஒவ்வொரு அச்சுப்பொறியின் அறிக்கையையும் பார்க்க, ஓர் ஆர்டரைத் திறந்து சமையலறைக்கு அனுப்புதல் என்பதைத் தேர்ந்தெடுக்கவும்."
+  "Open an order and choose Kitchen delivery to check each printer report.": "ஒவ்வொரு அச்சுப்பொறியின் அறிக்கையையும் பார்க்க, ஓர் ஆர்டரைத் திறந்து சமையலறைக்கு அனுப்புதல் என்பதைத் தேர்ந்தெடுக்கவும்.",
+  "Item prices": "பொருட்களின் விலை",
+  "Including tax": "வரி உட்பட",
+  "Excluding tax": "வரி தவிர்த்து"
 }

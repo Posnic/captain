@@ -1006,5 +1006,8 @@
   "Receipt printer": "Printa ya risiti",
   "Kitchen printers": "Printa za jikoni",
   "Managed on desktop POS": "Husimamiwa kwenye POS ya kompyuta",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Fungua agizo na uchague Utumaji jikoni ili kuangalia ripoti ya kila printa."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Fungua agizo na uchague Utumaji jikoni ili kuangalia ripoti ya kila printa.",
+  "Item prices": "Bei za bidhaa",
+  "Including tax": "Pamoja na kodi",
+  "Excluding tax": "Bila kodi"
 }

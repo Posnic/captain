@@ -1006,5 +1006,8 @@
   "Receipt printer": "小票打印机",
   "Kitchen printers": "厨房打印机",
   "Managed on desktop POS": "在桌面端 POS 中管理",
-  "Open an order and choose Kitchen delivery to check each printer report.": "打开订单并选择“厨房接单状态”，查看各打印机的报告。"
+  "Open an order and choose Kitchen delivery to check each printer report.": "打开订单并选择“厨房接单状态”，查看各打印机的报告。",
+  "Item prices": "商品价格",
+  "Including tax": "含税",
+  "Excluding tax": "不含税"
 }

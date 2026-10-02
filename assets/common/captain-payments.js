@@ -296,9 +296,12 @@
       verified = false;
       reference = "";
       error = "";
+      const completed = plan.dueMinor === 0 && !(receipt.method === "Cash" && receipt.changeMinor > 0);
+      if (completed) dialog.close();
       window.dispatchEvent(
         new CustomEvent("captain:payment-recorded", {
-          detail: { table, remaining: plan.dueMinor },
+          detail: { table, remaining: plan.dueMinor, completed,
+            message: t("Payment recorded") + ' · ' + money(receipt.amountMinor) + ' · ' + t(receipt.method === 'Upi' ? 'UPI' : receipt.method) },
         }),
       );
     } catch (e) {
@@ -325,6 +328,9 @@
     if (busy) return;
     reviewing = false;
     dialog.close();
+    if (receipt && plan?.dueMinor === 0 && !pending) window.dispatchEvent(new CustomEvent('captain:payment-recorded', {
+      detail: { table, remaining: 0, completed: true, message: t('Payment recorded') + ' · ' + money(receipt.amountMinor) + ' · ' + t(receipt.method === 'Upi' ? 'UPI' : receipt.method) }
+    }));
     if (plan && !pending && !busy && plan.paidMinor === 0)
       request("post", root() + "/release", { planId: plan.id, branchId }).catch(
         () => {},

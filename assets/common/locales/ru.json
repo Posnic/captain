@@ -1006,5 +1006,8 @@
   "Receipt printer": "Принтер чеков",
   "Kitchen printers": "Кухонные принтеры",
   "Managed on desktop POS": "Управляется в POS на компьютере",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Откройте заказ и выберите «Передача на кухню», чтобы проверить отчёт каждого принтера."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Откройте заказ и выберите «Передача на кухню», чтобы проверить отчёт каждого принтера.",
+  "Item prices": "Цены товаров",
+  "Including tax": "С налогом",
+  "Excluding tax": "Без налога"
 }

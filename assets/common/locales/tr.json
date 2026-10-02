@@ -1006,5 +1006,8 @@
   "Receipt printer": "Fiş yazıcısı",
   "Kitchen printers": "Mutfak yazıcıları",
   "Managed on desktop POS": "Masaüstü POS üzerinden yönetilir",
-  "Open an order and choose Kitchen delivery to check each printer report.": "Her yazıcının raporunu kontrol etmek için bir sipariş açıp Mutfağa iletim seçeneğini seçin."
+  "Open an order and choose Kitchen delivery to check each printer report.": "Her yazıcının raporunu kontrol etmek için bir sipariş açıp Mutfağa iletim seçeneğini seçin.",
+  "Item prices": "Ürün fiyatları",
+  "Including tax": "Vergi dahil",
+  "Excluding tax": "Vergi hariç"
 }
