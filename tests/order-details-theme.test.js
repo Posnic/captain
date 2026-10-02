@@ -32,7 +32,7 @@ test('order details remain readable in both phone themes, including a live theme
     await page.evaluate(source => {
       window.currentOrderId = null;
       window.formatDateTime = () => '01 Oct, 13:00';
-      window.allOrders = [{ _id: 'sample', order_id: 'KOT-126', table_number: '8', status: 'pending', customer_name: 'Walk-in', person_count: 2, items: [{ name: 'Chicken Fried Rice', quantity: 1, price: 250, item_description: 'Less spicy' }], tax: 12.5, total_amount: 262.5, discount_description: 'Serve together' }];
+      window.allOrders = [{ _id: 'sample', order_id: 'KOT-126', table_number: '8', status: 'pending', customer_name: 'Walk-in', person_count: 2, items: [{ name: 'Chicken Fried Rice', quantity: 1, price: 250, notes: 'Less spicy' }], tax: 12.5, total_amount: 262.5, discount_description: 'Serve together' }];
       (0, eval)(source);
       window.viewOrderDetails('sample');
       document.getElementById('page-loader').remove();
@@ -42,7 +42,7 @@ test('order details remain readable in both phone themes, including a live theme
     }, script.slice(start, end));
     for (const colorScheme of ['light', 'dark', 'light']) {
       await page.emulateMedia({ colorScheme });
-      for (const selector of ['.modal-title', '#order-details-content strong', '.table tbody td', '.table tfoot th', '.order-notes-section .text-muted', '.order-item-notes', '.status-badge']) {
+      for (const selector of ['.modal-title', '.history-detail-context h2', '.history-detail-context p', '.history-detail-items strong', '.history-detail-items small', '.history-detail-totals dt', '.history-detail-totals dd', '.history-detail-note p', '#edit-order-btn', '.close-btn']) {
         const contrast = await page.locator('#orderDetailsModal').locator(selector).first().evaluate(el => {
           const rgb = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
           const luminance = values => values.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((n, v, i) => n + v * [.2126, .7152, .0722][i], 0);
@@ -60,7 +60,7 @@ test('order details remain readable in both phone themes, including a live theme
     await page.emulateMedia({ colorScheme: 'dark' });
     for (const status of ['completed', 'cancelled']) {
       await page.evaluate(value => { allOrders[0].status = value; viewOrderDetails('sample'); }, status);
-      assert.equal(await page.locator('.status-badge').textContent(), status);
+      assert.equal(await page.locator('.history-detail-context p').nth(1).locator('span').textContent(), status);
       assert.equal(await page.locator('#edit-order-btn').isVisible(), false);
     }
   } finally { await browser.close(); }

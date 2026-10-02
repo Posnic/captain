@@ -86,9 +86,26 @@ const RESPONSES = {
   '/sales/getOrderHistory': { type: 'success', data: { orders: [] } }
 };
 
-test('login to order history basic flow', async ({ page }) => {
+for (const native of [false, true]) test(`login to order history basic flow (native=${native})`, async ({ page }) => {
   const apiCalls = [];
   const authHeaders = [];
+
+  if (native) await page.addInitScript(() => {
+    const status = () => {
+      const session = JSON.parse(sessionStorage.getItem('test-secure-session') || '{}');
+      return { session, pinSet: false, locked: false,
+        profile: session.user ? { user: session.user, shopKey: session.shopKey, base: session.base } : null };
+    };
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: { SecureSession: {
+        status: async () => status(),
+        save: async ({ session }) => { sessionStorage.setItem('test-secure-session', JSON.stringify(session)); return status(); },
+        clear: async () => { sessionStorage.removeItem('test-secure-session'); return status(); },
+        lock: async () => {},
+      } },
+    };
+  });
 
   await page.addInitScript((url) => {
     localStorage.setItem('posnic.server', JSON.stringify({ pinned: url, active: url }));
@@ -124,6 +141,7 @@ test('login to order history basic flow', async ({ page }) => {
   await expect(page.locator('#manual_table_input')).toBeVisible();
   await page.locator('#manual_table_input').fill('T1');
   await page.getByRole('button', { name: /Next/ }).click();
+  await page.locator('#seat-confirmation').getByRole('button', { name: 'Continue', exact: true }).click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();
@@ -140,7 +158,8 @@ test('login to order history basic flow', async ({ page }) => {
   await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(0);
 
   await page.goto('/order-history.html');
-  await expect(page.getByRole('heading', { name: 'Select Table' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'All Orders', exact: true })).toBeVisible();
+  await page.locator('.mobile-header').getByRole('button', { name: 'Tables', exact: true }).click();
   await expect(page.locator('.table-card.all-tables')).toContainText('0 orders');
 
   expect(apiCalls).toEqual(expect.arrayContaining([

@@ -97,7 +97,9 @@ function showServerSettingsForConnectionFailure(error) {
     }
 }
 
+let loginInProgress = false;
 async function doLogin() {
+    if (loginInProgress) return;
     const usernameEl = document.getElementById("username");
     const passwordEl = document.getElementById("password");
 
@@ -107,7 +109,7 @@ async function doLogin() {
     }
 
     const username = (usernameEl.value || "").trim();
-    const password = (passwordEl.value || "").trim();
+    const password = passwordEl.value || "";
 
     showLoginMessage("");
 
@@ -134,6 +136,8 @@ async function doLogin() {
         return;
     }
 
+    const loginServer = POSNIC.server.baseUrl;
+    loginInProgress = true;
     showLoader();
 
     try {
@@ -194,6 +198,7 @@ async function doLogin() {
             return;
         }
 
+        window.CaptainSignIn?.remember(loginServer, username);
         localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
         const userId = (result.user && result.user.id) || branches[0].user_id;
         if (userId) localStorage.setItem("user_id", userId);
@@ -256,6 +261,7 @@ async function doLogin() {
             showLoginMessage(error.message || "Could not sign in.");
         }
     } finally {
+        loginInProgress = false;
         hideLoader();
     }
 }
@@ -373,7 +379,13 @@ async function selectBranch(branchId) {
         await fetchAndStoreBranch(branchId, true);
     } catch (err) {
         console.error("Error loading branch products:", err);
-        showServerSettingsForConnectionFailure(err);
+        // Login has already succeeded. A menu/storage failure must stay visible
+        // instead of reopening setup and hiding the error behind server selection.
+        const message = (window.I18N?.t('Could not load the menu') || 'Could not load the menu') +
+            (err?.message ? ': ' + err.message : '');
+        showLoginMessage(message);
+        showBranchMessage(message);
+        showErrorPopup(message);
     } finally {
         hideLoader();
     }

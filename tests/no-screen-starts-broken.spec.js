@@ -40,6 +40,12 @@ const SCREENS = [
   'my-sales.html',
   'thankyou.html',
   'access-denied.html',
+  'branch-details.html',
+  'help.html',
+  'kitchen-message.html',
+  'payment-settings.html',
+  'pending.html',
+  'tables.html',
 ];
 
 /** Everything the page threw on its way up, however it was thrown. */

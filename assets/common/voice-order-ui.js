@@ -113,7 +113,8 @@
 
   function buzz(pattern) {
     try {
-      if (navigator.vibrate) navigator.vibrate(pattern);
+      if (window.CaptainPhone) CaptainPhone.vibrate(pattern);
+      else if (navigator.vibrate) navigator.vibrate(pattern);
     } catch (e) {
       /* not every device has one */
     }

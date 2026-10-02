@@ -552,6 +552,12 @@
       get token() {
         return state.token || null;
       },
+      updateProfile(value) {
+        if (!state.user || String(value.id) !== String(state.user.id || state.user._id)) return false;
+        state.user = { ...state.user, name: value.name };
+        save(STORE_SESSION, state);
+        return true;
+      },
       get shopKey() {
         return state.shopKey || null;
       },
@@ -1300,11 +1306,17 @@
   const failedAt = new Map();
 
   function noteFailure(url) {
-    if (url) failedAt.set(url, Date.now());
+    if (url) {
+      failedAt.set(url, Date.now());
+      window.dispatchEvent(new CustomEvent('posnic:route-health', {detail:{base:url,reachable:false}}));
+    }
   }
 
   function noteSuccess(url) {
-    if (url) failedAt.delete(url);
+    if (url) {
+      failedAt.delete(url);
+      window.dispatchEvent(new CustomEvent('posnic:route-health', {detail:{base:url,reachable:true}}));
+    }
   }
 
   function coolingOff(url) {
@@ -2172,7 +2184,7 @@
          */
         if (!server.isConfigured || settingsOpen()) return;
         // A configured staff session can keep taking orders from its cached menu.
-        if (session.active && window.POSNIC_ORDER_QUEUE_UI) {
+        if ((session.active && window.POSNIC_ORDER_QUEUE_UI) || document.querySelector("[data-offline-page]")) {
           const old = document.getElementById('posnic-offline');
           if (old) old.style.display = 'none';
           document.documentElement.classList.remove('posnic-offline-active');

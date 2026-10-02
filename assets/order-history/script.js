@@ -16,9 +16,8 @@ let _orderHistoryPollInterval = null;
 function startOrderHistoryPolling() {
     if (_orderHistoryPollInterval) return;
     _orderHistoryPollInterval = setInterval(() => {
-        const selScreen = document.getElementById('table-selection-screen');
-        if (!selScreen || selScreen.style.display === 'none') return; // only on screen 1
-        if (currentOrderId || editingOrder) return; // skip while editing
+        if (document.hidden || !document.getElementById('order-list-screen')) return;
+        if (document.querySelector('#orderDetailsModal.show') || editingOrder) return;
         loadOrderHistory();
     }, 10000);
 }
@@ -48,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // screen. Do not fetch hidden history or show its errors over the floor.
     if (document.getElementById('table-selection-screen')) loadOrderHistory();
     setupEventListeners();
-    showTableSelectionScreen(); // Start with table selection
+    if (document.getElementById("table-selection-screen")) showOrderListScreen("all");
     restoreTableFilterState(); // Set filters to collapsed by default
     startOrderHistoryPolling();
 });
@@ -62,7 +61,7 @@ function showTableSelectionScreen() {
     list.style.display = 'none';
     const headerElement = document.getElementById('header-title');
     if (headerElement) {
-        headerElement.textContent = 'Select Table';
+        headerElement.textContent = window.I18N?.t('Select Table') || 'Select Table';
     }
     document.getElementById('refresh-btn').style.display = 'block';
     selectedTable = null;
@@ -84,7 +83,7 @@ function showOrderListScreen(tableNumber) {
     }
     const headerElement = document.getElementById('header-title');
     if (headerElement) {
-        headerElement.textContent = headerTitle;
+        headerElement.textContent = window.I18N?.t(headerTitle) || headerTitle;
     }
     
     document.getElementById('refresh-btn').style.display = 'block';
@@ -92,13 +91,8 @@ function showOrderListScreen(tableNumber) {
 }
 
 function handleBackButton() {
-    if (selectedTable !== null) {
-        // On order list screen - go back to table selection
-        showTableSelectionScreen();
-    } else {
-        // On table selection screen - go back to previous page
-        goBack();
-    }
+    if (selectedTable === 'all') location.href = 'kot-management.html';
+    else showOrderListScreen('all');
 }
 
 function goBack() {
@@ -179,25 +173,15 @@ function generateTableCards() {
 
 // Filter orders by selected table
 function filterOrdersBySelectedTable() {
-    if (selectedTable === 'all') {
-        filteredOrders = allOrders.filter(order => {
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return matchesStatus;
-        });
-    } else if (selectedTable === 'TA') {
-        // Filter for takeaway orders
-        filteredOrders = allOrders.filter(order => {
-            const isTakeaway = order.dine_type === 'Take away' || order.dine_type === 'Takeaway';
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return isTakeaway && matchesStatus;
-        });
-    } else {
-        filteredOrders = allOrders.filter(order => {
-            const matchesTable = order.table_number == selectedTable;
-            const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-            return matchesTable && matchesStatus;
-        });
-    }
+    const search = String(document.getElementById('order-search')?.value || '').trim().toLocaleLowerCase();
+    filteredOrders = allOrders.filter(order => {
+        const table = String(order.table_number || '');
+        const takeaway = ['Take away','Takeaway'].includes(order.dine_type);
+        const chosen = selectedTable && selectedTable !== 'all' ? selectedTable : currentTableFilter;
+        const matchesTable = chosen === 'all' || !chosen || (chosen === 'TA' ? takeaway : table === String(chosen));
+        const matchesSearch = !search || [order.order_id, table, order.customer_name].some(value => String(value || '').toLocaleLowerCase().includes(search));
+        return matchesTable && matchesSearch && (currentFilter === 'all' || order.status === currentFilter);
+    });
     renderOrders();
 }
 
@@ -213,12 +197,8 @@ function setupEventListeners() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentFilter = this.dataset.status;
-            if (selectedTable !== null) {
-                // On order list screen - filter by selected table
-                filterOrdersBySelectedTable();
-            } else {
-                loadOrderHistory();
-            }
+            filterOrdersBySelectedTable();
+            loadOrderHistory({background:true});
         });
     });
 
@@ -336,6 +316,7 @@ async function loadOrderHistoryNow(options, revision) {
         if (data.type === 'success') {
             historyLoaded = true;
             allOrders = data.data.orders || [];
+            if(allOrders.length) void refreshMergePermission(revision);
             generateTableCards(); // Generate table selection cards
             if (selectedTable !== null) {
                 // If on order list screen, filter by selected table
@@ -391,7 +372,7 @@ async function searchProducts(query) {
             .map(p => ({
                 _id: p.id,
                 name: p.name,
-                selling_price: p.price ?? 0,
+                selling_price: p.selling_price ?? p.subtotal ?? p.price ?? 0,
                 final_price: p.final_price,
                 available_quantity: p.available_quantity || 0
             }));
@@ -465,14 +446,14 @@ async function saveOrderChanges() {
 
     const desc = document.getElementById('edit-discount-description').value.trim();
 
-    let extraType = '';
-    let extraVal = 0;
-
-    if (discountValue > 0) {
-        extraType = discountType;   // 'percent' or 'amount'
-        extraVal = discountValue;
-    }
     const order = allOrders.find(o => o._id === currentOrderId) || {};
+    const priorType = ['amount', 'price', 'fixed'].includes(String(order.extra_discount_type || '').toLowerCase()) ? 'amount' : 'percent';
+    const priorValue = Number(order.extra_discount || 0);
+    // Hidden discount controls must not replace a bill discount during an item edit.
+    const discountChanged = discountValue !== priorValue || (discountValue !== 0 && discountType !== priorType);
+    const preserveAllocation = order.transfer_allocated === true && !discountChanged;
+    const extraType = preserveAllocation ? null : discountType;
+    const extraVal = preserveAllocation ? null : discountValue;
     const dineTypeRadio = document.querySelector('input[name="edit_dine_type"]:checked');
     const dineType = dineTypeRadio ? dineTypeRadio.value : (order.dine_type || 'Dine-in');
     const tableRadio = document.querySelector('input[name="edit_table_no"]:checked');
@@ -609,24 +590,7 @@ async function saveOrderChanges() {
 }
 
 // Filter orders
-function filterOrders() {
-    const searchInput = document.getElementById('order-search');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-
-    filteredOrders = allOrders.filter(order => {
-        const matchesSearch = !searchTerm ||
-            order.order_id.toLowerCase().includes(searchTerm) ||
-            order.table_number.toString().includes(searchTerm) ||
-            (order.customer_name && order.customer_name.toLowerCase().includes(searchTerm));
-
-        const matchesStatus = currentFilter === 'all' || order.status === currentFilter;
-        const matchesTable = currentTableFilter === 'all' || order.table_number.toString() === currentTableFilter;
-
-        return matchesSearch && matchesStatus && matchesTable;
-    });
-
-    renderOrders();
-}
+function filterOrders() { filterOrdersBySelectedTable(); }
 
 // Generate dynamic table filter buttons
 function generateTableFilterButtons() {
@@ -732,6 +696,7 @@ function restoreTableFilterState() {
 
 // Render orders
 function renderOrders() {
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const container = document.getElementById('orders-list');
     const emptyState = document.getElementById('empty-state');
 
@@ -747,56 +712,69 @@ function renderOrders() {
 
     const ordersHtml = filteredOrders.map(order => `
     <div class="order-card ${order.status === 'cancelled' ? 'order-card-cancelled' : ''}"
-         onclick="viewOrderDetails('${order._id}')">
+         data-order-id="${safe(order._id)}">
+            <button type="button" class="order-open" data-view-order="${safe(order._id)}">
             <div class="order-header">
                 <div class="order-info">
-                    <h5>#${order.order_id}</h5>
+                    <h5>#${safe(order.order_id || order._id)}</h5>
                                         <span class="table-number">
-                        Table ${order.table_number}
-                        · ${order.dine_type || 'Dine-in'}
-                        ${order.person_count ? ` · ${order.person_count} Pax` : ''}
+                        <span>Table</span> <bdi translate="no">${safe(order.table_number)}</bdi>
+                        · <span>${safe(order.dine_type || 'Dine-in')}</span>
+                        ${order.person_count ? ` · <bdi translate="no">${safe(order.person_count)}</bdi> <span>Guests</span>` : ''}
                     </span>
                 </div>
                 <div class="order-status">
-                    <span class="status-badge status-${order.status}">${order.status}</span>
+                    <span class="status-badge status-${safe(order.status)}">${safe(order.status)}</span>
                 </div>
             </div>
             <div class="order-details">
                 <div class="order-meta">
                     <span class="order-time">
                         <i class="fas fa-clock"></i>
-                        ${formatDateTime(order.created_at)}
+                        ${formatDateTime(order.created_at || order.created_date)}
                     </span>
                     <span class="order-total">
                         ${CaptainMoney.html(order.total_amount)}
                     </span>
                 </div>
                 <div class="order-items-preview">
-                    ${order.items.slice(0, 2).map(item =>
-        `<span class="item-preview${struck(item, order)}">${item.quantity}x ${item.name}</span>`
+                    ${(order.items || []).slice(0, 2).map(item =>
+        `<span class="item-preview${struck(item, order)}">${safe(item.quantity)}x ${safe(item.name)}</span>`
     ).join(', ')}
-                    ${order.items.length > 2 ? `... +${order.items.length - 2} more` : ''}
+                    ${(order.items || []).length > 2 ? `... +${(order.items || []).length - 2} more` : ''}
                 </div>
             </div>
+            </button>
             ${order.status === 'cancelled' || order.status === 'completed' ? '' : `
-        <div class="order-actions">
-            <button class="action-btn edit-btn" onclick="event.stopPropagation(); editOrder('${order._id}')">
+        <details class="order-actions-menu"><summary>Order options</summary><div class="order-actions">
+            <button class="action-btn edit-btn" data-edit-order="${safe(order._id)}">
                 <i class="fas fa-edit"></i> Modify
             </button>
             ${(order.dine_type || 'Dine-in') === 'Dine-in' ? `
-            <button class="action-btn move-btn" onclick="event.stopPropagation(); moveOrder('${order._id}')">
+            <button class="action-btn move-btn" data-move-order="${safe(order._id)}">
                 <i class="fas fa-right-left"></i> Move table
             </button>` : ''}
-            <button class="action-btn cancel-btn" onclick="event.stopPropagation(); cancelOrder('${order._id}')">
+            ${canMergeOrders() && (order.seating_request_id || (mergePermission.legacy && tableOf(order) && order.dine_type !== 'Take away')) ? `<button class="action-btn move-btn" data-merge-order="${safe(order._id)}">${window.I18N?.t('Merge orders') || 'Merge orders'}</button>` : ''}
+            <button class="action-btn cancel-btn" data-cancel-order="${safe(order._id)}">
                 <i class="fas fa-times"></i> Cancel order
             </button>
-        </div>
+        </div></details>
         `}
     </div>
 `).join('');
 
     container.innerHTML = ordersHtml;
 }
+
+document.addEventListener('click', event => {
+    const button=event.target.closest('[data-view-order],[data-edit-order],[data-move-order],[data-merge-order],[data-cancel-order]');
+    if (!button) return;
+    if (button.dataset.viewOrder) viewOrderDetails(button.dataset.viewOrder);
+    if (button.dataset.editOrder) editOrder(button.dataset.editOrder);
+    if (button.dataset.moveOrder) moveOrder(button.dataset.moveOrder);
+    if (button.dataset.mergeOrder) moveOrder(button.dataset.mergeOrder, "merge");
+    if (button.dataset.cancelOrder) cancelOrder(button.dataset.cancelOrder);
+});
 
 // View order details
 function viewOrderDetails(orderId) {
@@ -824,122 +802,17 @@ function viewOrderDetails(orderId) {
         }
     }
 
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const detailsHtml = `
-        <div class="order-details-content p-2">
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-hashtag me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Order ID:</strong> #${order.order_id}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-chair me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Table:</strong> ${order.table_number}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-info-circle me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Status:</strong> <span class="status-badge status-${order.status}">${order.status}</span></span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-calendar-alt me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Date:</strong> ${formatDateTime(order.created_at)}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-md-6 mb-2 mb-md-0">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-utensils me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Order Type:</strong> ${order.dine_type || 'Dine-in'}</span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-users me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Pax:</strong> ${order.person_count || 0}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-user me-2 text-primary" style="width: 20px;"></i>
-                        <span><strong>Customer:</strong> ${order.customer_name || 'N/A'}</span>
-                    </div>
-                </div>
-            </div>
-            
-            ${window.ServiceRounds ? ServiceRounds.render(order) : ''}
-            <h6>Order Items:</h6>
-            <div class="order-items-table">
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Item</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Price</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(Array.isArray(order.kitchen_rounds) ? [] : order.items).map(item => `
-                        <tr class="${struck(item, order).trim()}">
-                            <td>
-                                <span class="line-name">${item.name}</span>
-                                ${item.item_description
-            ? `<div class="order-item-notes">${item.item_description}</div>`
-            : ''
-        }
-                            </td>
-                            <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">${CaptainMoney.html(item.price)}</td>
-                        </tr>
-                    `).join('')}
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Subtotal:</th>
-                            <td style="text-align: right;">${CaptainMoney.html(subtotal)}</td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Discount:</th>
-                            <td style="text-align: right;">-${CaptainMoney.html(discount)}</td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <th style="text-align: right;">Tax:</th>
-                            <td style="text-align: right;">${CaptainMoney.html(tax)}</td>
-                        </tr>
-                        <tr style="border-top: 2px solid #eee;">
-                            <th></th>
-                            <th style="text-align: right; font-size: 1.1rem;">Total Amount:</th>
-                            <th style="text-align: right; font-size: 1.1rem;">${CaptainMoney.html(order.total_amount)}</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            ${order.discount_description ? `
-            <div class="order-notes-section mt-3 p-3 bg-light rounded border">
-                <div class="d-flex align-items-start">
-                    <i class="fas fa-sticky-note me-2 text-primary mt-1"></i>
-                    <div>
-                        <h6 class="mb-1" style="font-size: 0.9rem;">Order Notes:</h6>
-                        <div class="text-muted small">${order.discount_description}</div>
-                    </div>
-                </div>
-            </div>
-            ` : ''}
-        </div>
+      <section class="history-detail-context"><h2 translate="no">#${safe(order.order_id || order._id)}</h2>
+        <p><span>Table</span> <bdi>${safe(order.table_number)}</bdi> · <span>${safe(order.dine_type || 'Dine-in')}</span> · <span>Guests</span> <bdi>${safe(order.person_count || 1)}</bdi></p>
+        <p><span>${safe(order.status)}</span> · <time translate="no">${safe(formatDateTime(order.created_at || order.created_date))}</time></p>
+        ${order.customer_name ? `<p translate="no">${safe(order.customer_name)}</p>` : ''}
+      </section>
+      ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
+      <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div><div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
+      ${order.discount_description ? `<section class="history-detail-note"><h3>Order Notes:</h3><p translate="no">${safe(order.discount_description)}</p></section>` : ''}
+      ${['completed','cancelled'].includes(order.status) ? '' : `<details class="history-detail-options"><summary>Order options</summary><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></details>`}
     `;
 
     const detailsContent = document.getElementById('order-details-content');
@@ -1007,10 +880,10 @@ window.modifyKot = modifyKot;
  * the same string: two readings of one list is how a table's id goes missing
  * on one screen and not on the other.
  */
-function tablesFromStorage() {
+function tablesFromStorage(rows) {
     let raw = null;
     try {
-        raw = localStorage.getItem('kiosk_tableorders');
+        raw = Array.isArray(rows) ? JSON.stringify(rows) : localStorage.getItem('kiosk_tableorders');
     } catch (e) {
         return [];
     }
@@ -1022,7 +895,14 @@ function tablesFromStorage() {
             return {
                 value,
                 label: value,
-                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.table_id || '',
+                ...CaptainTables.metadata(t),
+                description: CaptainTables.description(t),
+                serviceState: t.status || t.service_state,
+                orders: t.orders || [],
+                seating: t.seating || null,
+                adjacent: (t.adjacent_table_ids || []).map(String),
+                closing: Boolean(t.closing),
+                id: (typeof t._id === 'string' ? t._id : t._id && t._id.$oid) || t.id || t.tableorder_id || t.table_id || '',
             };
         });
     } catch (e) {
@@ -1045,6 +925,26 @@ function tablesFromStorage() {
  * to the till exactly as they came.
  */
 let orderBeingMoved = null;
+let moveSaving = false;
+let moveLoadVersion = 0, moveTables = [];
+let moveSelected = [], movePrimary = "", moveMode = "move", mergeChoice = null;
+let moveLegacySupported = false;
+let mergeLegacySupported = false;
+let moveClosing = false, moveReopen = null;
+const usesDurableMove = order => Boolean(order?.seating_request_id ||
+    (moveLegacySupported && tableOf(order) && order?.dine_type !== 'Take away'));
+let mergePermission = null;
+const mergePermissionOwner = () => JSON.stringify([window.POSNIC?.session?.shopKey,window.POSNIC?.session?.user?.id,localStorage.getItem('branch_id')]);
+function canMergeOrders() { return mergePermission?.owner === mergePermissionOwner() && mergePermission.value; }
+async function refreshMergePermission(revision) {
+    const owner=mergePermissionOwner();
+    try {
+        const result=await POSNIC.api.get('/captain/v1/tables');
+        if(revision!==historyRevision || owner!==mergePermissionOwner())return;
+        mergePermission={owner,value:result.canMerge===true,legacy:result.capabilities?.legacyTargetMerge===true};
+    } catch { if(revision!==historyRevision || owner!==mergePermissionOwner())return; mergePermission={owner,value:false}; }
+    if(selectedTable!==null) filterOrdersBySelectedTable();
+}
 
 /*
  * BUILT HERE, not written into a page.
@@ -1071,10 +971,11 @@ function ensureMoveSheet() {
                 </div>
                 <div class="modal-body">
                     <div class="move-table-now" id="move-table-now"></div>
-                    <div class="move-table-list" id="move-table-list"></div>
+                    <p id="move-table-status" role="status"></p><button type="button" id="move-table-retry" class="btn close-btn" hidden>Retry</button><div class="move-table-list" id="move-table-list"></div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn close-btn" data-bs-dismiss="modal">Back</button>
+                    <button type="button" class="btn close-btn" id="move-table-cancel" hidden>Cancel</button>
                     <button type="button" class="btn action-btn edit-btn" id="move-table-go" disabled>
                         Choose a table
                     </button>
@@ -1089,32 +990,92 @@ function ensureMoveSheet() {
         const button = event.target.closest('.move-table');
         if (button && !button.disabled) chooseMoveTable(button);
     });
-    el.querySelector('#move-table-go').addEventListener('click', confirmMoveTable);
+    el.querySelector('#move-table-go').addEventListener('click', () => confirmMoveTable());
+    el.querySelector('#move-table-cancel').addEventListener('click', () => confirmMoveTable(true));
+    el.querySelector('#move-table-retry').addEventListener('click', refreshMoveTables);
 
     /* Reopened later for a different order, the last choice must not still be
        sitting there ready to move this one. */
+    el.addEventListener('hide.bs.modal', event => {
+        if (moveSaving) event.preventDefault();
+        else moveClosing = true;
+    });
     el.addEventListener('hidden.bs.modal', () => {
         orderBeingMoved = null;
+        moveLoadVersion++;
         const go = document.getElementById('move-table-go');
         if (go) {
             go.disabled = true;
             go.textContent = 'Choose a table';
         }
+        moveClosing = false;
+        const reopen = moveReopen;
+        moveReopen = null;
+        if (reopen) moveOrder(...reopen);
     });
 
     return el;
 }
 
-function moveOrder(orderId) {
+function moveOrder(orderId, mode = "move") {
+    if (moveSaving) return;
+    // Bootstrap finishes hiding the backdrop after the dialog becomes invisible.
+    // Wait for that cleanup before reopening, so it cannot clear the new order.
+    if (moveClosing) { moveReopen = [orderId, mode]; return; }
     const order = (allOrders || []).find((o) => o._id === orderId);
     if (!order) return;
 
     ensureMoveSheet();
     orderBeingMoved = order;
-    renderMoveTables();
+    moveMode = mode; mergeChoice = null;
+    ensureMoveSheet().querySelector(".modal-title").textContent = window.I18N?.t(mode === "merge" ? "Merge orders" : "Move to another table") || (mode === "merge" ? "Merge orders" : "Move to another table");
+    void refreshMoveTables();
 
     const el = ensureMoveSheet();
-    if (typeof bootstrap !== 'undefined') new bootstrap.Modal(el).show();
+    if (typeof bootstrap !== 'undefined') bootstrap.Modal.getOrCreateInstance(el).show();
+}
+
+async function refreshMoveTables() {
+    if (moveSaving || !orderBeingMoved) return;
+    const version = ++moveLoadVersion;
+    const message = document.getElementById('move-table-status');
+    const retry = document.getElementById('move-table-retry');
+    const go = document.getElementById('move-table-go');
+    moveTables = [];
+    moveLegacySupported = false;
+    mergeLegacySupported = false;
+    moveSelected = []; movePrimary = ""; mergeChoice = null;
+    document.getElementById('move-table-list').replaceChildren();
+    go.disabled = true;
+    retry.hidden = true;
+    document.getElementById('move-table-cancel').hidden = true;
+    message.textContent = window.I18N?.t('Loading...') || 'Loading...';
+    try {
+    if (window.CaptainGroupMove?.pending(orderBeingMoved._id)) {
+        const pending=CaptainGroupMove.pending(orderBeingMoved._id);
+        moveMode=pending.body.targetOrderId ? 'merge' : 'move';
+        ensureMoveSheet().querySelector('.modal-title').textContent=window.I18N?.t(moveMode==='merge'?'Merge orders':'Move to another table') || (moveMode==='merge'?'Merge orders':'Move to another table');
+        message.textContent = window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.';
+        document.getElementById('move-table-cancel').hidden = false;
+        go.textContent = window.I18N?.t('Retry') || 'Retry';
+        go.disabled = false;
+        return;
+    }
+        const result = await POSNIC.api.get('/captain/v1/tables');
+        if (version !== moveLoadVersion || !orderBeingMoved) return;
+        if (!Array.isArray(result.tables)) throw new Error('invalid_tables');
+        moveLegacySupported = result.capabilities?.legacySourceMove === true;
+        mergeLegacySupported = result.capabilities?.legacyTargetMerge === true;
+        if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
+        moveTables = tablesFromStorage(result.tables);
+        message.textContent = '';
+        renderMoveTables();
+    } catch {
+        if (version !== moveLoadVersion || !orderBeingMoved) return;
+        message.textContent = window.I18N?.t('Connection failed') || 'Connection failed';
+        retry.textContent = window.I18N?.t('Retry') || 'Retry';
+        retry.hidden = false;
+    }
 }
 
 /** Where the order is now, however the till spelled it. */
@@ -1146,7 +1107,10 @@ function renderMoveTables() {
             .filter(Boolean)
     );
 
-    const tables = tablesFromStorage();
+    if (moveMode === "merge") { renderMergeTables(); return; }
+    if (usesDurableMove(order)) { renderGroupMoveTables(); return; }
+    const tables = moveTables;
+    for (const table of tables) if (table.orders.some(row => row.id !== order._id)) busy.add(table.value);
     if (!tables.length) {
         container.innerHTML =
             '<div class="text-muted">No tables configured. Whoever set up the till adds them.</div>';
@@ -1156,18 +1120,76 @@ function renderMoveTables() {
     container.innerHTML = tables
         .map((t) => {
             const isHere = t.value === now;
+            const otherGuests = t.orders.filter(row => row.id !== order._id).reduce((sum,row) => sum + (Number(row.guests) || 0),0);
+            const tooSmall = t.max > 0 && Number(order.person_count || 1) + otherGuests > t.max;
+            const unavailable = t.closing || ['held','cleaning'].includes(t.serviceState);
             return `
             <button type="button"
                 class="move-table${isHere ? ' is-here' : ''}${busy.has(t.value) ? ' is-busy' : ''}"
-                data-value="${t.value}"
-                data-id="${t.id}"
-                ${isHere ? 'disabled' : ''}>
-                <span class="move-table-no">${t.label}</span>
+                data-value="${CaptainTables.esc(t.value)}"
+                data-id="${CaptainTables.esc(t.id)}"
+                ${isHere || tooSmall || unavailable ? 'disabled' : ''}>
+                <span class="move-table-no">${CaptainTables.esc(t.label)}</span>
+                ${t.description ? `<span class="move-table-note">${CaptainTables.esc(t.description)}</span>` : ''}
                 ${isHere ? '<span class="move-table-note">here now</span>' : ''}
+                ${unavailable ? `<span class="move-table-note">${CaptainTables.esc(window.I18N?.t(t.closing ? 'Occupied' : t.serviceState === 'cleaning' ? 'Cleaning' : 'Held') || t.serviceState)}</span>` : ''}
+                ${tooSmall ? `<span class="move-table-note">${CaptainTables.esc(window.I18N?.t('Choose a table with enough seats.') || 'Choose a table with enough seats.')}</span>` : ''}
                 ${!isHere && busy.has(t.value) ? '<span class="move-table-note">has an order</span>' : ''}
             </button>`;
         })
         .join('');
+}
+
+function renderMergeTables() {
+    const esc=CaptainTables.esc, t=value=>window.I18N?.t(value)||value;
+    const order=orderBeingMoved, list=document.getElementById('move-table-list');
+    document.getElementById('move-table-status').textContent=t('Both bills move to the selected table. Items are not sent to the kitchen again.');
+    const rows=moveTables.filter(row=>row.orders.length===1 && row.orders[0].id!==order._id && row.value!==tableOf(order));
+    list.innerHTML=rows.map(row=>{
+        const guests=Number(order.person_count||1)+Number(row.orders[0].guests||0);
+        const eligible=!row.closing && !['held','cleaning'].includes(row.serviceState) &&
+            (row.seating?.table_ids?.length===1 || (mergeLegacySupported && !row.seating)) && !row.orders[0].paid && row.max>0 && guests<=row.max;
+        return `<button type="button" class="move-table${mergeChoice?.id===row.id?' is-chosen':''}" data-id="${esc(row.id)}" aria-pressed="${mergeChoice?.id===row.id}" ${eligible?'':'disabled'}><span class="move-table-no" translate="no">${esc(row.label)}</span><span class="move-table-note">${esc(t('Guests'))}: ${esc(guests)} · ${esc(t('Maximum seats'))}: ${esc(row.max||'—')}</span>${!eligible?`<span class="move-table-note">${esc(t(row.max>0&&guests>row.max?'Choose a table with enough seats.':'Table changed. Refresh and try again.'))}</span>`:''}</button>`;
+    }).join('') || `<p>${esc(t('No orders found for this table.'))}</p>`;
+    const go=document.getElementById('move-table-go');go.disabled=!mergeChoice;go.textContent=t(mergeChoice?'Merge orders':'Choose a table');
+}
+function mergeSelection() {
+    return {tableIds:[mergeChoice.id],primaryId:mergeChoice.id,guests:Number(orderBeingMoved.person_count||1),targetOrderId:mergeChoice.orders[0].id};
+}
+function groupMoveSelection() {
+    return CaptainGroupMove.selection(moveTables, moveSelected, movePrimary, Number(orderBeingMoved.person_count || 1));
+}
+function renderGroupMoveTables() {
+    const container=document.getElementById('move-table-list');
+    const t=key=>window.I18N?.t(key)||key;
+    const esc=CaptainTables.esc;
+    const current=groupMoveSelection();
+    container.innerHTML=moveTables.map(row=>{
+        const selected=moveSelected.includes(row.id);
+        const otherOrders=row.orders.some(order=>order.id!==orderBeingMoved._id);
+        const unavailable=row.closing || ['held','cleaning'].includes(row.serviceState) || otherOrders;
+        const adjacent=!moveSelected.length || moveSelected.some(id=>{
+            const member=moveTables.find(table=>table.id===id);
+            return row.adjacent.includes(id) || member?.adjacent.includes(row.id);
+        });
+        return `<button type="button" class="move-table${selected?' is-chosen':''}" data-id="${esc(row.id)}" data-value="${esc(row.value)}" aria-pressed="${selected}" ${unavailable||(!selected&&!adjacent)?'disabled':''}>
+          <span class="move-table-no">${esc(row.label)}</span><span class="move-table-note">${esc(row.description)}</span>
+          ${unavailable?`<span class="move-table-note">${esc(t(row.serviceState==='cleaning'?'Cleaning':row.serviceState==='held'?'Held':'Occupied'))}</span>`:''}
+          <span class="move-table-note">${esc(t('Can combine with'))}: ${esc(moveTables.filter(other=>row.adjacent.includes(other.id)||other.adjacent.includes(row.id)).map(other=>other.label).join(', ')||'—')}</span>
+        </button>`;
+    }).join('');
+    if(moveSelected.length){
+        container.insertAdjacentHTML('beforeend',`<label class="move-table-primary"><span id="move-primary-label">${esc(t('Main table'))}</span><select aria-labelledby="move-primary-label" id="move-primary" class="form-select">${moveSelected.map(id=>`<option value="${esc(id)}" ${id===movePrimary?'selected':''}>${esc(moveTables.find(row=>row.id===id).label)}</option>`).join('')}</select></label>`);
+        container.querySelector('#move-primary').addEventListener('change',event=>{movePrimary=event.target.value;renderGroupMoveTables();});
+    }
+    const message=document.getElementById('move-table-status');
+    message.textContent=moveSelected.length ? t('Seat capacity')+': '+current.maximum+' · '+t('Guests')+': '+current.guests : t('Choose a table');
+    const unchanged=orderBeingMoved.seating_request_id
+        ? JSON.stringify([...moveSelected].sort())===JSON.stringify([...(orderBeingMoved.seating_table_ids||[])].sort()) && movePrimary===orderBeingMoved.seating_primary_id
+        : moveSelected.length===1 && moveTables.find(row=>row.id===moveSelected[0])?.value===tableOf(orderBeingMoved);
+    const go=document.getElementById('move-table-go');
+    go.disabled=!current.valid||unchanged;
+    go.textContent=t('Save');
 }
 
 /*
@@ -1176,8 +1198,17 @@ function renderMoveTables() {
  * floor is not a place where anybody taps carefully.
  */
 function chooseMoveTable(button) {
+    if (moveSaving || button.disabled) return;
     const list = document.getElementById('move-table-list');
     if (!list) return;
+    if(moveMode === 'merge') { mergeChoice=moveTables.find(row=>row.id===button.dataset.id); renderMergeTables(); return; }
+    if (usesDurableMove(orderBeingMoved)) {
+        const id=button.dataset.id;
+        moveSelected=moveSelected.includes(id)?moveSelected.filter(value=>value!==id):[...moveSelected,id];
+        if(!moveSelected.includes(movePrimary))movePrimary=moveSelected[0]||'';
+        renderGroupMoveTables();
+        return;
+    }
     for (const other of list.querySelectorAll('.move-table')) other.classList.remove('is-chosen');
     button.classList.add('is-chosen');
 
@@ -1188,10 +1219,24 @@ function chooseMoveTable(button) {
     }
 }
 
-async function confirmMoveTable() {
+async function confirmMoveTable(cancelPending = false) {
+    if (moveSaving) return;
     const chosen = document.querySelector('#move-table-list .move-table.is-chosen');
     const order = orderBeingMoved;
-    if (!chosen || !order) return;
+    let pending;
+    try {
+        pending = order && window.CaptainGroupMove?.pending(order._id);
+    } catch (error) {
+        showToast(window.I18N?.t('Could not save. Please try again.') || 'Could not save. Please try again.', 'error');
+        return;
+    }
+    if (!order || (!pending && (!chosen || chosen.disabled))) return;
+    if (!pending && usesDurableMove(order) && (moveMode === 'merge' ? !mergeChoice : !groupMoveSelection().valid)) return;
+    moveSaving = true;
+    const sheet = document.getElementById('moveTableModal');
+    const controls = [...sheet.querySelectorAll('button,select')].map(button => ({button, disabled:button.disabled}));
+    controls.forEach(({button}) => button.disabled = true);
+    sheet.setAttribute('aria-busy', 'true');
 
     const go = document.getElementById('move-table-go');
     if (go) go.disabled = true;
@@ -1205,7 +1250,7 @@ async function confirmMoveTable() {
          * edit sheet sends, so a moved order cannot come out of this door
          * shaped differently from a modified one.
          */
-        const data = await CaptainOrderActions.save( {
+        const data = pending ? await (cancelPending ? CaptainGroupMove.cancel(order._id) : CaptainGroupMove.resume(order._id)) : usesDurableMove(order) ? await CaptainGroupMove.move(order._id, moveMode === 'merge' ? mergeSelection() : groupMoveSelection()) : await CaptainOrderActions.save( {
             order_id: order._id,
             items: linesForSave(order.items),
             total_amount: order.total_amount,
@@ -1218,7 +1263,8 @@ async function confirmMoveTable() {
 
         if (data.type !== 'success') throw new Error(data.message || 'Could not move the order');
 
-        showToast(`Moved to table ${chosen.dataset.value}`, 'success');
+        moveSaving = false;
+        showToast(data.cancelled ? (window.I18N?.t('Cancelled') || 'Cancelled') : (pending || usesDurableMove(order)) ? (window.I18N?.t('Saved') || 'Saved') : `Moved to table ${chosen.dataset.value}`, 'success');
 
         const el = document.getElementById('moveTableModal');
         if (el && typeof bootstrap !== 'undefined') {
@@ -1229,6 +1275,7 @@ async function confirmMoveTable() {
         if (typeof loadTables === 'function') await loadTables();
         await loadOrderHistory();
     } catch (error) {
+        moveSaving = false;
         if (isAConflict(error)) {
             await tellThemSomebodyElseGotThere();
             return;
@@ -1237,7 +1284,15 @@ async function confirmMoveTable() {
         showToast(error.message || 'Could not move the order', 'error');
         if (go) go.disabled = false;
     } finally {
+        moveSaving = false;
+        sheet.removeAttribute('aria-busy');
+        controls.forEach(({button, disabled}) => button.disabled = disabled);
         hideLoader();
+        // A saved request owns its destination until it is resolved.
+        // Never offer another destination while Retry will send the saved one.
+        if (sheet.classList.contains('show') && (usesDurableMove(order) || window.CaptainGroupMove?.pending(order._id))) {
+            await refreshMoveTables();
+        }
     }
 }
 
@@ -1428,7 +1483,7 @@ function openEditOrderModal() {
         return;
     }
 
-    const type = order.extra_discount_type || 'percent';
+    const type = ['amount', 'price', 'fixed'].includes(String(order.extra_discount_type || '').toLowerCase()) ? 'amount' : 'percent';
     const val = order.extra_discount || 0;
 
     document.getElementById('edit-discount-value').value = val;
@@ -1492,7 +1547,7 @@ function openEditOrderModal() {
     // Normalize item fields — handle both legacy and KOT-inserted items
     editingOrder.items.forEach(item => {
         const unit = parseFloat(item.unit_price || item.item_base_price || item.price || 0);
-        item.price = isNaN(unit) ? 0 : parseFloat(unit.toFixed(2));
+        item.price = Number.isFinite(unit) ? unit : 0;
         if (!item.selling_price) item.selling_price = item.price;
         item.quantity = lineQuantity(item);
     });
@@ -1639,7 +1694,7 @@ function renderCurrentOrderItems() {
         : `<div class="item-controls">
                 <button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button>
                 <span class="qty-display">${item.quantity}</span>
-                <button type="button" class="qty-btn" aria-label="Increase quantity" onclick="updateItemQuantity(${index}, 1)">+</button>
+                <button type="button" class="qty-btn" aria-label="${editingOrder.transfer_allocated === true && !window.OrderEditor?.isAdded(item) ? 'Add items' : 'Increase quantity'}" onclick="updateItemQuantity(${index}, 1)">+</button>
                 <button type="button" class="remove-btn" aria-label="Remove Item" onclick="removeItem(${index})">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -1688,7 +1743,7 @@ $(document).on('click', '#edit-item-notes-apply', function () {
     const notes = $('#edit-item-notes-text').val().trim();
 
     item.item_description = notes;
-    // item.notes = notes;
+    if ('notes' in item) item.notes = notes;
 
     // UI refresh
     renderCurrentOrderItems();
@@ -1707,6 +1762,10 @@ function updateItemQuantity(index, change) {
     if (!editingOrder) return;
 
     const item = editingOrder.items[index];
+    if (change > 0 && editingOrder.transfer_allocated === true && !window.OrderEditor?.isAdded(item)) {
+        void openItemPicker();
+        return;
+    }
     const newQty = item.quantity + change;
 
     if (newQty <= 0) {
@@ -1902,7 +1961,9 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    const existingItem = editingOrder.items.find(item => (item.product_id || item.item_id || item.id) === productId && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
+    // Existing transferred portions keep their original monetary allocation.
+    // Repeated menu taps may increase only the new preparation in this edit.
+    const existingItem = editingOrder.items.find(item => (editingOrder.transfer_allocated !== true || window.OrderEditor?.isAdded(item)) && (item.product_id || item.item_id || item.id) === productId && !String(item.item_description || item.notes || '').trim() && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
 
     if (existingItem) {
         existingItem.quantity += 1;
@@ -1941,7 +2002,7 @@ function updateOrderTotal() {
         return sum + (item.quantity * item.price);
     }, 0);
 
-    editingOrder.total_amount = total.toFixed(2);
+    editingOrder.total_amount = CaptainMoney.fromMinor(CaptainMoney.toMinor(total, CaptainMoney.current()), CaptainMoney.current());
     window.OrderEditor?.refresh();
 }
 
@@ -1955,8 +2016,12 @@ function clearNewItems() {
 
 // Utility functions
 function formatDateTime(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-IN', {
+    const raw = dateString?.$date ?? dateString;
+    if (raw === undefined || raw === null || raw === '') return '—';
+    const date = new Date(raw?.$numberLong !== undefined ? Number(raw.$numberLong) : raw);
+    if (!Number.isFinite(date.getTime())) return '—';
+    const language = window.I18N?.language() || 'en';
+    return date.toLocaleString(language === 'en' ? 'en-IN' : language, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -2089,8 +2154,18 @@ let pickerIndex = null;
    the redraw that follows a keystroke happens after a debounce and the box may
    have moved on by then. */
 let pickerTerm = '';
+let pickerGeneration = 0;
+function pickerRequestGuard() {
+    const current = orderBeingModified(), generation = pickerGeneration;
+    const owner = () => JSON.stringify([POSNIC.session?.shopKey, POSNIC.session?.user?.id,
+        localStorage.getItem('branch_id'), POSNIC.session?.base || POSNIC.server?.baseUrl]);
+    const identity = owner();
+    return () => current && current === orderBeingModified() && generation === pickerGeneration
+        && identity === owner() && !document.getElementById('item-picker')?.hidden;
+}
 
 async function openItemPicker() {
+    pickerGeneration++;
     const sheet = document.getElementById('item-picker');
     const body = document.getElementById('item-picker-body');
     const rail = document.getElementById('item-picker-rail');
@@ -2099,9 +2174,15 @@ async function openItemPicker() {
     sheet.hidden = false;
     document.body.classList.add('picker-open');
     body.innerHTML = '<div class="menu-nothing">Loading the menu...</div>';
+    const valid = pickerRequestGuard();
+    pickerAll = []; pickerMenu = []; pickerIndex = null; pickerTerm = '';
+    const box = document.getElementById('picker-search-input');
+    if (box) box.value = '';
+    if (rail) { rail.innerHTML = ''; rail.hidden = true; }
 
     try {
         const products = await getData(STORE_NAME);
+        if (!valid()) return;
         if (!products || !products.length) {
             body.innerHTML = MenuView.nothing(
                 'No items for this branch yet',
@@ -2117,11 +2198,9 @@ async function openItemPicker() {
         /* Grouped where the card on the wall groups it, so a dish has one
            number and not one per screen. */
         pickerMenu = MenuView.fromFlat(products);
-        pickerTerm = '';
-        const box = document.getElementById('picker-search-input');
-        if (box) box.value = '';
         drawPicker();
     } catch (error) {
+        if (!valid()) return;
         console.error('Could not open the menu', error);
         body.innerHTML = MenuView.nothing('Could not load the menu', 'Try again in a moment.');
     }
@@ -2372,6 +2451,7 @@ function pickerGoTo(key) {
 }
 
 function closeItemPicker() {
+    pickerGeneration++;
     const sheet = document.getElementById('item-picker');
     if (sheet) sheet.hidden = true;
     document.body.classList.remove('picker-open');
@@ -2471,7 +2551,20 @@ document.addEventListener('click', function (event) {
         const id = less.getAttribute('data-id');
         const order = orderBeingModified();
         const items = (order && order.items) || [];
-        const at = items.findIndex((item) => String(item.product_id) === String(id) && !lineIsCancelled(item, order));
+        const matches = items.map((item, index) => ({ item, index })).filter(({ item }) =>
+            String(item.product_id || item.item_id || item.id) === String(id) && !lineIsCancelled(item, order));
+        // Undo a plain portion added in this edit before touching served or
+        // specially prepared portions. Ambiguous reductions belong in review.
+        const added = matches.slice().reverse().find(({ item }) => window.OrderEditor?.isAdded(item)
+            && !String(item.item_description || item.notes || '').trim()
+            && !item.seat && !item.course && !item.held && !(item.allergies || []).length
+            && !item.allergy_note && !(item.modifiers || []).length);
+        const at = added ? added.index : matches.length === 1 && order.transfer_allocated !== true ? matches[0].index : -1;
+        if (at < 0 && matches.length) {
+            closeItemPicker();
+            document.querySelectorAll('#current-order-items .order-item-card')[matches[0].index]?.querySelector('.qty-btn')?.focus({ preventScroll: true });
+            return;
+        }
         if (at > -1) {
             updateItemQuantity(at, -1);
             pickerRefreshRow(id);
@@ -2503,8 +2596,9 @@ document.addEventListener('click', function (event) {
          * put it on the order at nothing.
          */
         if (typeof MenuView !== 'undefined' && MenuView.askPrice && MenuView.askPrice(found)) {
+            const valid = pickerRequestGuard();
             POSNIC.askPrice(found.name).then((asked) => {
-                if (!asked) return;
+                if (!asked || !valid()) return;
                 rememberRecent(id);
                 addProductToOrder(id, found.name, asked);
                 pickerRefreshRow(id);
@@ -2677,6 +2771,7 @@ document.addEventListener('click', async function (event) {
     if (!event.target || !event.target.closest) return;
     if (!event.target.closest('#picker-quick-sale')) return;
 
+    const valid = pickerRequestGuard();
     const box = document.getElementById('picker-search-input');
     const said = box ? box.value.trim() : '';
 
@@ -2685,10 +2780,10 @@ document.addEventListener('click', async function (event) {
      * price asks what it is called.
      */
     const name = said || (await POSNIC.askName(''));
-    if (!name) return;
+    if (!name || !valid()) return;
 
     const price = await POSNIC.askPrice(name);
-    if (!price) return;
+    if (!price || !valid()) return;
 
     try {
         /*
@@ -2698,6 +2793,7 @@ document.addEventListener('click', async function (event) {
          * have looked broken in a new way.
          */
         const made = await POSNIC.quickSale.createOneOff(name, price);
+        if (!valid()) return;
 
         /* saveOne, never saveData: saveData clears the store first and would
            delete the menu this sheet is drawing from. */
@@ -2705,12 +2801,14 @@ document.addEventListener('click', async function (event) {
             await saveOne(STORE_NAME, [made]);
         }
 
+        if (!valid()) return;
         addProductToOrder(made.id, made.name, price);
         if (box) box.value = '';
 
         const sheet = document.getElementById('item-picker');
         if (sheet) sheet.hidden = true;
     } catch (error) {
+        if (!valid()) return;
         /* showErrorPopup is what this screen already uses; POSNIC.popup has no
            such function, and an error path that throws is an error nobody
            ever sees. */
@@ -2725,7 +2823,7 @@ window.addEventListener('captain:back', event => {
     if (event.defaultPrevented || document.querySelector('.modal.show, dialog[open]')) return;
     if (document.getElementById('order-list-screen') && selectedTable !== null) {
         event.preventDefault();
-        showTableSelectionScreen();
+        handleBackButton();
     }
 });
 

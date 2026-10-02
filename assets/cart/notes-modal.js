@@ -53,6 +53,9 @@ $(document).ready(function () {
         // Set product name and existing notes
         $("#cart-notes-product-name").text(productName);
         $("#cart-notes-text").val(currentNotes);
+        buildNoteChips("#cart-notes-chips");
+        markChips("#cart-notes-text");
+        window.I18N?.apply(document.getElementById("cart-notes-modal"));
 
         // Show modal
         $("#cart-notes-modal").css("display", "flex");

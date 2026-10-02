@@ -35,8 +35,10 @@
         } catch (e) {
             name = '';
         }
-        line.translate = !name;
-        line.textContent = name || 'Signed in on this phone';
+        for (const target of [line, at('me-home-who')].filter(Boolean)) {
+            target.translate = !name;
+            target.textContent = name || 'Signed in on this phone';
+        }
     }
 
     /*
@@ -87,8 +89,10 @@
         const row = at('me-lock');
         const off = at('me-lock-off');
         if (row) {
-            row.addEventListener('click', function () {
-                if (window.POSNIC && POSNIC.lock) POSNIC.lock.choose().then(paintLock);
+            row.addEventListener('click', async function () {
+                if (!(window.POSNIC && POSNIC.lock)) return;
+                if (POSNIC.lock.isSet() && !await POSNIC.lock.unlock('', {why:'Enter your PIN',escape:'Not now'})) return;
+                await POSNIC.lock.choose(); paintLock();
             });
         }
         if (off) {
@@ -115,8 +119,13 @@
     const COPIES = 'posnic.bill_copies';
 
     function paintPreferences() {
+        for (const name of ['sound', 'vibration']) at('me-' + name).checked = CaptainPhone.enabled(name);
+        at('me-vibration-row').hidden = typeof navigator.vibrate !== 'function';
         const language = at('me-language');
-        if (language && typeof I18N !== 'undefined') language.value = I18N.language();
+        if (language && typeof I18N !== 'undefined') {
+            language.value = I18N.language();
+            at('me-language-name').textContent = language.selectedOptions[0]?.textContent || '';
+        }
 
         const copies = at('me-copies');
         if (copies) {
@@ -150,10 +159,18 @@
     }
 
     function wirePreferences() {
+        for (const name of ['sound', 'vibration']) {
+            at('me-' + name).addEventListener('change', event => {
+                const saved = CaptainPhone.set(name, event.target.checked);
+                if (!saved) event.target.checked = CaptainPhone.enabled(name);
+                at('me-preference-message').textContent = saved ? '' : I18N.t('Could not save. Please try again.');
+            });
+        }
         const language = at('me-language');
         if (language) {
             language.addEventListener('change', function () {
                 if (typeof I18N !== 'undefined') I18N.use(language.value);
+                at('me-language-name').textContent = language.selectedOptions[0]?.textContent || '';
             });
         }
 
@@ -189,38 +206,10 @@
     /* ------------------------------------------------------- the account */
 
     function wireAccount() {
-        const password = at('me-password');
-        if (password) {
-            password.addEventListener('click', function () {
-                /*
-                 * NOT YET, AND SAID PLAINLY RATHER THAN HIDDEN.
-                 *
-                 * The till has an endpoint for it, but it stores a password
-                 * base64-encoded before hashing and that endpoint writes it
-                 * raw. A password changed from here would still sign in on
-                 * this phone and on the till's main login, and would fail the
-                 * super-admin check - a half-broken account is worse than a
-                 * row that says where to go.
-                 */
-                if (typeof showErrorPopup === 'function') {
-                    showErrorPopup('Ask the shop to change your password on the till. It cannot be changed from a phone yet.');
-                } else {
-                    alert('Ask the shop to change your password on the till.');
-                }
-            });
-        }
-
         at('me-sign-out')?.addEventListener('click', () => CaptainAccount.change('staff'));
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const back = at('me-back');
-        if (back) {
-            back.addEventListener('click', function () {
-                window.location.href = 'kot-management.html';
-            });
-        }
-
         paintWho();
         paintLock();
         paintPreferences();

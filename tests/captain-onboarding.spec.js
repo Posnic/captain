@@ -981,3 +981,194 @@ test("leaving a selected Wi-Fi result cancels its pending navigation", async ({ 
   await expect(page.locator("#username")).toBeHidden();
   expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
 });
+
+for (const width of [320, 900]) test(`sign-in recovery keeps staff input and native Back at ${width}px`, async ({page}) => {
+  await phone(page);
+  await page.setViewportSize({width,height:850});
+  await page.emulateMedia({colorScheme:'dark'});
+  await fillAddress(page,base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toBeVisible();
+  await page.locator('#username').fill('staff-name');
+  await page.locator('#captain-login-help').click();
+  await expect(page.locator('#captain-recovery')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.screenshot({path:`test-artifacts/recovery-${width}.png`,fullPage:true});
+  await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+  await expect(page.locator('#captain-recovery')).toHaveCount(0);
+  await expect(page.locator('#username')).toHaveValue('staff-name');
+  await page.locator('#captain-login-help').click();
+  await page.locator('[data-recovery=password]').click();
+  await expect(page.locator('#password')).toBeFocused();
+  await page.screenshot({path:`test-artifacts/signin-dark-${width}.png`,fullPage:true});
+});
+
+
+for (const screen of ['address','settings']) test(`Back during ${screen} verification ignores late completion`, async ({page})=>{
+  await phone(page);
+  await page.evaluate(async base=>{
+    await POSNIC.session.start({base,token:'retained',sessionId:'session',routeKey:'secret',
+      user:{id:'staff'},shopKey:'shop',branches:[{branch_id:'branch'}]});
+    POSNIC.discovery.probe=async base=>({base});
+    window.addressCalls=[];
+    POSNIC.session.addAddress=async (base,signal)=>{
+      window.addressCalls.push(base);
+      window.addressSignal=signal;
+      await new Promise(resolve=>window.finishAddress=resolve);
+    };
+    CaptainOnboarding.open();
+  },base);
+  if(screen==='settings'){
+    await page.locator('#connection-settings').click();
+    await page.locator('#connection-lan').fill(base);
+    await page.locator('#connection-cloud').fill('https://shop.posnic.io/api');
+    await page.locator('#connection-save').click();
+  }else{
+    await page.locator('#captain-address-toggle').click();
+    await fillAddress(page,base);
+    await page.locator('#captain-connect').click();
+  }
+  await page.waitForFunction(()=>window.finishAddress);
+  await page.locator('#connection-back').click();
+  expect(await page.evaluate(()=>window.addressSignal?.aborted)).toBe(true);
+  await page.evaluate(()=>window.finishAddress());
+  await expect(page.locator('#captain-onboarding')).toHaveAttribute('data-setup-view','start');
+  await expect(page.locator('#captain-note')).toHaveText('');
+  await expect(page.locator('#connection-settings')).toBeEnabled();
+  expect(await page.evaluate(()=>window.addressCalls.length)).toBe(1);
+  expect(await page.evaluate(()=>POSNIC.session.user.id)).toBe('staff');
+});
+
+
+for (const [width, count] of [[320, 1], [900, 2]]) {
+  test(`Wi-Fi cards require Connect before staff sign-in at ${width}px`, async ({ page }) => {
+    await phone(page, false);
+    await page.setViewportSize({ width, height: 850 });
+    await page.evaluate(count => {
+      POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+        for (let i = 0; i < count; i++) options.collect({
+          base: `http://192.168.1.${8 + i}:42590/api`, info: { features: { captainAccessV1: true } },
+        });
+      };
+      POSNIC.discovery.probe = base => new Promise(resolve => {
+        window.finishServerSelection = () => resolve({ base, info: { features: {} } });
+      });
+    }, count);
+    await page.locator('#captain-search').click();
+    const cards = page.locator('#captain-results button');
+    await expect(cards).toHaveCount(count);
+    await expect(cards.first()).toContainText('Connect');
+    await expect(cards.first().locator('.setup-server-icon svg')).toBeVisible();
+    expect(await cards.first().locator('strong').evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThan(120);
+    await expect(page.locator('#username')).toBeHidden();
+    await expect(page.locator('#password')).toBeHidden();
+    expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `test-artifacts/discovery-choice-${width}.png`, fullPage: true });
+    await cards.last().click();
+    await expect(cards.last()).toHaveAttribute('aria-busy', 'true');
+    await expect(page.locator('#username')).toBeHidden();
+    await page.evaluate(() => window.finishServerSelection());
+    await expect(page.locator('#captain-onboarding')).toBeHidden();
+    await expect(page.locator('#username')).toBeVisible();
+    await expect(page.locator('#captain-selected-shop')).toHaveText(`192.168.1.${7 + count}:42590`);
+    await expect(page.locator('#setup-signin-step')).toHaveAttribute('aria-current', 'step');
+    await page.screenshot({ path: `test-artifacts/discovery-signin-${width}.png`, fullPage: true });
+    await page.locator('#password').fill('private-password');
+    await page.locator('#captain-change-shop').click();
+    await expect(page.locator('#username')).toBeHidden();
+    await expect(page.locator('#password')).toHaveValue('private-password');
+    await expect(page.locator('#captain-search')).toBeVisible();
+  });
+}
+
+test('failed Wi-Fi selection keeps credentials hidden and permits another server', async ({ page }) => {
+  await phone(page, false);
+  await page.evaluate(() => {
+    POSNIC.discovery.scanSubnet = async (_subnet, options) => {
+      for (const host of [8, 9]) options.collect({ base: `http://192.168.1.${host}:42590/api`, info: { features: {} } });
+    };
+    POSNIC.discovery.probe = async base => base.includes('.8:') ? null : { base, info: { features: {} } };
+  });
+  await page.locator('#captain-search').click();
+  const cards = page.locator('#captain-results button');
+  await expect(cards).toHaveCount(2);
+  await cards.first().click();
+  await expect(page.locator('#captain-note')).toContainText('Could not reach this shop');
+  await expect(page.locator('#username')).toBeHidden();
+  await expect(cards.last()).toBeEnabled();
+  await cards.last().click();
+  await expect(page.locator('#username')).toBeVisible();
+  await expect(page.locator('#captain-selected-shop')).toHaveText('192.168.1.9:42590');
+});
+
+
+test('successful staff sign-in remembers server-scoped usernames and preserves exact passwords', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toBeVisible();
+  await page.evaluate(() => {
+    POSNIC.api.post = async (_path, payload) => {
+      window.signinPayload = payload;
+      return { user: { id: 'staff' }, branches: [{ store_id: 'one' }, { store_id: 'two' }] };
+    };
+    POSNIC.session.start = async () => {};
+  });
+  await page.locator('#username').fill('alex.staff');
+  await page.locator('#password').fill('  exact password  ');
+  await page.locator('#password').press('Enter');
+  await expect(page.locator('#branch-section')).toBeVisible();
+  expect(await page.evaluate(() => window.signinPayload.password)).toBe('  exact password  ');
+  const saved = await page.evaluate(() => localStorage.getItem('posnic.signin-names.v1'));
+  expect(JSON.parse(saved)).toEqual([{ base, names: ['alex.staff'] }]);
+  expect(saved).not.toContain('password');
+  await page.reload();
+  await expect(page.locator('#username')).toHaveValue('alex.staff');
+  await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'alex.staff');
+  await expect(page.locator('#username')).toHaveAttribute('autocomplete', 'username');
+  await expect(page.locator('#password')).toHaveAttribute('autocomplete', 'current-password');
+  await expect(page.locator('#password')).toHaveAttribute('name', 'password');
+});
+
+test('same-server setup preserves typed credentials while another server clears them', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await page.locator('#username').fill('current.staff');
+  await page.locator('#password').fill('current-secret');
+  await page.locator('#captain-change-shop').click();
+  await page.locator('#captain-address-toggle').click();
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toHaveValue('current.staff');
+  await expect(page.locator('#password')).toHaveValue('current-secret');
+  await page.evaluate(() => CaptainSignIn.remember('https://other.posnic.io/api', 'other.staff'));
+  await page.route('https://other.posnic.io/**', route => route.fulfill({ json: info }));
+  await page.locator('#captain-change-shop').click();
+  await page.locator('#captain-address-toggle').click();
+  await page.locator('#captain-server').fill('other.posnic.io');
+  await page.locator('#captain-connect').click();
+  await expect(page.locator('#username')).toHaveValue('other.staff');
+  await expect(page.locator('#password')).toHaveValue('');
+  await expect(page.locator('#saved-usernames option')).toHaveCount(1);
+  await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'other.staff');
+});
+
+test('rejected login does not enter username suggestions and repeated Enter submits once', async ({ page }) => {
+  await phone(page);
+  await fillAddress(page, base);
+  await page.locator('#captain-connect').click();
+  await page.evaluate(() => {
+    window.loginCalls = 0;
+    POSNIC.api.post = () => { window.loginCalls++; return new Promise((_resolve, reject) => {
+      window.rejectLogin = () => reject(Object.assign(new Error('Not accepted'), { status: 401 }));
+    }); };
+  });
+  await page.locator('#username').fill('mistyped');
+  await page.locator('#password').fill('wrong');
+  await page.evaluate(() => { doLogin(); doLogin(); });
+  expect(await page.evaluate(() => window.loginCalls)).toBe(1);
+  await page.evaluate(() => window.rejectLogin());
+  await expect(page.locator('#login-message')).toHaveText('Not accepted');
+  expect(await page.evaluate(() => localStorage.getItem('posnic.signin-names.v1'))).toBeNull();
+});

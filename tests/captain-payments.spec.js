@@ -17,6 +17,7 @@ async function setup(page) {
     version: 0,
     enabled: true,
     methods: ["Cash", "Card", "Upi"],
+    upiPayee: { id: "captain-test@invalid", name: "Test Branch" },
     guests: [
       { name: "Guest 1", totalMinor: 5001, paid: false },
       { name: "Guest 2", totalMinor: 5000, paid: false },
@@ -60,9 +61,14 @@ test("guest cash payment shows change and updates remaining balance; card requir
     fullPage: true,
   });
   await page.locator("#captain-payments [data-action=record]").click();
+  expect(posts).toHaveLength(0);
+  await expect(page.locator(".cp-review")).toContainText("₹9.99");
+  await page.locator("#captain-payments [data-action=record]").click();
   await expect(page.locator(".cp-balance strong")).toHaveText("₹50.00");
   expect(posts[0].amountMinor).toBe(5001);
   expect(posts[0].receivedMinor).toBe(6000);
+  await expect(page.locator(".cp-receipt")).toContainText("₹9.99");
+  await page.locator("[data-action=continue]").click();
   await page.locator("[data-method=Card]").click();
   await page.locator("#captain-payments [data-action=record]").click();
   expect(posts).toHaveLength(1);
@@ -81,6 +87,8 @@ test("uncertain request persists across closing and retries the same payment ide
     posts.push(r.request().postDataJSON());
     return r.abort("failed");
   });
+  await page.locator("#captain-payments [data-action=record]").click();
+  expect(posts).toHaveLength(0);
   await page.locator("#captain-payments [data-action=record]").click();
   await expect(page.locator(".cp-error")).toContainText(
     "do not collect the money again",
@@ -140,4 +148,73 @@ for (const code of ['ta','ur']) test(`payment controls fit a small ${code} phone
  const box=await page.locator('#captain-payments [data-action=record]').boundingBox();expect(box.y+box.height).toBeLessThanOrEqual(740);
  const text=await page.locator('#captain-payments').innerText();expect(text).not.toContain('Amount received');
  await page.screenshot({path:`test-artifacts/captain-payment-${code}.png`,fullPage:true});
+});
+
+
+test("UPI QR encodes the exact full or guest amount and requires manual receipt confirmation", async ({ page }) => {
+  const plan = await setup(page);
+  const posts = [];
+  await page.route("**/captain/v1/payments/record", r => {
+    const body = r.request().postDataJSON(); posts.push(body);
+    return r.fulfill({ json: { ...plan, dueMinor: 0, confirmed: body.request_id } });
+  });
+  await page.locator('[data-method="Upi"]').click();
+  await page.addScriptTag({ path: "node_modules/jsqr/dist/jsQR.js" });
+  const decode = () => page.evaluate(() => {
+    const c = document.querySelector('#cp-qr canvas');
+    const pixels = c.getContext('2d').getImageData(0,0,c.width,c.height);
+    return jsQR(pixels.data,c.width,c.height)?.data;
+  });
+  let uri = new URL(await decode());
+  expect(uri.searchParams.get('pa')).toBe('captain-test@invalid');
+  expect(uri.searchParams.get('pn')).toBe('Test Branch');
+  expect(uri.searchParams.get('am')).toBe('100.01');
+  expect(uri.searchParams.get('cu')).toBe('INR');
+  await page.locator('#cp-guest').selectOption('0');
+  uri = new URL(await decode());
+  expect(uri.searchParams.get('am')).toBe('50.01');
+  await page.locator('[data-action="record"]').click();
+  expect(posts).toHaveLength(0);
+  await page.locator('#cp-verified').check();
+  await page.locator('#cp-reference').fill('test-utr');
+  await page.screenshot({path:'test-artifacts/captain-upi-qr.png',fullPage:true});
+  await page.locator('[data-action="record"]').click();
+  expect(posts).toHaveLength(0);
+  await expect(page.locator(".cp-review")).toContainText("test-utr");
+  await page.locator('[data-action="record"]').click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0].amountMinor).toBe(5001);
+  expect(posts[0].upi).toEqual({...plan.upiPayee,verified:true});
+  expect(posts[0].reference).toBe('test-utr');
+});
+
+test("UPI without branch details or with foreign currency cannot collect", async ({ page }) => {
+  const plan = await setup(page);
+  for (const patch of [{upiPayee:null},{upiPayee:{id:'test@invalid',name:'Test'},currencyCode:'USD'}]) {
+    Object.assign(plan,patch);
+    await page.locator('[data-action="close"]').first().click();
+    await page.evaluate(() => CaptainPayments.open('T1'));
+    await page.locator('[data-method="Upi"]').click();
+    await expect(page.locator('#cp-qr')).toHaveCount(0);
+    await expect(page.locator('[data-action="record"]')).toBeDisabled();
+  }
+});
+
+test('payment review Back preserves entry and confirmation is blocked while saving',async({page})=>{
+ const plan=await setup(page);const posts=[];let complete;
+ await page.route('**/captain/v1/payments/record',async r=>{const body=r.request().postDataJSON();posts.push(body);await new Promise(resolve=>complete=resolve);return r.fulfill({json:{...plan,dueMinor:0,confirmed:body.request_id}});});
+ await page.locator('#cp-received').fill('120');
+ await page.locator('[data-action=record]').click();
+ await expect(page.locator('.cp-review')).toContainText('₹19.99');expect(posts).toHaveLength(0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page.locator('#cp-received')).toHaveValue('120');
+ await page.locator('[data-action=record]').click();
+ await page.emulateMedia({colorScheme:'dark'});
+ await page.screenshot({path:'test-artifacts/payment-review-dark.png',fullPage:true});
+ await page.locator('[data-action=record]').click();
+ await expect.poll(()=>posts.length).toBe(1);
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:back',{cancelable:true})));
+ await expect(page.locator('#captain-payments')).toBeVisible();
+ await expect(page.locator('[data-action=record]')).toBeDisabled();
+ complete();await expect(page.locator('#captain-payments')).toContainText('Payment recorded');
 });

@@ -169,11 +169,11 @@ for (const code of ["ta", "hi", "ar", "ur", "ja", "zh-CN"]) {
     await expect(page.locator("#posnic-unsent-text")).toHaveText(
       words["{0} order saved · Not sent to kitchen"].replace("{0}", "1"),
     );
-    await page.locator("#posnic-unsent-details summary").click();
+    await page.locator('#posnic-unsent a[href="pending.html"]').click();
     await expect(page.locator("#posnic-unsent-rows strong")).toContainText(
       words["Waiting to send"],
     );
-    await page.locator("#posnic-unsent-details summary").click();
+    await page.locator("#pending-back").click();
     await page.screenshot({
       path: `test-artifacts/captain-${code}-pending.png`,
       fullPage: true,
