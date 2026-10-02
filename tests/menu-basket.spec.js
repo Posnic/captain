@@ -6,10 +6,11 @@ test('tablet basket follows selected items and notes without stealing search foc
   await expect(page.locator('#cart-sheet-body')).toBeVisible();
   await page.locator('#product-search-input').fill('coffee');
   await page.locator('.btn-add[data-id="p-coffee"]').click();
-  await expect(page.locator('#product-search-input')).toHaveValue('');
+  await expect(page.locator('#product-search-input')).toHaveValue('coffee');
   await expect(page.locator('.menu-basket-lines')).toContainText('1 × Coffee');
   await page.evaluate(async()=>{await setCartItemNotes('p-coffee','No sugar <script>');await updateCart();});
   await expect(page.locator('.menu-basket-lines li').filter({hasText:'Coffee'})).toContainText('No sugar <script>');
+  await page.locator('#product-search-input').pressSequentially('dosa');
   await page.locator('.btn-add[data-id="p-dosa"]').click();
   await expect(page.locator('.menu-basket-lines li')).toHaveCount(2);
   await expect(page.locator('.menu-basket-total')).toContainText('130');

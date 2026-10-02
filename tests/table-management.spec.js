@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { onTheMenu } from './support/shop.js';
 const initial = {id:'table-1',tableorder_value:'T1',capacity:4,max_capacity:6,area:'Garden',shape:'round',version:0,status:'available',orders:[]};
-async function open(page,canManage=true,overrides={}) {
+async function open(page,canManage=true,overrides={},cleaningEnabled=false) {
  await onTheMenu(page,'nothing');
  let row={...initial,...overrides},conflict=false;const posts=[];
  await page.route('**/captain/v1/tables**',async route=>{
   const request=route.request();
-  if(request.method()==='GET')return route.fulfill({json:{canManage,tables:[row]}});
+  if(request.method()==='GET')return route.fulfill({json:{canManage,cleaningEnabled,tables:[row]}});
   const body=request.postDataJSON();posts.push(body);
   if(conflict)return route.fulfill({status:409,json:{message:'Table changed. Refresh and try again.'}});
   row={...row,...body,version:row.version+1};if(request.url().endsWith('/close'))row={...row,status:body.afterClose||'available',orders:[],closing:null};return route.fulfill({json:row});
@@ -23,7 +23,7 @@ test('manager saves table details, cancels edits, and returns to account',async(
  await expect(page.locator('[data-table]')).toBeVisible();await page.locator('#tables-back').click();await expect(page).toHaveURL(/me.html#preferences$/);
 });
 test('staff can mark cleaning without gaining table settings access',async({page})=>{
- const {posts}=await open(page,false);await expect(page.locator('[data-action=add]')).toHaveCount(0);
+ const {posts}=await open(page,false,{},true);await expect(page.locator('[data-action=add]')).toHaveCount(0);
  await page.locator('[data-table]').click();await expect(page.locator('#table-edit-form')).toHaveCount(0);
  await page.locator('[data-status=cleaning]').click();await expect(page.locator('[data-table]')).toContainText('Cleaning');
  expect(posts[0]).toEqual({id:'table-1',version:0,status:'cleaning'});
@@ -48,7 +48,7 @@ test('table management fits a narrow phone and a portrait tablet',async({page})=
 });
 
 test('staff review closure separately and make the table available only after cleaning',async({page})=>{
- const {posts}=await open(page,false,{status:'occupied',orders:[{id:'paid-order',paid:true,guests:2}]});
+ const {posts}=await open(page,false,{status:'occupied',orders:[{id:'paid-order',paid:true,guests:2}]},true);
  await page.locator('[data-table]').click();await page.locator('[data-action=close-review]').click();
  await expect(page.locator('#table-after-close')).toHaveValue('available');await page.locator('#table-after-close').selectOption('cleaning');expect(posts).toHaveLength(0);
  await page.locator('[data-action=back]').click();await expect(page.locator('[data-action=close-review]')).toBeVisible();
