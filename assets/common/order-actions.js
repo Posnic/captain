@@ -24,6 +24,7 @@
   }
   async function save(body) {
     const request={...body};
+    const authority=POSNIC.session?.base || POSNIC.server?.baseUrl;
     for(let attempt=0;attempt<4;attempt++){
       try{return await POSNIC.api.post('/sales/updateOrder',request);}
       catch(error){
@@ -39,6 +40,18 @@
           const result=await POSNIC.api.post('/authorizations/verify-pin',{pin,action,sale_id:request.order_id});
           if(!result.data?.approval_token)throw new Error(result.message||t('Manager approval required.'));
           request.approval_tokens={...request.approval_tokens,[action]:result.data.approval_token};continue;
+        }
+        if(request.status==='cancelled' && request.order_id){
+          try {
+            // A failed acknowledgement is not proof that the write failed.
+            // Read this exact sale; never infer cancellation from an empty floor.
+            const result=await POSNIC.api.get('/sales/'+encodeURIComponent(request.order_id));
+            const sale=result?.data;
+            if(authority===(POSNIC.session?.base || POSNIC.server?.baseUrl) &&
+              result?.type==='success' && String(sale?._id || sale?.id)===String(request.order_id) &&
+              sale.sale_process==='cancelled' && sale.payment_status==='Cancelled')
+              return {type:'success',message:'Order cancelled',data:{order_id:request.order_id}};
+          } catch { /* Preserve the original failure unless the server confirms cancellation. */ }
         }
         throw error;
       }

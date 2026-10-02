@@ -1,5 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { onTheMenu } from "./support/shop.js";
+
+test('a payment conflict shows the server reason without claiming the server is offline', async ({ page }) => {
+  await onTheMenu(page, 'nothing');
+  await page.goto('/kot-management.html');
+  await page.waitForFunction(() => !!window.CaptainPayments);
+  await page.route('**/captain/v1/payments/table', r => r.fulfill({ status: 409, json: { error: { message: 'Refresh the table payment details.' } } }));
+  await page.evaluate(() => CaptainPayments.open('6'));
+  await expect(page.locator('#captain-payments')).toContainText('Refresh the table payment details.');
+  await expect(page.locator('#captain-payments')).not.toContainText('Connect to the shop server');
+});
+
 async function setup(page) {
   await onTheMenu(page, "nothing");
   await page.route("**/captain/v1/payment-options", (r) =>

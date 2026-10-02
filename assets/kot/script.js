@@ -904,6 +904,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async function() {
             if (!cancelKotId) return;
+            let cancellationConfirmed = false;
             
             try {
                 /*
@@ -943,6 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.type !== 'success') {
                     throw new Error(result.message || 'Could not cancel the order');
                 }
+                cancellationConfirmed = true;
                 
                 // Close modal
                 const modalElement = document.getElementById('cancelOrderModal');
@@ -960,12 +962,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Refresh only the tables list
                 setTimeout(async () => {
-                    await loadTables();
+                    try { await loadTables(); }
+                    catch (error) { console.error('Could not refresh tables after cancellation:', error); }
                 }, 500);
                 
             } catch (error) {
                 console.error('Error cancelling order:', error);
-                showToast('Could not cancel the order', 'error');
+                showToast(cancellationConfirmed ? 'Order cancelled' : 'Could not cancel the order',
+                    cancellationConfirmed ? 'success' : 'error');
             } finally {
                 /* Whatever happened, the button goes back to being a button.
                    A confirm dialog left saying "Cancelling..." for ever is a
