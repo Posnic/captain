@@ -113,7 +113,13 @@
           (row) => String(row.tableorder_value) === table,
         );
         if (area && metadata?.area !== area) continue;
+        // A pending order must not also appear as an available/clean table.
+        // Keep any accepted active ticket, but replace the empty-table card.
+        const empty = shown.findIndex(card =>
+          card.dataset.tableNumber === table && card.dataset.awaitingClose === 'true');
+        if (empty >= 0) shown.splice(empty, 1);
         const card = element("a", "floor-card");
+        card.dataset.tableNumber = table;
         card.classList.add("is-pending");
         card.href = "pending.html";
         card.dataset.awaitingClose = "true";

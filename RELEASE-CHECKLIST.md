@@ -45,3 +45,13 @@ replaces the endless table-cache wait with a download and Retry action. It adds
 browser coverage for native session storage and menu failure/recovery.
 The reported Azure phone failure was not reproduced on a connected Android
 device; its underlying cause remains unconfirmed.
+
+## Checkout price contract
+
+Run `tests/checkout-selling-price.spec.js` with `POS_CHECKOUT_PAYLOAD` set to an
+output JSON file. Set `POS_API_ROOT` to the compatible POS checkout's `api`
+directory, then run `node scripts/test-pos-checkout-contract.cjs <output JSON>`.
+This creates a disposable database and checks the browser's actual checkout
+payload against POS pricing, table occupancy, kitchen delivery and duplicate
+protection. It never connects to a restaurant database. Repeat for pricing
+changes; a mock returning success for any order is not acceptance evidence.

@@ -3,7 +3,8 @@
   "use strict";
   let flight,
     timer,
-    lastError = "";
+    lastError = "",
+    priceReviewKey = null;
   const ID = "posnic-unsent";
   const buttonStyle = 'min-height:44px;padding:8px 14px;border:1px solid var(--line,#cbd5e1);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#334155);font:600 14px system-ui;cursor:pointer;';
   const failure = (message, code) =>
@@ -74,6 +75,13 @@
     return el;
   }
   function render() {
+    // Connection events must not replace a price review while staff read it.
+    // A lock or account change still hides the original user's order.
+    if (priceReviewKey) {
+      const row = OrderQueue.all().find(order => order.key === priceReviewKey);
+      if (row && POSNIC.session.active && !window.CaptainAccess?.locked && ownerMatches(row)) return;
+      priceReviewKey = null;
+    }
     const el = bar();
     let rows;
     try {
@@ -128,6 +136,70 @@
         row.message || "Saved on this phone · Not sent to kitchen";
       card.append(title, items, message);
       if (row.state === "attention") {
+        if (/price changed or does not match this selling channel/.test(row.message || '')) {
+          const review = document.createElement('button');
+          review.type = 'button';
+          review.textContent = 'Reload menu';
+          review.style.cssText = buttonStyle;
+          review.onclick = async () => {
+            review.disabled = true;
+            priceReviewKey = row.key;
+            clearTimeout(timer);
+            try {
+              const response = await POSNIC.api.post('/items/accessQr', {branch: row.branch || row.body.branch});
+              if (response?.type !== 'success' || !Array.isArray(response.data?.products))
+                throw new Error('Could not load the menu');
+              const menu = response.data.products.flatMap(category => category.items || []);
+              const changes = [];
+              const items = row.body.items.map(line => {
+                const product = menu.find(p => String(p.id?.$oid || p.id) === String(line.item_id));
+                if (!product || product.quote_required || product.open_price || product.price_mode !== 'fixed')
+                  throw new Error('The server rejected this order. Ask your manager to review it.');
+                let price = Number(product.price);
+                if (!Number.isFinite(price)) throw new Error('Could not load the menu');
+                for (const choice of line.modifiers || []) {
+                  const option = product.modifier_groups?.find(g => g.name === choice.group)?.options?.find(o => o.name === choice.name);
+                  if (!option) throw new Error('The server rejected this order. Ask your manager to review it.');
+                  price += Number(option.price_delta) || 0;
+                }
+                changes.push(`${line.item_name}: ${line.item_price} → ${price}`);
+                return {...line, item_price: price, item_subtotal: price * line.item_quantity};
+              });
+              const summary = document.createElement('p');
+              summary.textContent = changes.join('; ');
+              const confirm = document.createElement('button');
+              confirm.type = 'button';
+              confirm.textContent = 'Retry this order';
+              confirm.style.cssText = buttonStyle;
+              confirm.onclick = async () => {
+                confirm.disabled = true;
+                // Only an explicit, definite validation refusal permits this
+                // correction. Preserve the key: an accepted retry cannot duplicate.
+                if (!ownerMatches(row) || !OrderQueue.update(row.key, {body: {...row.body, items}, state: 'waiting', message: '', nextAt: 0})) {
+                  message.textContent = 'Could not finish saving this order. Keep the app data and retry.';
+                  confirm.disabled = false;
+                  return;
+                }
+                await flush(true, row.key);
+              };
+              priceReviewKey = row.key;
+              clearTimeout(timer);
+              const cancel = document.createElement('button');
+              cancel.type = 'button';
+              cancel.textContent = 'Cancel';
+              cancel.style.cssText = buttonStyle;
+              cancel.onclick = () => { priceReviewKey = null; render(); schedule(); };
+              card.querySelectorAll('button').forEach(button => { button.hidden = true; });
+              card.append(summary, confirm, cancel);
+            } catch (error) {
+              priceReviewKey = null;
+              message.textContent = error.message;
+              review.disabled = false;
+              schedule();
+            }
+          };
+          card.append(review);
+        }
         const retry = document.createElement("button");
         retry.type = "button";
         retry.textContent = "Retry this order";
@@ -152,6 +224,8 @@
     }
   }
   function flush(manual = false, key) {
+    if (priceReviewKey && !key) return Promise.resolve();
+    if (key) priceReviewKey = null;
     if (flight) return flight;
     flight = (async () => {
       try {

@@ -9,6 +9,9 @@
     const identity = () => JSON.stringify([POSNIC.session?.shopKey, POSNIC.session?.user?.id, localStorage.getItem('branch_id'), POSNIC.session?.base || POSNIC.server?.baseUrl]);
     const durableGuests = () => !!(order()?.seating_request_id || legacyGuestSupported || (order() && CaptainGuestUpdate.pending(order()._id)));
     const historyKey = 'captainOrderEditor';
+    let historyClosing = false;
+    const closeWaiters = [];
+    const closed = () => { historyClosing = false; closeWaiters.splice(0).forEach(resolve => resolve()); };
     const selected = name => document.querySelector('input[name="' + name + '"]:checked');
     const order = () => orderBeingModified();
     function details() {
@@ -338,6 +341,7 @@
             ownsHistory = true;
         });
         window.addEventListener('popstate', () => {
+            if (historyClosing) { closed(); return; }
             if (!ownsHistory || !modal.classList.contains('show')) return;
             ownsHistory = false;
             bootstrap.Modal.getInstance(modal)?.hide();
@@ -366,7 +370,8 @@
         });
         modal.addEventListener('hidden.bs.modal', () => {
             resetPrice();
-            if (ownsHistory && history.state?.[historyKey]) { ownsHistory = false; history.back(); }
+            if (ownsHistory && history.state?.[historyKey]) { ownsHistory = false; historyClosing = true; history.back(); }
+            else { ownsHistory = false; closed(); }
             initial = null;
             setOrderBeingModified(null);
             if (!byId('orderDetailsModal')?.classList.contains('show')) currentOrderId = null;
@@ -374,6 +379,7 @@
         });
     });
     window.OrderEditor = {
+        whenClosed() { return ownsHistory || historyClosing ? new Promise(resolve => closeWaiters.push(resolve)) : null; },
         begin, refresh, typeChanged,
         isAdded: item => initial !== null && !originalLines.has(item),
         setSaving(value) { saving = value; refresh(); },

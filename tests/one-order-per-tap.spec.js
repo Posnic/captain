@@ -339,8 +339,9 @@ for (const stall of ['fetch', 'body']) {
     // A settled failed attempt is recorded; a stuck flight never gets this far.
     await expect.poll(() => page.evaluate(() => OrderQueue.all()[0]?.nextAt), { timeout: 15000 }).toBeGreaterThan(0);
     await page.evaluate(() => sessionStorage.removeItem('stall-kitchen'));
-    await page.locator('#posnic-unsent a[href="pending.html"]').click();
-    await page.getByRole('button', { name: 'Retry now', exact: true }).click();
+    // Delivery resumes automatically. It may finish before a manual Retry
+    // click, so assert the outcome instead of racing a correctly hidden button.
+    await page.goto('/pending.html');
     await expect.poll(() => page.evaluate(() => OrderQueue.count())).toBe(0);
     expect(orders.length).toBe(2);
     expect(orders.every(order => order.idempotencyKey === key)).toBe(true);
@@ -355,6 +356,7 @@ for (const width of [320, 768]) {
     await page.locator("#next-btn").click();
     await expect(page).toHaveURL(/kot-management\.html$/);
     await expect.poll(() => page.evaluate(() => window.OrderQueue?.count())).toBe(1);
+    await page.waitForFunction(() => window.POSNIC_ORDER_QUEUE_UI);
     await page.evaluate(() => {
       const rows = OrderQueue.all();
       const foreign = structuredClone(rows[0]);

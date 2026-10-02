@@ -449,6 +449,21 @@ test('pricing deadline allows retry and ignores a late timed-out result',async({
 });
 
 
+test('transfer waits for delayed editor history cleanup before opening',async({page})=>{
+ await editor(page);
+ await page.evaluate(()=>{
+  const original=history.back.bind(history);
+  history.back=()=>{window.finishEditorHistory=()=>{history.back=original;original();};};
+ });
+ await page.locator('#cancel-order-changes').click();
+ await page.waitForFunction(()=>typeof window.finishEditorHistory==='function');
+ await page.evaluate(()=>{void CaptainTransferScreen.open({_id:'a'.repeat(24),kitchen_rounds:[{items:[{id:'line',name:'Corn',quantity:1,served:0}]}]});});
+ await expect(page.locator('.transfer-screen')).not.toBeVisible();
+ await page.evaluate(()=>window.finishEditorHistory());
+ await expect(page.locator('.transfer-screen')).toBeVisible();
+ await expect(page.locator('.transfer-screen [data-quantity]')).toHaveValue('0');
+});
+
 test('transfer screen selects preparations, reviews destination and confirms once',async({page})=>{
  await editor(page);await page.locator('#cancel-order-changes').click();
  const source='a'.repeat(24),table='b'.repeat(24),target='c'.repeat(24),writes=[];
