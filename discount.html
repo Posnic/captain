@@ -501,6 +501,24 @@
              *
              * Ported from Table_Order, where it was written first.
              */
+            // Menu metadata is cached; table service state can change at the till
+            // without a menu refresh. Read it before offering a table to staff.
+            try {
+                const live = await POSNIC.api.get('/captain/v1/tables');
+                if (Array.isArray(live?.tables)) {
+                    tableorders = tableorders.map(table => {
+                        const current = live.tables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
+                        if (!current) return table;
+                        return {...table, service_state: current.closing ? 'held' :
+                            (current.status === 'occupied' ? 'available' : current.status || table.service_state)};
+                    });
+                }
+            } catch (error) {
+                // Older servers still enforce availability when accepting orders.
+                console.warn('Could not refresh table service state:', error.message);
+            }
+            if (generation !== tableLoadGeneration) return;
+
             let occupiedTables = [];
             let openPerTable = {};
             let tableOrderLimit = 1;
