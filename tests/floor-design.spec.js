@@ -65,6 +65,13 @@ for (const width of [320, 768])
     await page.goto("/kot-management.html");
     await expect(page.locator(".floor-ready")).toHaveText("Ready");
     await expect(page.locator(".floor-card")).toHaveCount(2);
+    const gap = await page.evaluate(() =>
+      document.querySelector('.floor-section').getBoundingClientRect().top -
+      document.querySelector('.floor-head').getBoundingClientRect().bottom);
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(12);
+    await expect(page.getByRole('link', {name: 'Message kitchen'})).toHaveAttribute('href', 'kitchen-message.html');
+
     await page.locator("[data-floor-filter=ready]").click();
     await expect(page.locator(".floor-card")).toHaveCount(1);
     await expect(page.locator(".floor-name")).toHaveText("2");
@@ -72,7 +79,7 @@ for (const width of [320, 768])
     await expect(page.locator(".floor-card")).toHaveCount(3);
     await page.locator("#floor-area").selectOption("Main");
     await expect(page.locator(".floor-card")).toHaveCount(2);
-    await page.locator("#floor-shapes").click();
+    await expect(page.locator("#floor-shapes")).toHaveCount(0);
     await expect(page.locator(".floor-table-shape")).toHaveCount(2);
     await expect(
       page.locator('.floor-card[data-table-number="3"]'),
@@ -118,7 +125,7 @@ test("saved orders stay grey on the floor and the navigation count excludes othe
       key: "pending-own",
       body: { kiosk_table_no: "7", items: [] },
     });
-    OrderQueue.update("pending-own", { state: "attention" });
+    OrderQueue.update("pending-own", { state: "attention", message: "Table is unavailable" });
     const rows = OrderQueue.all();
     rows.push({
       ...rows[0],
@@ -131,6 +138,8 @@ test("saved orders stay grey on the floor and the navigation count excludes othe
   });
   await expect(page.locator(".floor-card.is-pending")).toHaveCount(1);
   await expect(page.locator(".floor-card.is-pending")).toContainText("7");
+  await expect(page.locator(".floor-card.is-pending")).toContainText("Table is unavailable");
+  await expect(page.locator(".floor-card.is-pending")).toContainText("Needs attention");
   await expect(page.locator(".navigation-count")).toHaveText("1");
   await expect(page.getByText("Private table")).toHaveCount(0);
   await expect(page.locator("#no-orders-message")).toBeHidden();

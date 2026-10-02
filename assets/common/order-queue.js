@@ -168,11 +168,13 @@
     return flight;
   }
 
-  async function drain(send, { force = false, key, now = Date.now } = {}) {
+  async function drain(send, { force = false, key, eligible = () => true, now = Date.now } = {}) {
     const rows = read();
     let sent = 0;
 
     for (const row of rows) {
+      // Another staff member or shop must neither send nor block this queue.
+      if (!eligible(row)) continue;
       if (row.held) break;
       if (key && row.key !== key) continue;
       if (row.state === "attention" && key !== row.key) continue;
