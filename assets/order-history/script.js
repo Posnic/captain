@@ -1616,6 +1616,7 @@ function cancelOrder(orderId) {
 async function performCancelOrder(orderId) {
     const order = allOrders.find(o => o._id === orderId);
     if (!order) return;
+    let cancellationConfirmed = false;
 
     showLoader();
     try {
@@ -1627,6 +1628,7 @@ async function performCancelOrder(orderId) {
         });
 
         if (data.type === 'success') {
+            cancellationConfirmed = true;
             const idx = allOrders.findIndex(o => o._id === orderId);
             if (idx !== -1) {
                 allOrders[idx].status = 'cancelled';
@@ -1646,7 +1648,8 @@ async function performCancelOrder(orderId) {
         }
     } catch (e) {
         console.error('Error cancelling order:', e);
-        showToast('Could not cancel the order: ' + e.message, 'error');
+        showToast(cancellationConfirmed ? 'Order cancelled' : 'Could not cancel the order: ' + e.message,
+            cancellationConfirmed ? 'success' : 'error');
     } finally {
         hideLoader();
     }

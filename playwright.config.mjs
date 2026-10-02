@@ -1,4 +1,6 @@
 import { defineConfig } from '@playwright/test';
+const testPort = Number(process.env.CAPTAIN_TEST_PORT || 41731);
+if (!Number.isInteger(testPort) || testPort < 1024 || testPort > 65535) throw new Error('Invalid CAPTAIN_TEST_PORT');
 
 export default defineConfig({
   testDir: './tests',
@@ -11,7 +13,7 @@ export default defineConfig({
   workers: process.env.CAPTAIN_TEST_WORKERS ? Number(process.env.CAPTAIN_TEST_WORKERS) : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://127.0.0.1:41731',
+    baseURL: `http://127.0.0.1:${testPort}`,
     /* Edge is what is installed on the desk this is developed at. A CI
        runner has Playwright's own Chromium and no Edge, and naming a channel
        it cannot find fails before a single test runs. */
@@ -36,9 +38,9 @@ export default defineConfig({
     /* `npm.cmd` exists on Windows and nowhere else, so this ran at the desk
        and failed on a runner with "npm.cmd: not found" - the same shape of
        bug as the hard-coded gradlew.bat in build-apk.js. */
-    command: `${process.platform === 'win32' ? 'npm.cmd' : 'npm'} run dev -- --host 127.0.0.1 --port 41731`,
-    url: 'http://127.0.0.1:41731/index.html',
-    reuseExistingServer: true,
+    command: `${process.platform === 'win32' ? 'npm.cmd' : 'npm'} run dev -- --host 127.0.0.1 --port ${testPort} --strictPort`,
+    url: `http://127.0.0.1:${testPort}/index.html`,
+    reuseExistingServer: !process.env.CAPTAIN_TEST_PORT,
     timeout: 120_000
   }
 });
