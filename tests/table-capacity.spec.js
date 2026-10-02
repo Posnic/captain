@@ -17,7 +17,7 @@ test('seating shows capacity and excludes tables that cannot hold the party',asy
  await expect(page.locator('.table-seat-info').filter({hasText:'Main'})).toContainText('Maximum seats: 6');
 });
 
-test('seating filters dining areas and reviews extra chairs before continuing',async({page})=>{
+test('table and pax selection goes directly to items without a second confirmation',async({page})=>{
  await onTheMenu(page,'nothing');await page.evaluate(()=>localStorage.setItem('kiosk_tableorders',JSON.stringify([
   {id:'garden',tableorder_value:'G1',capacity:2,max_capacity:4,area:'Garden'},
   {id:'inside',tableorder_value:'M1',capacity:4,max_capacity:4,area:'Main'}
@@ -26,15 +26,13 @@ test('seating filters dining areas and reviews extra chairs before continuing',a
  for(let i=0;i<2;i++)await page.locator('#pax_more').click();
  await page.locator('[data-area=Garden]').click();await expect(page.locator('[data-area=Garden]')).toBeFocused();await expect(page.locator('label[for=table_M1]')).not.toBeVisible();
  await page.locator('label[for=table_G1]').click();await page.locator('[onclick="goToProductsWithTableCheck()"]').click();
- await expect(page.locator('#seat-confirmation')).toBeVisible();await expect(page.locator('#seat-confirmation')).toContainText('Extra chairs needed');
- await page.locator('#seat-confirmation footer button[value=cancel]').click();await expect(page).toHaveURL(/discount.html/);await expect(page.locator('[name=table_no][value=G1]')).toBeChecked();
- await page.locator('[onclick="goToProductsWithTableCheck()"]').click();await page.locator('#seat-confirmation button[value=continue]').click();await expect(page).toHaveURL(/products.html/);
+ await expect(page).toHaveURL(/products.html/);await expect(page.locator('#seat-confirmation')).toHaveCount(0);
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('3');expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('G1');
 });
-test('native back cancels the seating review before leaving the page',async({page})=>{
+test('native back returns from table selection to the floor without a review dialog',async({page})=>{
  await onTheMenu(page,'nothing');await page.goto('/discount.html');
- await page.evaluate(()=>{void CaptainTables.confirmSeating({table:{tableorder_value:'T1',capacity:2,max_capacity:2},guests:2});});
- await page.evaluate(()=>window.dispatchEvent(new CustomEvent('captain:back',{cancelable:true})));await expect(page.locator('#seat-confirmation')).toHaveCount(0);await expect(page).toHaveURL(/discount.html/);
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('captain:back',{cancelable:true})));
+ await expect(page).toHaveURL(/kot-management.html/);
 });
 
 test('seating uses portrait tablet space and keeps guest count before the table list',async({page})=>{

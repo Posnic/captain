@@ -87,18 +87,6 @@
     areaBar.onclick=event=>{const button=event.target.closest('[data-area]');if(!button)return;area=button.dataset.area;areaFilter();};
     document.querySelectorAll('[data-dining-area]').forEach(node=>node.hidden=!!area&&node.dataset.diningArea!==area);
   }
-  function confirmSeating({table,guests}) {
-    if(document.getElementById('seat-confirmation'))return Promise.resolve(false);
-    const prior=document.activeElement,dialog=document.createElement('dialog');dialog.id='seat-confirmation';dialog.className='seat-confirmation';dialog.setAttribute('aria-labelledby','seat-confirmation-title');
-    dialog.innerHTML=`<form method="dialog"><header><h2 id="seat-confirmation-title">${esc(t('New order'))}</h2><button type="submit" value="cancel" aria-label="${esc(t('Back'))}">×</button></header><div class="seat-confirmation-body"><h3 translate="no">${esc(table.tableorder_value)}</h3><p>${esc(t('Guests'))}: <strong translate="no">${esc(guests)}</strong></p><p translate="no">${esc(description(table))}</p>${metadata(table).capacity&&guests>metadata(table).capacity?`<p class="seat-extra-chairs">${esc(t('Extra chairs needed'))}</p>`:''}</div><footer><button type="submit" value="cancel" class="profile-secondary">${esc(t('Cancel'))}</button><button type="submit" value="continue" class="profile-primary">${esc(t('Continue'))}</button></footer></form>`;
-    document.body.append(dialog);
-    return new Promise(resolve=>{
-      const back=event=>{event.preventDefault();event.stopImmediatePropagation();dialog.close('cancel');};
-      window.addEventListener('captain:back',back,true);
-      dialog.addEventListener('close',()=>{window.removeEventListener('captain:back',back,true);const confirmed=dialog.returnValue==='continue';dialog.remove();prior?.focus({preventScroll:true});resolve(confirmed);},{once:true});
-      dialog.showModal();
-    });
-  }
   window.CaptainTables = {
     metadata,
     fits,
@@ -106,7 +94,6 @@
     cached,
     updateChoices,
     areaFilter,
-    confirmSeating,
     esc,
   };
 })();

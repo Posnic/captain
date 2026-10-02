@@ -180,9 +180,7 @@
         </div>
     </div>
     <script>
-        let seatingInProgress = false;
         async function goToProductsWithTableCheck() {
-            if(seatingInProgress)return;
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -224,6 +222,11 @@
                 return;
             }
 
+            if (orderType === 'Dine-in' && tableRadio?.disabled) {
+                showErrorPopup('Please select a table.');
+                return;
+            }
+
             // ✅ Validation: discount should not exceed original total
             const originalTotal = window.discountOriginalTotal || 0;
             if (originalTotal <= 0 && (percentage > 0 || amount > 0)) {
@@ -250,17 +253,6 @@
                 return;
             }
 
-
-            if(orderType === 'Dine-in') {
-                seatingInProgress=true;
-                let confirmed=false;
-                try {confirmed=await CaptainTables.confirmSeating({table:chosenTable || {tableorder_value:tableNo},guests:personCount});}
-                finally {seatingInProgress=false;}
-                if(!confirmed)return;
-                if((tableRadio && tableRadio.disabled) || (CaptainTables.cached(tableNo) && !CaptainTables.fits(CaptainTables.cached(tableNo),personCount))) {
-                    showErrorPopup('Choose a table with enough seats.');return;
-                }
-            }
 
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
@@ -1102,7 +1094,7 @@
         function goBackToKot() {
             window.location.href = 'kot-management.html';
         }
-        window.addEventListener('captain:back', event => {if(document.querySelector('#seat-confirmation[open]'))return;event.preventDefault();goBackToKot();});
+        window.addEventListener('captain:back', event => {event.preventDefault();goBackToKot();});
     </script>
 </body>
 
