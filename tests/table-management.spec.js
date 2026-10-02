@@ -9,7 +9,7 @@ async function open(page,canManage=true,overrides={}) {
   if(request.method()==='GET')return route.fulfill({json:{canManage,tables:[row]}});
   const body=request.postDataJSON();posts.push(body);
   if(conflict)return route.fulfill({status:409,json:{message:'Table changed. Refresh and try again.'}});
-  row={...row,...body,version:row.version+1};if(request.url().endsWith('/close'))row={...row,status:'cleaning',orders:[],closing:null};return route.fulfill({json:row});
+  row={...row,...body,version:row.version+1};if(request.url().endsWith('/close'))row={...row,status:body.afterClose||'available',orders:[],closing:null};return route.fulfill({json:row});
  });
  await page.goto('/tables.html');await expect(page.locator('[data-table]')).toBeVisible();
  return {posts,conflict(){conflict=true;row={...row,version:2,capacity:5};}};
@@ -50,9 +50,9 @@ test('table management fits a narrow phone and a portrait tablet',async({page})=
 test('staff review closure separately and make the table available only after cleaning',async({page})=>{
  const {posts}=await open(page,false,{status:'occupied',orders:[{id:'paid-order',paid:true,guests:2}]});
  await page.locator('[data-table]').click();await page.locator('[data-action=close-review]').click();
- await expect(page.locator('#table-management-content')).toContainText('mark this table for cleaning');expect(posts).toHaveLength(0);
+ await expect(page.locator('#table-after-close')).toHaveValue('available');await page.locator('#table-after-close').selectOption('cleaning');expect(posts).toHaveLength(0);
  await page.locator('[data-action=back]').click();await expect(page.locator('[data-action=close-review]')).toBeVisible();
- await page.locator('[data-action=close-review]').click();await page.locator('[data-action=close-confirm]').click();
+ await page.locator('[data-action=close-review]').click();await page.locator('#table-after-close').selectOption('cleaning');await page.locator('[data-action=close-confirm]').click();
  await expect(page.locator('[data-table]')).toContainText('Cleaning');expect(posts[0].orderIds).toEqual(['paid-order']);expect(posts[0].request_id).toBeTruthy();
  await page.locator('[data-table]').click();await page.locator('[data-status=available]').click();await expect(page.locator('[data-table]')).toContainText('Available');
 });
@@ -88,14 +88,14 @@ test('closing from a combined member reviews the group and sends the primary tab
  let rows=[{...initial,status:'occupied',orders,seating},{...initial,id:'table-2',tableorder_value:'T2',version:7,status:'occupied',orders,seating}];
  await page.route('**/captain/v1/tables**', async route=>{
   if(route.request().method()==='GET')return route.fulfill({json:{canManage:true,tables:rows}});
-  posts.push(route.request().postDataJSON());rows=rows.map(row=>({...row,seating:null,orders:[],status:'cleaning'}));return route.fulfill({json:rows[0]});
+  posts.push(route.request().postDataJSON());rows=rows.map(row=>({...row,seating:null,orders:[],status:posts.at(-1).afterClose}));return route.fulfill({json:rows[0]});
  });
  await page.goto('/tables.html');await page.locator('[data-table="table-2"]').click();
  await expect(page.locator('[data-action=edit-table]')).toHaveCount(0);
  await page.locator('[data-action=close-review]').click();
  await expect(page.locator('#table-management-content h3')).toHaveText('T1 + T2');
  await page.locator('[data-action=close-confirm]').click();
- await expect(page.locator('[data-table="table-2"]')).toContainText('Cleaning');
+ await expect(page.locator('[data-table="table-2"]')).toContainText('Available');
  expect(posts[0]).toMatchObject({id:'table-1',version:0,orderIds:['paid-order']});
 });
 
