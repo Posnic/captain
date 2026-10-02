@@ -498,9 +498,10 @@
             try {
                 const live = await POSNIC.api.get('/captain/v1/tables');
                 if (Array.isArray(live?.tables)) {
+                    const liveTables = CaptainTables.liveRows(live);
                     tableorders = tableorders.map(table => {
-                        const current = live.tables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
-                        if (!current) return table;
+                        const current = liveTables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
+                        if (!current) return {...table, service_state: CaptainTables.serviceState(table.service_state, live.cleaningEnabled)};
                         return {...table, service_state: current.closing ? 'held' :
                             (current.status === 'occupied' ? 'available' : current.status || table.service_state)};
                     });

@@ -163,10 +163,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Scrolling, keyboard resize and pointer hover must not end a search.
     // Only an explicit focus change or the keyboard's own dismissal does.
     let pointerStart = null;
-    const menuTarget = target => ({
-        row: target.closest?.('.dish, .frequent-card') || null,
-        action: target.closest?.('button, a') || null,
-    });
+    const menuTarget = target => {
+        const row = target.closest?.('.dish, .frequent-card') || null;
+        const action = target.closest?.('button, a') || null;
+        return {
+            row, action,
+            itemId: row?.dataset.id,
+            addAction: action?.matches('.btn-add') ? 'add' :
+                action?.matches('.btn-increase') ? 'increase' : null,
+        };
+    };
     document.addEventListener('pointerdown', event => {
         pointerStart = menuTarget(event.target);
         // Adding a result or clearing a query should not collapse the keyboard
@@ -184,7 +190,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Keyboard/assistive activation has no pointer gesture to compare.
         if (!start || event.detail === 0) return;
         const end = menuTarget(event.target);
-        if (end.row && (start.row !== end.row || start.action !== end.action)) {
+        // A menu refresh may replace the DOM nodes without changing the dish
+        // or action under the finger. Preserve that tap, but never redirect it
+        // to another dish or from Add to a different control.
+        const sameAdd = start.itemId && start.itemId === end.itemId &&
+            start.addAction && start.addAction === end.addAction;
+        if (end.row && !sameAdd && (start.row !== end.row || start.action !== end.action)) {
             event.preventDefault();
             event.stopImmediatePropagation();
         }

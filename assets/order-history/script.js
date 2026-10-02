@@ -1067,7 +1067,7 @@ async function refreshMoveTables() {
         moveLegacySupported = result.capabilities?.legacySourceMove === true;
         mergeLegacySupported = result.capabilities?.legacyTargetMerge === true;
         if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
-        moveTables = tablesFromStorage(result.tables);
+        moveTables = tablesFromStorage(CaptainTables.liveRows(result));
         message.textContent = '';
         renderMoveTables();
     } catch {
