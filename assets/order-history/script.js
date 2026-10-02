@@ -224,12 +224,14 @@ function setupEventListeners() {
     const confirmCancelBtn = document.getElementById('confirm-cancel-order-btn');
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', async function () {
-            if (!pendingCancelOrderId) return;
+            if (!pendingCancelOrderId || confirmCancelBtn.disabled) return;
             const id = pendingCancelOrderId;
+            confirmCancelBtn.disabled = true;
+            let cancelled;
+            try { cancelled = await performCancelOrder(id); }
+            finally { confirmCancelBtn.disabled = false; }
+            if (!cancelled) return;
             pendingCancelOrderId = null;
-
-            // call existing cancel API logic
-            await performCancelOrder(id);
             // close modal
             const modalEl = document.getElementById('cancelConfirmModal');
             if (modalEl && typeof bootstrap !== 'undefined') {
@@ -1653,6 +1655,7 @@ async function performCancelOrder(orderId) {
     } finally {
         hideLoader();
     }
+    return cancellationConfirmed;
 }
 
 // Render current order items

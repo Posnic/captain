@@ -968,7 +968,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } catch (error) {
                 console.error('Error cancelling order:', error);
-                showToast(cancellationConfirmed ? 'Order cancelled' : 'Could not cancel the order',
+                showToast(cancellationConfirmed ? 'Order cancelled' : (error.message || 'Could not cancel the order'),
                     cancellationConfirmed ? 'success' : 'error');
             } finally {
                 /* Whatever happened, the button goes back to being a button.
@@ -977,7 +977,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 hideSectionLoader('sliding-panel-content');
                 confirmBtn.disabled = false;
                 if (confirmBtn.dataset.said) confirmBtn.textContent = confirmBtn.dataset.said;
-                cancelKotId = null;
+                if (cancellationConfirmed) cancelKotId = null;
             }
         });
     }

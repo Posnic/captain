@@ -21,6 +21,26 @@ function extract(file, matches) {
   return source.slice(found.start, found.end);
 }
 
+test('history confirmation remains open and retryable until cancellation succeeds', async () => {
+  const handler = extract('assets/order-history/script.js', n => n.type === 'FunctionExpression' && n.async &&
+    n.body.body.some(s => s.type === 'IfStatement' && s.test.type === 'LogicalExpression' &&
+      s.test.left?.argument?.name === 'pendingCancelOrderId'));
+  let calls = 0, closed = 0;
+  const context = vm.createContext({
+    pendingCancelOrderId: 'order-1', confirmCancelBtn: { disabled: false },
+    performCancelOrder: async id => { assert.equal(id, 'order-1'); return ++calls > 1; },
+    document: { getElementById: () => ({}) },
+    bootstrap: { Modal: { getInstance: () => ({ hide() { closed++; } }) } },
+  });
+  await vm.runInContext(`(${handler})()`, context);
+  assert.equal(closed, 0);
+  assert.equal(context.pendingCancelOrderId, 'order-1');
+  assert.equal(context.confirmCancelBtn.disabled, false);
+  await vm.runInContext(`(${handler})()`, context);
+  assert.equal(closed, 1);
+  assert.equal(context.pendingCancelOrderId, null);
+});
+
 const handlers = {
   history: extract('assets/order-history/script.js', n => n.type === 'FunctionDeclaration' && n.id.name === 'performCancelOrder'),
   floor: extract('assets/kot/script.js', n => n.type === 'FunctionExpression' && n.async &&
@@ -48,11 +68,16 @@ for (const [name, handler] of Object.entries(handlers)) {
         bootstrap: { Modal: { getInstance: () => ({ hide() {} }) } },
         setTimeout() {},
       });
-      await vm.runInContext(`(${handler})('order-1')`, context);
+      const result = await vm.runInContext(`(${handler})('order-1')`, context);
       const expected = ['success', 'render-failure'].includes(scenario) ? 'success' : 'error';
       assert.equal(toasts.length, 1);
       assert.equal(toasts[0].type, expected);
       if (expected === 'success') assert.equal(toasts[0].message, 'Order cancelled');
+      if (name === 'history') assert.equal(result, expected === 'success');
+      if (name === 'floor') {
+        assert.equal(context.cancelKotId, expected === 'success' ? null : 'order-1');
+        if (scenario === 'network-failure') assert.equal(toasts[0].message, 'Offline');
+      }
     });
   }
 }
