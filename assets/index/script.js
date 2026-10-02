@@ -379,7 +379,13 @@ async function selectBranch(branchId) {
         await fetchAndStoreBranch(branchId, true);
     } catch (err) {
         console.error("Error loading branch products:", err);
-        showServerSettingsForConnectionFailure(err);
+        // Login has already succeeded. A menu/storage failure must stay visible
+        // instead of reopening setup and hiding the error behind server selection.
+        const message = (window.I18N?.t('Could not load the menu') || 'Could not load the menu') +
+            (err?.message ? ': ' + err.message : '');
+        showLoginMessage(message);
+        showBranchMessage(message);
+        showErrorPopup(message);
     } finally {
         hideLoader();
     }
