@@ -4,6 +4,7 @@
     esc = CaptainTables.esc;
   let rows = [],
     canManage = false,
+    cleaningEnabled = false,
     selected = null,
     busy = false,
     dirty = false, editingSettings = false, closeReview = false, closeRequest = null;
@@ -29,6 +30,7 @@
       if (!Array.isArray(data.tables))
         throw new Error("invalid_table_response");
       rows = data.tables;
+      cleaningEnabled = data.cleaningEnabled === true;
       canManage = data.canManage === true;
       try { localStorage.setItem(
         "kiosk_tableorders",
@@ -106,7 +108,7 @@
       "cleaning",
       "held",
     ]
-      .filter((value) => value !== selected.status)
+      .filter((value) => value !== selected.status && (value !== "cleaning" || cleaningEnabled))
       .map(
         (value) =>
           `<button type="button" class="profile-secondary" data-status="${value}">${esc(t({ available: "Available", cleaning: "Cleaning", held: "Held" }[value]))}</button>`,
@@ -122,7 +124,7 @@
     }
     dirty=false;closeReview=true;
     closeRequest ||= {afterClose:selected.closing?.afterClose || "available",id:selected.id,version:selected.version,request_id:selected.closing?.request_id || crypto.randomUUID(),orderIds:selected.closing?.orderIds || selected.orders.map(order=>order.id)};
-    at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.seating?.labels?.join(" + ") || selected.tableorder_value)}</h3><label class="profile-field">${esc(t("Status:"))}<select class="ui-field" id="table-after-close" ${selected.closing ? "disabled" : ""}><option value="available" ${closeRequest.afterClose === "available" ? "selected" : ""}>${esc(t("Available"))}</option><option value="cleaning" ${closeRequest.afterClose === "cleaning" ? "selected" : ""}>${esc(t("Cleaning"))}</option></select></label><div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
+    at("table-management-content").innerHTML=`<h2>${esc(t("Close order"))}</h2><h3 translate="no">${esc(selected.seating?.labels?.join(" + ") || selected.tableorder_value)}</h3>${cleaningEnabled ? `<label class="profile-field">${esc(t("Status:"))}<select class="ui-field" id="table-after-close" ${selected.closing ? "disabled" : ""}><option value="available" ${closeRequest.afterClose === "available" ? "selected" : ""}>${esc(t("Available"))}</option><option value="cleaning" ${closeRequest.afterClose === "cleaning" ? "selected" : ""}>${esc(t("Cleaning"))}</option></select></label>` : ""}<div class="profile-actions"><button type="button" class="profile-secondary" data-action="back">${esc(t("Cancel"))}</button><button type="button" class="profile-primary" data-action="close-confirm">${esc(t("Close order"))}</button></div>`;
   }
   async function back() {
     if (busy) return;
@@ -197,7 +199,7 @@
       if (button.dataset.action === "edit-table") edit(selected,true);
       if (button.dataset.action === "back") back();
       if (button.dataset.action === "close-review") reviewClose();
-      if (button.dataset.action === "close-confirm") { closeRequest.afterClose = at("table-after-close").value; void save(closeRequest,"close"); }
+      if (button.dataset.action === "close-confirm") { closeRequest.afterClose = at("table-after-close")?.value || "available"; void save(closeRequest,"close"); }
       if (button.dataset.status)
         void save(
           {

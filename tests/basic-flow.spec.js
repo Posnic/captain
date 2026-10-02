@@ -141,7 +141,6 @@ for (const native of [false, true]) test(`login to order history basic flow (nat
   await expect(page.locator('#manual_table_input')).toBeVisible();
   await page.locator('#manual_table_input').fill('T1');
   await page.getByRole('button', { name: /Next/ }).click();
-  await page.locator('#seat-confirmation').getByRole('button', { name: 'Continue', exact: true }).click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.getByText('Smoke Test Meal')).toBeVisible();

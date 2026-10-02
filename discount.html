@@ -180,9 +180,7 @@
         </div>
     </div>
     <script>
-        let seatingInProgress = false;
         async function goToProductsWithTableCheck() {
-            if(seatingInProgress)return;
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -224,6 +222,11 @@
                 return;
             }
 
+            if (orderType === 'Dine-in' && tableRadio?.disabled) {
+                showErrorPopup('Please select a table.');
+                return;
+            }
+
             // ✅ Validation: discount should not exceed original total
             const originalTotal = window.discountOriginalTotal || 0;
             if (originalTotal <= 0 && (percentage > 0 || amount > 0)) {
@@ -250,17 +253,6 @@
                 return;
             }
 
-
-            if(orderType === 'Dine-in') {
-                seatingInProgress=true;
-                let confirmed=false;
-                try {confirmed=await CaptainTables.confirmSeating({table:chosenTable || {tableorder_value:tableNo},guests:personCount});}
-                finally {seatingInProgress=false;}
-                if(!confirmed)return;
-                if((tableRadio && tableRadio.disabled) || (CaptainTables.cached(tableNo) && !CaptainTables.fits(CaptainTables.cached(tableNo),personCount))) {
-                    showErrorPopup('Choose a table with enough seats.');return;
-                }
-            }
 
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
@@ -501,6 +493,24 @@
              *
              * Ported from Table_Order, where it was written first.
              */
+            // Menu metadata is cached; table service state can change at the till
+            // without a menu refresh. Read it before offering a table to staff.
+            try {
+                const live = await POSNIC.api.get('/captain/v1/tables');
+                if (Array.isArray(live?.tables)) {
+                    tableorders = tableorders.map(table => {
+                        const current = live.tables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
+                        if (!current) return table;
+                        return {...table, service_state: current.closing ? 'held' :
+                            (current.status === 'occupied' ? 'available' : current.status || table.service_state)};
+                    });
+                }
+            } catch (error) {
+                // Older servers still enforce availability when accepting orders.
+                console.warn('Could not refresh table service state:', error.message);
+            }
+            if (generation !== tableLoadGeneration) return;
+
             let occupiedTables = [];
             let openPerTable = {};
             let tableOrderLimit = 1;
@@ -1084,7 +1094,7 @@
         function goBackToKot() {
             window.location.href = 'kot-management.html';
         }
-        window.addEventListener('captain:back', event => {if(document.querySelector('#seat-confirmation[open]'))return;event.preventDefault();goBackToKot();});
+        window.addEventListener('captain:back', event => {event.preventDefault();goBackToKot();});
     </script>
 </body>
 

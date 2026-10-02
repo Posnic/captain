@@ -187,7 +187,6 @@ async function toCartWithAMeal(page) {
   await expect(page).toHaveURL(/discount\.html$/);
   await page.locator("#manual_table_input").fill("T1");
   await page.getByRole("button", { name: /Next/ }).click();
-  await page.locator("#seat-confirmation button[value=continue]").click();
 
   await expect(page).toHaveURL(/products\.html$/);
   await page.locator('.btn-add[data-id="product-1"]').click();

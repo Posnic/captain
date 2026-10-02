@@ -80,7 +80,7 @@ for (const width of [320, 768])
     await page.locator("#floor-area").selectOption("Main");
     await expect(page.locator(".floor-card")).toHaveCount(2);
     await expect(page.locator("#floor-shapes")).toHaveCount(0);
-    await expect(page.locator(".floor-table-shape")).toHaveCount(2);
+    await expect(page.locator(".floor-table-shape")).toHaveCount(0);
     await expect(
       page.locator('.floor-card[data-table-number="3"]'),
     ).toHaveAttribute("href", "tables.html?source=floor&table=3");

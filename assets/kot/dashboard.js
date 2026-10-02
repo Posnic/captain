@@ -85,11 +85,6 @@
         )
           ? row.shape
           : "square";
-        if (["square", "round", "rectangle"].includes(row.shape)) {
-          const shape = element("span", "floor-table-shape");
-          shape.setAttribute("aria-hidden", "true");
-          card.prepend(shape);
-        }
         const description = [
           row.area,
           row.capacity ? t("Seat capacity") + ": " + row.capacity : "",
