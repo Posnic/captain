@@ -92,6 +92,22 @@ test('adding a search result keeps focus and an intentional note tap still works
   await expect(page.locator('#notes-product-name')).toHaveText('Coffee');
 });
 
+test('redrawing the same item between press and click does not swallow Add or plus', async ({ page }) => {
+  await onTheMenu(page, 'nothing');
+  await page.locator('#product-search-input').fill('coffee');
+  for (const [action, quantity] of [['.btn-add', 1], ['.btn-increase', 2]]) {
+    await page.evaluate(async action => {
+      const row = document.querySelector('.dish[data-id="p-coffee"]');
+      row.querySelector(action).dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
+      row.replaceWith(row.cloneNode(true));
+      document.querySelector('.dish[data-id="p-coffee"] ' + action)
+        .dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true,detail:1}));
+      await waitForCartMutations();
+    }, action);
+    await expect(page.locator('.dish[data-id="p-coffee"] .dish-qty')).toHaveText(String(quantity));
+  }
+});
+
 
 test('a menu reload preserves the active query and keyboard focus', async ({ page }) => {
   await onTheMenu(page, 'nothing');
