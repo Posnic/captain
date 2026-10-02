@@ -222,7 +222,7 @@
         e.status === 403
           ? "Payment collection is not enabled for this phone."
           : e.status
-            ? (e.message && e.message !== "request_failed" ? e.message : "Please retry.")
+            ? (e.message && e.message !== "request_failed" ? e.message : "Could not save. Please try again.")
             : "Connect to the shop server before collecting payment. You can still take orders offline.";
     } finally {
       busy = false;
