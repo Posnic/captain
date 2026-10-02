@@ -21,8 +21,9 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 @media(prefers-reduced-motion:reduce) {button,.btn {transition:none!important;}button:active,.btn:active {transform:none!important;}}
 
 .floor-screen .kot-container {background:var(--ground);padding:8px 16px 0;}
-.floor-screen .kot-tables-section {background:var(--surface);border:0;border-radius:0;box-shadow:none;}
-.floor-screen .floor-section {padding:12px 0 16px;}
+.floor-screen .kot-tables-section {background:var(--surface);border:0;border-radius:0;box-shadow:none;padding:0;}
+.floor-screen .floor-section {margin:0 0 12px;padding:0;min-height:36px;}
+.floor-screen .floor-section .floor-count {padding:0;}
 .floor-screen .floor-section-name {font-size:26px;letter-spacing:-.6px;text-transform:none;font-weight:650;color:var(--ink);}
 .floor-screen .floor-grid {padding-inline:0;}
 .floor-screen .floor-empty {min-height:260px;}
@@ -249,3 +250,13 @@ body:has(#help-back) .me-row { box-sizing: border-box; text-align: start; flex-w
 .auth-page .auth-card{background:var(--surface)!important;border-color:var(--line)!important}.auth-page .brand-title{color:var(--ink)!important}.auth-page .setup-title,.auth-page .setup-label,.auth-page .form-label,.auth-page .setup-shop strong,.auth-page .setup-hint strong{color:var(--ink)}.auth-page .brand-subtitle,.auth-page .setup-step,.auth-page .setup-intro,.auth-page .setup-hint,.auth-page .setup-shop span{color:var(--ink-soft)!important}.auth-page .setup-settings,.auth-page .setup-address,.auth-page .auth-input,.auth-page #captain-server{background:var(--surface);color:var(--ink);border-color:var(--line)}.auth-page .setup-shop,.auth-page #captain-note:not(:empty){background:var(--surface-sunk);color:var(--ink)}.auth-page .setup-primary,.auth-page #login-btn{background:var(--accent);color:var(--accent-ink,#fff)}.auth-page .setup-link,.auth-page .setup-tools button{color:var(--accent)}.auth-page .setup-settings svg circle{fill:var(--surface)}
 
 .auth-page .setup-language select{background:var(--surface);color:var(--ink);border-color:var(--line)}
+
+/* Let the floor use document scrolling; old viewport-sized shells clipped long lists. */
+body.floor-screen {height:auto;min-height:100dvh;overflow-y:auto;overflow-x:hidden;}
+.floor-screen .kot-page {height:auto;min-height:100dvh;overflow:visible;}
+.floor-screen .kot-container {flex:none;overflow:visible;}
+.floor-screen .kot-tables-section {height:auto;min-height:0;overflow:visible;}
+.floor-screen .floor-grid {flex:none;overflow:visible;}
+
+.floor-pending-action {display:block;margin-top:12px;color:var(--accent);font-size:14px;font-weight:600;}
+.floor-card.is-pending .floor-meta {overflow-wrap:anywhere;}

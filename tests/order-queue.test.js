@@ -254,3 +254,21 @@ test("delivery authority is retained on failed queue deletion and retired only a
     { "shop:other:ack": "till-b" },
   );
 });
+
+
+test("an unavailable order owned by another session cannot silently block eligible orders", async () => {
+  for (const state of ["held", "blocked", "waiting"]) {
+    reset();
+    OrderQueue.add({...order("other"), held: state === "held"});
+    OrderQueue.update("other", {state: state === "held" ? "waiting" : state, nextAt: 999999});
+    OrderQueue.add(order("own"));
+    const calls = [];
+    const result = await OrderQueue.flush(async row => {
+      calls.push(row.key);
+      return {type:"success"};
+    }, {eligible: row => row.key === "own", now: () => 100});
+    assert.deepEqual(calls, ["own"]);
+    assert.equal(result.sent, 1);
+    assert.deepEqual(OrderQueue.all().map(row => row.key), ["other"]);
+  }
+});

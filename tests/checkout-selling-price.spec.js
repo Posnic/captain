@@ -65,3 +65,28 @@ test('rejected saved order can be reviewed and retried with its original identit
   expect(sent[0].items[0].item_price).toBe(400);
   await expect(page.getByText('No pending orders',{exact:true})).toBeVisible();
 });
+
+
+test('current staff can deliver while another staff checkout remains held', async ({page}) => {
+  await onTheMenu(page, 'nothing');
+  const sent=[];
+  await page.route('**/sales/qrOrder', async route => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({json:{type:'success',data:{order_id:'recovered'}}});
+  });
+  await page.goto('/kot-management.html');
+  await page.waitForFunction(()=>window.POSNIC_ORDER_QUEUE_UI && POSNIC.session.active);
+  await page.evaluate(async()=>{
+    OrderQueue.add({key:'other-held',held:true,body:{idempotencyKey:'other-held',items:[]}});
+    const other=OrderQueue.all()[0];
+    OrderQueue.update(other.key,{owner:{...other.owner,user:'other-staff'}});
+    OrderQueue.add({key:'own-waiting',body:{idempotencyKey:'own-waiting',kiosk_table_no:'4',items:[]}});
+    await POSNIC_ORDER_QUEUE_UI.flush();
+  });
+  await expect.poll(()=>sent.length).toBe(1);
+  expect(sent[0].idempotencyKey).toBe('own-waiting');
+  const remaining=await page.evaluate(()=>OrderQueue.all());
+  expect(remaining.map(row=>row.key)).toEqual(['other-held']);
+  expect(remaining[0].held).toBe(true);
+  await expect(page.locator('.floor-card.is-pending')).toHaveCount(0);
+});
