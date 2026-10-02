@@ -312,6 +312,43 @@ body.floor-screen {
   box-shadow: none;
 }
 
+/* Keep the whole table detail on paired dark surfaces and text colors. */
+@media (prefers-color-scheme: dark) {
+  #kot-sliding-panel,
+  #kot-sliding-panel .kot-card,
+  #kot-sliding-panel .kot-item {
+    background: var(--surface);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  #kot-sliding-panel .kot-item:hover,
+  #kot-sliding-panel .item-qty {
+    background: var(--surface-sunk);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  #kot-sliding-panel .kot-details-header h3,
+  #kot-sliding-panel .item-name,
+  #kot-sliding-panel .kot-total span:first-child,
+  #kot-sliding-panel .total-amount {
+    color: var(--ink);
+  }
+  #kot-sliding-panel .kot-meta-item,
+  #kot-sliding-panel .kot-meta-item i,
+  #kot-sliding-panel .item-index,
+  #kot-sliding-panel .item-note,
+  #kot-sliding-panel .service-round time,
+  #kot-sliding-panel .service-dish small,
+  #kot-sliding-panel .service-line.is-served {
+    color: var(--ink-soft);
+  }
+  #kot-sliding-panel .service-action input {
+    background: var(--surface-sunk);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+}
+
 /*
  * The one thing worth pressing on this panel, in the app's accent.
  */
