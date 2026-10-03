@@ -1126,6 +1126,11 @@ test('successful staff sign-in remembers server-scoped usernames and preserves e
   await page.reload();
   await expect(page.locator('#username')).toHaveValue('alex.staff');
   await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'alex.staff');
+  await page.locator('#username').fill('alex');
+  await expect(page.locator('.saved-signin-choices button')).toHaveText(['alex.staff']);
+  await page.locator('.saved-signin-choices button').click();
+  await expect(page.locator('#username')).toHaveValue('alex.staff');
+  await expect(page.locator('#password')).toBeFocused();
   await expect(page.locator('#username')).toHaveAttribute('autocomplete', 'username');
   await expect(page.locator('#password')).toHaveAttribute('autocomplete', 'current-password');
   await expect(page.locator('#password')).toHaveAttribute('name', 'password');
@@ -1152,6 +1157,8 @@ test('same-server setup preserves typed credentials while another server clears 
   await expect(page.locator('#password')).toHaveValue('');
   await expect(page.locator('#saved-usernames option')).toHaveCount(1);
   await expect(page.locator('#saved-usernames option')).toHaveAttribute('value', 'other.staff');
+  await page.locator('#username').fill('');
+  await expect(page.locator('.saved-signin-choices button')).toHaveText(['other.staff']);
 });
 
 test('rejected login does not enter username suggestions and repeated Enter submits once', async ({ page }) => {

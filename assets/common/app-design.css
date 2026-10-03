@@ -16,8 +16,9 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 .floor-screen .floor-greet {min-width:0;flex:1;}
 .floor-screen .floor-new {bottom:calc(82px + env(safe-area-inset-bottom));border-radius:12px;box-shadow:none;}
 .floor-screen .floor-grid {padding-bottom:calc(155px + env(safe-area-inset-bottom));}
-.floor-screen .floor-card {box-shadow:none;border-radius:15px;}
-@media(min-width:768px) { .captain-navigation {padding-inline:max(24px,calc((100vw - 960px)/2));} .floor-screen .floor-grid {grid-template-columns:repeat(auto-fill,minmax(210px,1fr));} }
+.floor-screen .floor-card {box-shadow:none;border-radius:12px;padding:12px;min-width:0;}
+.floor-screen .floor-grid {grid-template-columns:repeat(auto-fill,minmax(min(130px,100%),1fr));gap:10px;align-items:start;}
+@media(min-width:768px) { .captain-navigation {padding-inline:max(24px,calc((100vw - 960px)/2));} .floor-screen .floor-grid {grid-template-columns:repeat(auto-fill,minmax(155px,1fr));} }
 @media(prefers-reduced-motion:reduce) {button,.btn {transition:none!important;}button:active,.btn:active {transform:none!important;}}
 
 .floor-screen .kot-container {background:var(--ground);padding:8px 16px 0;}
@@ -48,8 +49,8 @@ button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-of
 .floor-all-tables{margin-inline-start:auto;flex-shrink:0;}
 
 .seat-screen .discount-container{max-width:960px;}
-.seat-screen .table-list{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;}
-.seat-screen .table-label{flex-direction:column;min-height:82px;border-radius:12px;}
+.seat-screen .table-list{grid-template-columns:repeat(auto-fill,minmax(min(96px,100%),1fr));gap:8px;}
+.seat-screen .table-label{flex-direction:column;min-height:56px;border-radius:10px;padding:8px;}
 .seat-screen .table-label .table-seat-info{font-size:12px;}
 .seat-screen .table-radio:checked+.table-label .table-seat-info{color:inherit;opacity:.9;}
 .seat-screen .person-count-section{padding-block:12px;border-bottom:1px solid var(--line);}
