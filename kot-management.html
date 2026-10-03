@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KOT Management</title>
+    <link rel="stylesheet" href="assets/common/paper-order.css">
+    <script src="assets/common/paper-order.js" defer></script>
     <link href="assets/bootstrap.min.css" rel="stylesheet">
     <script src="assets/common/i18n.js"></script>
     <script src="assets/common/languages.js"></script>
@@ -142,6 +144,7 @@
         <button class="floor-new" onclick="goToAddKot()">
             <i class="fas fa-plus"></i> New order
         </button>
+        <button id="paper-order-open" type="button" hidden aria-label="Take a photo of a paper order"><i class="fas fa-camera" aria-hidden="true"></i> Paper order</button>
 
         <!--
             WHICH SHOP THIS PHONE IS POINTED AT.
