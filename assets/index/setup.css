@@ -56,3 +56,7 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline:3px solid
 .setup-tools button span { font-size:9px; font-weight:500; line-height:1; }
 .setup-address { align-items:center; }
 #captain-onboarding .setup-hint { margin:12px 0 22px; }
+/* Visible saved accounts also work when the keyboard does not show datalists. */
+.saved-signin-choices{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.saved-signin-choices[hidden]{display:none;}
+.saved-signin-choices button{min-height:44px;max-width:100%;overflow-wrap:anywhere;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-sunk);color:var(--ink);font:inherit;font-size:14px;}
