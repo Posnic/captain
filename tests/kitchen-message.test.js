@@ -8,7 +8,7 @@ test('general voice note records without an order and retries the same upload af
   await page.goto('https://voice.test/');
   await page.evaluate(()=>{
    localStorage.setItem('branch_id','branch');window.calls=[];window.failOnce=true;
-   window.POSNIC={session:{shopKey:'shop',user:{id:'staff'}},api:{post:async(path,body)=>{calls.push({path,body});if(path.endsWith('/status'))return {jobs:[]};if(path.endsWith('/start'))return {id:'same-message'};if(failOnce){failOnce=false;throw Error('Connection lost');}return {id:body.id,queued:true};}}};
+   window.POSNIC={session:{shopKey:'shop',user:{id:'staff'}},api:{post:async(path,body)=>{calls.push({path,body});if(path.endsWith('/archive'))return {id:body.id,stored:true,storage:'server'};if(path.endsWith('/recordings'))return {recordings:[]};if(path.endsWith('/status'))return {jobs:[]};if(path.endsWith('/start'))return {id:'same-message'};if(failOnce){failOnce=false;throw Error('Connection lost');}return {id:body.id,queued:true};}}};
    Object.defineProperty(navigator,'mediaDevices',{value:{getUserMedia:async()=>({getTracks:()=>[{stop(){}}]})}});
    window.MediaRecorder=class{constructor(){this.state='inactive';this.mimeType='audio/webm';}start(){this.state='recording';}stop(){this.state='inactive';this.ondataavailable({data:new Blob(['test'],{type:'audio/webm'})});this.onstop();}};
   });
@@ -17,7 +17,7 @@ test('general voice note records without an order and retries the same upload af
   await page.getByRole('button',{name:'Record voice note',exact:true}).click();
   await page.getByRole('button',{name:'Pause recording',exact:true}).click();
   await page.getByRole('button',{name:'Send to kitchen',exact:true}).click();
-  await page.waitForFunction(()=>document.getElementById('voice-error').textContent==='Connection lost');
+  await page.waitForFunction(()=>document.getElementById('voice-error').textContent.includes('Kitchen delivery is not confirmed'));
   await page.getByRole('button',{name:'Send to kitchen',exact:true}).click();
   await page.waitForFunction(()=>document.getElementById('voice-status').textContent==='Queued for playback');
   const calls=await page.evaluate(()=>calls);

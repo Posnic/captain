@@ -78,10 +78,11 @@ test('the table it is asking about comes from the card, not from the heading', (
   assert.match(asking, /getAttribute\('data-table'\)/, 'the table is read from somewhere else');
 });
 
-test('takeaway is not offered a table bill', () => {
-  /* A takeaway is paid at the counter when it is collected; there is no table
-     to carry a bill to, and the queue card stands for several orders at once. */
-  assert.match(floor, /isTakeaway\s*\n?\s*\?\s*''/, 'the takeaway panel offers a table bill');
+test('an unscoped takeaway queue cannot request a collective table bill', () => {
+  // Numbered orders can be billed individually. The legacy queue still
+  // represents several customers and must never issue a shared bill.
+  assert.match(floor, /isTakeaway && \(!targetSaleId \|\| alreadyPaid\)/, 'the legacy queue offers a bill without a selected sale');
+  assert.match(asking, /saleId:button\.dataset\.saleId/, 'the selected takeaway identity is omitted from printing');
 });
 
 test('the button cannot be pressed twice into two bills', () => {

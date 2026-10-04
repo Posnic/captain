@@ -490,3 +490,20 @@ test('the handset turns its day at the same hour as the till', async ({ page }) 
   const hour = await page.evaluate(() => MenuView.dayStartsAtHour());
   expect(hour).toBe(7);
 });
+
+for(const theme of ['light','dark'])test(`market price dialog and Quick sale fit a narrow phone in ${theme}`,async({page})=>{
+ await page.setViewportSize({width:320,height:640});
+ await page.emulateMedia({colorScheme:theme});
+ await atTheMenu(page);
+ await expect(page.locator('#product-quick-sale')).toContainText('Quick sale');
+ await expect(page.locator('#product-quick-sale')).toBeInViewport();
+ await page.locator('.dish[data-id="p-fish"] .btn-add').click();
+ const card=page.locator('#ask-price-card');
+ await expect(card).toBeVisible();
+ const bounds=await card.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(320);
+ await expect(page.locator('#ask-price-ok')).toBeInViewport();
+ await page.screenshot({path:`test-artifacts/market-price-${theme}.png`});
+ await page.locator('#ask-price-input').fill('850');
+ await page.locator('#ask-price-ok').click();
+ await expect(page.locator('.dish[data-id="p-fish"] .dish-qty')).toHaveText('1');
+});

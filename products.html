@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="assets/common/appearance.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Captain</title>
@@ -17,6 +18,8 @@
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
     <script src="assets/common/phone-preferences.js"></script>
+    <link rel="stylesheet" href="assets/common/kitchen-notices.css">
+    <script src="assets/common/kitchen-notices.js" defer></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <!-- What a dish SOUNDS like, for matching a transcript. Before
@@ -37,7 +40,7 @@
     <script src="assets/common/item-localization.js"></script>
     <script src="assets/common/item-language.js"></script>
     <script src="indexedDB.js"></script>
-    <script src="assets/common/order-queue-ui.js"></script>
+    <script src="assets/common/kitchen-send-feedback.js"></script><script src="assets/common/order-queue-ui.js"></script>
     <script src="assets/common/voice-order.js"></script>
     <script src="assets/common/speech.js"></script>
     <script src="assets/common/voice-order-ui.js"></script>
@@ -51,6 +54,9 @@
     <link rel="stylesheet" href="assets/common/mobile-gestures.css">
     <script src="assets/common/mobile-gestures.js" defer></script>
     <link rel="stylesheet" href="assets/common/app-design.css">
+    <link rel="stylesheet" href="assets/common/appearance.css">
+    <link rel="stylesheet" href="assets/common/chef-loading.css">
+    <script src="assets/common/chef-loading.js" defer></script>
 </head>
 
 <body>
@@ -118,7 +124,7 @@
                     -->
                     <button type="button" id="product-quick-sale" class="product-quick-sale"
                         aria-label="Add an item that is not on the menu"
-                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt"></i></button>
+                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt" aria-hidden="true"></i><span>Quick sale</span></button>
                 </div>
             </div>
         </section>

@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="assets/common/appearance.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Place Order</title>
@@ -18,6 +19,8 @@
 <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
     <script src="assets/common/phone-preferences.js"></script>
+    <link rel="stylesheet" href="assets/common/kitchen-notices.css">
+    <script src="assets/common/kitchen-notices.js" defer></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <script src="assets/common/order-queue.js"></script>
@@ -36,7 +39,7 @@
     <link href="assets/table/style.css" rel="stylesheet">
     <!-- After style.css, which it replaces for this screen. -->
     <link href="assets/table/seat.css" rel="stylesheet">
-    <link href="assets/common/ui-theme.css" rel="stylesheet">
+
     <style>
     /*
      * Why there are no tables. A note, not an alarm: nothing is broken and the
@@ -64,6 +67,8 @@
     </style>
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/common/app-design.css">
+    <link rel="stylesheet" href="assets/table/entry.css">
+    <link rel="stylesheet" href="assets/common/appearance.css">
 </head>
 
 <body class="seat-screen">
@@ -78,10 +83,10 @@
             <div class="dine-toggle-wrapper">
                 <div class="dine-toggle">
                     <input type="radio" name="order_type" id="order_type_dinein" value="Dine-in" checked>
-                    <label for="order_type_dinein" class="dine-option">Dine-in</label>
+                    <label for="order_type_dinein" class="dine-option"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="9" rx="2"/><path d="M7 3h10M7 16v5m10-5v5"/></svg><span>Dine-in</span></label>
 
                     <input type="radio" name="order_type" id="order_type_takeaway" value="Take away">
-                    <label for="order_type_takeaway" class="dine-option">Take away</label>
+                    <label for="order_type_takeaway" class="dine-option"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Z M8 9V6a4 4 0 0 1 8 0v3"/></svg><span>Take away</span></label>
 
                     <span class="dine-toggle-indicator"></span>
                 </div>
@@ -114,10 +119,18 @@
                     placeholder="Reason for discount (optional)"></textarea>
             </div>
 
+            <div class="table-section-center">
+                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-chair" aria-hidden="true"></i> <span>Which table?</span></div><p class="entry-help">Choose the table shown in the restaurant</p></div>
+                <div id="seat-area-filter" class="seat-area-filter" hidden></div>
+                <div class="table-list">
+                    <!-- JS will fill here -->
+                </div>
+            </div>
+
             <!-- Person Count -->
             <!-- Person Count -->
             <div class="person-count-section">
-                <div class="section-title">Guests</div>
+                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-user-friends" aria-hidden="true"></i> <span>How many guests?</span></div><p class="entry-help">People seated at this table</p></div>
 
                 <!--
                     TWO TAPS, AND NO KEYBOARD.
@@ -130,7 +143,7 @@
                     rather than removed, because handlePersonInput and the
                     restore-after-poll path both read it.
                 -->
-                <div class="pax-stepper">
+                <details class="entry-custom-guests"><summary>More guests</summary><div class="pax-stepper">
                     <button type="button" id="pax_less" aria-label="One fewer">&minus;</button>
                     <span class="pax-now">
                         <span class="pax-number" id="pax_number">1</span>
@@ -139,7 +152,7 @@
                     <button type="button" id="pax_more" aria-label="One more">+</button>
                 </div>
 
-                <div class="person-hero" id="person_hero">
+                </details><div class="person-hero" id="person_hero">
                     <i class="fas fa-user-alt person-hero-icon"></i>
                 </div>
 
@@ -154,14 +167,6 @@
 
                 <!-- hidden real input → JS & backend க்கு -->
                 <input type="hidden" id="person_count" value="1">
-            </div>
-
-            <div class="table-section-center">
-                <div class="section-title">Choose a table</div>
-                <div id="seat-area-filter" class="seat-area-filter" hidden></div>
-                <div class="table-list">
-                    <!-- JS will fill here -->
-                </div>
             </div>
 
             <div class="btn-footer">
@@ -180,7 +185,11 @@
         </div>
     </div>
     <script>
+        let startingOrder = false;
         async function goToProductsWithTableCheck() {
+            if (startingOrder) return;
+            startingOrder = true;
+            try {
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -254,6 +263,8 @@
             }
 
 
+            if (!await resolvePreviousDraft()) return;
+
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
             localStorage.setItem('kiosk_discount_percentage', percentage);
@@ -275,8 +286,17 @@
                 localStorage.setItem('kiosk_person_count', '0');
             }
 
+            if (orderType === 'Take away') {
+                try { await reserveTakeawayNumber(); }
+                catch (error) { showErrorPopup(error.message || 'Could not assign a takeaway number. Please retry.'); return; }
+            }
             // finally go to products
             window.location.href = 'products.html';
+            } catch (error) {
+                showErrorPopup(error.message || 'Could not load the menu');
+            } finally {
+                startingOrder = false;
+            }
         }
         /* Delegated once, after the page is up: these two buttons exist for the
            whole life of the screen, and setPersonCount already clamps 1..99. */
@@ -584,11 +604,17 @@
             if (sectionWrapper) sectionWrapper.style.display = '';
 
             let html = '';
+            const tableNumberOrder = new Intl.Collator(undefined, {numeric:true, sensitivity:'base'});
+            tableorders = [...tableorders].sort((a,b) => tableNumberOrder.compare(String(a.tableorder_value ?? ''), String(b.tableorder_value ?? '')));
             tableorders.forEach((t, index) => {
                 const value = (t.tableorder_value ?? (index + 1)).toString();
                 const id = `table_${value}`;
                 const isOccupied = isFull(value) || ['held','cleaning'].includes(t.service_state);
                 const openHere = openOn(value);
+                const displayState = ['held','cleaning'].includes(t.service_state) ? t.service_state : (openHere > 0 || isFull(value) ? 'occupied' : 'available');
+                const stateLabel = {available:'Available',occupied:'Occupied',held:'Held',cleaning:'Cleaning'}[displayState];
+                const statePaths = {occupied:'<circle cx="8" cy="7" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6m2 3a5 5 0 0 1 4 5v2"/>',held:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',cleaning:'<path d="m15 3 6 6-9 9-6-6Z M6 12l-4 8 8-2M4 16l4 4"/>'};
+                const stateBadge = statePaths[displayState] ? `<svg class="entry-state-badge" data-table-state="${displayState}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${statePaths[displayState]}</svg>` : '';
                 /* Under "at most N" a table can be busy and still take another
                    order, and a waiter has no way to know how close it is. The
                    count is already here, so it is shown. Not under the default
@@ -609,7 +635,7 @@
                             data-capacity="${CaptainTables.metadata(t).max}" data-occupied="${isOccupied}" data-service-state="${CaptainTables.esc(t.service_state || '')}"
                             ${isOccupied ? 'disabled' : ''}>
                         <label for="${id}" class="table-label ${isOccupied ? 'disabled' : ''}"
-                            title="${CaptainTables.esc(window.I18N?.t(t.service_state === 'cleaning' ? 'Cleaning' : t.service_state === 'held' ? 'Held' : isOccupied ? 'This table is full' : '') || '')}">${CaptainTables.esc(value)}${countBadge}${['held','cleaning'].includes(t.service_state) ? `<small>${CaptainTables.esc(window.I18N?.t(t.service_state === 'held' ? 'Held' : 'Cleaning') || t.service_state)}</small>` : ''}<small class="table-seat-info">${CaptainTables.esc(CaptainTables.description(t))}</small></label>
+                            title="${CaptainTables.esc(window.I18N?.t(t.service_state === 'cleaning' ? 'Cleaning' : t.service_state === 'held' ? 'Held' : isOccupied ? 'This table is full' : '') || '')}"><svg class="entry-table-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="4" y="7" width="16" height="9" rx="2"/><path d="M7 3h10M7 16v5m10-5v5"/></svg>${stateBadge}<span class="entry-table-name"><span class="entry-table-prefix">Table </span><span translate="no">${CaptainTables.esc(value)}</span></span>${countBadge}<span class="entry-availability">${CaptainTables.esc(window.I18N?.t(stateLabel) || stateLabel)}</span><small class="table-seat-info">${CaptainTables.esc(CaptainTables.description(t))}</small></label>
                     </div>
                 `;
             });
@@ -622,11 +648,11 @@
                         name="table_no"
                         value=""
                         data-id="">
-                    <label for="table_manual_radio" class="table-label manual-label">
+                    <label for="table_manual_radio" class="table-label manual-label"><span class="entry-custom-label">Custom table</span>
                         <input type="text"
                             id="manual_table_input"
                             class="manual-table-input"
-                            placeholder="Other"
+                            placeholder="e.g. 6A" aria-label="Custom table"
                             autocomplete="off"
                             maxlength="6">
                     </label>
@@ -1015,7 +1041,7 @@
 
             // For 1..6 use image, for others just text
             btn.classList.add('has-number');
-            btn.textContent = number.toString();
+            btn.innerHTML = '<i class="entry-guest-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></i><span translate="no">' + number + '</span> <span>' + (number === 1 ? 'guest' : 'guests') + '</span>';
 
             btn.onclick = function () {
                 setPersonCount(number);
@@ -1097,6 +1123,7 @@
         }
         window.addEventListener('captain:back', event => {event.preventDefault();goBackToKot();});
     </script>
+<script src="assets/table/entry.js"></script>
 </body>
 
 </html>

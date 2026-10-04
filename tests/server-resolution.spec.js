@@ -48,7 +48,13 @@ const refuse = (page, origin) =>
 
 /** Seed the one key the app keeps its server choice in. */
 const seed = (page, state) => page.addInitScript(
-  (value) => localStorage.setItem('posnic.server', JSON.stringify(value)), state);
+  (value) => {
+    localStorage.setItem('posnic.server', JSON.stringify(value));
+    // Routing checks model a staff member who accepted internet fallback.
+    // Consent/refusal itself is covered by internet-consent.spec.js.
+    if (value.cloud) for (const shop of ['', 'shop-a'])
+      sessionStorage.setItem(`captain.internet-consent:${shop}:${value.cloud}`, 'yes');
+  }, state);
 
 const signedInAs = (page, shopKey) => page.addInitScript(
   (key) => localStorage.setItem('posnic.session', JSON.stringify({ token: 't', shopKey: key })),
@@ -431,11 +437,13 @@ test('connection settings offer browser approval, one address, Wi-Fi, QR and pai
   for(const id of ['captain-cloud-login','captain-address-toggle','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
   await expect(page.locator('#captain-cancel')).toBeHidden();
 });
-test('address entry remains directly available alongside the discovery tools', async ({ page }) => {
+test('address entry has a focused step and Back returns to discovery tools', async ({ page }) => {
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
   await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').fill('myshop');
   await expect(page.locator('#captain-connect')).toBeVisible();
+  await expect(page.locator('#captain-scan')).toBeHidden();
+  await page.locator('#connection-back').click();
   await expect(page.locator('#captain-scan')).toBeVisible();
 });
 
@@ -948,24 +956,19 @@ test('coming here to change the server does not dial the old one', async ({ page
   expect(tried, `the app probed the address it was asked to replace: ${tried.join(', ')}`).toEqual([]);
 });
 
-test('and the address it is on is there to edit, already selected', async ({ page }) => {
-  /* The commonest edit is a small one - a digit of an IP, a letter of a shop
-     code - so it is shown. The second commonest is replacing it outright, so
-     it is selected rather than left to be cleared one backspace at a time. */
+test('the dedicated address step retains the saved address and announces its heading', async ({ page }) => {
+  /* The saved address belongs on the dedicated entry step. Opening it
+     announces the heading without raising the keyboard before an input tap. */
   await refuse(page, LAN_ORIGIN);
   await seed(page, { pinned: LAN, active: LAN });
   await page.addInitScript(() => sessionStorage.setItem('posnic_change_server', '1'));
 
   await page.goto('/index.html');
   await expect(page.locator('#captain-onboarding')).toBeVisible();
+  await page.locator('#captain-address-toggle').click();
   await expect(page.locator('#captain-server')).toHaveValue(LAN);
-
-  await page.waitForTimeout(400);
-  const selected = await page.evaluate(() => {
-    const field = document.getElementById('captain-server');
-    return field.selectionEnd - field.selectionStart;
-  });
-  expect(selected).toBeGreaterThan(0);
+  await expect(page.locator('#setup-heading')).toBeFocused();
+  await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('closing the editor starts the health checks it had been holding off', async ({ page }) => {

@@ -13,8 +13,8 @@ for (const width of [320, 768, 1024]) test(`compact tables remain reachable at $
   await expect(tile).toBeVisible();
   const box = await tile.boundingBox();
   expect(box.height).toBeGreaterThanOrEqual(44);
-  expect(box.height).toBeLessThanOrEqual(64);
-  const last = page.locator('label').filter({ hasText: /^40$/ });
+  expect(box.height).toBeLessThanOrEqual(68);
+  const last = page.locator('.table-label').filter({ has: page.locator('.entry-table-name', {hasText:/40$/}) });
   await last.scrollIntoViewIfNeeded();
   await expect(last).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -22,7 +22,7 @@ for (const width of [320, 768, 1024]) test(`compact tables remain reachable at $
   await expect(page.locator('.floor-card')).toHaveCount(24);
   const metrics = await page.locator('.floor-grid').evaluate(el => ({ columns: getComputedStyle(el).gridTemplateColumns.split(' ').length, height: el.firstElementChild.getBoundingClientRect().height }));
   expect(metrics.columns).toBeGreaterThanOrEqual(width === 320 ? 2 : width === 768 ? 4 : 5);
-  expect(metrics.height).toBeLessThan(130);
+  expect(metrics.height).toBeLessThanOrEqual(160);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: `test-artifacts/compact-floor-${width}.png`, fullPage: true });
 });

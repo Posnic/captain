@@ -29,7 +29,7 @@ test('history confirmation remains open and retryable until cancellation succeed
   const context = vm.createContext({
     pendingCancelOrderId: 'order-1', confirmCancelBtn: { disabled: false },
     performCancelOrder: async id => { assert.equal(id, 'order-1'); return ++calls > 1; },
-    document: { getElementById: () => ({}) },
+    document: { getElementById: () => ({value:'Customer requested',reportValidity:()=>true}) },
     bootstrap: { Modal: { getInstance: () => ({ hide() { closed++; } }) } },
   });
   await vm.runInContext(`(${handler})()`, context);
@@ -44,7 +44,7 @@ test('history confirmation remains open and retryable until cancellation succeed
 const handlers = {
   history: extract('assets/order-history/script.js', n => n.type === 'FunctionDeclaration' && n.id.name === 'performCancelOrder'),
   floor: extract('assets/kot/script.js', n => n.type === 'FunctionExpression' && n.async &&
-    n.body.body.some(s => s.type === 'IfStatement' && s.test.type === 'UnaryExpression' && s.test.argument.name === 'cancelKotId')),
+    n.body.body.some(s => s.type === 'IfStatement' && s.test.type === 'LogicalExpression' && s.test.left?.argument?.name === 'cancelKotId')),
 };
 
 for (const [name, handler] of Object.entries(handlers)) {
@@ -64,7 +64,7 @@ for (const [name, handler] of Object.entries(handlers)) {
         showToast: (message, type) => toasts.push({ message, type }),
         showLoader() {}, hideLoader() {}, showSectionLoader() {}, hideSectionLoader() {},
         filterOrders: render, viewOrderDetails() {}, closeSlidingPanel: render, clearKotSelection() {},
-        document: { getElementById: () => ({}) },
+        document: { getElementById: () => ({value:'Customer requested',reportValidity:()=>true}) },
         bootstrap: { Modal: { getInstance: () => ({ hide() {} }) } },
         setTimeout() {},
       });

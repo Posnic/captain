@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="assets/common/appearance.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>KOT Management</title>
@@ -19,12 +20,15 @@
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/kitchen-send-feedback.js"></script>
     <script src="assets/common/group-move.js"></script>
     <script src="assets/common/guest-update.js"></script>
     <script src="assets/common/item-transfer.js"></script>
     <script src="assets/common/transfer-screen.js"></script>
     <link rel="stylesheet" href="assets/common/transfer-screen.css">
     <script src="assets/common/phone-preferences.js"></script>
+    <link rel="stylesheet" href="assets/common/kitchen-notices.css">
+    <script src="assets/common/kitchen-notices.js" defer></script>
     <script src="config.js"></script>
     <script src="assets/common/connection-signals.js"></script>
     <script src="assets/common/popup.js"></script>
@@ -72,14 +76,20 @@
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
+    <link rel="stylesheet" href="assets/order-history/item-notes.css">
     <link href="assets/common/guest-bills.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/mobile-gestures.css">
     <script src="assets/common/mobile-gestures.js" defer></script>
+    <link rel="stylesheet" href="assets/common/order-photos.css">
+    <script src="assets/common/order-photos.js" defer></script>
     <link rel="stylesheet" href="assets/common/service-rounds.css">
     <script src="assets/common/service-rounds.js" defer></script>
     <script src="assets/kot/dashboard.js" defer></script>
     <link rel="stylesheet" href="assets/common/app-design.css">
 <script src="assets/common/navigation.js" defer></script>
+    <link rel="stylesheet" href="assets/common/appearance.css">
+    <link rel="stylesheet" href="assets/common/chef-loading.css">
+    <script src="assets/common/chef-loading.js" defer></script>
 </head>
 
 <body class="floor-screen">
@@ -135,16 +145,18 @@
                 the sign-in screen. Each was reachable and none of them was
                 anywhere a person would look.
             -->
-            <div class="connection-signals" role="group" aria-label="Connection settings">
+            <div class="floor-header-controls">
+                <div class="connection-signals" role="group" aria-label="Connection settings">
                 <button type="button" class="route-signal" data-route-signal="local" aria-label="Wi-Fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></button>
                 <button type="button" class="route-signal" data-route-signal="remote" aria-label="Internet server"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg></button>
+                </div>
+                <span class="floor-control-divider" aria-hidden="true"></span>
+                <button type="button" class="route-signal" id="appearance-toggle" aria-label="Switch to dark mode" title="Switch to dark mode"><svg data-theme-moon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 14A9 9 0 0 1 10 3.5 9 9 0 1 0 20.5 14Z"/></svg><svg data-theme-sun hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg></button>
             </div>
         </div>
 
-        <button class="floor-new" onclick="goToAddKot()">
-            <i class="fas fa-plus"></i> New order
-        </button>
-        <button id="paper-order-open" type="button" hidden aria-label="Take a photo of a paper order"><i class="fas fa-camera" aria-hidden="true"></i> Paper order</button>
+
+
 
         <!--
             WHICH SHOP THIS PHONE IS POINTED AT.
@@ -322,19 +334,21 @@
                     answer to a question somebody already had.
                 -->
                 <div class="floor-section">
-                    <span class="floor-section-name">Tables</span>
+                    <span class="floor-section-name">Orders</span>
                     <span class="floor-count" id="floor-count"></span>
                 </div>
+                <div class="floor-primary-actions"><button id="paper-order-open" type="button" hidden aria-label="Scan paper order" title="Scan paper order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3H4a1 1 0 0 0-1 1v3m14-4h3a1 1 0 0 1 1 1v3M3 17v3a1 1 0 0 0 1 1h3m10 0h3a1 1 0 0 0 1-1v-3"/><rect x="7" y="5" width="10" height="14" rx="1.5"/><path d="M10 9h4m-4 3h4m-4 3h2"/></svg></button><button type="button" class="floor-create floor-new" onclick="goToAddKot()"><i class="fas fa-plus" aria-hidden="true"></i> New order</button><button type="button" data-floor-filter="ready" aria-pressed="false"><i class="far fa-bell" aria-hidden="true"></i> Ready</button></div>
                 <div class="floor-tools">
                 <a class="floor-kitchen-message" href="kitchen-message.html"><i class="fas fa-microphone" aria-hidden="true"></i><span>Message kitchen</span></a>
 
-                    <label class="floor-area-label"><span>Dining area</span><select id="floor-area"><option value="">All</option></select></label>
+                    <label class="floor-area-label" hidden><span>Dining area</span><select id="floor-area"><option value="">All</option></select></label>
                     <button type="button" id="floor-refresh" data-mobile-refresh aria-label="Refresh" title="Refresh"><i class="fas fa-rotate" aria-hidden="true"></i></button>
                 </div>
                 <div class="floor-filters" role="group" aria-label="Tables">
-                    <button type="button" data-floor-filter="active" aria-pressed="true">Active tables</button>
-                    <button type="button" data-floor-filter="all" aria-pressed="false">All Tables</button>
-                    <button type="button" data-floor-filter="ready" aria-pressed="false">Ready</button>
+                    <button type="button" data-floor-filter="active" aria-pressed="true">All</button>
+                    <button type="button" data-floor-filter="all" aria-pressed="false"><i class="fas fa-chair" aria-hidden="true"></i> Tables</button>
+                    <button type="button" data-floor-filter="takeaway" aria-pressed="false"><i class="fas fa-bag-shopping" aria-hidden="true"></i> Takeaway</button>
+
                 </div>
                 <p id="floor-filter-status" role="status" hidden></p>
                 <div class="floor-grid" id="tables-list">
@@ -491,7 +505,7 @@
                 </div>
                 <div class="modal-footer editor-footer">
                     <div class="editor-total"><span id="editor-item-count"></span><strong id="editor-total-value" translate="no"></strong></div>
-                    <div class="editor-footer-actions"><button type="button" id="cancel-order-changes" class="editor-cancel">Cancel</button><button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button></div>
+                    <div class="editor-footer-actions"><button type="button" id="cancel-order-changes" class="editor-cancel">Close</button><button type="button" class="btn action-btn edit-btn" id="save-order-changes">Send only these changes</button></div>
                     <p class="editor-save-help">Changes are sent when you update the order.</p>
                 </div>
             </div>
@@ -540,7 +554,7 @@
                     -->
                     <button type="button" id="picker-quick-sale" class="product-quick-sale"
                         aria-label="Add an item that is not on the menu"
-                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt"></i></button>
+                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt" aria-hidden="true"></i><span>Quick sale</span></button>
                 </div>
             </div>
             <div class="item-picker-rail" id="item-picker-rail"></div>
@@ -566,8 +580,8 @@
                 </div>
             </div>
 
-            <div class="item-picker-foot"><div class="editor-total"><span id="picker-item-count"></span><strong id="picker-total-value" translate="no"></strong></div>
-                <button type="button" class="btn item-picker-done" id="item-picker-done">Back to the order</button>
+            <div class="item-picker-foot"><small>Quantities here are new additions only.</small><div class="editor-total"><span id="picker-item-count"></span><strong id="picker-total-value" translate="no"></strong></div>
+                <button type="button" class="btn item-picker-done" id="item-picker-done">Review new items</button>
             </div>
         </div>
     </div>
@@ -577,16 +591,16 @@
         <div class="modal-dialog modal-dialog-centered edit-notes-dialog">
             <div class="modal-content edit-notes-content">
                 <div class="modal-header edit-notes-header">
-                    <h5 class="modal-title" id="edit-notes-product-name" translate="no">Item Notes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div><h5 class="modal-title">Item note</h5><p id="edit-notes-product-name" translate="no"></p></div>
+                    <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body edit-notes-body">
-                    <label for="edit-item-notes-text" class="edit-notes-label">Notes</label>
-                    <textarea id="edit-item-notes-text" class="edit-notes-textarea" rows="3" placeholder="Eg: Non sugar, half milk, extra hot..."></textarea>
+                    <label for="edit-item-notes-text" class="edit-notes-label">Instructions for the kitchen</label>
+                    <textarea id="edit-item-notes-text" class="edit-notes-textarea" rows="3" maxlength="300" placeholder="For example: less spicy, no onion"></textarea>
                 </div>
                 <div class="modal-footer edit-notes-footer">
-                    <button type="button" class="notes-btn notes-btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="notes-btn notes-btn-primary" id="edit-item-notes-apply">Apply &amp; Add</button>
+                    <button type="button" class="notes-btn notes-btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="notes-btn notes-btn-primary" id="edit-item-notes-apply">Save note</button>
                 </div>
             </div>
         </div>
@@ -597,17 +611,17 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Remove Item</h5>
+                    <h5 class="modal-title">Cancel item</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p id="remove-item-message">Are you sure you want to remove this item from the order?</p>
-                    <p id="remove-item-name" translate="no" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p>
+                    <p id="remove-item-message">Cancel this item already sent to the kitchen?</p>
+                    <p id="remove-item-name" translate="no" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p><label for="cancel-item-reason">Reason for cancellation</label><textarea id="cancel-item-reason" class="form-control" rows="2" required minlength="3" maxlength="200"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
                     <button type="button" class="btn btn-danger" id="confirm-remove-item-btn">
-                        Yes, Remove
+                        Yes, Cancel
                     </button>
                 </div>
             </div>
@@ -625,7 +639,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body pt-2">
-                    <p class="mb-0">Are you sure you want to cancel this order?</p>
+                    <p class="mb-0">Are you sure you want to cancel this order?</p><label for="cancel-order-reason" class="form-label mt-3">Reason for cancellation</label><textarea id="cancel-order-reason" class="form-control" rows="3" minlength="3" maxlength="200" required placeholder="Why is this order being cancelled?"></textarea>
                 </div>
                 <div class="modal-footer border-0 pt-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
@@ -656,12 +670,15 @@
     -->
     <script src="assets/common/online-approvals.js"></script>
     <script src="assets/common/online-approvals-ui.js"></script>
+    <link rel="stylesheet" href="assets/kot/order-view.css">
+    <script src="assets/kot/order-view.js"></script>
     <script src="assets/kot/script.js"></script>
     <script src="assets/common/guest-bill-math.js"></script>
     <script src="assets/common/guest-bills.js"></script>
     <script src="assets/qrcode.min.js"></script>
     <script src="assets/common/captain-payments.js"></script>
     <script src="assets/common/bill-review.js"></script>
+<script src="assets/kot/inline-editor.js"></script>
 </body>
 
 </html>

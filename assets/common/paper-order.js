@@ -146,7 +146,23 @@
   }
   document.addEventListener('DOMContentLoaded',async()=>{
     const button=document.getElementById('paper-order-open');if(!button)return;
-    button.onclick=open;
-    try{const options=await POSNIC.api.get('/captain/v1/paper-orders/options');button.hidden=!(options.enabled&&options.configured);}catch{button.hidden=true;}
+    async function availability(launch=false){
+      button.disabled=true;
+      try{
+        const options=await POSNIC.api.get('/captain/v1/paper-orders/options');
+        button.hidden=!options.enabled;
+        if(!options.enabled)return;
+        if(launch){
+          if(options.configured)await open();
+          else showErrorPopup('Paper scanning needs server setup. Ask your manager to configure private photo storage and handwriting recognition in Captain App settings.');
+        }
+      }catch{
+        // A connection failure is not an explicit decision to disable scanning.
+        button.hidden=false;
+        if(launch)showErrorPopup('Could not check paper scanning. Reconnect and try again. Your saved paper draft is kept.');
+      }finally{button.disabled=false;}
+    }
+    button.onclick=()=>availability(true);
+    await availability();
   });
 })();

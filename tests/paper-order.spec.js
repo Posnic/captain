@@ -39,3 +39,20 @@ test('failed recognition retains the photo across a page reload',async({page})=>
   await page.reload();await page.locator('#paper-order-open').click();
   await expect(page.getByRole('button',{name:'Read photo',exact:true})).toBeVisible();
 });
+
+
+test('enabled paper scanning explains missing configuration instead of disappearing',async({page})=>{
+  await setup(page);
+  await page.route('**/captain/v1/paper-orders/options',r=>r.fulfill({json:{enabled:true,configured:false}}));
+  await page.reload();await page.locator('#paper-order-open').click();
+  await expect(page.getByText('Paper scanning needs server setup.',{exact:false})).toBeVisible();
+  await expect(page.locator('.paper-order-dialog')).toHaveCount(0);
+});
+
+test('unreachable paper capability stays discoverable and retries on click',async({page})=>{
+  await setup(page);
+  await page.route('**/captain/v1/paper-orders/options',r=>r.fulfill({status:503,json:{message:'Unavailable'}}));
+  await page.reload();await page.locator('#paper-order-open').click();
+  await expect(page.getByText('Could not check paper scanning.',{exact:false})).toBeVisible();
+  await expect(page.locator('.paper-order-dialog')).toHaveCount(0);
+});

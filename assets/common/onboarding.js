@@ -9,6 +9,9 @@
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
     if (signIn) { sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
+    const canReturn = POSNIC.session.active && !window.CaptainAccess?.locked;
+    $("connection-orders").hidden = !canReturn;
+    document.querySelector('.setup-steps').hidden = canReturn;
     $("captain-onboarding").hidden = signIn;
     $("captain-legacy").hidden = !signIn;
     $("login-section").dataset.authStep = signIn ? "signin" : "server";
@@ -27,11 +30,12 @@
   function showView(next, focus = true) {
     showStep(false);
     view = next;
+    $("connection-done").hidden = true;
     $("captain-onboarding").dataset.setupView = next;
     navigationVersion++;
     if (focus) { sessionStorage.setItem("posnic_editing_server", "1"); sessionStorage.setItem("posnic_connection_view", next); }
     const titles = {
-      start: "Connect to your shop",
+      start: POSNIC.server.isConfigured ? "Change server" : "Connect to your shop",
       address: "Connect to your shop",
       code: "Enter pairing code",
       wifi: "Find shop on Wi-Fi",
@@ -42,7 +46,7 @@
 
     $("setup-address-entry").hidden = !["address", "code"].includes(next);
     $("setup-wifi-hint").hidden = next !== "address";
-    $("setup-methods").hidden = !["start", "address"].includes(next);
+    $("setup-methods").hidden = next !== "start";
     $("captain-address-toggle").hidden = next !== "start";
     $("setup-start-hint").hidden = next !== "start";
     $("captain-connect").hidden = next !== "address";
@@ -592,7 +596,7 @@
       showStep(false);
       note("");
       updateConnectAction();
-      $("captain-server").select();
+      $("setup-heading").focus();
     },
     close() {
       navigationVersion++;
@@ -716,6 +720,7 @@
       if (view === "cloud") showView("address");
       note("Connection cancelled.");
     };
+    $("connection-orders").onclick = $("connection-done").onclick = () => CaptainOnboarding.close();
     $("connection-back").onclick = () => {
       if (view === "start") return CaptainOnboarding.close();
       operation?.abort();
@@ -755,6 +760,7 @@
         $("captain-server").value = POSNIC.server.baseUrl || addresses[0];
         $("connection-back").hidden = false;
         note("Saved");
+        $("connection-done").hidden = !POSNIC.session.active || window.CaptainAccess?.locked;
       });
     showView("start", false);
     showStep(

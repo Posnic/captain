@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="assets/common/appearance.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
@@ -18,12 +19,15 @@
     <link rel="stylesheet" href="assets/common/service-details.css">
     <script src="assets/common/service-details.js"></script>
     <script src="assets/common/order-actions.js"></script>
+    <script src="assets/common/kitchen-send-feedback.js"></script>
     <script src="assets/common/group-move.js"></script>
     <script src="assets/common/guest-update.js"></script>
     <script src="assets/common/item-transfer.js"></script>
     <script src="assets/common/transfer-screen.js"></script>
     <link rel="stylesheet" href="assets/common/transfer-screen.css">
     <script src="assets/common/phone-preferences.js"></script>
+    <link rel="stylesheet" href="assets/common/kitchen-notices.css">
+    <script src="assets/common/kitchen-notices.js" defer></script>
     <script src="config.js"></script>
     <script src="assets/common/popup.js"></script>
     <script src="assets/common/order-queue.js"></script>
@@ -56,14 +60,20 @@
     <link href="assets/common/ui-theme.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/i18n.css">
     <link rel="stylesheet" href="assets/order-history/editor.css">
+    <link rel="stylesheet" href="assets/order-history/item-notes.css">
     <link rel="stylesheet" href="assets/common/mobile-gestures.css">
     <script src="assets/common/mobile-gestures.js" defer></script>
+    <link rel="stylesheet" href="assets/common/order-photos.css">
+    <script src="assets/common/order-photos.js" defer></script>
     <link rel="stylesheet" href="assets/common/service-rounds.css">
     <script src="assets/common/service-rounds.js" defer></script>
     <link href="assets/common/design.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/common/app-design.css">
     <script src="assets/common/navigation.js" defer></script>
     <link href="assets/order-history/theme.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/common/appearance.css">
+    <link rel="stylesheet" href="assets/common/chef-loading.css">
+    <script src="assets/common/chef-loading.js" defer></script>
 </head>
 
 <body class="history-screen">
@@ -270,7 +280,7 @@
                 </div>
                 <div class="modal-footer editor-footer">
                     <div class="editor-total"><span id="editor-item-count"></span><strong id="editor-total-value" translate="no"></strong></div>
-                    <div class="editor-footer-actions"><button type="button" id="cancel-order-changes" class="editor-cancel">Cancel</button><button type="button" class="btn action-btn edit-btn" id="save-order-changes">Update the order</button></div>
+                    <div class="editor-footer-actions"><button type="button" id="cancel-order-changes" class="editor-cancel">Close</button><button type="button" class="btn action-btn edit-btn" id="save-order-changes">Send only these changes</button></div>
                     <p class="editor-save-help">Changes are sent when you update the order.</p>
                 </div>
             </div>
@@ -320,7 +330,7 @@
                     -->
                     <button type="button" id="picker-quick-sale" class="product-quick-sale"
                         aria-label="Add an item that is not on the menu"
-                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt"></i></button>
+                        title="Quick sale - something the menu does not have"><i class="fas fa-bolt" aria-hidden="true"></i><span>Quick sale</span></button>
                 </div>
             </div>
             <div class="item-picker-rail" id="item-picker-rail"></div>
@@ -346,8 +356,8 @@
                 </div>
             </div>
 
-            <div class="item-picker-foot"><div class="editor-total"><span id="picker-item-count"></span><strong id="picker-total-value" translate="no"></strong></div>
-                <button type="button" class="btn item-picker-done" id="item-picker-done">Back to the order</button>
+            <div class="item-picker-foot"><small>Quantities here are new additions only.</small><div class="editor-total"><span id="picker-item-count"></span><strong id="picker-total-value" translate="no"></strong></div>
+                <button type="button" class="btn item-picker-done" id="item-picker-done">Review new items</button>
             </div>
         </div>
     </div>
@@ -363,20 +373,20 @@
         <div class="modal-dialog modal-dialog-centered edit-notes-dialog">
             <div class="modal-content edit-notes-content">
                 <div class="modal-header edit-notes-header">
-                    <h5 class="modal-title" id="edit-notes-product-name" translate="no">Item Notes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div><h5 class="modal-title">Item note</h5><p id="edit-notes-product-name" translate="no"></p></div>
+                    <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body edit-notes-body">
-                    <label for="edit-item-notes-text" class="edit-notes-label">Notes</label>
-                    <textarea id="edit-item-notes-text" class="edit-notes-textarea" rows="3"
-                        placeholder="Eg: Non sugar, half milk, extra hot..."></textarea>
+                    <label for="edit-item-notes-text" class="edit-notes-label">Instructions for the kitchen</label>
+                    <textarea id="edit-item-notes-text" class="edit-notes-textarea" rows="3" maxlength="300"
+                        placeholder="For example: less spicy, no onion"></textarea>
                 </div>
                 <div class="modal-footer edit-notes-footer">
                     <button type="button" class="notes-btn notes-btn-secondary" data-bs-dismiss="modal">
                         Cancel
                     </button>
                     <button type="button" class="notes-btn notes-btn-primary" id="edit-item-notes-apply">
-                        Apply &amp; Add
+                        Save note
                     </button>
                 </div>
             </div>
@@ -388,17 +398,17 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Remove Item</h5>
+                    <h5 class="modal-title">Cancel item</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p id="remove-item-message">Are you sure you want to remove this item from the order?</p>
-                    <p id="remove-item-name" translate="no" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p>
+                    <p id="remove-item-message">Cancel this item already sent to the kitchen?</p>
+                    <p id="remove-item-name" translate="no" style="font-weight: 600; color: #E74C3C; margin-top: 8px;"></p><label for="cancel-item-reason">Reason for cancellation</label><textarea id="cancel-item-reason" class="form-control" rows="2" required minlength="3" maxlength="200"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
                     <button type="button" class="btn btn-danger" id="confirm-remove-item-btn">
-                        Yes, Remove
+                        Yes, Cancel
                     </button>
                 </div>
             </div>
@@ -416,7 +426,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    Are you sure you want to cancel this order?
+                    <p>Are you sure you want to cancel this order?</p><label for="history-cancel-reason" class="form-label mt-3">Reason for cancellation</label><textarea id="history-cancel-reason" class="form-control" rows="3" minlength="3" maxlength="200" required placeholder="Why is this order being cancelled?"></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
@@ -433,6 +443,7 @@
          JS. Fetching it from the internet meant those buttons did nothing exactly
          when the app is most needed. -->
     <script src="assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="assets/common/bill-review.js"></script>
     <script src="assets/order-history/script.js"></script>
     <script src="assets/order-history/editor.js"></script>
 </body>

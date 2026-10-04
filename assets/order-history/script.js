@@ -71,7 +71,7 @@ function showOrderListScreen(tableNumber) {
     selectedTable = tableNumber;
     document.getElementById('table-selection-screen').style.display = 'none';
     document.getElementById('order-list-screen').style.display = 'flex';
-    
+
     // Set header title based on table type
     let headerTitle;
     if (tableNumber === 'all') {
@@ -85,7 +85,7 @@ function showOrderListScreen(tableNumber) {
     if (headerElement) {
         headerElement.textContent = window.I18N?.t(headerTitle) || headerTitle;
     }
-    
+
     document.getElementById('refresh-btn').style.display = 'block';
     filterOrdersBySelectedTable();
 }
@@ -107,7 +107,7 @@ function generateTableCards() {
     // Get unique tables from orders
     const tableCounts = {};
     const pendingCounts = {};
-    
+
     allOrders.forEach(order => {
         let table;
         // Check if it's a takeaway order
@@ -225,10 +225,13 @@ function setupEventListeners() {
     if (confirmCancelBtn) {
         confirmCancelBtn.addEventListener('click', async function () {
             if (!pendingCancelOrderId || confirmCancelBtn.disabled) return;
+            const reasonField = document.getElementById('history-cancel-reason');
+            reasonField.value = reasonField.value.trim();
+            if (!reasonField.reportValidity()) return;
             const id = pendingCancelOrderId;
             confirmCancelBtn.disabled = true;
             let cancelled;
-            try { cancelled = await performCancelOrder(id); }
+            try { cancelled = await performCancelOrder(id, reasonField.value); }
             finally { confirmCancelBtn.disabled = false; }
             if (!cancelled) return;
             pendingCancelOrderId = null;
@@ -254,6 +257,7 @@ function setupEventListeners() {
             const editModal = document.getElementById('editOrderModal');
             if (editModal) {
                 editModal.classList.remove('modal-behind');
+                if (window.InlineOrderEditor?.active && !window.OrderEditor?.dirty()) void window.OrderEditor.cancel();
             }
         });
     }
@@ -400,7 +404,7 @@ function renderProductSuggestions(products) {
     const suggestionsHtml = products.map(product => {
         // Store product data for later reference
         searchedProducts[product._id] = product;
-        
+
         // Use selling_price for display and adding to order
         const sellingPrice = product.selling_price || product.price;
 
@@ -421,6 +425,29 @@ function renderProductSuggestions(products) {
     container.innerHTML = suggestionsHtml;
 }
 
+// All repeat paths share the same unsent, unannotated serving. Sent lines
+// keep their identity and notes; annotated drafts remain separate preparations.
+function addDraftServing(source) {
+    const productId = source.product_id || source.item_id || source.id;
+    const price = Number(source.price ?? source.selling_price ?? 0);
+    const existing = editingOrder.items.find(item => window.OrderEditor?.isAdded(item)
+        && String(item.product_id || item.item_id || item.id) === String(productId)
+        && Number(item.price) === price
+        && !String(item.item_description || item.item_note || item.notes || '').trim()
+        && !item.seat && !item.course && !item.held && !(item.allergies || []).length
+        && !item.allergy_note && !(item.modifiers || []).length
+        && !lineIsCancelled(item, editingOrder));
+    if (existing) { existing.quantity = Number(existing.quantity) + 1; window.InlineOrderEditor?.reveal(floorLineKey(existing)); return existing; }
+    const fresh = {
+        product_id: productId, line_id: crypto.randomUUID(), name: source.name || source.item_name,
+        price, selling_price: Number(source.selling_price ?? price), quantity: 1,
+        item_description: '', item_note: '', notes: ''
+    };
+    editingOrder.items.push(fresh);
+    window.InlineOrderEditor?.reveal(floorLineKey(fresh));
+    return fresh;
+}
+
 // Add product to order by ID (retrieves from searchedProducts)
 function addProductToOrderById(productId) {
     const product = searchedProducts[productId];
@@ -428,7 +455,7 @@ function addProductToOrderById(productId) {
         console.error('Product not found:', productId);
         return;
     }
-    
+
     const sellingPrice = product.selling_price || product.price;
     addProductToOrder(productId, product.name, sellingPrice);
 }
@@ -522,10 +549,12 @@ async function saveOrderChanges() {
         const data = await CaptainOrderActions.save( {
                 order_id: currentOrderId,
                 items: lines,
+                ...(editingOrder.items.some(item => item.cancelled_quantity > 0 && item.cancellation_reason) ? {change_reason: editingOrder.items.filter(item => item.cancelled_quantity > 0 && item.cancellation_reason).map(item => item.cancellation_reason).join('; ').slice(0,200)} : {}),
                 total_amount: editingOrder.total_amount,
                 extra_discount_type: extraType,
                 extra_discount: extraVal,
                 discount_description: desc,
+                ...(editingOrder.preparation_notes ? {preparation_note:editingOrder.preparation_note || ''} : {}),
                 table_number: newTableNo,
                 table_id: newTableId,
                 dine_type: dineType,
@@ -534,37 +563,43 @@ async function saveOrderChanges() {
         });
 
         if (data.type === 'success') {
+            window.CaptainKitchenFeedback?.play();
             showToast(data.message || 'Order updated', 'success');
             window.OrderEditor?.saved();
-            
+            const inlineSave = window.InlineOrderEditor?.active === true;
+            if (inlineSave) window.InlineOrderEditor.restore();
+
             // Close modal
             const modalElement = document.getElementById('editOrderModal');
             if (modalElement && typeof bootstrap !== 'undefined') {
                 const modal = bootstrap.Modal.getInstance(modalElement);
                 if (modal) modal.hide();
             }
-            
+
             // Check if we're on KOT management page
             const isKotPage = window.location.pathname.includes('kot-management.html');
-            
-            if (isKotPage) {
+
+            if (isKotPage && inlineSave) {
+                await loadOrderHistory();
+                if (floorDetail) await selectTable(floorDetail.id, floorDetail.takeaway, {saleId:floorDetail.saleId,refresh:true});
+            } else if (isKotPage) {
                 // Close sliding panel
                 if (typeof closeSlidingPanel === 'function') {
                     closeSlidingPanel();
                 }
-                
+
                 // Clear KOT selection after successful save
                 if (typeof clearKotSelection === 'function') {
                     clearKotSelection();
                 }
-                
+
                 // Refresh tables list on KOT page
                 if (typeof loadTables === 'function') {
                     setTimeout(async () => {
                         await loadTables();
                     }, 500);
                 }
-                
+
                 // Also reload order history so allOrders has fresh data
                 await loadOrderHistory();
             } else {
@@ -634,7 +669,7 @@ function generateTableFilterButtons() {
 
     // Restore active state
     updateTableFilterButtonStates();
-    
+
     // Restore collapse state
     restoreTableFilterState();
 }
@@ -663,11 +698,11 @@ function updateTableFilterButtonStates() {
 function toggleTableFilters() {
     const container = document.getElementById('all-filters-container');
     const arrow = document.getElementById('table-filter-arrow');
-    
+
     if (!container || !arrow) return;
-    
+
     tableFiltersExpanded = !tableFiltersExpanded;
-    
+
     if (tableFiltersExpanded) {
         container.classList.remove('collapsed');
         arrow.classList.remove('rotated');
@@ -675,7 +710,7 @@ function toggleTableFilters() {
         container.classList.add('collapsed');
         arrow.classList.add('rotated');
     }
-    
+
     // Save state to localStorage
     localStorage.setItem('table_filters_expanded', tableFiltersExpanded);
 }
@@ -684,9 +719,9 @@ function toggleTableFilters() {
 function restoreTableFilterState() {
     const container = document.getElementById('all-filters-container');
     const arrow = document.getElementById('table-filter-arrow');
-    
+
     if (!container || !arrow) return;
-    
+
     if (!tableFiltersExpanded) {
         container.classList.add('collapsed');
         arrow.classList.add('rotated');
@@ -812,7 +847,9 @@ function viewOrderDetails(orderId) {
         ${order.customer_name ? `<p translate="no">${safe(order.customer_name)}</p>` : ''}
       </section>
       ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
+      ${window.OrderPhotos ? OrderPhotos.render(order) : ""}
       <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div><div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
+      ${order.status === 'completed' || order.payment_status === 'Paid' ? `<div class="history-receipt-action"><button type="button" class="btn action-btn" data-review-bill="${safe(order.table_number || order.order_id || order._id)}" data-sale-id="${safe(order._id)}" data-receipt="true"><i class="fas fa-print" aria-hidden="true"></i> View / Print bill</button>${order.payment_status ? `<span>${safe(order.payment_status)}</span>` : ''}</div>` : ''}
       ${order.discount_description ? `<section class="history-detail-note"><h3>Order Notes:</h3><p translate="no">${safe(order.discount_description)}</p></section>` : ''}
       ${['completed','cancelled'].includes(order.status) ? '' : `<details class="history-detail-options"><summary>Order options</summary><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></details>`}
     `;
@@ -820,6 +857,7 @@ function viewOrderDetails(orderId) {
     const detailsContent = document.getElementById('order-details-content');
     if (detailsContent) {
         detailsContent.innerHTML = detailsHtml;
+        window.OrderPhotos?.mount(detailsContent);
     }
 
     // Show/hide action buttons based on order status
@@ -853,9 +891,9 @@ function editOrder(orderId) {
 // Modify KOT - alias for editOrder to support external onclick handlers
 function modifyKot(orderId) {
     console.log('Modify KOT clicked:', orderId);
-    
+
     currentOrderId = orderId;
-    
+
     // Load order data if not already loaded
     if (!allOrders || !allOrders.some(order => order._id === orderId)) {
         loadOrderHistory().then(() => {
@@ -868,6 +906,114 @@ function modifyKot(orderId) {
 
 // Make modifyKot globally accessible
 window.modifyKot = modifyKot;
+
+let openingOrderItems = false;
+async function addItemsToOrder(orderId) {
+    if (window.InlineOrderEditor?.adding && currentOrderId === orderId) { await openItemPicker(); return; }
+    if (openingOrderItems) return;
+    openingOrderItems = true;
+    try {
+        if (!allOrders?.some(order => order._id === orderId)) await loadOrderHistory();
+        const order = allOrders?.find(order => order._id === orderId);
+        if (!order || ['cancelled', 'completed'].includes(order.status)) return;
+        currentOrderId = orderId;
+        const modal = document.getElementById('editOrderModal');
+        modal.addEventListener('shown.bs.modal', () => { window.InlineOrderEditor?.additions(); renderCurrentOrderItems(); void openItemPicker(); }, {once:true});
+        openEditOrderModal();
+    } finally { openingOrderItems = false; }
+}
+window.addItemsToOrder = addItemsToOrder;
+
+// Direct floor actions use preparation identity, never an array position or
+// dish name: two rounds may contain the same dish with different notes.
+const floorLineKey = item => {
+    const value=item.line_id || item.item_id || item.product_id || item.item || item._id || '';
+    return String(value?.$oid || value);
+};
+function floorLineActions(order, item, { repeatOnly = false } = {}) {
+    const key = floorLineKey(item);
+    if (!key || lineIsCancelled(item, order) || order.payment_status === 'Paid' || ['cancelled','completed'].includes(order.status)) return '';
+    const esc = editorEscape;
+    if (repeatOnly) return `<div class="floor-line-actions" data-line-order="${esc(order._id)}" data-line-key="${esc(key)}"><button type="button" data-line-action="more" aria-label="Add again"><i class="fas fa-plus" aria-hidden="true"></i> <span>Add again</span></button></div>`;
+    return `<div class="floor-line-actions" data-line-order="${esc(order._id)}" data-line-key="${esc(key)}"><button type="button" data-line-action="note" aria-label="Note" title="Preparation note"><i class="fas fa-pen" aria-hidden="true"></i><span>Note</span></button><button type="button" data-line-action="cancel" aria-label="Cancel item" title="Cancel item"><i class="far fa-trash-alt" aria-hidden="true"></i></button><span class="floor-line-quantity"><button type="button" data-line-action="less" aria-label="Decrease quantity">−</button><button type="button" data-line-action="more" aria-label="Add again"><i class="fas fa-plus" aria-hidden="true"></i> <span>Add again</span></button></span></div>`;
+}
+window.FloorLineActions = {render:floorLineActions,key:floorLineKey};
+document.addEventListener('click', async event => {
+    const button=event.target.closest('[data-floor-order-note]');
+    if (!button || button.disabled || openingOrderItems) return;
+    button.disabled=true;
+    try {
+        if (!await loadOrderHistory({background:true})) throw new Error('Connection failed');
+        const order=allOrders.find(order=>order._id===button.dataset.floorOrderNote);
+        if (!order?.preparation_notes || order.payment_status==='Paid' || ['cancelled','completed'].includes(order.status)) throw new Error('Table changed. Refresh and try again.');
+        currentOrderId=order._id;
+        const modal=document.getElementById('editOrderModal');
+        modal.addEventListener('shown.bs.modal',()=>{
+            const note=document.getElementById('editor-preparation-note');
+            note?.scrollIntoView({block:'center'});note?.focus();
+        },{once:true});
+        openEditOrderModal();
+    } catch(error) {showToast(window.I18N?.t(error.message) || error.message,'error');}
+    finally {button.disabled=false;}
+});
+document.addEventListener('click', async event => {
+    const button=event.target.closest('[data-floor-move-order]');
+    if (!button || button.disabled || openingOrderItems || moveSaving) return;
+    button.disabled=true;
+    try {
+        if (!await loadOrderHistory({background:true})) throw new Error('Connection failed');
+        const order=allOrders.find(order=>order._id===button.dataset.floorMoveOrder);
+        if (!order || order.payment_status==='Paid' || ['cancelled','completed'].includes(order.status) || /^take[\s_-]*away$/i.test(order.dine_type || '')) throw new Error('Table changed. Refresh and try again.');
+        moveOrder(order._id);
+    } catch(error) {showToast(window.I18N?.t(error.message) || error.message,'error');}
+    finally {button.disabled=false;}
+});
+document.addEventListener('click', async event => {
+    const button=event.target.closest('[data-line-action]');
+    if (!button || openingOrderItems) return;
+    const row=button.closest('[data-line-order]');
+    if (!row || row.closest('[data-serving="true"]')) return;
+    if (window.InlineOrderEditor?.adding && editingOrder && currentOrderId === row.dataset.lineOrder) {
+        if (!['more','cancel','note','less'].includes(button.dataset.lineAction)) return;
+        const source = editingOrder.items.find(item => floorLineKey(item) === row.dataset.lineKey);
+        if (!source || lineIsCancelled(source, editingOrder)) return;
+        if (button.dataset.lineAction === 'note') { document.querySelector(`#current-order-items .editor-note-link[data-index="${editingOrder.items.indexOf(source)}"]`)?.click(); return; }
+        if (button.dataset.lineAction === 'less') { updateItemQuantity(editingOrder.items.indexOf(source),-1); return; }
+        if (button.dataset.lineAction === 'cancel') { removeItem(editingOrder.items.indexOf(source)); return; }
+        if (editingOrder.transfer_allocated === true) { await openItemPicker(); return; }
+        addDraftServing(source); renderCurrentOrderItems(); updateOrderTotal();
+        return;
+    }
+    openingOrderItems=true;button.disabled=true;
+    try {
+        // Refresh before starting a draft so desktop changes are included.
+        if (!await loadOrderHistory({background:true})) throw new Error('Connection failed');
+        const order=allOrders.find(order=>order._id===row.dataset.lineOrder);
+        const matches=(order?.items || []).map((item,index)=>({item,index})).filter(({item})=>floorLineKey(item)===row.dataset.lineKey);
+        if (!order || order.payment_status==='Paid' || ['cancelled','completed'].includes(order.status) || matches.length!==1 || lineIsCancelled(matches[0].item,order)) throw new Error('Table changed. Refresh and try again.');
+        currentOrderId=order._id;
+        const index=matches[0].index, modal=document.getElementById('editOrderModal');
+        const shown = new Promise(resolve=>modal.addEventListener('shown.bs.modal',()=>{
+            if (button.dataset.lineAction==='note') { window.InlineOrderEditor?.additions(); modal.querySelector(`.editor-note-link[data-index="${index}"]`)?.click(); }
+            if (button.dataset.lineAction==='cancel') { window.InlineOrderEditor?.additions(); removeItem(index); }
+            if (button.dataset.lineAction==='more') {
+                if (editingOrder.transfer_allocated === true) { void openItemPicker();resolve();return; }
+                const source=editingOrder.items[index];
+                // Another serving is a fresh preparation, so its note cannot
+                // overwrite the earlier kitchen ticket for this same dish.
+                addDraftServing(source);
+                window.InlineOrderEditor?.additions();
+                renderCurrentOrderItems();updateOrderTotal();
+                window.InlineOrderEditor?.reveal();
+            }
+            if (button.dataset.lineAction==='less') { window.InlineOrderEditor?.additions(); updateItemQuantity(index,-1); }
+            resolve();
+        },{once:true}));
+        openEditOrderModal();
+        await shown;
+    } catch(error) {showToast(window.I18N?.t(error.message) || error.message,'error');}
+    finally {openingOrderItems=false;button.disabled=false;}
+});
 
 // Add items to order
 // function addItemsToOrder(orderId) {
@@ -973,6 +1119,11 @@ function ensureMoveSheet() {
                 </div>
                 <div class="modal-body">
                     <div class="move-table-now" id="move-table-now"></div>
+                    <div id="move-custom-table" class="move-custom-table" hidden>
+                        <label for="move-custom-number">Custom table</label>
+                        <p id="move-custom-hint">Temporary table? Enter a label such as 6A, 6B or 6C.</p>
+                        <div class="move-custom-entry"><input id="move-custom-number" type="text" maxlength="6" pattern="[A-Za-z0-9]{1,6}" placeholder="e.g. 6A" autocomplete="off" autocapitalize="characters" aria-describedby="move-custom-hint"><button type="button" id="move-custom-use" class="btn close-btn">Use table</button></div>
+                    </div>
                     <p id="move-table-status" role="status"></p><button type="button" id="move-table-retry" class="btn close-btn" hidden>Retry</button><div class="move-table-list" id="move-table-list"></div>
                 </div>
                 <div class="modal-footer">
@@ -995,6 +1146,16 @@ function ensureMoveSheet() {
     el.querySelector('#move-table-go').addEventListener('click', () => confirmMoveTable());
     el.querySelector('#move-table-cancel').addEventListener('click', () => confirmMoveTable(true));
     el.querySelector('#move-table-retry').addEventListener('click', refreshMoveTables);
+    el.querySelector('#move-custom-use').addEventListener('click', useCustomMoveTable);
+    el.querySelector('#move-custom-number').addEventListener('input', () => {
+        if (moveSaving) return;
+        moveSelected = []; movePrimary = '';
+        el.querySelectorAll('.move-table.is-chosen').forEach(button => {button.classList.remove('is-chosen');button.setAttribute('aria-pressed','false');});
+        el.querySelector('#move-table-go').disabled = true;
+        el.querySelector('#move-table-go').textContent = 'Choose a table';
+        el.querySelector('#move-custom-number').setCustomValidity('');
+    });
+    el.querySelector('#move-custom-number').addEventListener('keydown', event => { if(event.key === 'Enter') { event.preventDefault(); void useCustomMoveTable(); } });
 
     /* Reopened later for a different order, the last choice must not still be
        sitting there ready to move this one. */
@@ -1043,6 +1204,8 @@ async function refreshMoveTables() {
     const message = document.getElementById('move-table-status');
     const retry = document.getElementById('move-table-retry');
     const go = document.getElementById('move-table-go');
+    document.getElementById('move-custom-table').hidden = true;
+    document.getElementById('move-custom-number').value = '';
     moveTables = [];
     moveLegacySupported = false;
     mergeLegacySupported = false;
@@ -1071,6 +1234,7 @@ async function refreshMoveTables() {
         if(moveMode === "merge" && !result.canMerge) { message.textContent=window.I18N?.t("Permission is required.") || "Permission is required."; return; }
         moveTables = tablesFromStorage(CaptainTables.liveRows(result));
         message.textContent = '';
+        document.getElementById('move-custom-table').hidden = moveMode !== 'move';
         renderMoveTables();
     } catch {
         if (version !== moveLoadVersion || !orderBeingMoved) return;
@@ -1199,6 +1363,48 @@ function renderGroupMoveTables() {
  * would make a mis-tap into a table change the kitchen hears about, and the
  * floor is not a place where anybody taps carefully.
  */
+async function useCustomMoveTable() {
+    if (moveSaving || !orderBeingMoved || moveMode !== 'move') return;
+    const field = document.getElementById('move-custom-number');
+    const label = field.value.trim().toUpperCase();
+    field.value = label;
+    field.setCustomValidity(/^[A-Z0-9]{1,6}$/.test(label) ? '' : 'Use up to 6 letters or numbers for the table.');
+    if (!field.reportValidity()) return;
+    const owner = orderBeingMoved;
+    const select = () => {
+        const button = [...document.querySelectorAll('#move-table-list .move-table')]
+            .find(row => row.dataset.value?.toUpperCase() === label);
+        if (!button || button.disabled) {
+            document.getElementById('move-table-status').textContent = 'This table is not available. Choose another table.';
+            return;
+        }
+        moveSelected = []; movePrimary = '';
+        chooseMoveTable(button);
+        field.value = label;
+        document.getElementById('move-table-go').textContent = `Move to table ${label}`;
+        document.getElementById('move-table-status').textContent = `Selected table ${label}. Tap Move to confirm.`;
+        document.getElementById('move-table-go').focus();
+    };
+    if (moveTables.some(row => row.value.toUpperCase() === label)) { select(); return; }
+    const controls = [...document.querySelectorAll('#moveTableModal button, #moveTableModal input')].map(node=>({node,disabled:node.disabled}));
+    moveSaving = true;
+    controls.forEach(({node})=>node.disabled=true);
+    try {
+        await POSNIC.api.post('/captain/v1/tables/temporary', {tableorder_value:label});
+        moveSaving = false;
+        if (orderBeingMoved !== owner) return;
+        await refreshMoveTables();
+        if (orderBeingMoved === owner) select();
+    } catch(error) {
+        document.getElementById('move-table-status').textContent = error.status === 404
+            ? 'The server needs an update to support temporary tables.'
+            : (error.message || 'Could not create the table. Please try again.');
+    } finally {
+        moveSaving = false;
+        controls.forEach(({node,disabled})=>{ if(node.id !== 'move-table-go') node.disabled=disabled; });
+    }
+}
+
 function chooseMoveTable(button) {
     if (moveSaving || button.disabled) return;
     const list = document.getElementById('move-table-list');
@@ -1274,6 +1480,7 @@ async function confirmMoveTable(cancelPending = false) {
             if (modal) modal.hide();
         }
 
+        if (!data.cancelled && typeof closeSlidingPanel === 'function') closeSlidingPanel();
         if (typeof loadTables === 'function') await loadTables();
         await loadOrderHistory();
     } catch (error) {
@@ -1475,7 +1682,19 @@ $(document).on('focus click', '#edit_manual_table_input', function () {
     $('#edit_table_manual_radio').prop('checked', true);
 });
 // Open edit order modal
+let editorOpenRequest = 0;
 function openEditOrderModal() {
+    const request = ++editorOpenRequest;
+    const closing = window.OrderEditor?.whenClosing();
+    if (closing) {
+        const requestedOrderId = currentOrderId;
+        closing.then(() => {
+            if (request !== editorOpenRequest) return;
+            currentOrderId = requestedOrderId;
+            openEditOrderModal();
+        });
+        return;
+    }
     const order = allOrders.find(o => o._id === currentOrderId);
     console.log(order);
     if (!order) return;
@@ -1559,8 +1778,12 @@ function openEditOrderModal() {
     window.OrderEditor?.begin();
 
     const modalElement = document.getElementById('editOrderModal');
+    const inline = window.InlineOrderEditor?.mount(currentOrderId) || false;
+    // Inline controls are immediately usable; no modal animation may swallow a fast save.
+    modalElement?.classList.toggle('fade', !inline);
     if (modalElement && typeof bootstrap !== 'undefined') {
-        const modal = new bootstrap.Modal(modalElement);
+        bootstrap.Modal.getInstance(modalElement)?.dispose();
+        const modal = new bootstrap.Modal(modalElement, inline ? {backdrop:false,focus:false} : {});
         modal.show();
     }
 }
@@ -1607,6 +1830,7 @@ function cancelOrder(orderId) {
     }
 
     pendingCancelOrderId = orderId;
+    document.getElementById('history-cancel-reason').value = '';
 
     const modalElement = document.getElementById('cancelConfirmModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
@@ -1615,7 +1839,7 @@ function cancelOrder(orderId) {
     }
 }
 
-async function performCancelOrder(orderId) {
+async function performCancelOrder(orderId, reason) {
     const order = allOrders.find(o => o._id === orderId);
     if (!order) return;
     let cancellationConfirmed = false;
@@ -1626,7 +1850,8 @@ async function performCancelOrder(orderId) {
             order_id: orderId,
             items: order.items,
             total_amount: order.total_amount,
-            status: 'cancelled'
+            status: 'cancelled',
+            change_reason: reason
         });
 
         if (data.type === 'success') {
@@ -1663,28 +1888,45 @@ function renderCurrentOrderItems() {
     const container = document.getElementById('current-order-items');
     if (!container || !editingOrder) return;
 
-    const itemsHtml = editingOrder.items.map((item, index) => {
+    const entries = editingOrder.items.map((item, index) => ({item, index}));
+    entries.sort((a, b) => Number(!!window.OrderEditor?.isAdded(a.item)) - Number(!!window.OrderEditor?.isAdded(b.item)));
+    let lastGroup = null;
+    const itemsHtml = entries.map(({item, index}) => {
+        const added = !!window.OrderEditor?.isAdded(item);
+        const groupHeading = lastGroup === added ? '' : `<h3 class="editor-items-heading" data-draft-heading="${added}">${added ? 'New · Not sent' : 'Already sent'}</h3>`;
+        lastGroup = added;
         const quantity = parseFloat(item.quantity || 1);
-        
+
         // Per-unit values from backend
         const perUnitSellingPrice = parseFloat(item.selling_price || 0);
         const perUnitDiscount = parseFloat(item.discount || 0);
         const perUnitTax = parseFloat(item.tax_amount || 0);
-        
+
         // Calculate total values based on quantity
         const totalSellingPrice = perUnitSellingPrice * quantity;
         const totalDiscount = perUnitDiscount * quantity;
         const totalTax = perUnitTax * quantity;
-        
+
+        if (added && window.InlineOrderEditor?.adding) return `
+        ${groupHeading}<div class="order-item-card compact-draft-row service-line" data-line-key="${editorEscape(floorLineKey(item))}" data-draft-line="true">
+          <div class="service-dish"><strong class="line-name" translate="no">${editorEscape(item.name)}</strong>${item.item_description ? `<p class="item-notes" translate="no">${editorEscape(item.item_description)}</p>` : ''}</div><span class="service-quantity" translate="no">×${item.quantity}</span>
+          <div class="draft-controls floor-line-actions">
+            <button type="button" class="editor-note-link item-info" data-index="${index}" aria-label="Note"><i class="fas fa-pen" aria-hidden="true"></i><span>Note</span></button>
+            <button type="button" class="draft-remove" aria-label="Remove item" title="Remove unsent item" onclick="removeItem(${index})"><i class="far fa-trash-alt" aria-hidden="true"></i></button>
+            ${ServiceDetails.supported() ? `<button type="button" class="preparation-link editor-preparation-action" data-preparation-order="${index}" aria-label="Preparation" title="Preparation"><i class="fas fa-sliders-h" aria-hidden="true"></i></button>` : ''}
+            <div class="item-controls"><button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button><span class="qty-display">${item.quantity}</span><button type="button" class="qty-btn" aria-label="Increase quantity" onclick="updateItemQuantity(${index}, 1)">+</button></div>
+          </div>
+        </div>`;
         return `
-        <div class="order-item-card${struck(item, editingOrder)}">
-            <div class="item-info" data-index="${index}">
+        ${groupHeading}<div class="order-item-card${struck(item, editingOrder)}" data-draft-line="${added}">
+            <div class="item-info">
                 <h6><span class="line-name" translate="no">${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
                 ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ${CaptainMoney.html(totalSellingPrice)}</strong></p>` : ''}
                 ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
                 ${ServiceDetails.summary(item)}
+                ${window.OrderEditor && !added && Number(item.quantity) !== OrderEditor.previousQuantity(item) ? `<p class="editor-quantity-change"><span>Already on the order</span>: ${OrderEditor.previousQuantity(item)} · <span>Added</span>: ${Number(item.quantity) - OrderEditor.previousQuantity(item)} · <span>Total</span>: ${Number(item.quantity)}</p>` : ''}
             </div>
-            ${!lineIsCancelled(item, editingOrder) ? `${ServiceDetails.supported() ? `<button type="button" class="preparation-link" data-preparation-order="${index}">Preparation</button>` : ''}<button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Notes</span></button>` : ''}
+            ${!lineIsCancelled(item, editingOrder) ? `<div class="editor-item-actions"><button type="button" class="editor-note-link item-info" data-index="${index}"><i class="fas fa-pen" aria-hidden="true"></i> <span>Note</span></button>${ServiceDetails.supported() ? `<button type="button" class="preparation-link editor-preparation-action" data-preparation-order="${index}" aria-label="Preparation" title="Preparation"><i class="fas fa-sliders-h" aria-hidden="true"></i></button>` : ''}</div>` : ''}
             ${lineIsCancelled(item, editingOrder)
         /*
          * A cancelled line keeps no controls.
@@ -1700,9 +1942,9 @@ function renderCurrentOrderItems() {
         : `<div class="item-controls">
                 <button type="button" class="qty-btn" aria-label="Decrease quantity" onclick="updateItemQuantity(${index}, -1)">−</button>
                 <span class="qty-display">${item.quantity}</span>
-                <button type="button" class="qty-btn" aria-label="${editingOrder.transfer_allocated === true && !window.OrderEditor?.isAdded(item) ? 'Add items' : 'Increase quantity'}" onclick="updateItemQuantity(${index}, 1)">+</button>
-                <button type="button" class="remove-btn" aria-label="Remove Item" onclick="removeItem(${index})">
-                    <i class="fas fa-trash"></i>
+                <button type="button" class="qty-btn" aria-label="${added ? 'Increase quantity' : 'Add again'}" onclick="updateItemQuantity(${index}, 1)">${added ? '+' : '<i class="fas fa-plus" aria-hidden="true"></i><span class="editor-repeat-label"> Add again</span>'}</button>
+                <button type="button" class="remove-btn" aria-label="${added ? 'Remove item' : 'Cancel item'}" onclick="removeItem(${index})">
+                    <i class="far fa-trash-alt" aria-hidden="true"></i> <span>${added ? 'Remove' : 'Cancel item'}</span>
                 </button>
             </div>`}
         </div>
@@ -1710,12 +1952,55 @@ function renderCurrentOrderItems() {
     }).join('');
 
     container.innerHTML = itemsHtml;
+    if (window.InlineOrderEditor?.adding) {
+        const heading = container.querySelector('[data-draft-heading="true"]');
+        if (heading) {
+            const batch = document.createElement('section');
+            batch.className = 'service-round draft-round';
+            heading.before(batch);
+            batch.append(heading, ...container.querySelectorAll('.compact-draft-row'));
+        }
+    }
+    window.InlineOrderEditor?.cancellations(editingOrder.items);
+    window.InlineOrderEditor?.reveal();
     window.OrderEditor?.refresh();
 }
 
 function editorEscape(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
+
+// Existing orders offer the same quick preparation notes as menu/cart entry.
+const editorNoteSuggestions = ['Less spicy', 'Medium spicy', 'Extra spicy',
+    'Less salt', 'Less sweet', 'Less oil', 'No onion', 'No garlic', 'No ice',
+    'Extra gravy', 'Half plate', 'One by two'];
+function refreshEditorNoteSuggestions() {
+    const field = document.getElementById('edit-item-notes-text');
+    if (!field) return;
+    let host = document.getElementById('edit-note-suggestions');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'edit-note-suggestions';
+        host.className = 'editor-note-suggestions';
+        field.after(host);
+        const help=document.createElement("p");help.className="edit-notes-help";help.textContent="Saved notes go with your next kitchen update.";host.after(help);
+        host.innerHTML = editorNoteSuggestions.map(note => `<button type="button" data-editor-note="${editorEscape(note)}">${editorEscape(note)}</button>`).join('');
+    }
+    const selected = field.value.split(',').map(part => part.trim().toLowerCase());
+    host.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(selected.includes(button.dataset.editorNote.toLowerCase()))));
+    window.I18N?.apply(host);
+}
+$(document).on('show.bs.modal', '#editItemNotesModal', refreshEditorNoteSuggestions);
+$(document).on('input', '#edit-item-notes-text', refreshEditorNoteSuggestions);
+$(document).on('click', '[data-editor-note]', function () {
+    const field = document.getElementById('edit-item-notes-text');
+    const parts = field.value.split(',').map(part => part.trim()).filter(Boolean);
+    const note = this.dataset.editorNote;
+    const index = parts.findIndex(part => part.toLowerCase() === note.toLowerCase());
+    if (index < 0) parts.push(note); else parts.splice(index, 1);
+    field.value = parts.join(', ');
+    field.dispatchEvent(new Event('input', {bubbles:true}));
+});
 
 // Click on item-info → open notes modal
 $(document).on('click', '.item-info', function () {
@@ -1749,6 +2034,7 @@ $(document).on('click', '#edit-item-notes-apply', function () {
     const notes = $('#edit-item-notes-text').val().trim();
 
     item.item_description = notes;
+    window.InlineOrderEditor?.note(floorLineKey(item), notes);
     if ('notes' in item) item.notes = notes;
 
     // UI refresh
@@ -1756,6 +2042,7 @@ $(document).on('click', '#edit-item-notes-apply', function () {
 
     // Modal close
     const modalEl = document.getElementById('editItemNotesModal');
+    modalEl.addEventListener('hidden.bs.modal',()=>window.InlineOrderEditor?.reveal(floorLineKey(item)),{once:true});
     const bsModal = bootstrap.Modal.getInstance(modalEl);
     if (bsModal) bsModal.hide();
 
@@ -1763,6 +2050,7 @@ $(document).on('click', '#edit-item-notes-apply', function () {
 });
 // Update item quantity
 let pendingRemovalIndex = null;
+let pendingRemovalQuantity = null;
 
 function updateItemQuantity(index, change) {
     if (!editingOrder) return;
@@ -1772,7 +2060,17 @@ function updateItemQuantity(index, change) {
         void openItemPicker();
         return;
     }
-    const newQty = item.quantity + change;
+    if (change > 0 && !window.OrderEditor?.isAdded(item)) {
+        addDraftServing(item);
+        renderCurrentOrderItems();
+        updateOrderTotal();
+        return;
+    }
+    if (change < 0 && !window.OrderEditor?.isAdded(item)) {
+        showRemoveItemConfirmation(index, Math.min(-change, Number(item.quantity)));
+        return;
+    }
+    const newQty = Number(item.quantity) + change;
 
     if (newQty <= 0) {
         showRemoveItemConfirmation(index);
@@ -1783,28 +2081,37 @@ function updateItemQuantity(index, change) {
     }, 0);
 
     item.quantity = newQty;
+    window.InlineOrderEditor?.reveal(floorLineKey(item));
     renderCurrentOrderItems();
     updateOrderTotal();
-    
+
     // Update sliding panel KOT card in real-time
     if (typeof updateSlidingPanelKotCard === 'function') {
         updateSlidingPanelKotCard();
     }
 }
 
-function showRemoveItemConfirmation(index) {
+function showRemoveItemConfirmation(index, quantity = null) {
     if (!editingOrder || !editingOrder.items[index]) return;
-    
+
+    if (window.OrderEditor?.isAdded(editingOrder.items[index])) {
+        editingOrder.items.splice(index, 1);
+        renderCurrentOrderItems(); updateOrderTotal();
+        if (!window.OrderEditor?.dirty() && document.getElementById('item-picker')?.hidden) void window.OrderEditor?.cancel();
+        return;
+    }
+    document.getElementById('cancel-item-reason').value = '';
     pendingRemovalIndex = index;
+    pendingRemovalQuantity = quantity;
     const item = editingOrder.items[index];
-    
-    document.getElementById('remove-item-name').textContent = item.name;
-    
+
+    document.getElementById('remove-item-name').textContent = quantity === null ? item.name : `${quantity} × ${item.name}`;
+
     const editModal = document.getElementById('editOrderModal');
     if (editModal) {
         editModal.classList.add('modal-behind');
     }
-    
+
     const modalEl = document.getElementById('removeItemConfirmModal');
     const bsModal = new bootstrap.Modal(modalEl);
     bsModal.show();
@@ -1916,7 +2223,7 @@ function linesForSave(items) {
 
 function confirmRemoveItem() {
     if (!editingOrder || pendingRemovalIndex === null) return;
-    
+
     const line = editingOrder.items[pendingRemovalIndex];
 
     /*
@@ -1938,25 +2245,31 @@ function confirmRemoveItem() {
      * quantity, and the payload drops zero-quantity lines before they reach
      * the till. A cancelled dish cannot be charged for.
      */
-    const wasOrdered = !!(line && (line._id || line.sale_inline_item_id || line.item_id));
+    const wasOrdered = !!line && !window.OrderEditor?.isAdded(line);
     if (wasOrdered) {
-        line.cancelled = true;
-        line.cancelled_quantity = Number(line.quantity) || 0;
-        line.quantity = 0;
+        const reasonField = document.getElementById('cancel-item-reason');
+        reasonField.value = reasonField.value.trim();
+        if (!reasonField.reportValidity()) return;
+        line.cancellation_reason = reasonField.value;
+        const removed = Math.min(Number(line.quantity), pendingRemovalQuantity ?? Number(line.quantity));
+        line.quantity = Math.max(0, Number(line.quantity) - removed);
+        line.cancelled_quantity = Math.max(0, window.OrderEditor.previousQuantity(line) - line.quantity);
+        line.cancelled = line.quantity === 0;
     } else {
         editingOrder.items.splice(pendingRemovalIndex, 1);
     }
     pendingRemovalIndex = null;
-    
+
     const modalEl = document.getElementById('removeItemConfirmModal');
+    modalEl.addEventListener('hidden.bs.modal',()=>window.InlineOrderEditor?.reveal(floorLineKey(line)),{once:true});
     const bsModal = bootstrap.Modal.getInstance(modalEl);
     if (bsModal) {
         bsModal.hide();
     }
-    
+
     renderCurrentOrderItems();
     updateOrderTotal();
-    
+
     // Update sliding panel KOT card in real-time
     if (typeof updateSlidingPanelKotCard === 'function') {
         updateSlidingPanelKotCard();
@@ -1967,26 +2280,11 @@ function confirmRemoveItem() {
 function addProductToOrder(productId, productName, productPrice) {
     if (!editingOrder) return;
 
-    // Existing transferred portions keep their original monetary allocation.
-    // Repeated menu taps may increase only the new preparation in this edit.
-    const existingItem = editingOrder.items.find(item => (editingOrder.transfer_allocated !== true || window.OrderEditor?.isAdded(item)) && (item.product_id || item.item_id || item.id) === productId && !String(item.item_description || item.notes || '').trim() && !item.seat && !item.course && !item.held && !(item.allergies || []).length && !item.allergy_note && !(item.modifiers || []).length && Number(item.price) === Number(productPrice) && !lineIsCancelled(item, editingOrder));
-
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        editingOrder.items.push({
-            product_id: productId,
-            line_id: crypto.randomUUID(),
-            name: productName,
-            selling_price: productPrice,  // Use selling_price field for consistency
-            price: productPrice,
-            quantity: 1
-        });
-    }
+    addDraftServing({product_id: productId, name: productName, selling_price: productPrice, price: productPrice});
 
     renderCurrentOrderItems();
     updateOrderTotal();
-    
+
     // Update sliding panel KOT card in real-time
     if (typeof updateSlidingPanelKotCard === 'function') {
         updateSlidingPanelKotCard();
@@ -1994,9 +2292,9 @@ function addProductToOrder(productId, productName, productPrice) {
 
     // Clear search
     const productSearch = document.getElementById('product-search');
-    const suggestions = document.getElementById('product-suggestions');
-    if (productSearch) productSearch.value = '';
-    if (suggestions) suggestions.innerHTML = '';
+    if (productSearch?.value) productSearch.select();
+    const pickerSearch = document.getElementById('picker-search-input');
+    if (pickerSearch?.value) { pickerSearch.focus({preventScroll:true}); pickerSearch.select(); }
 }
 
 // Update order total
@@ -2130,6 +2428,10 @@ function lineIsCancelled(item, order) {
     if (!item) return false;
     if (item.cancelled === true || item.is_cancelled === true) return true;
     if (String(item.status || '').toLowerCase() === 'cancelled') return true;
+    // Edited lines carry their remaining quantity and an explicit full-cancel
+    // flag. Comparing the removed amount with the remainder would drop a
+    // live serving when, for example, two portions are reduced to one.
+    if (item.cancelled === false && Number(item.quantity) > 0) return false;
     /* A line reduced to nothing is a line that was taken off. */
     if (item.cancelled_quantity && Number(item.cancelled_quantity) >= Number(item.quantity || 0)) {
         return true;
@@ -2179,7 +2481,7 @@ async function openItemPicker() {
 
     sheet.hidden = false;
     document.body.classList.add('picker-open');
-    body.innerHTML = '<div class="menu-nothing">Loading the menu...</div>';
+    body.innerHTML = '<div class="menu-nothing" data-chef-loading role="status">Loading the menu...</div>';
     const valid = pickerRequestGuard();
     pickerAll = []; pickerMenu = []; pickerIndex = null; pickerTerm = '';
     const box = document.getElementById('picker-search-input');
@@ -2286,7 +2588,7 @@ function pickerCart() {
     const order = orderBeingModified();
     const items = (order && order.items) || [];
     for (const item of items) {
-        if (lineIsCancelled(item, order) || Number(item.quantity) <= 0) continue;
+        if (!window.OrderEditor?.isAdded(item) || lineIsCancelled(item, order) || Number(item.quantity) <= 0) continue;
         const id = String(item.product_id || item.id || '');
         if (!id) continue;
         const had = cart.get(id);
@@ -2303,6 +2605,25 @@ function pickerCart() {
  * after every tap is how adding three dishes becomes three journeys back down
  * the menu.
  */
+function showPreviouslyOrderedCounts() {
+    const counts = new Map();
+    for (const item of orderBeingModified()?.items || []) {
+        const quantity = window.OrderEditor?.previousQuantity(item) || 0;
+        const id = String(item.product_id || item.item_id || item.id || '');
+        if (id && quantity > 0) counts.set(id, (counts.get(id) || 0) + quantity);
+    }
+    for (const row of document.querySelectorAll('#item-picker-body .dish[data-id]')) {
+        row.querySelector('.picker-previous-count')?.remove();
+        const count = counts.get(row.dataset.id);
+        if (!count) continue;
+        const label = document.createElement('small');
+        label.className = 'picker-previous-count';
+        const text = document.createElement('span'); text.textContent = 'Already ordered';
+        label.append(text, document.createTextNode(': ' + count));
+        row.querySelector('.dish-name')?.after(label);
+    }
+}
+
 function pickerRefreshRow(id) {
     /*
      * EVERY row for this dish, not the first one.
@@ -2333,6 +2654,7 @@ function pickerRefreshRow(id) {
         holder.innerHTML = fresh;
         if (holder.firstElementChild) row.replaceWith(holder.firstElementChild);
     }
+    showPreviouslyOrderedCounts();
 }
 
 function drawPicker() {
@@ -2359,11 +2681,19 @@ function drawPicker() {
          * already found it.
          */
         const cart = pickerCart();
+        const onTable = new Map(cart);
+        const order = orderBeingModified();
+        for (const item of order?.items || []) {
+            if (lineIsCancelled(item, order) || !window.OrderEditor?.previousQuantity(item)) continue;
+            const id = String(item.product_id || item.item_id || item.id || '');
+            if (id) onTable.set(id, { quantity: Number(item.quantity) || 0 });
+        }
         body.innerHTML = MenuView.render(
-            [...pickerShortcuts(pickerMenu, cart), ...pickerMenu],
+            [...pickerShortcuts(pickerMenu, onTable), ...pickerMenu],
             cart,
             { numbers }
         );
+        showPreviouslyOrderedCounts();
         return;
     }
 
@@ -2420,14 +2750,15 @@ function drawPicker() {
     }
 
     body.innerHTML = MenuView.render(sections, pickerCart(), { numbers });
+    showPreviouslyOrderedCounts();
 }
 
 /** Every category with a count, for the MENU sheet. */
 function pickerIndexRows() {
     return (pickerMenu || [])
         .map(function (section) {
-            return '<button type="button" class="menu-index-row" data-category="' + section.key + '">'
-                + '<span class="menu-index-name">' + section.name + '</span>'
+            return '<button type="button" class="menu-index-row" data-category="' + editorEscape(section.key) + '">'
+                + '<span class="menu-index-name" translate="no">' + editorEscape(section.name) + '</span>'
                 + '<span class="menu-index-count">' + section.items.length + '</span>'
                 + '</button>';
         })
@@ -2440,12 +2771,44 @@ function openPickerIndex() {
     if (!sheet || !list) return;
     list.innerHTML = pickerIndexRows();
     sheet.hidden = false;
+    list.scrollTop = 0;
+    const panel = sheet.querySelector('.ui-sheet');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    sheet.querySelector('.ui-sheet-title').id = 'picker-index-title';
+    panel.setAttribute('aria-labelledby', 'picker-index-title');
+    document.getElementById('picker-index-btn')?.setAttribute('aria-expanded', 'true');
+    document.getElementById('picker-index-close')?.setAttribute('aria-label', window.I18N?.t('Close') || 'Close');
+    [...sheet.parentElement.children].filter(node => node !== sheet && !node.inert).forEach(node => { node.inert = true; node.dataset.pickerIndexInert = 'true'; });
+    document.getElementById('picker-index-close')?.focus({preventScroll:true});
 }
 
 function closePickerIndex() {
     const sheet = document.getElementById('picker-index');
     if (sheet) sheet.hidden = true;
+    document.querySelectorAll('[data-picker-index-inert]').forEach(node => { node.inert = false; delete node.dataset.pickerIndexInert; });
+    document.getElementById('picker-index-btn')?.setAttribute('aria-expanded', 'false');
+    if (sheet && !document.getElementById('item-picker')?.hidden) document.getElementById('picker-index-btn')?.focus({preventScroll:true});
 }
+
+document.addEventListener('keydown', event => {
+    const sheet = document.getElementById('picker-index');
+    if (!sheet || sheet.hidden) return;
+    if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closePickerIndex(); }
+    if (event.key === 'Tab') {
+        const buttons = [...sheet.querySelectorAll('button:not(:disabled)')];
+        const first = buttons[0], last = buttons.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+}, true);
+window.addEventListener('captain:back', event => {
+    const sheet = document.getElementById('picker-index');
+    if (event.defaultPrevented || !sheet || sheet.hidden || document.querySelector('dialog[open], #posnic-lock.is-open')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closePickerIndex();
+}, true);
 
 /** Scroll the sheet to a section, the way the rail does. */
 function pickerGoTo(key) {
@@ -2457,10 +2820,12 @@ function pickerGoTo(key) {
 }
 
 function closeItemPicker() {
+    closePickerIndex();
     pickerGeneration++;
     const sheet = document.getElementById('item-picker');
     if (sheet) sheet.hidden = true;
     document.body.classList.remove('picker-open');
+    window.InlineOrderEditor?.reveal();
     window.OrderEditor?.refresh();
     document.getElementById('open-item-picker')?.focus({ preventScroll: true });
 }
@@ -2565,7 +2930,7 @@ document.addEventListener('click', function (event) {
             && !String(item.item_description || item.notes || '').trim()
             && !item.seat && !item.course && !item.held && !(item.allergies || []).length
             && !item.allergy_note && !(item.modifiers || []).length);
-        const at = added ? added.index : matches.length === 1 && order.transfer_allocated !== true ? matches[0].index : -1;
+        const at = added ? added.index : -1;
         if (at < 0 && matches.length) {
             closeItemPicker();
             document.querySelectorAll('#current-order-items .order-item-card')[matches[0].index]?.querySelector('.qty-btn')?.focus({ preventScroll: true });
@@ -2788,8 +3153,11 @@ document.addEventListener('click', async function (event) {
     const name = said || (await POSNIC.askName(''));
     if (!name || !valid()) return;
 
-    const price = await POSNIC.askPrice(name);
-    if (!price || !valid()) return;
+    let entry;
+    try { entry = await POSNIC.quickSale.ask(name); }
+    catch (error) { if (valid()) showErrorPopup(error.message); return; }
+    if (!entry || !valid()) return;
+    const price = entry.amount;
 
     try {
         /*
@@ -2798,7 +3166,7 @@ document.addEventListener('click', async function (event) {
          * create an item with no name, which it refuses - so the button would
          * have looked broken in a new way.
          */
-        const made = await POSNIC.quickSale.createOneOff(name, price);
+        const made = await POSNIC.quickSale.createOneOff(name, price, entry.tax);
         if (!valid()) return;
 
         /* saveOne, never saveData: saveData clears the store first and would

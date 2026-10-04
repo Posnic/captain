@@ -45,6 +45,7 @@ async function anOrderBeingModified(page) {
        stubbed accessor would leave renderCurrentOrderItems reading the script
        binding and drawing nothing. */
     window.setOrderBeingModified(order);
+    window.OrderEditor.begin();
     window.__order = order;
     new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
   });
@@ -54,7 +55,8 @@ async function anOrderBeingModified(page) {
 async function cancel(page, index) {
   await page.evaluate((i) => removeItem(i), index);
   await page.locator('#removeItemConfirmModal').waitFor({ state: 'visible' });
-  await page.evaluate(() => confirmRemoveItem());
+  await page.locator('#cancel-item-reason').fill('Customer requested');
+  await page.locator('#confirm-remove-item-btn').click();
 }
 
 test('a cancelled dish is still on the screen, with a rule through its name', async ({ page }) => {
@@ -153,7 +155,8 @@ test('a dish added in this session is removed, not struck', async ({ page }) => 
   });
   await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(3);
 
-  await cancel(page, 2);
+  await page.evaluate(() => removeItem(2));
+  await expect(page.locator('#removeItemConfirmModal')).not.toBeVisible();
 
   await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(2);
   await expect(page.locator('#current-order-items')).not.toContainText('Just Added');
@@ -263,6 +266,8 @@ test('a reduced dish is sent at its new number, not its old one', async ({ page 
     });
   });
   await page.evaluate(() => updateItemQuantity(0, -1));
+  await page.locator('#cancel-item-reason').fill('Customer requested one less');
+  await page.locator('#confirm-remove-item-btn').click();
   await page.evaluate(() => saveOrderChanges());
 
   await expect.poll(() => (sent ? sent.items.length : null)).toBe(2);

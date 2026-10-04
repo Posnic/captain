@@ -84,7 +84,8 @@ for (const returning of [false, true])
           document.dispatchEvent(new Event("visibilitychange"));
         };
       });
-    await page.locator("#captain-cloud-login").click();
+    if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
+  await page.locator("#captain-cloud-login").click();
     await expect
       .poll(() => page.evaluate(() => window.selectedCaptainBranch))
       .toBe("branch");
@@ -198,6 +199,7 @@ test("saved custom-port tills are checked first and duplicate discoveries are sh
   }, base);
   if (await page.locator("#captain-change-shop").isVisible())
     await page.locator("#captain-change-shop").click();
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
   expect(
@@ -211,6 +213,7 @@ test("cancel releases a stuck native Wi-Fi lookup and permits retry", async ({
   await page.evaluate(() => {
     Capacitor.Plugins.LocalNetwork.getLocalIp = () => new Promise(() => {});
   });
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await page.locator("#captain-cancel").click();
   await expect(page.locator("#captain-cancel")).toBeHidden();
@@ -239,6 +242,7 @@ test("selecting a result rejects late progress and clears the previous address c
       });
     };
   }, base);
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await page.locator("#captain-results button").first().click();
   await expect(page.locator("#captain-cancel")).toBeHidden();
@@ -255,6 +259,7 @@ test("unreachable till is not mislabeled as an outdated API", async ({
     POSNIC.discovery.probe = async () => null;
     POSNIC.discovery.probe.lastFailure = { reason: "UNREACHABLE" };
   });
+  if (!(await page.locator("#captain-code-toggle").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-code-toggle").click();
   await fillAddress(page, base);
   await page.locator("#captain-code").fill(code);
@@ -270,6 +275,7 @@ test("a stuck network scan has a deadline and a useful retry message", async ({
   await page.evaluate(() => {
     POSNIC.discovery.scanSubnet = () => new Promise(() => {});
   });
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await page.clock.fastForward(21000);
   await expect(page.locator("#captain-cancel")).toBeHidden();
@@ -348,6 +354,7 @@ test("pairing code needs a selected, manager-confirmed address", async ({
   page,
 }) => {
   await phone(page);
+  if (!(await page.locator("#captain-code-toggle").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-code-toggle").click();
   await fillAddress(page, base);
   await page.locator("#captain-code").fill(code);
@@ -378,6 +385,7 @@ test("multiple discovered tills require explicit selection; no Wi-Fi is named", 
   await page.route("http://192.168.1.9:42590/**", (route) =>
     route.fulfill({ json: info }),
   );
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-results button")).toHaveCount(2);
   expect(await page.evaluate(() => POSNIC.server.isConfigured)).toBe(false);
@@ -392,6 +400,7 @@ test("multiple discovered tills require explicit selection; no Wi-Fi is named", 
     });
   });
   await page.locator("#captain-change-shop").click();
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-note")).toContainText(
     "Connect this phone to the shop Wi-Fi",
@@ -477,10 +486,12 @@ test("cloud uses external approval and a Captain-scoped request; unavailable acc
       json: { error: "authorization_pending" },
     });
   });
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await expect(page.locator("#captain-note")).toContainText("not available");
   expect(await page.evaluate(() => window.openedAccount)).toBeUndefined();
   capability = true;
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await expect
     .poll(() => page.evaluate(() => window.openedAccount))
@@ -570,6 +581,7 @@ test("first setup and connection settings use the same screen and save both addr
   await page.locator('[aria-label="Connection settings"]').click();
   await expect(page.locator("#captain-onboarding")).toBeVisible();
   await expect(page.locator("#serverModal")).toHaveCount(0);
+  if (!(await page.locator("#connection-settings").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#connection-settings").click();
   await page.locator("#connection-lan").fill(base);
   await page.locator("#connection-cloud").fill("https://shop.posnic.io/api");
@@ -638,6 +650,7 @@ test("expanded connection settings fit English and Arabic on a narrow phone", as
 }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await phone(page);
+  if (!(await page.locator("#connection-settings").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#connection-settings").click();
   for (const language of ["en", "ar"]) {
     await page.selectOption("#setup-language", language);
@@ -713,6 +726,7 @@ test("native account approval bypasses WebView CORS and can reopen after a brows
       if (window.browserAttempts.length === 1) throw new Error("No activity");
     };
   });
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await expect(page.locator("#captain-open-browser")).toBeVisible();
   await expect(page.locator("#captain-note")).toContainText("Try again");
@@ -736,6 +750,7 @@ test("canceling a pending native account request never launches the browser late
   await page.evaluate(() => {
     Capacitor.Plugins.CapacitorHttp = { request: () => new Promise(resolve => { window.finishAccountRequest = resolve; }) };
   });
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await expect.poll(() => page.evaluate(() => typeof window.finishAccountRequest)).toBe("function");
   await page.locator("#captain-cancel").click();
@@ -754,6 +769,7 @@ test("Continue always uses the address; Wi-Fi discovery has its own view", async
   await page.evaluate(base => {
     POSNIC.discovery.scanSubnet = async (_subnet, options) => options.collect({ base, info: { features: { captainAccessV1: true } } });
   }, base);
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await expect(page.locator("#captain-server")).toBeHidden();
   await expect(page.locator("#captain-results button")).toHaveCount(1);
@@ -856,6 +872,7 @@ test("approval stays pending in the browser and exchanges only after Captain ret
       document.dispatchEvent(new Event("visibilitychange"));
     };
   });
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await page.waitForTimeout(150);
   expect(exchanges).toBe(0);
@@ -918,6 +935,7 @@ test("expired cloud exchange recovers once without another browser approval", as
     expect(route.request().postDataJSON().code).toBe("123456ABCDEF");
     return route.fulfill({json:{token:"access",sessionId:"session",expiresIn:900,shopKey:"shop",user:{id:"staff"},branches:[{branch_id:"branch",store_id:"branch"}]}});
   });
+  if (!(await page.locator("#captain-cloud-login").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-cloud-login").click();
   await expect.poll(() => page.evaluate(() => window.selectedCaptainBranch)).toBe("branch");
   expect(approvals).toBe(1);
@@ -929,6 +947,7 @@ test("expired cloud exchange recovers once without another browser approval", as
 test("pairing and backup addresses are focused views with a lossless Back action", async ({ page }) => {
   await phone(page);
   await fillAddress(page, "azure.posnic.io");
+  if (!(await page.locator("#captain-code-toggle").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-code-toggle").click();
   await expect(page.locator("#captain-code")).toBeVisible();
   await expect(page.locator("#captain-cloud-login")).toBeHidden();
@@ -937,6 +956,7 @@ test("pairing and backup addresses are focused views with a lossless Back action
   await page.locator("#connection-back").click();
   await expect(page.locator("#captain-server")).toHaveValue("azure.posnic.io");
   await expect(page.locator("#captain-code")).toBeHidden();
+  if (!(await page.locator("#connection-settings").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#connection-settings").click();
   await expect(page.locator("#connection-lan")).toBeVisible();
   await expect(page.locator("#captain-server")).toBeHidden();
@@ -955,6 +975,7 @@ test("Back cancels discovery and late results cannot replace the address screen"
       await new Promise(() => {});
     };
   });
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await expect.poll(() => page.evaluate(() => typeof window.finishDiscovery)).toBe("function");
   await page.locator("#connection-back").click();
@@ -972,6 +993,7 @@ test("leaving a selected Wi-Fi result cancels its pending navigation", async ({ 
     POSNIC.discovery.scanSubnet = async (_subnet, options) => options.collect({ base, info: { features: {} } });
     POSNIC.discovery.probe = () => new Promise(resolve => { window.finishSelectedAddress = resolve; });
   }, base);
+  if (!(await page.locator("#captain-search").isVisible())) await page.locator("#connection-back").click();
   await page.locator("#captain-search").click();
   await page.locator("#captain-results button").click();
   await expect.poll(() => page.evaluate(() => typeof window.finishSelectedAddress)).toBe("function");
@@ -1178,4 +1200,40 @@ test('rejected login does not enter username suggestions and repeated Enter subm
   await page.evaluate(() => window.rejectLogin());
   await expect(page.locator('#login-message')).toHaveText('Not accepted');
   expect(await page.evaluate(() => localStorage.getItem('posnic.signin-names.v1'))).toBeNull();
+});
+
+for(const theme of ['light','dark'])test(`connection choices and focused address ${theme}`,async({page})=>{
+ await page.setViewportSize({width:390,height:844});await phone(page,false);
+ await page.evaluate(theme=>window.CaptainAppearance.set(theme),theme);
+ await expect(page.locator('#captain-search')).toBeVisible();
+ for(const id of ['captain-scan','captain-code-toggle']){
+  const colors=await page.locator('#'+id).evaluate(el=>({bg:getComputedStyle(el).backgroundColor,fg:getComputedStyle(el).color}));
+  expect(colors.bg).not.toBe(colors.fg);if(theme==='dark')expect(colors.bg).not.toBe('rgb(248, 250, 252)');
+ }
+ await page.screenshot({path:`test-artifacts/connection-choices-${theme}.png`,fullPage:true});
+ await page.locator('#captain-address-toggle').click();await expect(page.locator('#setup-methods')).toBeHidden();
+ await page.locator('#captain-server').fill('my-shop.example');
+ await page.locator('#connection-back').click();await page.locator('#captain-address-toggle').click();
+ await expect(page.locator('#captain-server')).toHaveValue('my-shop.example');
+ await page.screenshot({path:`test-artifacts/connection-address-${theme}.png`,fullPage:true});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+for(const theme of ['light','dark'])test(`saved connection returns directly to orders ${theme}`,async({page})=>{
+ await phone(page,false);
+ await expect(page.locator('#connection-orders')).toBeHidden();
+ await page.evaluate(async({base,theme})=>{
+  await POSNIC.session.start({base,token:'retained',sessionId:'session',routeKey:'secret',user:{id:'staff'},shopKey:'shop',branches:[{branch_id:'branch'}]});
+  CaptainAppearance.set(theme);CaptainOnboarding.open();
+ },{base,theme});
+ await page.route('**/captain/v1/route-proof',route=>route.fulfill({json:{proof:createHmac('sha256','secret').update(route.request().postDataJSON().nonce).digest('hex')}}));
+ await page.locator('#connection-settings').click();
+ await expect(page.locator('#connection-orders')).toBeVisible();await expect(page.locator('.setup-steps')).toBeHidden();
+ await page.locator('#connection-lan').fill(base);await page.locator('#connection-cloud').fill('');await page.locator('#connection-save').click();
+ await expect(page.locator('#captain-note')).toContainText('Saved');await expect(page.locator('#connection-done')).toBeVisible();
+ expect(await page.evaluate(()=>POSNIC.session.user.id)).toBe('staff');
+ await page.screenshot({path:`test-artifacts/connection-return-${theme}.png`,fullPage:true});
+ await page.route('**/kot-management.html',r=>r.fulfill({contentType:'text/html',body:'<h1>Orders</h1>'}));
+ await page.locator('#connection-done').click();await expect(page).toHaveURL(/kot-management.html/);
+ expect(await page.evaluate(()=>sessionStorage.getItem('posnic_editing_server'))).toBeNull();
 });

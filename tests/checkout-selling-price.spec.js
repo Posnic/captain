@@ -63,7 +63,7 @@ test('rejected saved order can be reviewed and retried with its original identit
   await expect.poll(() => sent.length).toBe(1);
   expect(sent[0].idempotencyKey).toBe('original-key');
   expect(sent[0].items[0].item_price).toBe(400);
-  await expect(page.getByText('No pending orders',{exact:true})).toBeVisible();
+  await expect(page.getByText('All orders synced',{exact:true})).toBeVisible();
 });
 
 

@@ -74,20 +74,22 @@ test('a delayed cart note updates only baby corn, even after another editor open
   });
   await page.goto('/cart.html');
   await expect(page.locator('#cart-item-baby-corn')).toBeVisible();
+  await page.locator('#cart-item-baby-corn .bill-name').click();
+  await expect(page.locator('#cart-notes-modal')).toBeHidden();
   await page.evaluate(() => {
     const original = setCartItemNotes;
     window.setCartItemNotes = async (...args) => {
       await new Promise(resolve => { window.releaseNote = resolve; });
       return original(...args);
     };
-    $('#cart-item-baby-corn .bill-body').trigger('click');
+    $('#cart-item-baby-corn .bill-note-action').trigger('click');
     $('#cart-notes-text').val('Salt & pepper');
     $('#cart-notes-save-btn').trigger('click');
   });
   await page.waitForFunction(() => typeof window.releaseNote === 'function');
   await page.evaluate(() => {
     $('#cart-notes-cancel-btn').trigger('click');
-    $('#cart-item-mushroom .bill-body').trigger('click');
+    $('#cart-item-mushroom .bill-note-action').trigger('click');
     window.releaseNote();
   });
   await expect(page.locator('#cart-item-baby-corn .bill-note')).toHaveText('Salt & pepper');
@@ -221,4 +223,20 @@ for(const width of [320,768]) test(`preparation follows the dark theme and fits 
  expect(await dialog.evaluate(el=>getComputedStyle(el).backgroundColor)).not.toBe('rgb(255, 255, 255)');
  const bounds=await dialog.boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
  await page.screenshot({path:`test-artifacts/preparation-dark-${width}.png`,fullPage:true});
+});
+
+test('cart Note and Preparation have distinct spaced touch targets',async({page})=>{
+ await page.setViewportSize({width:320,height:700});
+ await onTheMenu(page,'nothing',{menu});
+ await page.evaluate(()=>updateQuantity('mushroom',1));
+ await page.goto('/cart.html');
+ const note=page.locator('.bill-note-action'),prep=page.locator('.bill-preparation-action');
+ await expect(prep).toHaveAttribute('aria-label','Preparation');
+ const n=await note.boundingBox(),p=await prep.boundingBox();
+ expect(n.height).toBeGreaterThanOrEqual(44);expect(p.height).toBeGreaterThanOrEqual(44);
+ expect(p.x>=n.x+n.width+7 || p.y>=n.y+n.height+7).toBe(true);
+ await page.screenshot({path:'test-artifacts/cart-item-actions-320.png',fullPage:true});
+ await note.click();await expect(page.locator('#cart-notes-modal')).toBeVisible();
+ await page.locator('#cart-notes-cancel-btn').click();
+ await prep.click();await expect(page.locator('#preparation-dialog')).toBeVisible();
 });

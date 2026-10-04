@@ -450,3 +450,11 @@ body.bill-screen {
     transform: none;
   }
 }
+
+.bill-item-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0}
+.bill-item-actions .bill-note-action,.bill-item-actions .bill-preparation-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;margin:0;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface-sunk);color:var(--ink);font:500 13px Inter,system-ui,sans-serif;cursor:pointer}
+.bill-item-actions .bill-preparation-action{width:44px;flex:0 0 44px;padding:0;color:var(--ink-soft)}
+.bill-item-actions i{font-size:14px}
+.bill-item-actions button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bill-item-actions .bill-note-action{gap:4px;padding-inline:6px}

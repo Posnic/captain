@@ -5,21 +5,30 @@
   let active = [],
     tables = [],
     ready = new Set(),
-    filter = "active",
+    readiness = [],
+    filter = new URLSearchParams(location.search).get('filter') === 'ready' ? 'ready' : 'active',
     area = "";
   let revision = 0,
     tablesKnown = false,
     readyKnown = false,
-    loading = false;
+    loading = false, floorKnown = false;
+  // Count configured tables once, independently of the visible filter or area.
+  window.CaptainFloorOccupancy = () => {
+    if (!tablesKnown) return null;
+    const configured = new Map(tables.map(row => [String(row.tableorder_value), row]));
+    const busy = new Set(active.filter(card => !card.dataset.takeaway && !card.dataset.awaitingClose).map(card => card.dataset.tableNumber));
+    return { total: configured.size, occupied: [...configured].filter(([id,row]) => row.status === 'occupied' || busy.has(id)).length };
+  };
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
   }
+  const readyKey = card => card.dataset.saleId ? 'sale:' + card.dataset.saleId : card.dataset.takeaway ? '' : card.dataset.tableNumber;
   function render() {
     const grid = byId("tables-list");
-    if (!grid) return;
+    if (!grid || !floorKnown) return;
     const select = byId("floor-area");
     const areas = [
       ...new Set(tables.map((row) => row.area).filter(Boolean)),
@@ -50,7 +59,7 @@
         card.href =
           "tables.html?source=floor&table=" +
           encodeURIComponent(row.tableorder_value);
-        card.append(element("div", "floor-name", row.tableorder_value));
+        card.insertAdjacentHTML("beforeend", floorCardHeading(row.tableorder_value));
         card.append(
           element(
             "div",
@@ -69,6 +78,8 @@
       }
     }
     const shown = cards.filter((card) => {
+      if (filter === "takeaway" && !card.dataset.takeaway) return false;
+      if (filter === "all" && card.dataset.takeaway) return false;
       const row = tables.find(
         (row) => String(row.tableorder_value) === card.dataset.tableNumber,
       );
@@ -76,7 +87,7 @@
       if (
         filter === "ready" &&
         (!readyKnown ||
-          !ready.has(card.dataset.takeaway ? "" : card.dataset.tableNumber))
+          !ready.has(readyKey(card)))
       )
         return false;
       if (row) {
@@ -95,9 +106,23 @@
       }
       if (
         readyKnown &&
-        ready.has(card.dataset.takeaway ? "" : card.dataset.tableNumber)
+        ready.has(readyKey(card))
       )
-        card.append(element("span", "floor-ready", t("Ready")));
+      {
+        const summaries = readiness.filter(summary => card.dataset.takeaway
+          ? !summary.table && (!card.dataset.saleId || summary.saleId === card.dataset.saleId)
+          : String(summary.table) === card.dataset.tableNumber);
+        const count = summaries.reduce((sum, summary) => sum + summary.ready, 0);
+        const remaining = summaries.reduce((sum, summary) => sum + summary.remaining, 0);
+        card.append(element("span", "floor-ready", t("Ready") +
+          (remaining > 0 ? ` · ${count} / ${remaining}` : "")));
+        const items = summaries.flatMap(summary => summary.items || []);
+        if (items.length) {
+          const preview = element("div", "floor-meta", items.map(item => `${item.quantity} × ${item.name}`).join(" · "));
+          preview.setAttribute("translate", "no");
+          card.append(preview);
+        }
+      }
       return true;
     });
     if (filter !== "ready") {
@@ -107,6 +132,7 @@
       } catch {}
       for (const order of pending) {
         const table = String(order.body?.kiosk_table_no || "");
+        if (filter === "takeaway" && table) continue;
         const metadata = tables.find(
           (row) => String(row.tableorder_value) === table,
         );
@@ -121,7 +147,8 @@
         card.classList.add("is-pending");
         card.href = "pending.html";
         card.dataset.awaitingClose = "true";
-        card.append(element("div", "floor-name", table || t("Take away")));
+        if (!table) { card.classList.add('is-takeaway'); card.dataset.takeaway = 'true'; }
+        card.insertAdjacentHTML("beforeend", floorCardHeading(table || ('Take Away' + (order.body?.tokenId ? ' ' + order.body.tokenId : '')), !table));
         card.append(
           element(
             "div",
@@ -138,6 +165,7 @@
         shown.push(card);
       }
     }
+    grid.dataset.filter = filter;
     grid.replaceChildren(...shown);
     document
       .querySelectorAll("[data-floor-filter]")
@@ -162,11 +190,10 @@
   }
   async function update() {
     const ticket = ++revision;
+    floorKnown = true;
     active = [...byId("tables-list").querySelectorAll(".floor-card")].map(
       (node) => node.cloneNode(true),
     );
-    tablesKnown = false;
-    readyKnown = false;
     loading = true;
     render();
     const results = await Promise.allSettled([
@@ -181,6 +208,9 @@
     ) {
       tables = CaptainTables.liveRows(results[0].value);
       tablesKnown = true;
+    } else {
+      tablesKnown = false;
+      tables = [];
     }
     if (
       results[1].status === "fulfilled" &&
@@ -191,9 +221,14 @@
           .filter((ticket) =>
             ticket.items.some((item) => item.ready > item.served),
           )
-          .map((ticket) => String(ticket.table || "")),
+          .flatMap((ticket) => ticket.table ? [String(ticket.table)] : ['', 'sale:' + ticket.saleId]),
       );
       readyKnown = true;
+      readiness = Array.isArray(results[1].value.readiness) ? results[1].value.readiness : [];
+    } else {
+      readyKnown = false;
+      ready = new Set();
+      readiness = [];
     }
     render();
   }

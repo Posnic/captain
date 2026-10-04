@@ -46,7 +46,7 @@
       shown to the user verbatim, so it says why a waiter is being asked.
     -->
     <key>NSCameraUsageDescription</key>
-    <string>Captain uses the camera once, to scan the code by the till and learn which shop this device belongs to.</string>
+    <string>Captain uses the camera to scan the shop's code or photograph a handwritten order for you to review before sending it to the kitchen.</string>
 
     <!--
       The microphone, for a waiter who says the order instead of tapping it.

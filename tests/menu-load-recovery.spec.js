@@ -39,6 +39,7 @@ test('missing table cache downloads once, offers retry on failure, and recovers 
     localStorage.setItem('branch_id', 'branch');
   }, { base, grant });
   await page.route(base + '/**', route => {
+    if (route.request().url().endsWith('/captain/v1/takeaway-number')) return route.fulfill({ json: { number: 1 } });
     if (route.request().url().endsWith('/accessQr')) {
       downloads++;
       return route.fulfill({ status: failed ? 503 : 200, json: failed ? { message: 'Unavailable' } : menu });
@@ -54,7 +55,6 @@ test('missing table cache downloads once, offers retry on failure, and recovers 
   expect(downloads).toBe(2);
   await expect(page.locator('.table-list')).not.toContainText('Loading tables');
   await page.getByText('Take away', { exact: true }).click();
-  await page.getByRole('button', { name: /Next/ }).click();
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.getByText('Test meal', { exact: true })).toBeVisible();
 });

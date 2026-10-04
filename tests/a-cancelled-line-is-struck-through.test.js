@@ -120,6 +120,13 @@ test('a missing item or order is not a cancellation', () => {
   assert.equal(lineIsCancelled({ name: 'X' }, {}), false);
 });
 
+test('an edited remaining serving is live even when more portions were cancelled', () => {
+  for (const removed of [1, 2, 4]) {
+    assert.equal(lineIsCancelled({ quantity: 1, cancelled_quantity: removed, cancelled: false }, { status: 'pending' }), false);
+  }
+  assert.equal(lineIsCancelled({ quantity: 1, cancelled_quantity: 1, cancelled: false }, { status: 'cancelled' }), true);
+});
+
 /* ----------------------------------------------------- the floor screen */
 
 test('the floor strikes a cancelled ticket and a cancelled line', () => {
@@ -148,7 +155,8 @@ test('all four places that draw a line ask', () => {
     'the details table does not strike');
   assert.match(HISTORY, /class="order-item-card\$\{struck\(item, editingOrder\)\}"/,
     'the modify list does not strike');
-  assert.match(FLOOR, /class="kot-item\$\{off\}"/, 'the floor does not strike');
+  const view = read('assets', 'kot', 'order-view.js');
+  assert.match(view, /root\.kotIsCancelled\(order\)\|\|root\.itemIsCancelled\(item\)\?' is-cancelled'/, 'the compact floor does not strike');
 });
 
 test('the class is styled, on both screens', () => {
@@ -167,4 +175,30 @@ test('the rule goes through the name, not through the price', () => {
   const block = HISTORY_CSS.slice(HISTORY_CSS.indexOf('.item-preview.is-cancelled'));
   const rule = block.slice(0, block.indexOf('}'));
   assert.ok(/\.line-name/.test(rule), 'the whole row is struck, not the name');
+});
+
+test('compact floor strikes cancelled names and keeps quantities readable without actions', () => {
+  const vm = require('node:vm');
+  const context = { document: { addEventListener() {} }, window: {
+    kotIsCancelled: order => order.status === 'cancelled',
+    itemIsCancelled,
+    CaptainMoney: { html: value => String(value) },
+    FloorLineActions: { render: () => '<button>Item action</button>' }
+  }};
+  vm.runInNewContext(read('assets','kot','order-view.js'), context);
+  const render = context.window.CaptainOrderView.render;
+  const order = {_id:'test',sales_total:10,items:[{name:'Tea',item_quantity:2,cancelled_quantity:2}]};
+  const html = render([order], {takeaway:false,financialActions:''});
+  assert.match(html, /order-legacy-line is-cancelled/);
+  assert.match(html, /<strong translate="no">Tea<\/strong><span translate="no">×2<\/span>/);
+  assert.doesNotMatch(html, /Item action/);
+  const partial = {...order, items:[{name:'Tea',item_quantity:2,cancelled_quantity:1}]};
+  assert.doesNotMatch(render([partial], {financialActions:''}), /order-legacy-line is-cancelled/);
+  assert.match(render([{...partial,status:'cancelled'}], {financialActions:''}), /order-legacy-line is-cancelled/);
+  assert.match(read('assets','kot','order-view.css'), /\.order-legacy-line\.is-cancelled > strong\{text-decoration:line-through/);
+  const noted = render([{...order,items:[{name:'Tea',quantity:1,notes:'No sugar <script>alert(1)</script>'}]}],{financialActions:''});
+  assert.match(noted,/class="order-legacy-note"/);
+  assert.match(noted,/No sugar &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  const cleared = render([{...order,items:[{name:'Tea',quantity:1,item_description:'',notes:'Old note'}]}],{financialActions:''});
+  assert.doesNotMatch(cleared,/Old note/);
 });

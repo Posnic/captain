@@ -73,7 +73,7 @@
   }
 
   /**
-   * One table's line under its name: how many tickets, and what they come to.
+   * One table's line under its name: item quantity and order total.
    *
    * The amount is omitted when it is zero. A shop whose KOT flow does not
    * carry totals would otherwise show a column of confident, wrong zeroes.
@@ -81,10 +81,14 @@
   function summary(detail, currency) {
     if (!detail) return '';
     const parts = [];
-    const orders = Number(detail.orders) || 0;
-    if (orders) parts.push(orders === 1 ? '1 order' : orders + ' orders');
+    const count = detail.item_count;
+    if (Number.isFinite(count) && count >= 0) {
+      const label = count === 1 ? '1 item' : '{0} items';
+      parts.push((typeof I18N !== 'undefined' ? I18N.t(label) : label).replace('{0}', String(count)));
+    }
     const amount = Number(detail.amount) || 0;
-    if (amount > 0) parts.push(typeof CaptainMoney !== 'undefined' ? CaptainMoney.display(amount) : (currency || '₹') + amount.toFixed(0));
+    if (detail.payableLabel) parts.push(detail.payableLabel);
+    else if (amount > 0) parts.push(typeof CaptainMoney !== 'undefined' ? CaptainMoney.display(amount) : (currency || '₹') + amount.toFixed(0));
     return parts.join(' · ');
   }
 
@@ -132,5 +136,12 @@
     return null;
   }
 
-  return { minutesSince, age, saidAs, summary, order, detailFor, WAITING, LATE };
+  function itemCount(items) {
+    return (items || []).reduce((sum, item) => {
+      if (!item || item.return || item.cancelled || ['cancelled','canceled'].includes(String(item.status || '').toLowerCase())) return sum;
+      const quantity = Number(item.item_quantity ?? item.quantity ?? item.sale_inline_item_qty);
+      return sum + (Number.isFinite(quantity) ? Math.max(0, quantity) : 0);
+    }, 0);
+  }
+  return { minutesSince, age, saidAs, summary, itemCount, order, detailFor, WAITING, LATE };
 });

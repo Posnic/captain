@@ -76,7 +76,12 @@ function copyClassicAssets() {
         }
       }
 
-      walk(ROOT);
+      // Only application code belongs in the installable bundle. Tests,
+      // build helpers and superseded presentations stay in the repository.
+      walk(path.join(ROOT, 'assets'), 'assets');
+      for (const entry of ['config.js', 'indexedDB.js']) {
+        fs.copyFileSync(path.join(ROOT, entry), path.join(DIST, entry));
+      }
 
       const imagesDir = path.join(ROOT, 'images');
       const rootImages = path.join(DIST, 'images');
@@ -98,6 +103,7 @@ function copyClassicAssets() {
        * emitting, and the classic assets above have to be in place first.
        */
       const stamp = require('./scripts/build-version');
+      stamp.stampBundle(DIST, {version:stamp.resolveVersion(ROOT), commit:stamp.resolveCommit(ROOT), at:new Date().toISOString()});
       const marked = stamp.stampAssetLinks(DIST, stamp.resolveVersion(ROOT));
       if (marked) logger.info(`Stamped the scripts on ${marked} pages.`);
       for (const legacyName of ['home.png', 'default-store.png', 'default-product.png']) {
@@ -136,9 +142,48 @@ export default defineConfig({
       }
     }
   },
-  plugins: [copyClassicAssets()],
+  plugins: [copyClassicAssets(), {
+    name: 'fresh-captain-preview',
+    apply: 'serve',
+    handleHotUpdate(context) {
+      // These app scripts are classic scripts, outside Vite's module graph.
+      if (context.file.endsWith('.js') && !context.file.includes('node_modules')) {
+        context.server.ws.send({type:'custom',event:'captain:preview-updated'});
+      }
+    },
+    transformIndexHtml(html, context) {
+      if (!['/kot-management.html','/cart.html'].some(page=>context.path.endsWith(page))) return html;
+      return {html, tags:[{tag:'script',attrs:{type:'module'},injectTo:'head',children:`
+        import { createHotContext } from '/@vite/client';
+        const previewHot = createHotContext('/captain-preview-updates');
+        previewHot.on('captain:preview-updated', () => {
+          if(document.getElementById('captain-preview-update')) return;
+          const button=document.createElement('button');
+          button.id='captain-preview-update';button.type='button';
+          button.textContent='Preview updated · Reload';
+          button.style.cssText='position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:2147483647;padding:12px 18px;border:1px solid #2458db;border-radius:12px;background:#fff;color:#183f9f;font:600 14px system-ui;box-shadow:0 4px 20px #17233533';
+          button.onclick=()=>{
+            if (window.InlineOrderEditor?.active || document.querySelector('.modal.show,dialog[open],#cart-notes-modal[style*=flex]')) {
+              button.textContent='Finish or close the open edit, then reload';return;
+            }
+            window.location.reload();
+          };
+          document.body.append(button);
+        });
+      `},{tag:'script', injectTo:'head', children:`
+        window.addEventListener('pageshow', function(event) {
+          if (!event.persisted) return;
+          // Keep in-memory drafts and open dialogs intact. Plain floor views
+          // restored by browser Back should use the files currently served.
+          if (window.InlineOrderEditor?.active || document.querySelector('.modal.show,dialog[open],#item-picker:not([hidden])')) return;
+          window.location.reload();
+        });
+      `}]};
+    }
+  }],
   server: {
     port: 5173,
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
     open: '/index.html'
   }
 });
