@@ -103,7 +103,7 @@
         return false;
       }
     })();
-    dialog.innerHTML = `<header><button data-action="back" aria-label="Back">‹ <span>Back</span></button><h2>Split bill</h2><button data-action="close" aria-label="Close">×</button></header><div class="guest-bill-body">${snapshot ? `<div class="guest-bill-context"><strong>${esc(t("Table {0}").replace("{0}", snapshot.table))}</strong><b translate="no">${esc(money(snapshot.totalMinor))}</b></div>` : ""}${notice()}${body}</div><footer><button class="guest-bill-secondary" data-action="close">Cancel</button><button class="guest-bill-primary" data-action="next" ${busy || !snapshot || (stage !== "setup" && !valid) ? "disabled" : ""}>${busy ? "Loading..." : stage === "review" ? (state.pending ? "Retry" : collectEnabled ? "Collect payment" : "Send guest bills") : "Continue"}</button></footer>`;
+    dialog.innerHTML = `<header><button data-action="back" aria-label="Back">‹ <span>Back</span></button><h2>Split bill</h2><button data-action="close" aria-label="Close">×</button></header><div class="guest-bill-body">${snapshot ? `<div class="guest-bill-context"><strong>${esc(state.saleId ? snapshot.table : t("Table {0}").replace("{0}", snapshot.table))}</strong><b translate="no">${esc(money(snapshot.totalMinor))}</b></div>` : ""}${notice()}${body}</div><footer><button class="guest-bill-secondary" data-action="close">Cancel</button><button class="guest-bill-primary" data-action="next" ${busy || !snapshot || (stage !== "setup" && !valid) ? "disabled" : ""}>${busy ? "Loading..." : stage === "review" ? (state.pending ? "Retry" : collectEnabled ? "Collect payment" : "Send guest bills") : "Continue"}</button></footer>`;
     if (busy)
       dialog
         .querySelectorAll(
@@ -127,7 +127,7 @@
         "/sales/guestBills/table?branchId=" +
           encodeURIComponent(state.branchId) +
           "&table_number=" +
-          encodeURIComponent(state.table),
+          encodeURIComponent(state.table) + (state.saleId ? "&saleId=" + encodeURIComponent(state.saleId) : ""),
       );
       checkOwner();
       if (response.type !== "success" || !response.data?.revision)
@@ -184,6 +184,7 @@
         body: {
           branchId: state.branchId,
           table_number: state.table,
+          ...(state.saleId ? {saleId:state.saleId} : {}),
           revision: snapshot.revision,
           plan: JSON.parse(JSON.stringify(state.plan)),
           request_id: crypto.randomUUID(),
@@ -255,7 +256,7 @@
     persist();
     render();
   }
-  async function open(table) {
+  async function open(table, target = {}) {
     if (busy) {
       if (!dialog.open) dialog.showModal();
       return;
@@ -321,7 +322,7 @@
                 revision: snapshot.revision,
               };
               close();
-              CaptainPayments.open(state.table, state.branchId, draft);
+              CaptainPayments.open(state.table, state.branchId, draft, {saleId:state.saleId});
             } else send();
             return;
           }
@@ -372,18 +373,20 @@
     state = {
       branchId: localStorage.getItem("branch_id"),
       table,
+      saleId: String(target.saleId || ""),
       plan: { mode: "equal", guests: [], allocations: {} },
       pending: null,
     };
     snapshot = null;
     stage = "setup";
     error = "";
-    draftKey = "posnic.guest-bills:v2:" + owner + ":" + table;
+    draftKey = "posnic.guest-bills:v2:" + owner + ":" + (state.saleId ? "takeaway:" + state.saleId : table);
     try {
       const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
       if (
         saved?.owner === owner &&
         saved?.state?.table === table &&
+        (saved.state.saleId || "") === state.saleId &&
         saved.snapshot
       ) {
         state = saved.state;
@@ -402,7 +405,7 @@
       busy = true;
       render();
       try {
-        collectEnabled = (await window.CaptainPayments?.available()) || false;
+        collectEnabled = (await window.CaptainPayments?.available({saleId:state.saleId})) || false;
         checkOwner();
       } catch {
         busy = false;
@@ -414,7 +417,7 @@
   }
   document.addEventListener("click", (e) => {
     const button = e.target.closest("[data-split-table]");
-    if (button) open(button.dataset.splitTable);
+    if (button) open(button.dataset.splitTable, {saleId:button.dataset.saleId});
   });
   window.addEventListener(
     "captain:back",

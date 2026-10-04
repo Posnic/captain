@@ -97,7 +97,9 @@ for (const screen of SCREENS) {
      * closest thing to "it has finished starting" that holds for nine screens
      * that share nothing else.
      */
-    await page.waitForLoadState('networkidle').catch(() => {});
+    // Polling screens remain active after startup. Bound this settling window
+    // while continuing to collect every script error, including async errors.
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
     expect(thrown, `${screen} threw on startup`).toEqual([]);
   });

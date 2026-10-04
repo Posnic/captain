@@ -52,7 +52,7 @@ test('the grid of boxes says what it is a grid of', async ({ page }) => {
   /* Owner: "when you show table mention text like active order or active
      tables or some suitable name." */
   await atTheFloor(page);
-  await expect(page.locator('.floor-section-name')).toHaveText('Tables');
+  await expect(page.locator('.floor-section-name')).toHaveText('Orders');
   await expect(page.locator('[data-floor-filter="active"]')).toHaveAttribute('aria-pressed', 'true');
 });
 

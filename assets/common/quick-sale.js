@@ -29,7 +29,7 @@
    * @param {number} price what they are charging
    * @returns {Promise<object>} the new dish, as a menu row
    */
-  async function createOneOff(name, price) {
+  async function createOneOff(name, price, tax) {
     const said = String(name || '').trim();
     const amount = Number(price);
 
@@ -52,17 +52,9 @@
       items_category_name: '',
       items_discount_amount: 0,
       items_discount_percentage: 0,
-      /*
-       * NO TAX CHOSEN HERE, deliberately. The till's own quick sale offers the
-       * shop's default tax because somebody at a counter can see what they
-       * picked. A waiter mid-service cannot, and a wrong tax on a one-off line
-       * is a wrong return that nobody notices. The shop's own default applies
-       * where the till decides it.
-       */
-      items_tax_id: '',
-      items_tax_name: '',
-      items_tax: 0,
-      items_tax_type: 'inclusive',
+      quick_sale_default_tax: true,
+      quick_sale_tax: tax,
+
     });
 
     if (!data || data.type !== 'success' || !data.data || !data.data.id) {
@@ -70,10 +62,22 @@
     }
 
     const made = data.data;
+    const base = Number(made.selling_price) || amount;
+    const taxAmount = Math.round(base * Number(made.tax || 0)) / 100;
+    const total = Math.round((base + taxAmount) * 100) / 100;
     return {
       id: String(made.id),
       name: made.name || said,
-      price: Number(made.selling_price) || amount,
+      price: total,
+      selling_price: base,
+      subtotal: base,
+      tax_price: taxAmount,
+      final_price: total,
+      tax: Number(made.tax || 0),
+      tax_type: made.tax_type,
+      tax_name: made.tax_name,
+      tax_id: made.tax_id,
+      tax_fields: made.tax_fields || [],
       /*
        * OFF THE MENU ON PURPOSE, AND EVERYTHING DOWNSTREAM HAS TO KNOW.
        *
@@ -99,8 +103,17 @@
     };
   }
 
+  async function ask(name) {
+    const response = await root.POSNIC.api.get('/items/instantItemTax');
+    const tax = response?.data;
+    if (response?.type !== 'success' || !tax?.id || !Number.isFinite(Number(tax.rate)))
+      throw new Error(response?.message || 'Could not load the bill.');
+    const amount = await root.POSNIC.askPrice(name, undefined, tax);
+    return amount ? { amount, tax } : null;
+  }
+
   root.POSNIC = root.POSNIC || {};
-  root.POSNIC.quickSale = { createOneOff };
+  root.POSNIC.quickSale = { createOneOff, ask };
 
   if (typeof module === 'object' && module.exports) {
     module.exports = { createOneOff };

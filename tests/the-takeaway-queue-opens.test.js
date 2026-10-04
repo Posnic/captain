@@ -31,7 +31,7 @@ test('the card says what it is, rather than being known by its label', () => {
   assert.match(source, /data-takeaway="true"/, 'the takeaway card carries no marker');
   assert.match(
     source,
-    /selectTable\(card\.getAttribute\('data-table-number'\), card\.hasAttribute\('data-takeaway'\)\)/,
+    /selectTable\(card\.getAttribute\('data-table-number'\), card\.hasAttribute\('data-takeaway'\),\s*\{saleId: card\.dataset\.saleId\}\)/,
     'the marker is not passed on when the card is tapped'
   );
 });

@@ -84,14 +84,14 @@ test('past three hours the minutes have stopped meaning anything', () => {
 /* -------------------------------------------------------- the summary */
 
 test('a table says how many tickets and what they come to', () => {
-  assert.equal(FloorView.summary({ orders: 1, amount: 420 }), '1 order · ₹420');
-  assert.equal(FloorView.summary({ orders: 3, amount: 1250 }), '3 orders · ₹1250');
+  assert.equal(FloorView.summary({ item_count: 1, amount: 420 }), '1 item · ₹420');
+  assert.equal(FloorView.summary({ item_count: 12, amount: 1250 }), '12 items · ₹1250');
 });
 
 test('a zero total is left off rather than shown as a confident zero', () => {
   /* A shop whose KOT flow carries no totals would otherwise get a column of
      wrong zeroes down the whole floor. */
-  assert.equal(FloorView.summary({ orders: 2, amount: 0 }), '2 orders');
+  assert.equal(FloorView.summary({ item_count: 2, amount: 0 }), '2 items');
   assert.equal(FloorView.summary(null), '');
 });
 
@@ -163,4 +163,9 @@ test('a table is found by name whatever type the name arrived as', () => {
   const data = { table_details: [{ table_number: 4, orders: 2, amount: 100 }] };
   assert.equal(FloorView.detailFor(data, '4').orders, 2);
   assert.equal(FloorView.detailFor(data, 4).orders, 2);
+});
+
+test('item count sums quantities and excludes cancelled and returned lines',()=>{
+ assert.equal(FloorView.itemCount([{item_quantity:5},{quantity:7},{quantity:3,cancelled:true},{quantity:9,status:'cancelled'},{quantity:4,return:true}]),12);
+ assert.equal(FloorView.summary({orders:1,amount:100}),'₹100');
 });

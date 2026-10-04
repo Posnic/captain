@@ -117,6 +117,7 @@
     reviewing = false,
     receipt = null,
     table = "",
+    saleId = "",
     branchId = "",
     key = "",
     error = "",
@@ -125,6 +126,16 @@
     received = "",
     reference = "",
     verified = false;
+  let mixed = false, tenderAmounts = {};
+  const tenderRows = () => (plan?.methods || []).map(m => {
+    let value;
+    try { value = CaptainMoney.toMinor(tenderAmounts[m] || 0, monetary()); } catch { value = NaN; }
+    return {method:m, amountMinor:value, receivedMinor:value, verified:m !== 'Cash' && verified};
+  }).filter(row => row.amountMinor !== 0);
+  const tenderTotal = () => tenderRows().reduce((sum,row) => sum + row.amountMinor, 0);
+  function tenderReview(rows) {
+    return rows.map(row => `<div><span>${esc(t(row.method === 'Upi' ? 'UPI' : row.method))}</span><strong translate="no">${esc(money(row.amountMinor))}</strong></div>`).join('');
+  }
   const monetary = () => CaptainMoney.snapshot(plan || {});
   const money = n => CaptainMoney.format(CaptainMoney.fromMinor(Number(n || 0), monetary()), monetary());
   const cashMinor = () => { try { return CaptainMoney.toMinor(received || 0, monetary()); } catch { return NaN; } };
@@ -140,7 +151,7 @@
     if (!payee?.id || !payee?.name || currency.currencyDigits !== 2 ||
         !(currency.currencyCode === "INR" || (!currency.currencyCode && currency.currencySymbol === "₹")) ||
         !Number.isSafeInteger(amount()) || amount() <= 0) return "";
-    const fields = { pa: payee.id, pn: payee.name, am: (amount() / 100).toFixed(2), cu: "INR", tn: "Table " + table };
+    const fields = { pa: payee.id, pn: payee.name, am: (amount() / 100).toFixed(2), cu: "INR", tn: saleId ? table : "Table " + table };
     return "upi://pay?" + Object.entries(fields).map(([k,v]) => k + "=" + encodeURIComponent(v)).join("&");
   }
   const save = () => {
@@ -171,15 +182,22 @@
         body += `<p role="status">${esc(t("Payment recorded"))}</p>`;
     } else if (!error)
       body = `<p>${esc(t(busy ? "Loading..." : "Connect to the shop server before collecting payment. You can still take orders offline."))}</p>`;
+    if (plan?.dueMinor > 0 && !pending && !reviewing && !receipt && plan.mixedPayment && plan.methods.length > 1) {
+      if (mixed) body = `<p class="cp-paying-guest">${esc(t('Guest'))}: <strong translate="no">${esc(selected === '' ? t('All remaining guests') : plan.guests[Number(selected)].name)}</strong></p><div class="cp-balance"><span>${esc(t('Total'))}</span><strong translate="no">${esc(money(amount()))}</strong></div>` +
+        plan.methods.map(m => `<label>${esc(t(m === 'Upi' ? 'UPI' : m))}<input data-tender="${esc(m)}" inputmode="decimal" type="number" min="0" step="${1 / monetary().factor}" value="${esc(tenderAmounts[m] || '')}"></label>`).join('') +
+        `<div class="cp-change"><span>${esc(t('Remaining balance'))}</span><strong id="cp-tender-remaining" translate="no">${esc(money(amount() - tenderTotal()))}</strong></div><label class="cp-confirm"><input type="checkbox" id="cp-verified" ${verified ? 'checked' : ''}><span>${esc(t('I verified this payment on the terminal or bank app.'))}</span></label>`;
+      body += `<label class="cp-confirm"><input type="checkbox" id="cp-mixed" ${mixed ? 'checked' : ''}><span>${esc(t('Split payment'))}</span></label>`;
+    }
     if (reviewing && plan && !pending) {
       const guest = selected === "" ? t("All remaining guests") : plan.guests[Number(selected)].name;
-      body = `<section class="cp-review"><h3>${esc(t("Payment details"))}</h3><div><span>${esc(t("Guest"))}</span><strong>${esc(guest)}</strong></div><div><span>${esc(t("Total"))}</span><strong>${esc(money(amount()))}</strong></div><div><span>${esc(t("Collect payment"))}</span><strong>${esc(t(method === "Upi" ? "UPI" : method))}</strong></div>${method === "Cash" ? `<div><span>${esc(t("Amount received"))}</span><strong>${esc(money(cashMinor()))}</strong></div><div><span>${esc(t("Change to return"))}</span><strong>${esc(money(cashMinor()-amount()))}</strong></div>` : `<div><span>${esc(t("Payment reference (optional)"))}</span><strong>${esc(reference || '—')}</strong></div>`}<p class="cp-help">${esc(t("Confirm only after receiving the money. This does not charge a card or bank account."))}</p></section>`;
+      body = `<section class="cp-review"><h3>${esc(t("Payment details"))}</h3><div><span>${esc(t("Guest"))}</span><strong>${esc(guest)}</strong></div><div><span>${esc(t("Total"))}</span><strong>${esc(money(amount()))}</strong></div><div><span>${esc(t("Collect payment"))}</span><strong>${esc(t(mixed ? "Split payment" : method === "Upi" ? "UPI" : method))}</strong></div>${method === "Cash" ? `<div><span>${esc(t("Amount received"))}</span><strong>${esc(money(cashMinor()))}</strong></div><div><span>${esc(t("Change to return"))}</span><strong>${esc(money(cashMinor()-amount()))}</strong></div>` : `<div><span>${esc(t("Payment reference (optional)"))}</span><strong>${esc(reference || '—')}</strong></div>`}<p class="cp-help">${esc(t("Confirm only after receiving the money. This does not charge a card or bank account."))}</p></section>`;
     }
+    if (reviewing && mixed && !pending) body += `<section class="cp-review">${tenderReview(tenderRows())}</section>`;
     if (receipt) {
       const at = new Date(receipt.at);
       body = `<section class="cp-review cp-receipt"><h3 role="status">${esc(t("Payment recorded"))}</h3><div><span>${esc(t("Total"))}</span><strong translate="no">${esc(money(receipt.amountMinor))}</strong></div><div><span>${esc(t("Collect payment"))}</span><strong>${esc(t(receipt.method === "Upi" ? "UPI" : receipt.method))}</strong></div>${receipt.method === "Cash" ? `<div><span>${esc(t("Amount received"))}</span><strong translate="no">${esc(money(receipt.receivedMinor))}</strong></div><div><span>${esc(t("Change to return"))}</span><strong translate="no">${esc(money(receipt.changeMinor))}</strong></div>` : ''}${receipt.reference ? `<div><span>${esc(t("Payment reference (optional)"))}</span><strong translate="no">${esc(receipt.reference)}</strong></div>` : ''}<div class="cp-balance"><span>${esc(t("Remaining balance"))}</span><strong translate="no">${esc(money(plan.dueMinor))}</strong></div>${Number.isFinite(at.getTime()) ? `<p translate="no">${esc(at.toLocaleString())}</p>` : ''}${receipt.staff ? `<p translate="no">${esc(receipt.staff)}</p>` : ''}</section>`;
     }
-    dialog.innerHTML = `<header><h2>${esc(t("Collect payment"))} <small translate="no">${esc(table)}</small></h2><button type="button" data-action="close" aria-label="${esc(t("Close"))}">×</button></header><div class="cp-body">${body}${error ? `<p class="cp-error" role="status">${esc(t(error))}</p>` : ""}</div><footer><button type="button" data-action="${reviewing ? "back" : "close"}">${esc(t(reviewing ? "Back" : plan?.dueMinor === 0 ? "Close" : "Cancel"))}</button>${receipt ? (plan?.dueMinor > 0 ? `<button type="button" class="cp-primary" data-action="continue">${esc(t("Continue"))}</button>` : "") : plan?.dueMinor === 0 ? "" : `<button type="button" class="cp-primary" data-action="record" ${busy ? "disabled" : ""}>${esc(t(busy ? "Loading..." : pending || !plan ? "Retry" : reviewing ? "Record payment" : "Continue"))}${plan && !pending ? ` · <span translate="no">${esc(money(amount()))}</span>` : ""}</button>`}</footer>`;
+    dialog.innerHTML = `<header><h2>${esc(t("Collect payment"))} <small translate="no">${esc(table)}</small></h2><button type="button" data-action="close" aria-label="${esc(t("Close"))}">×</button></header><div class="cp-body">${saleId ? `<p class="cp-help">${esc(t("Payment only. Food stays active until handed over."))}</p>` : ""}${body}${error ? `<p class="cp-error" role="status">${esc(t(error))}</p>${error === "Payment collection is not enabled for this phone." ? `<p class="cp-help">${esc(t("Payment is collected at the desktop cashier."))}</p><a class="cp-settings" href="payment-settings.html">${esc(t("Payment settings"))}</a>` : ""}` : ""}</div><footer><button type="button" data-action="${reviewing ? "back" : "close"}">${esc(t(reviewing ? "Back" : plan?.dueMinor === 0 ? "Close" : "Cancel"))}</button>${receipt ? (plan?.dueMinor > 0 ? `<button type="button" class="cp-primary" data-action="continue">${esc(t("Continue"))}</button>` : "") : plan?.dueMinor === 0 ? "" : `<button type="button" class="cp-primary" data-action="record" ${busy ? "disabled" : ""}>${esc(t(busy ? "Loading..." : pending || !plan ? "Retry" : reviewing ? "Record payment" : "Continue"))}${plan && !pending ? ` · <span translate="no">${esc(money(amount()))}</span>` : ""}</button>`}</footer>`;
     const qr = dialog.querySelector("#cp-qr");
     if (qr) {
       try {
@@ -209,10 +227,12 @@
         table_number: table,
         branchId,
         ...(splitDraft || {}),
+        ...(saleId ? { saleId } : {}),
       });
       if (!plan?.id || !plan.enabled)
         throw Object.assign(new Error("Disabled"), { status: 403 });
       method = plan.methods.includes(method) ? method : plan.methods[0];
+      mixed = false; tenderAmounts = {};
       selected = "";
       received = receivedDefault();
       verified = false;
@@ -230,13 +250,45 @@
       if (!dialog.open && plan && !plan.paidMinor) close();
     }
   }
+  function celebratePayment() {
+    document.querySelectorAll('.cp-celebration').forEach(node => node.remove());
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const scene = document.createElement('div');
+    scene.className = 'cp-celebration';
+    scene.setAttribute('aria-hidden', 'true');
+    scene.style.cssText = 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;display:grid;place-items:center;overflow:hidden;';
+    const seal = document.createElement('span');
+    seal.style.cssText = 'position:absolute;width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#fff4bd,#efb934);color:#654100;border:2px solid #ffe6a0;box-shadow:0 8px 32px #b77c0026;font:600 38px Inter,sans-serif;';
+    seal.textContent = '✓';
+    scene.append(seal);
+    for (let i = 0; i < 8; i++) {
+      const coin = document.createElement('span');
+      const angle = (i / 8) * Math.PI * 2;
+      const x = Math.cos(angle) * 108, y = Math.sin(angle) * 92 - 22;
+      coin.style.cssText = 'position:absolute;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#fff7ce 10%,#f6c44d 48%,#d9971e);border:2px solid #ffe5a0;box-shadow:inset 0 0 0 3px #bf831e40,0 3px 7px #8a570022;';
+      scene.append(coin);
+      coin.animate([
+        {transform:'translate(0,18px) scale(.3)',opacity:0},
+        {offset:.18,opacity:1},
+        {offset:.65,transform:`translate(${x}px,${y}px) rotate(110deg) scale(1)`,opacity:1},
+        {transform:`translate(${x*1.15}px,${y+45}px) rotate(180deg) scale(.65)`,opacity:0},
+      ], {duration:1000,delay:i*25,fill:'both',easing:'cubic-bezier(.2,.7,.3,1)'});
+    }
+    (dialog.open ? dialog : document.body).append(scene);
+    seal.animate([{transform:'scale(.5)',opacity:0},{offset:.22,transform:'scale(1.08)',opacity:1},{offset:.35,transform:'scale(1)',opacity:1},{offset:.8,transform:'scale(1)',opacity:1},{transform:'scale(.95)',opacity:0}],{duration:1450,fill:'both'});
+    setTimeout(() => scene.remove(), 1500);
+  }
   async function record() {
+    let paymentCelebration = false;
     if (busy) return;
     if (!plan && !pending) {
       await load();
       return;
     }
     if (!pending) {
+      if (mixed && (tenderRows().length < 2 || tenderRows().some(row => !Number.isSafeInteger(row.amountMinor) || row.amountMinor <= 0) || tenderTotal() !== amount())) {
+        error = 'Payment amounts must equal the bill.'; render(); return;
+      }
       if (method === "Upi" && !qrReady) return;
       const paid = amount(),
         cash = cashMinor();
@@ -263,6 +315,7 @@
           method,
           receivedMinor: method === "Cash" ? cash : paid,
           reference,
+          ...(mixed ? {tenders:tenderRows()} : {}),
           ...(method === "Upi" ? { upi: { ...plan.upiPayee, verified: true } } : {}),
           request_id: crypto.randomUUID(),
         },
@@ -289,6 +342,7 @@
         ...pending.body, changeMinor: pending.body.receivedMinor - pending.body.amountMinor,
       };
       plan = result;
+      mixed = false; tenderAmounts = {}; method = plan.methods?.[0] || 'Cash';
       pending = null;
       localStorage.removeItem(key);
       selected = "";
@@ -296,6 +350,7 @@
       verified = false;
       reference = "";
       error = "";
+      paymentCelebration = true;
       const completed = plan.dueMinor === 0 && !(receipt.method === "Cash" && receipt.changeMinor > 0);
       if (completed) dialog.close();
       window.dispatchEvent(
@@ -322,6 +377,9 @@
     } finally {
       busy = false;
       render();
+      if (paymentCelebration) {
+        try { celebratePayment(); } catch { /* Decorative feedback must never affect a confirmed payment. */ }
+      }
     }
   }
   async function close() {
@@ -371,6 +429,10 @@
         verified = false;
         render();
       }
+      if (e.target.id === 'cp-mixed') {
+        mixed = e.target.checked; method = mixed ? 'Mixed' : plan.methods[0];
+        tenderAmounts = {}; verified = false; error = ''; received = receivedDefault(); render();
+      }
       if (e.target.id === "cp-verified") {
         verified = e.target.checked;
         if (verified && error === "I verified this payment on the terminal or bank app.") {
@@ -380,6 +442,12 @@
       }
     });
     dialog.addEventListener("input", (e) => {
+      if (e.target.dataset.tender) {
+        tenderAmounts[e.target.dataset.tender] = e.target.value;
+        verified = false;
+        const confirmation = dialog.querySelector('#cp-verified'); if (confirmation) confirmation.checked = false;
+        dialog.querySelector('#cp-tender-remaining').textContent = money(amount() - tenderTotal());
+      }
       if (e.target.id === "cp-reference") reference = e.target.value;
       if (e.target.id === "cp-received") {
         received = e.target.value;
@@ -389,7 +457,7 @@
       }
     });
   }
-  async function open(value, branchValue, draft) {
+  async function open(value, branchValue, draft, target = {}) {
     setup();
     if (busy) {
       if (!dialog.open) dialog.showModal();
@@ -397,10 +465,13 @@
     }
     reviewing = false;
     receipt = null;
+    mixed = false; tenderAmounts = {};
     splitDraft = draft || null;
     table = String(value);
+    saleId = String(target.saleId || "");
     branchId = String(branchValue || branch());
-    key = "posnic.payment:" + base() + ":" + branchId + ":" + table;
+    const identity = saleId ? "takeaway:" + saleId : table;
+    key = "posnic.payment:" + base() + ":" + branchId + ":" + identity;
     plan = null;
     pending = null;
     error = "";
@@ -412,7 +483,7 @@
         const candidate = localStorage.key(i);
         if (
           candidate.startsWith("posnic.payment:") &&
-          candidate.endsWith(":" + branchId + ":" + table)
+          candidate.endsWith(":" + branchId + ":" + identity)
         ) {
           const prior = JSON.parse(localStorage.getItem(candidate) || "null");
           if (prior?.pending) {
@@ -433,34 +504,32 @@
     if (!dialog.open) dialog.showModal();
     if (!pending) await load();
   }
-  async function available() {
+  async function available(target = {}) {
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const storedKey = localStorage.key(i);
         if (storedKey.startsWith("posnic.payment:")) {
           const saved = JSON.parse(localStorage.getItem(storedKey) || "null");
-          if (saved?.pending?.body?.branchId === String(branch())) return true;
+          if (saved?.pending?.body?.branchId === String(branch()) &&
+              (!target.saleId || storedKey.endsWith(":takeaway:" + target.saleId))) return true;
         }
       }
     } catch {}
     try {
-      return (
-        (
-          await request(
+      const options = await request(
             "get",
             mobile()
               ? "/captain/v1/payment-options"
               : "/sales/tablePayments/options",
-          )
-        ).enabled === true
-      );
+          );
+      return options.enabled === true && (!target.saleId || options.takeawayPayments === true);
     } catch {
       return false;
     }
   }
   document.addEventListener("click", (e) => {
     const button = e.target.closest("[data-collect-table]");
-    if (button) open(button.dataset.collectTable, button.dataset.branchId);
+    if (button) open(button.dataset.collectTable, button.dataset.branchId, null, {saleId:button.dataset.saleId});
   });
   window.addEventListener("captain:back", (e) => {
     if (!dialog?.open) return;

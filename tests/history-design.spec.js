@@ -87,7 +87,7 @@ test("cart shares the menu note presets and preserves each item note separately"
   await page.locator('.dish[data-id="p-dosa"] .dish-add').click();
   await page.locator("#next-btn").click();
   await expect(page).toHaveURL(/cart.html$/);
-  await page.locator("#cart-item-p-coffee .bill-name").click();
+  await page.locator("#cart-item-p-coffee .bill-note-action").click();
   await page.locator('#cart-notes-chips [data-say="Less sweet"]').click();
   await expect(page.locator("#cart-notes-text")).toHaveValue("Less sweet");
   await expect(
@@ -107,7 +107,7 @@ test("cart shares the menu note presets and preserves each item note separately"
   await expect(page.locator("#cart-item-p-coffee .bill-note")).toHaveText(
     "Less sweet",
   );
-  await page.locator("#cart-item-p-dosa .bill-name").click();
+  await page.locator("#cart-item-p-dosa .bill-note-action").click();
   await expect(page.locator("#cart-notes-text")).toHaveValue("");
   await page.locator('#cart-notes-chips [data-say="Less salt"]').click();
   await page.locator("#cart-notes-save-btn").click();

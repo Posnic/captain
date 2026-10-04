@@ -58,6 +58,7 @@ async function atThePicker(page, { onOrder = [], recent = [], popular = [] } = {
       window.setOrderBeingModified({
         items: onOrder.map((id) => ({ product_id: id, name: id, price: 20, quantity: 1 })),
       });
+      window.OrderEditor.begin();
       new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
     },
     { onOrder, recent, popular }
@@ -159,7 +160,11 @@ test('a strip row is a real row: number, count and all', async ({ page }) => {
 
   const row = page.locator('#item-picker-body [id="sec-on-table"] .dish[data-id="p-cb"]');
   await expect(row.locator('.dish-no')).toHaveText('3');
+  await expect(row.locator('.picker-previous-count')).toHaveText('Already ordered: 1');
+  await expect(row.locator('.btn-add')).toBeVisible();
+  await row.locator('.btn-add').click();
   await expect(row.locator('.dish-qty')).toHaveText('1');
+  await expect(row.locator('.picker-previous-count')).toHaveText('Already ordered: 1');
 });
 
 test('both copies of a dish agree after a tap', async ({ page }) => {
@@ -172,11 +177,7 @@ test('both copies of a dish agree after a tap', async ({ page }) => {
 
   await page.locator('#item-picker .dish[data-id="p-cb"] .btn-add').first().click();
 
-  const counts = await page
-    .locator('#item-picker .dish[data-id="p-cb"] .dish-qty')
-    .allTextContents();
-  expect(counts.length).toBeGreaterThan(1);
-  expect(counts.every((said) => said === '1')).toBe(true);
+  await expect(page.locator('#item-picker .dish[data-id="p-cb"] .dish-qty')).toHaveText(['1', '1']);
 });
 
 test('typing still searches the whole menu, not the strips', async ({ page }) => {

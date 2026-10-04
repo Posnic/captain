@@ -23,6 +23,26 @@
   'use strict';
 
   let asking = null;
+  let quickTax = null;
+  function taxPreview() {
+    const box = document.getElementById('ask-price-tax');
+    if (!box) return;
+    box.hidden = !quickTax || wantsName;
+    if (box.hidden) return;
+    const amount = readPrice(document.getElementById('ask-price-input').value);
+    const base = amount.ok ? amount.value : 0;
+    const tax = Math.round(base * Number(quickTax.rate)) / 100;
+    const t = key => root.I18N?.t?.(key) || key;
+    box.replaceChildren();
+    for (const [label, value] of [[t('Amount'), base], [quickTax.name + ' (' + quickTax.rate + '%)', tax], [t('Total'), base + tax]]) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;gap:12px;margin-top:8px';
+      const name = document.createElement('span'); name.textContent = label;
+      const money = document.createElement('strong'); money.translate = false;
+      money.textContent = root.CaptainMoney?.display ? root.CaptainMoney.display(value) : value.toFixed(2);
+      row.append(name, money); box.append(row);
+    }
+  }
 
   function ensure() {
     if (document.getElementById('ask-price-scrim')) return;
@@ -73,19 +93,33 @@
       #ask-price-cancel { border: 1.5px solid #cbd5e1; background: #fff; color: #475569; }
       #ask-price-ok { border: 0; background: #ff7a3c; color: #fff; }
     `;
+    style.textContent += `
+      #ask-price-scrim{padding:16px;overflow-y:auto;align-items:center}
+      #ask-price-card{font-family:Inter,system-ui,sans-serif;width:min(420px,100%);max-height:calc(100dvh - 32px);overflow-y:auto;background:var(--surface,#fff);color:var(--ink,#192638);border:1px solid var(--line,#dde4ed);border-radius:16px;padding:22px}
+      #ask-price-dish{font:650 20px/1.35 Inter,system-ui,sans-serif;color:var(--ink,#192638);overflow-wrap:anywhere}
+      #ask-price-why{color:var(--ink-soft,#627083)}
+      #ask-price-field{background:var(--surface,#fff);border:1px solid var(--line,#dde4ed)}
+      #ask-price-field:focus-within{border-color:var(--accent,#2458db);box-shadow:0 0 0 2px var(--accent-soft,#edf3ff)}
+      #ask-price-input{font:600 24px/1.5 Inter,system-ui,sans-serif;color:var(--ink,#192638);width:100%;padding:8px 0}
+      #ask-price-sign{color:var(--ink-soft,#627083)}
+      #ask-price-buttons button{font:600 14px Inter,system-ui,sans-serif;border-radius:10px}
+      #ask-price-cancel{background:var(--surface,#fff);color:var(--ink,#192638);border:1px solid var(--line,#dde4ed)}
+      #ask-price-ok{background:var(--accent,#2458db);color:var(--accent-ink,#fff)}
+    `;
     document.head.appendChild(style);
 
     const scrim = document.createElement('div');
     scrim.id = 'ask-price-scrim';
     scrim.innerHTML =
-      '<div id="ask-price-card" role="dialog" aria-modal="true">' +
+      '<div id="ask-price-card" role="dialog" aria-modal="true" aria-labelledby="ask-price-dish" aria-describedby="ask-price-why">' +
       '<p id="ask-price-dish"></p>' +
       '<p id="ask-price-why">Priced on the day. Enter what this one costs.</p>' +
       '<div id="ask-price-field">' +
       '<span id="ask-price-sign">&#8377;</span>' +
       '<input id="ask-price-input" type="text" inputmode="decimal" ' +
-      'autocomplete="off" placeholder="0">' +
+      'autocomplete="off" aria-label="Price per item" placeholder="0">' +
       '</div>' +
+      '<div id="ask-price-tax" aria-live="polite" hidden></div>' +
       '<p id="ask-price-warn"></p>' +
       '<div id="ask-price-buttons">' +
       '<button type="button" id="ask-price-cancel">Cancel</button>' +
@@ -97,6 +131,7 @@
     const input = scrim.querySelector('#ask-price-input');
 
     /* Enter is what a number pad offers, so it must do the obvious thing. */
+    input.addEventListener('input', taxPreview);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -185,13 +220,14 @@
    * @param {number} [suggested] a price already on the line, when changing one
    * @returns {Promise<number|null>}
    */
-  function askPrice(dishName, suggested) {
+  function askPrice(dishName, suggested, tax) {
     ensure();
     /* A second question over the first would leave one promise unsettled for
        ever, and the screen behind it waiting on it. */
     if (asking) settle(false);
 
     wantsName = false;
+    quickTax = tax || null;
     const scrim = document.getElementById('ask-price-scrim');
     const input = document.getElementById('ask-price-input');
     document.getElementById('ask-price-dish').translate = !dishName;
@@ -202,8 +238,12 @@
     const sign = document.getElementById('ask-price-sign');
     if (sign) sign.style.display = '';
     input.setAttribute('inputmode', 'decimal');
+    input.setAttribute('aria-label', 'Price per item');
+    document.getElementById('ask-price-why').textContent = 'Enter the price per item before adding it to the order.';
     input.setAttribute('placeholder', '0');
     input.value = Number(suggested) > 0 ? String(suggested) : '';
+    if (quickTax) document.getElementById('ask-price-why').textContent = root.I18N?.t?.('Excluding tax') || 'Excluding tax';
+    taxPreview();
 
     scrim.classList.add('is-open');
     /* After the sheet is on screen, or a phone keyboard opens against nothing
@@ -231,6 +271,7 @@
     if (asking) settle(false);
 
     wantsName = true;
+    taxPreview();
     const scrim = document.getElementById('ask-price-scrim');
     const input = document.getElementById('ask-price-input');
 
@@ -241,6 +282,8 @@
     const sign = document.getElementById('ask-price-sign');
     if (sign) sign.style.display = 'none';
     input.setAttribute('inputmode', 'text');
+    input.setAttribute('aria-label', 'Item name');
+    document.getElementById('ask-price-why').textContent = 'Enter the item name, then set its price.';
     input.setAttribute('placeholder', 'What is it called?');
     input.value = String(suggested || '');
 

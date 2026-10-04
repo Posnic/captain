@@ -3,6 +3,9 @@
  'use strict';
  const t=s=>root.I18N?.t(s)||s;
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ // Whole servings use whole steps; retain precision for recorded fractional portions.
+ const quantityStep=line=>[line.quantity,line.served||0].every(value=>Number.isInteger(Number(value))) ? 1 : 0.001;
+ const eligible=value=>!!value && !['cancelled','canceled','completed','closed'].includes(String(value.status || '').toLowerCase()) && (!value.sale_process || value.sale_process === 'KOT') && (!value.payment_status || value.payment_status === 'Unpaid') && !value.floor_closed_at;
  const registered=new Map();
  const historyKey='captainTransfer';
  let ownsHistory=false,cleaningHistory=false,queuedOrder=null;
@@ -20,7 +23,7 @@
   if(identity!==owner()){close();return;}
   const pending=root.CaptainItemTransfer.pending(order._id);
   let body='';
-  if(stage==='items')body=(order.kitchen_rounds||[]).map(round=>`<section><time>${esc(round.ordered_at?new Date(round.ordered_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'')}</time>${round.items.map(line=>`<fieldset data-line="${esc(line.id)}"><legend translate="no">${esc(line.name)}</legend>${line.note?`<p translate="no">${esc(line.note)}</p>`:''}<label>${t('Items')} <input type="number" min="0" max="${line.quantity}" step="0.001" value="${items?.find(i=>i.id===line.id)?.quantity||0}" data-quantity aria-label="${t('Items')}"></label><small translate="no"> / ${line.quantity}</small><label>${t('Served')} <input type="number" min="0" max="${line.served||0}" step="0.001" value="${items?.find(i=>i.id===line.id)?.servedQuantity||0}" data-served aria-label="${t('Served')}"></label></fieldset>`).join('')}</section>`).join('');
+  if(stage==='items')body=(order.kitchen_rounds||[]).map(round=>`<section><time>${esc(round.ordered_at?new Date(round.ordered_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'')}</time>${round.items.map(line=>`<fieldset data-line="${esc(line.id)}"><legend translate="no">${esc(line.name)}</legend>${line.note?`<p translate="no">${esc(line.note)}</p>`:''}<label>${t('Items')} <input type="number" min="0" max="${line.quantity}" step="${quantityStep(line)}" value="${items?.find(i=>i.id===line.id)?.quantity||0}" data-quantity aria-label="${t('Items')}"></label><small translate="no"> / ${line.quantity}</small><label>${t('Served')} <input type="number" min="0" max="${line.served||0}" step="${quantityStep(line)}" value="${items?.find(i=>i.id===line.id)?.servedQuantity||0}" data-served aria-label="${t('Served')}"></label></fieldset>`).join('')}</section>`).join('');
   if(stage==='tables')body=`<label>${t('Guests')} <input id="transfer-guests" type="number" min="1" max="1000" value="${destination?.guests||1}"></label><div class="transfer-tables">${tables.filter(row=>row.status==='available'&&!row.closing).map(row=>`<label><input type="checkbox" value="${esc(row.id)}" ${destination?.tableIds.includes(row.id)?'checked':''}> <span>${t('Table')} <b translate="no">${esc(row.tableorder_value)}</b><small>${t('Guests')}: ${row.max||row.capacity||'—'}</small></span></label>`).join('')}</div><label id="transfer-primary-label">${t('Main table')} <select id="transfer-primary"></select></label>`;
   if(stage==='review')body=`<section><h3>${t('Items')}</h3>${preview.destination.rounds.map(line=>`<div class="transfer-review-line"><p translate="no">${esc(line.name)} × ${line.quantity}</p>${line.note?`<small translate="no">${esc(line.note)}</small>`:''}${line.served?`<small>${t('Served')}: ${line.served}</small>`:''}</div>`).join('')}<p>${t('Table')} <b translate="no">${destination.tableIds.map(id=>esc(tables.find(row=>row.id===id)?.tableorder_value||id)).join(', ')}</b></p><p>${t('Main table')}: <b translate="no">${esc(tables.find(row=>row.id===destination.primaryId)?.tableorder_value||'')}</b></p><p>${t('Guests')}: ${destination.guests}</p><p>${t('Total')}: <strong translate="no">${esc(money(preview.destination.totalMinor))}</strong></p></section><section class="transfer-source"><h3>${t('Table')} <span translate="no">${esc(order.table_number||order.kiosk_table_no||'')}</span></h3><p>${t('Total')}: <strong translate="no">${esc(money(preview.source.totalMinor))}</strong></p></section>`;
   if(stage==='recovery')body=`<p>${t('Reconnect to the server that authorized this phone. Orders are retained.')}</p>`;
@@ -71,6 +74,7 @@
   finally{if(current===generation)busy=false;}
  }
  function open(value){
+  if(!eligible(value)){root.showToast?.(t("Only open unpaid orders can transfer items."),"error");return;}
   // Closing the editor removes its browser-history entry asynchronously.
   // Do not let that late Back remove this screen's entry or change its stage.
   const requestedOwner=owner(),closingEditor=root.OrderEditor?.whenClosed?.();
@@ -80,7 +84,7 @@
   if(!dialog){dialog=document.createElement('dialog');dialog.className='transfer-screen';document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();back();});}
   stage=root.CaptainItemTransfer.pending(order._id)?'recovery':'items';render();if(!dialog.open)dialog.showModal();if(!ownsHistory)ownHistory();
  }
- root.CaptainTransferScreen={register(value){registered.set(owner()+':'+value._id,value);},open};
+ root.CaptainTransferScreen={eligible,register(value){registered.set(owner()+':'+value._id,value);},open};
  window.addEventListener('popstate',event=>{
   if(cleaningHistory){cleaningHistory=false;event.stopImmediatePropagation();if(queuedOrder){const next=queuedOrder;queuedOrder=null;if(next.owner===owner())open(next.value);}return;}
   if(!ownsHistory||!dialog?.open)return;

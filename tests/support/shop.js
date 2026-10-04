@@ -55,6 +55,7 @@ export const ONE_CATEGORY = [
 
 const responses = (products) => ({
   '/runtime-info': RUNTIME_INFO,
+  '/captain/v1/takeaway-number': { number: 1 },
   '/users/kioskMobileLogin': {
     tokenType: 'Bearer',
     token: 'smoke-token',
@@ -137,7 +138,7 @@ export async function onTheMenu(page, heard, options = {}) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(table[path] || { type: 'success', data: {} }),
+      body: JSON.stringify(table[path] || (path === '/items/instantItemTax' ? {type:'success',data:{id:'test-zero-tax',name:'Tax',rate:0,type:'exclusive'}} : null) || { type: 'success', data: {} }),
     });
   });
 

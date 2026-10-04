@@ -9,23 +9,28 @@
   function render(order, editable = false) {
     if (!Array.isArray(order.kitchen_rounds)) return '';
     root.CaptainTransferScreen?.register(order);
-    const transfer = order.item_transfer && window.canMergeOrders?.() ? `<div class="service-order-action"><button type="button" data-transfer-order="${escape(order._id)}">${root.I18N?.t('Transfer items') || 'Transfer items'}</button></div>` : '';
+    const transfer = root.CaptainTransferScreen?.eligible(order) && order.item_transfer && window.canMergeOrders?.() ? `<div class="service-order-action"><button type="button" data-transfer-order="${escape(order._id)}">${root.I18N?.t('Transfer items') || 'Transfer items'}</button></div>` : '';
+    const takeaway = /^take[\s_-]*away$/i.test(order.dine_type || order.fulfilment || '');
+    const serviceable = editable || (takeaway && order.payment_status === 'Paid' && !root.kotIsCancelled?.(order));
     const pending = order.kitchen_rounds.some(round => round.items.some(line => !line.held && line.remaining > 0));
-    const all = editable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Mark all served</button></div>` : '';
-    const options = editable && root.ServiceDetails?.supported(order.branch_id) ? `<details class="service-order-options"><summary>Order options</summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Hand over order</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
-    return transfer + options + all + [...order.kitchen_rounds].sort((a,b) => (Date.parse(b.ordered_at) || 0) - (Date.parse(a.ordered_at) || 0)).map(round => `<section class="service-round">
+    const all = serviceable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" aria-label="${takeaway?'Handed over':'Mark all served'}"><i class="fas fa-check-double" aria-hidden="true"></i><span>${takeaway?'Handed over':'Serve all'}</span></button></div>` : '';
+    const options = editable && root.ServiceDetails?.supported(order.branch_id) ? `<details class="service-order-options"><summary><i class="fas fa-sliders-h" aria-hidden="true"></i> <span>Order options</span></summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Assign staff</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
+    const lineCounts = new Map();
+    order.kitchen_rounds.forEach(round=>round.items.forEach(line=>lineCounts.set(line.line_key,(lineCounts.get(line.line_key)||0)+1)));
+    return `<div class="service-toolbar">${transfer}${options}${all}</div>` + [...order.kitchen_rounds].sort((a,b) => (Date.parse(b.ordered_at) || 0) - (Date.parse(a.ordered_at) || 0)).map(round => `<section class="service-round">
       <h3><span>Ordered at</span> <time translate="no">${escape(time(round.ordered_at))}</time></h3>
       ${round.fired_at ? `<p><span>Sent to the kitchen</span> <time translate="no">${escape(time(round.fired_at))}</time></p>` : ''}
       ${round.items.map(line => `<div class="service-line${line.remaining ? '' : ' is-served'}">
         <div class="service-dish"><strong translate="no">${escape(line.name)}</strong>
         ${root.ServiceDetails?.summary(line) || ''}
-        ${line.note ? `<p translate="no">${escape(line.note)}</p>` : ''}
+        ${line.note ? `<p class="service-item-note" translate="no">${escape(line.note)}</p>` : ''}
         ${line.served ? `<small><span>Served</span> <span translate="no">${line.served} / ${line.quantity}${line.served_at ? ' · ' + escape(time(line.served_at)) : ''}</span></small>` : ''}</div>
         <span class="service-quantity" translate="no">×${line.quantity}</span>
+        ${editable && line.line_key ? root.FloorLineActions?.render(order,{line_id:line.line_key},{repeatOnly:lineCounts.get(line.line_key)>1}) || '' : ''}
         ${editable && line.held && line.remaining > 0 ? `<div class="service-action"><button type="button" data-fire-line="${escape(line.id)}" data-fire-sale="${escape(order._id)}" data-fire-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Send to kitchen</button></div>` : ''}
-        ${editable && !line.held && line.remaining > 0 ? `<div class="service-action">
+        ${serviceable && !line.held && line.remaining > 0 ? `<div class="service-action">
           ${line.remaining > 1 ? `<input type="number" aria-label="Quantity to serve" min="0.001" max="${line.remaining}" step="any" value="${line.remaining}">` : ''}
-          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}">Mark served</button>
+          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}" title="${takeaway?'Hand over item':'Mark served'}" aria-label="${takeaway?'Hand over item':'Mark served'}"><svg class="serve-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h18M5 13a7 7 0 0 1 10-6M3 19h18M11 4h2M16 9l2 2 4-5"/></svg><span>${takeaway?'Handed over':'Served'}</span></button>
         </div>` : ''}
       </div>`).join('')}</section>`).join('');
   }
@@ -38,7 +43,7 @@
       const input = button.parentElement.querySelector('input');
       if (input && !changedLines.has(button.dataset.serveLine)) quantities.set(button.dataset.serveLine, input.value);
     });
-    list.innerHTML = render({_id:saleId, branch_id:branchId, kitchen_rounds:rounds, assigned_staff:{name:assignedName}}, true);
+    list.innerHTML = render({_id:saleId, branch_id:branchId, payment_status:container.dataset.paymentStatus, dine_type:container.dataset.takeaway==='true'?'Take away':'Dine-in', kitchen_rounds:rounds, assigned_staff:{name:assignedName}}, container.dataset.paymentStatus !== 'Paid');
     const options = list.querySelector('.service-order-options');
     if (options) options.open = Boolean(optionsOpen);
     list.querySelectorAll('[data-serve-line]').forEach(button => {
@@ -94,6 +99,7 @@
     const branchId = button.dataset.serveBranch;
     const saleId = button.dataset.serveSale;
     let confirmed = null;
+    let completed = false;
     let message = container.querySelector('.service-result');
     if (!message) { message = document.createElement('p'); message.className='service-result'; message.setAttribute('role','status'); container.append(message); }
     message.textContent = 'Saving…';
@@ -106,7 +112,8 @@
         if (result.type !== 'success' || !Array.isArray(result.data)) throw new Error(result.message || 'Could not save. Please try again.');
         confirmed = result.data;
       }
-      message.textContent = 'Items marked served';
+      completed = true;
+      message.textContent = container.dataset.takeaway === 'true' ? 'Items handed over' : 'Items marked served';
     } catch (error) {
       message.textContent = error.message || 'Could not save. Please try again.';
     } finally {
@@ -114,6 +121,10 @@
       root.I18N?.apply(container);
       controls.forEach(control => { control.disabled = false; });
       delete container.dataset.serving;
+    }
+    if (completed) {
+      if (button.hasAttribute('data-serve-and-collect')) document.querySelector('.order-financial [data-collect-table]:not([hidden])')?.click();
+      root.dispatchEvent(new CustomEvent('captain:items-served',{detail:{saleId}}));
     }
   });
   root.ServiceRounds = {render};

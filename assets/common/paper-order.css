@@ -1,4 +1,5 @@
-#paper-order-open{position:fixed;left:16px;bottom:calc(82px + env(safe-area-inset-bottom));z-index:40;min-height:52px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#2458dc;padding:10px 14px;font-weight:600}
+#paper-order-open{position:static;flex:0 0 46px;padding:10px;min-height:44px}
+#paper-order-open svg{width:24px;height:24px;display:block}
 #paper-order-open[hidden]{display:none}
 .paper-order-dialog{width:min(680px,100%);max-height:94dvh;border:0;border-radius:16px;padding:20px;background:#fff;color:#172033;overflow:auto}
 .paper-order-dialog::backdrop{background:#0008}.paper-order-dialog header{display:flex;justify-content:space-between;align-items:center}.paper-order-dialog h2{font-size:24px}

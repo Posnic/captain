@@ -34,6 +34,13 @@ async function open(page) {
   await page.goto("/kitchen-message.html");
   await expect(page.locator("#voice-record")).toBeEnabled();
 }
+async function previewDuration(page) {
+  return page.evaluate(async () => {
+    const context = new AudioContext();
+    try { return (await context.decodeAudioData(await (await fetch(document.getElementById('voice-preview').src)).arrayBuffer())).duration; }
+    finally { await context.close(); }
+  });
+}
 for (const width of [320, 900])
   test(`voice composer records, previews, resumes and sends once at ${width}px`, async ({
     page,
@@ -41,7 +48,8 @@ for (const width of [320, 900])
     await page.setViewportSize({ width, height: 850 });
     await open(page);
     await expect(page.locator("#voice-record")).toHaveCSS("border-radius", "50%");
-    let uploads = [];
+    let uploads = [], archives = [];
+    await page.route("**/captain/v1/kitchen-audio/archive", r => { archives.push(r.request().postDataJSON()); return r.fulfill({ json: { stored: true, storage: "local" } }); });
     await page.route("**/captain/v1/kitchen-audio/start", (r) =>
       r.fulfill({ json: { id: "voice-message" } }),
     );
@@ -87,6 +95,7 @@ for (const width of [320, 900])
           ),
         ).duration,
     );
+    const firstAudioLength = await previewDuration(page);
     await page.screenshot({
       path: `test-artifacts/voice-paused-${width}.png`,
       fullPage: true,
@@ -114,21 +123,8 @@ for (const width of [320, 900])
     );
     expect(resumed.duration).toBeGreaterThan(duration);
     expect(resumed.data).toMatch(/^data:audio\/wav;base64,/);
-    const audioLength = await page.evaluate(async () => {
-      const audio = new AudioContext();
-      try {
-        return (
-          await audio.decodeAudioData(
-            await (
-              await fetch(document.getElementById("voice-preview").src)
-            ).arrayBuffer(),
-          )
-        ).duration;
-      } finally {
-        await audio.close();
-      }
-    });
-    expect(audioLength).toBeGreaterThan(1.5);
+    const audioLength = await previewDuration(page);
+    expect(audioLength).toBeGreaterThan(firstAudioLength);
     await page
       .getByRole("button", { name: "Resume recording", exact: true })
       .click();
@@ -141,6 +137,8 @@ for (const width of [320, 900])
     await expect(page.locator("#voice-status")).toHaveText(
       "Queued for playback",
     );
+    expect(archives).toHaveLength(1);
+    expect(archives[0].data).toMatch(/^data:audio\/wav;base64,/);
     expect(uploads).toHaveLength(1);
     expect(uploads[0].data).toMatch(/^data:audio\/wav;base64,/);
     expect(

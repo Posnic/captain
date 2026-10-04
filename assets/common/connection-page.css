@@ -123,3 +123,40 @@
 
 #captain-search-again { background:#fff; color:#2457e7; border:1px solid #cdd6e3; }
 #captain-search-again:hover { background:#f3f7ff; }
+
+/* Connection choices share the app palette in both themes. */
+#captain-onboarding [hidden]{display:none!important}
+#captain-onboarding{gap:12px}
+#captain-onboarding #setup-heading{margin:4px 0 12px;font-size:26px;line-height:1.25}
+#captain-onboarding .setup-back{justify-self:start;min-height:44px;padding:8px 0;color:var(--accent)}
+#captain-onboarding[data-setup-view="start"] #setup-methods{display:flex;flex-direction:column;gap:12px}
+#captain-onboarding[data-setup-view="start"] #setup-methods>*{order:initial}
+#captain-onboarding[data-setup-view="start"] .setup-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
+#captain-onboarding #captain-search{display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid var(--accent);border-radius:12px;min-height:52px;background:var(--accent);color:var(--accent-ink,#fff);font-weight:600;font-size:15px}
+#captain-search svg{width:22px;height:22px;flex:none}
+#captain-onboarding .setup-tools button{display:flex;flex-direction:row;height:auto;width:100%;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:10px;background:var(--surface-sunk);border:1px solid var(--line-strong,var(--line));color:var(--ink);border-radius:12px}
+#captain-onboarding .setup-tools button svg{width:22px;height:22px;flex:none;color:var(--accent)}
+#captain-onboarding .setup-tools button span{font-size:13px;line-height:1.4;text-align:start}
+#captain-onboarding #captain-address-toggle{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-align:center;font-weight:600;min-height:48px}
+#captain-onboarding .setup-alternatives{margin:4px 0;color:var(--ink-soft);font-size:12px}
+#captain-onboarding .setup-alternatives::before,#captain-onboarding .setup-alternatives::after{background:var(--line)}
+#captain-onboarding #connection-settings{color:var(--ink-soft);min-height:44px;margin:0}
+#login-section .setup-steps{gap:12px;margin-bottom:16px}
+#login-section .setup-steps li{color:var(--ink-soft)}
+#login-section .setup-steps li>span{background:var(--surface-sunk);color:var(--ink-soft);border:1px solid var(--line)}
+#login-section .setup-steps li[aria-current="step"]{color:var(--accent)}
+#login-section .setup-steps li[aria-current="step"]>span{background:var(--accent);color:var(--accent-ink,#fff);border-color:var(--accent)}
+#captain-onboarding #captain-results button,#captain-onboarding #captain-search-again{background:var(--surface-sunk);color:var(--ink);border-color:var(--line)}
+#captain-onboarding .setup-server-info small{color:var(--ink-soft)}
+#captain-onboarding .setup-server-action{background:var(--accent);color:var(--accent-ink,#fff)}
+#captain-onboarding :is(button,input):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#captain-onboarding #captain-note:empty{display:none}
+
+.connection-navigation{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.connection-navigation:has(>button[hidden]):not(:has(>button:not([hidden]))){display:none}
+#captain-onboarding #connection-orders{margin-inline-start:auto;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;color:var(--accent);background:var(--surface-sunk);font-size:13px;font-weight:600}
+#login-section .setup-steps[hidden]{display:none}
+#captain-onboarding #connection-done{margin-top:8px}
+
+#captain-onboarding .connection-navigation .setup-back{margin:0;align-self:center}
+#captain-onboarding:has(#connection-done:not([hidden])) #connection-save{background:var(--surface-sunk);color:var(--ink);border:1px solid var(--line)}

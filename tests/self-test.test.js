@@ -48,15 +48,27 @@ test('the factory runs at all', async () => {
   await assert.doesNotReject(() => SelfTest.run('https://shop.test/api'));
 });
 
-test('no file in assets/common reaches for `root` inside its factory', () => {
-  /* The wrapper assigns `root.Name = api` and that is the only legitimate use.
-     Anything else is the same bug in a different file. */
-  for (const name of fs.readdirSync(commonDir).filter((f) => f.endsWith('.js'))) {
-    const source = fs.readFileSync(path.join(commonDir, name), 'utf8');
-    const uses = (source.match(/\broot\.\w+/g) || []).filter(
-      (use) => !/^root\.[A-Z]/.test(use) // root.SelfTest, root.Speech - the export line
-    );
-    assert.deepEqual(uses, [], `${name} uses ${uses.join(', ')} inside its factory`);
+test('UMD factories do not reference their sibling wrapper root parameter', () => {
+  const {parse} = require('acorn');
+  function walk(node, visit) {
+    if (!node || typeof node !== 'object') return;
+    if (node.type) visit(node);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(child => walk(child, visit));
+      else if (value && typeof value === 'object') walk(value, visit);
+    }
+  }
+  for (const name of fs.readdirSync(commonDir).filter(f => f.endsWith('.js'))) {
+    const ast = parse(fs.readFileSync(path.join(commonDir,name),'utf8'), {ecmaVersion:'latest'});
+    walk(ast, call => {
+      if (call.type !== 'CallExpression' || call.callee.type !== 'FunctionExpression' ||
+          !call.callee.params.some(p => p.name === 'factory')) return;
+      for (const factory of call.arguments.filter(arg => arg.type === 'FunctionExpression' && !arg.params.some(p => p.name === 'root'))) {
+        walk(factory.body, node => {
+          assert.ok(!(node.type === 'MemberExpression' && node.object.type === 'Identifier' && node.object.name === 'root'), `${name} factory references wrapper-only root`);
+        });
+      }
+    });
   }
 });
 

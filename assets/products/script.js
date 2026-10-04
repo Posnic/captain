@@ -903,8 +903,11 @@ async function addOneOff(said) {
 
     /* The same sheet a fish priced at the market uses. A waiter should not
        learn two ways to type a number into this app. */
-    const price = await POSNIC.askPrice(said);
-    if (!price) return;
+    let entry;
+    try { entry = await POSNIC.quickSale.ask(said); }
+    catch (error) { showErrorPopup(error.message); return; }
+    if (!entry) return;
+    const price = entry.amount;
 
     /*
      * THE HELPERS THIS SCREEN ACTUALLY HAS.
@@ -916,7 +919,7 @@ async function addOneOff(said) {
      * popup.js is what the menu screen loads and what it already uses.
      */
     try {
-        const made = await POSNIC.quickSale.createOneOff(said, price);
+        const made = await POSNIC.quickSale.createOneOff(said, price, entry.tax);
 
         /*
          * Kept where every screen here reads its menu from, so the row can be
@@ -1063,7 +1066,22 @@ async function prepareNextItem(search) {
     search.input.select();
 }
 
+function showAddBubbles(rect, effect = 'bubble') {
+    if (!rect || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const burst = document.createElement('span');
+    burst.className = 'menu-add-burst' + (effect === 'bubble' ? '' : ' menu-quantity-' + effect);
+    burst.setAttribute('aria-hidden', 'true');
+    burst.style.left = (rect.left + rect.width / 2) + 'px';
+    burst.style.top = (rect.top + rect.height / 2) + 'px';
+    const bubble = document.createElement('i');
+    if (effect !== 'bubble') bubble.textContent = effect === 'heart' ? '💚' : '🙁';
+    burst.appendChild(bubble);
+    document.body.appendChild(burst);
+    setTimeout(() => burst.remove(), effect === 'sad' ? 950 : 520);
+}
+
 $(document).on("click", ".btn-add", cartAction(async function () {
+    const burstRect = this.getBoundingClientRect();
     const id = $(this).data("id");
     const search = searchAtAdd();
 
@@ -1106,7 +1124,7 @@ $(document).on("click", ".btn-add", cartAction(async function () {
     }
 
     const added = await updateQuantity(id, quantity, { askedPrice, modifiers: extras });
-    if (added) await prepareNextItem(search);
+    if (added) { showAddBubbles(burstRect); await prepareNextItem(search); }
 
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(id);
@@ -1134,6 +1152,7 @@ $(document).on("click", ".btn-add", cartAction(async function () {
  * twice before any picture could arrive.
  */
 $(document).on("click", ".btn-increase", cartAction(async function () {
+    const burstRect = this.getBoundingClientRect();
     const search = searchAtAdd();
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
@@ -1154,7 +1173,7 @@ $(document).on("click", ".btn-increase", cartAction(async function () {
     }
 
     const added = await updateQuantity(productId, 1);
-    if (added) await prepareNextItem(search);
+    if (added) { showAddBubbles(burstRect, 'heart'); await prepareNextItem(search); }
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(productId);
     }
@@ -1167,10 +1186,12 @@ $(document).on("click", ".btn-increase", cartAction(async function () {
 }));
 
 $(document).on("click", ".btn-decrease", cartAction(async function () {
+    const burstRect = this.getBoundingClientRect();
     const $button = $(this);
     const productId = $button.data("id") || $button.closest(".dish, .frequent-card").data("id");
 
-    await updateQuantity(productId, -1);
+    const removed = await updateQuantity(productId, -1);
+    if (removed) showAddBubbles(burstRect, 'sad');
     if (typeof syncFrequentQtyFromMain === 'function') {
         syncFrequentQtyFromMain(productId);
     }

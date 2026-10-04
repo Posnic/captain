@@ -915,3 +915,26 @@ for (const existing of [undefined, ['https://previous.example/api']])
     assert.deepEqual(f.vault().routes,[...(existing||[]),candidate]);
     assert.equal(access.session.user.id,'staff');
   });
+
+
+test('cloud order fallback requires consent before transmitting the order', async () => {
+ const f=fixture(), lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',routeKey='a'.repeat(64);
+ let agree=false;const writes=[];const previous=globalThis.POSNIC;
+ globalThis.POSNIC={server:{adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{ask:async base=>base===lan||agree}};
+ try {
+  const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+   const body=JSON.parse(options.body||'{}');
+   if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',routeKey).update(body.nonce).digest('hex')})};
+   writes.push({url,body});if(url.startsWith(lan))throw Error('Wi-Fi unavailable');
+   return {ok:true,json:async()=>({type:'success'})};
+  },webcrypto);
+  await access.session.start({...f.grant,base:lan,routeKey,routes:[cloud],idempotentOrders:true});
+  const options={method:'POST',body:{idempotencyKey:'saved-order',items:[1]}};
+  await assert.rejects(access.session.request('/sales/qrOrder',options));
+  assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,0);
+  agree=true;
+  await access.session.request('/sales/qrOrder',options);
+  assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,1);
+  assert.deepEqual(writes[0].body,writes.at(-1).body);
+ }finally {if(previous===undefined)delete globalThis.POSNIC;else globalThis.POSNIC=previous;}
+});

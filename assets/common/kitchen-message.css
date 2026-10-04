@@ -203,3 +203,27 @@
 .voice-composer .voice-actions button {
   border-radius: 50% !important;
 }
+
+/* Familiar voice-message controls, shared by recording preview and history. */
+.kitchen-message{--voice-green:#128c5a;--voice-on-green:#fff;--voice-bubble:#edf8f1;gap:18px;max-width:780px}
+html[data-color-scheme="dark"] .kitchen-message{--voice-green:#25d366;--voice-on-green:#072f1b;--voice-bubble:#17372d}
+.voice-compose,.voice-messages{padding:18px;border:0;background:transparent}
+#voice-status{min-height:0;background:transparent;padding:0;margin:12px 0;font-size:13px;color:var(--ink-soft)}
+.voice-composer{border:1px solid var(--line);background:var(--voice-bubble);padding:14px;border-radius:18px}
+.voice-composer button,.voice-history-play{border-radius:50%!important}
+#voice-play,#voice-send,#voice-record{background:var(--voice-green);color:var(--voice-on-green)}
+#voice-composer[data-recording="true"] #voice-record{background:var(--surface);color:var(--bad)}
+#voice-wave{color:var(--voice-green)}
+.voice-composer[data-has-recording="false"]{display:flex;align-items:center;gap:12px}
+.voice-composer[data-has-recording="false"] .voice-track{flex:1;min-width:0}
+.voice-composer[data-has-recording="false"] .voice-actions{display:block;margin:0}
+.voice-history-item{padding:14px;margin-top:12px;background:var(--voice-bubble);border:1px solid var(--line);border-radius:16px}
+.voice-history-play{flex:0 0 44px;width:44px;height:44px;min-height:44px;border:0;padding:10px;background:var(--voice-green);color:var(--voice-on-green);display:grid;place-items:center}
+.voice-history-play svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.voice-track input[type=range]{flex:1;min-width:0;accent-color:var(--voice-green)}
+.voice-message-time{font-size:12px!important;font-variant-numeric:tabular-nums;white-space:nowrap;margin:8px 0 0!important}
+.voice-track .voice-message-time{margin:0!important}
+@media(min-width:768px){.kitchen-message{grid-template-columns:1fr}.voice-compose,.voice-messages{padding:18px 24px}}
+
+#voice-record{touch-action:none;user-select:none;-webkit-user-select:none}
+.voice-history-help{font-size:12px!important}

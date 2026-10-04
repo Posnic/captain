@@ -33,7 +33,6 @@
 
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
-const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 const APK = path.join(ROOT, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
@@ -43,7 +42,7 @@ const MARKER = 'POSNIC_SELFTEST';
 const target = process.argv[2] || 'https://develop.posnic.io/api';
 
 const run = (command, args, options = {}) =>
-  spawnSync(command, args, { encoding: 'utf8', ...options });
+  spawnSync(command, args, { encoding: 'utf8', timeout: 120000, ...options });
 
 const say = (line) => process.stdout.write(`${line}\n`);
 
@@ -72,9 +71,9 @@ say(`Found ${attached.length === 1 ? 'a phone' : `${attached.length} devices`}.`
 
 /* ------------------------------------------------------------ build it */
 
-if (!fs.existsSync(APK)) {
-  say('Building the APK first.');
-  const built = run('node', ['build-apk.js'], { cwd: ROOT, stdio: 'inherit' });
+{
+  say('Building the current source before checking the device.');
+  const built = run('node', ['build-apk.js'], { cwd: ROOT, stdio: 'inherit', timeout: 600000 });
   if (built.status !== 0) {
     say('The build failed, so there is nothing to install.');
     process.exit(1);

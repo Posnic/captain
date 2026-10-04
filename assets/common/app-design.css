@@ -1,6 +1,6 @@
 /* Approved Captain design: shared colour, navigation and route status. */
 :root { --ink:#17243a; --ink-soft:#647084; --ground:#fff; --surface:#fff; --surface-sunk:#f4f7fb; --line:#e0e6ef; --accent:#2459de; --accent-soft:#edf2ff; --good:#15763d; --bad:#b33336; }
-@media(prefers-color-scheme:dark) { :root { --ink:#eef3fa; --ink-soft:#afbed1; --ground:#141b27; --surface:#141b27; --surface-sunk:#222d3e; --line:#354158; --accent:#99b8ff; --accent-ink:#15264b; --accent-soft:#222d3e; --good:#7bdfa2; --bad:#ffaaa9; } }
+html[data-color-scheme="dark"] { --ink:#eef3fa; --ink-soft:#afbed1; --ground:#141b27; --surface:#141b27; --surface-sunk:#222d3e; --line:#354158; --accent:#99b8ff; --accent-ink:#15264b; --accent-soft:#222d3e; --good:#7bdfa2; --bad:#ffaaa9; }
 body {margin:0;color:var(--ink);background:var(--ground);font-family:var(--font);}
 button:focus-visible,a:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
 .connection-signals {display:flex;gap:2px;margin-inline-start:auto;flex-shrink:0;}
@@ -261,3 +261,34 @@ body.floor-screen {height:auto;min-height:100dvh;overflow-y:auto;overflow-x:hidd
 
 .floor-pending-action {display:block;margin-top:12px;color:var(--accent);font-size:14px;font-weight:600;}
 .floor-card.is-pending .floor-meta {overflow-wrap:anywhere;}
+
+.cancellation-reason-choices{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px}
+.cancellation-reason-choices button{min-height:44px;padding:9px 12px;border:1px solid var(--line,#dce3eb);border-radius:10px;background:var(--surface,#fff);color:var(--ink,#162338);font:inherit;font-size:13px;text-align:start}
+.cancellation-reason-choices button[aria-pressed="true"]{border-color:var(--accent,#2457e6);background:var(--accent-soft,#edf2ff);color:var(--accent,#2457e6)}
+#cancelOrderModal .modal-content,#cancelConfirmModal .modal-content{max-height:calc(100dvh - 24px)}
+#cancelOrderModal .modal-body,#cancelConfirmModal .modal-body{overflow-y:auto;min-height:0}
+
+/* A definite viewport bounds bill scrolling; header/actions never shrink. */
+#bill-review{height:min(900px,100dvh);overflow:hidden;box-sizing:border-box}
+#bill-review :is(header,footer),#guest-bills :is(header,footer){flex:0 0 auto;background:var(--surface)}
+#bill-review .bill-review-body,#guest-bills .guest-bill-body{flex:1 1 0;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#guest-bills{overflow:hidden;box-sizing:border-box}
+#guest-bills .guest-bill-modes label{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+#guest-bills .guest-bill-modes label:has(input:checked){background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}
+#guest-bills small{color:var(--ink-soft)}
+
+.kitchen-send-flight{position:fixed;inset:0;pointer-events:none;z-index:1200;overflow:hidden;color:var(--accent);background:color-mix(in srgb,var(--surface) 28%,transparent);animation:kitchen-flight-screen 2000ms ease both}
+.kitchen-flight-dish{position:absolute;left:70%;top:40%;width:clamp(100px,22vw,170px);height:clamp(100px,22vw,170px);transform:translate(-50%,-50%);stroke-width:1.2;filter:drop-shadow(0 4px 14px color-mix(in srgb,var(--accent) 12%,transparent));animation:kitchen-dish-receive 2000ms ease both}
+.kitchen-flight-plane{position:absolute;left:calc(15% - 32px);top:calc(66% - 32px);width:64px;height:64px;fill:color-mix(in srgb,var(--surface) 65%,transparent);animation:kitchen-paper-fly 2000ms cubic-bezier(.25,.6,.35,1) both}
+@keyframes kitchen-flight-screen{0%{opacity:0}12%,82%{opacity:1}100%{opacity:0}}
+@keyframes kitchen-paper-fly{0%,8%{transform:translate(0,0) scale(.65) rotate(-12deg);opacity:0}18%{opacity:.85}42%{transform:translate(20vw,-20dvh) scale(1.1) rotate(-8deg);opacity:.9}65%{transform:translate(43vw,-32dvh) scale(1) rotate(28deg);opacity:.9}78%,100%{transform:translate(55vw,-26dvh) scale(.12) rotate(55deg);opacity:0}}
+@keyframes kitchen-dish-receive{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}20%,66%{opacity:.65;transform:translate(-50%,-50%) scale(1)}78%{opacity:.9;transform:translate(-50%,-50%) scale(1.14) rotate(-5deg)}88%{opacity:.8;transform:translate(-50%,-50%) scale(1) rotate(3deg)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+@media(prefers-reduced-motion:reduce){.kitchen-send-flight{display:none}}
+
+.kitchen-chef-runner{position:absolute;left:12%;top:52%;display:flex;align-items:center;font-size:clamp(62px,14vw,100px);line-height:1;animation:kitchen-chef-dash 2000ms ease-in-out both}
+.kitchen-chef-person{display:inline-block;animation:kitchen-chef-step 180ms ease-in-out 8 alternate}
+.kitchen-chef-meal{font-size:.55em;margin-left:-.12em;transform:translateY(.15em)}
+.kitchen-chef-finish{position:absolute;left:65%;top:37%;font-size:56px;animation:kitchen-chef-cheer 2000ms ease both}
+@keyframes kitchen-chef-dash{0%,8%{opacity:0;transform:translate(-12vw,0) rotate(-6deg)}18%{opacity:1}65%{opacity:1;transform:translate(38vw,-10dvh) rotate(3deg)}78%,100%{opacity:0;transform:translate(43vw,-12dvh) scale(.65)}}
+@keyframes kitchen-chef-step{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-7px) rotate(5deg)}}
+@keyframes kitchen-chef-cheer{0%,68%{opacity:0;transform:scale(.4)}78%,90%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:translateY(-8px) scale(1)}}

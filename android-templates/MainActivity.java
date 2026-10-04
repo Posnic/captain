@@ -1,6 +1,7 @@
 package com.posnic.captain;
 
 import android.os.Bundle;
+import android.content.Intent;
 import androidx.activity.OnBackPressedCallback;
 import android.util.Log;
 import android.webkit.ValueCallback;
@@ -14,6 +15,13 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SecureSessionPlugin.class);
         super.onCreate(savedInstanceState);
         installBackNavigation();
+        runSelfTestIfAsked();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
         runSelfTestIfAsked();
     }
 
@@ -81,26 +89,32 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        /*
-         * After the page has had a moment to load its scripts. The bridge is
-         * ready before the document is, and asking too early finds no
-         * SelfTest - which would look exactly like a failed probe.
-         */
-        webView.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                /* `matrix` when the host asked which SHAPE of request this
-                   WebView will make, `run` for the ordinary question. */
-                final boolean wantsMatrix = getIntent() != null
-                    && getIntent().getBooleanExtra("matrix", false);
+        final boolean wantsMatrix = getIntent().getBooleanExtra("matrix", false);
+        startWhenReady(webView, url, wantsMatrix, 0);
+    }
+
+    private void startWhenReady(final WebView webView, final String url,
+                                final boolean wantsMatrix, final int attempt) {
+        if (attempt > 60) {
+            Log.i(SELF_TEST_TAG, "{\"ok\":false,\"why\":\"self-test script did not become ready\"}");
+            return;
+        }
+        // A cold WebView may take longer than four seconds to load its scripts.
+        // Start exactly once after readiness, then wait for the async probe result.
+        webView.evaluateJavascript(
+            "!!(window.SelfTest && typeof SelfTest.run === 'function' && document.readyState === 'complete')",
+            value -> {
+                if (!"true".equals(value)) {
+                    webView.postDelayed(() -> startWhenReady(webView, url, wantsMatrix, attempt + 1), 500);
+                    return;
+                }
                 webView.evaluateJavascript(
-                    "window.SelfTest && SelfTest." + (wantsMatrix ? "matrix" : "run")
+                    "window.__selftest = null; SelfTest." + (wantsMatrix ? "matrix" : "run")
                         + "(" + toJsString(url) + ")",
-                    null
+                    ignored -> pollForAnswer(webView, 0)
                 );
-                pollForAnswer(webView, 0);
             }
-        }, 4000);
+        );
     }
 
     /**

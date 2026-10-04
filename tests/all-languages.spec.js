@@ -167,13 +167,19 @@ for (const code of ["ta", "hi", "ar", "ur", "ja", "zh-CN"]) {
     expect(order.body.kiosk_table_no).toBe("T1");
     await expect(page.locator(".floor-new")).toBeVisible();
     await expect(page.locator("#posnic-unsent-text")).toHaveText(
-      words["{0} order saved · Not sent to kitchen"].replace("{0}", "1"),
+      words["{0} order waiting to sync"].replace("{0}", "1"),
     );
     await page.locator('#posnic-unsent a[href="pending.html"]').click();
     await expect(page.locator("#posnic-unsent-rows strong")).toContainText(
       words["Waiting to send"],
     );
     await page.locator("#pending-back").click();
+    await expect(page).toHaveURL(/kot-management\.html$/);
+    await expect(page.locator("html")).toHaveAttribute("lang", code);
+    await expect(page.locator(".floor-new")).toBeVisible();
+    await expect(page.locator("#posnic-unsent-text")).toHaveText(
+      words["{0} order waiting to sync"].replace("{0}", "1"),
+    );
     await page.screenshot({
       path: `test-artifacts/captain-${code}-pending.png`,
       fullPage: true,

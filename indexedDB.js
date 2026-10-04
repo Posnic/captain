@@ -105,6 +105,7 @@ function clearKioskLocalCache(options = {}) {
     const imageCacheBust = String(Date.now());
 
     [
+        "kiosk_takeaway_reservation",
         "kiosk_selected_branch",
         "kiosk_branch_list",
         "kiosk_force_branch_select",
@@ -966,7 +967,11 @@ async function renderCart(cartData = null, skipRedirect = false) {
                       '</div>'
                     : '') +
                 (item.notes ? '<div class="bill-note" translate="no">' + billText(item.notes) + '</div>' : '') +
-                ServiceDetails.summary(item) + (ServiceDetails.supported() ? '<button type="button" class="preparation-link" data-preparation-cart="' + id + '">Preparation</button>' : '') +
+                ServiceDetails.summary(item) +
+                '<div class="bill-item-actions" role="group" aria-label="Item options">' +
+                '<button type="button" class="bill-note-action"><i class="fas fa-pen" aria-hidden="true"></i><span>Note</span></button>' +
+                (ServiceDetails.supported() ? '<button type="button" class="preparation-link bill-preparation-action" data-preparation-cart="' + id + '" aria-label="Preparation" title="Preparation"><i class="fas fa-sliders-h" aria-hidden="true"></i></button>' : '') +
+                '</div>' +
                 /*
                  * TODAY'S PRICE CAN BE CORRECTED HERE.
                  *
@@ -1893,6 +1898,7 @@ async function checkout(transactionId) {
          * without it, silently.
          */
         const orderKey = currentOrderKey();
+        const takeawayReservation = orderType === 'Take away' ? await reserveTakeawayNumber() : null;
 
         // 🚀 Send checkout request
         const orderBody = {
@@ -1932,7 +1938,8 @@ async function checkout(transactionId) {
                  */
                 client: (POSNIC.thisDevice && POSNIC.thisDevice.facts()) || {},
                 transactionId: transactionId,
-                tokenId: generateUniqueToken(),
+                tokenId: takeawayReservation ? String(takeawayReservation.number) : generateUniqueToken(),
+                ...(takeawayReservation ? {takeaway_request_id: takeawayReservation.request_id} : {}),
                 payment_status: "cash",
                 /* Not renamed with the app. The POS stores this string on
                    every sale and reports on it, so changing it would split a
@@ -1958,7 +1965,7 @@ async function checkout(transactionId) {
         await saveCartData([]);
         if (!OrderQueue.update(orderKey, {held: false}))
             throw new Error('Order is saved, but needs recovery. Keep app data and retry.');
-        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note']) localStorage.removeItem(key);
+        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note', 'kiosk_takeaway_reservation']) localStorage.removeItem(key);
         await renderCart([], true);
         if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
         window.POSNIC_ORDER_QUEUE_UI?.render();
@@ -1970,6 +1977,22 @@ async function checkout(transactionId) {
         showErrorPopup(error.message || 'Order could not be saved. Keep this cart and retry.');
         return false;
     }
+}
+
+async function reserveTakeawayNumber() {
+    const scope = JSON.stringify([POSNIC.session?.shopKey || POSNIC.session?.base || POSNIC.server.baseUrl, localStorage.getItem('branch_id')]);
+    let draft;
+    try { draft = JSON.parse(localStorage.getItem('kiosk_takeaway_reservation')); } catch (_) {}
+    if (!draft || draft.scope !== scope) draft = { scope, request_id: newOrderKey() };
+    localStorage.setItem('kiosk_takeaway_reservation', JSON.stringify(draft));
+    if (!draft.number) {
+        const answer = await POSNIC.api.post('/captain/v1/takeaway-number', { request_id: draft.request_id });
+        const number = Number(answer?.number);
+        if (!Number.isSafeInteger(number) || number < 1) throw new Error('Could not assign a takeaway number. Please retry.');
+        draft.number = number;
+        localStorage.setItem('kiosk_takeaway_reservation', JSON.stringify(draft));
+    }
+    return draft;
 }
 
 function getTodayKey() {
@@ -1991,18 +2014,16 @@ function saveToken(token) {
 }
 
 function getAllPossibleTokens() {
-    const tokens = [];
-    for (let i = 65; i <= 90; i++) { // a to z
-        const prefix = String.fromCharCode(i);
-        for (let j = 1; j <= 999; j++) {
-            tokens.push(`${prefix}${j.toString().padStart(3, '0')}`);
-        }
-    }
-    return tokens;
+    // Preserve the former token space, but issue decimal numbers only.
+    return Array.from({length:26 * 999}, (_, index) => String(index + 1));
+}
+function numericToken(value) {
+    const legacy = /^([A-Z])(\d{3})$/.exec(String(value));
+    return legacy ? String((legacy[1].charCodeAt(0) - 65) * 999 + Number(legacy[2])) : String(value);
 }
 
 function generateUniqueToken() {
-    const usedTokens = getStoredTokens();
+    const usedTokens = getStoredTokens().map(numericToken);
     const allTokens = getAllPossibleTokens();
     const remaining = allTokens.filter(t => !usedTokens.includes(t));
 

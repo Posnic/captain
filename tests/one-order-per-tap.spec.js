@@ -261,7 +261,7 @@ test("no network still saves the order and reload retains it without blocking or
   const key = await page.evaluate(() => OrderQueue.all()[0].key);
   await page.reload();
   await expect(page.locator("#posnic-unsent-text")).toContainText(
-    "Not sent to kitchen",
+    "1 order waiting to sync",
   );
   const headerBox = await page.locator('.floor-head').boundingBox();
   const noticeBox = await page.locator('#posnic-unsent').boundingBox();
@@ -286,7 +286,7 @@ test("no network still saves the order and reload retains it without blocking or
     .toBe(0);
   expect(delivered).toHaveLength(1);
   expect(delivered[0].idempotencyKey).toBe(key);
-  await expect(page.locator("#posnic-unsent-text")).toHaveText("No pending orders");
+  await expect(page.locator("#posnic-unsent-text")).toHaveText("All orders synced");
   await page.locator("#pending-back").click();
   await expect(page.locator("#posnic-unsent")).toBeHidden();
 });
@@ -400,7 +400,7 @@ test("pulling pending orders retries delivery and keeps the same request ID", as
   for(let y=190;y<=350;y+=20) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:150,y}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await cdp.detach();
-  await expect(page.locator('#posnic-unsent-text')).toHaveText('No pending orders');
+  await expect(page.locator('#posnic-unsent-text')).toHaveText('All orders synced');
   expect(orders).toHaveLength(2);
   expect(orders[0].idempotencyKey).toBe(orders[1].idempotencyKey);
 });
