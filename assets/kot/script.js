@@ -399,6 +399,7 @@ document.addEventListener('click', async function (event) {
         const answer = await POSNIC.api.post('/sales/requestBillPrint', {
             branchId,
             table_number: table,
+            ...(button.dataset.saleId ? {saleId:button.dataset.saleId} : {}),
             asked_by: who,
             /*
              * Sent only when this phone has been told a number. Left out, the
@@ -414,7 +415,10 @@ document.addEventListener('click', async function (event) {
            and those send a waiter to two different places - so its words are
            shown rather than a cheerful noise of our own. */
         showToast((answer && answer.message) || 'The bill is on its way to the counter');
-        button.textContent = 'Bill asked for';
+        if (answer?.type !== 'success' || answer?.data?.status === false || answer?.status === false) {
+            button.disabled = false;
+            button.textContent = said;
+        } else button.textContent = 'Bill asked for';
     } catch (error) {
         button.disabled = false;
         button.textContent = said;
@@ -449,11 +453,18 @@ document.addEventListener('click', function (event) {
     if (!card) return;
     if (card.dataset.awaitingClose === 'true') return;
     event.preventDefault();
-    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'));
+    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'), {saleId: card.dataset.saleId});
 });
 
 let tablesLoading = false;
 let tablesRequest = null;
+function floorCardHeading(name, takeaway = false) {
+    const shape = takeaway
+        ? '<path d="M5 7h14l1 13H4L5 7Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 12a3 3 0 0 0 6 0"/>'
+        : '<rect x="3" y="7" width="18" height="8" rx="2"/><path d="M6 15v5m12-5v5M7 3h10"/>';
+    return '<div class="floor-name"><span class="' + (takeaway ? 'takeaway' : 'table') + '-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + shape + '</svg></span><span class="floor-card-label">' + escapeFloor((takeaway ? '' : 'Table ') + name) + '</span></div>';
+}
+
 function loadTables() {
     if (!tablesRequest) tablesRequest = loadTablesNow().finally(() => { tablesRequest = null; });
     return tablesRequest;
@@ -475,11 +486,16 @@ async function loadTablesNow() {
     }
 
     try {
-        if (!container.querySelector('.floor-card')) showSectionLoader('tables-list');
+        container.setAttribute('aria-busy','true');
+        if (!container.dataset.loaded) {
+            if(noOrdersMsg)noOrdersMsg.style.display='none';
+            container.innerHTML='<div class="floor-loading" role="status"><span>Loading orders…</span></div>';
+        }
         // Get branch_id from localStorage
         // kiosk_selected_branch stores the store_id (MongoDB _id) as a plain string
         const branchId = localStorage.getItem('branch_id') || null;
 
+        const countOwner = POSNIC.session.shopKey, countUser = POSNIC.session.user?.id;
         const data = await POSNIC.api.post('/sales/getTablesWithActiveOrders', {
             branch_id: branchId
         });
@@ -488,6 +504,7 @@ async function loadTablesNow() {
             throw new Error(data.message || 'Tables unavailable');
         }
         status.hidden = true;
+        container.dataset.loaded='true';
 
         const tables = data.data.tables || [];
         const hasTakeaway = data.data.has_takeaway || false;
@@ -525,6 +542,40 @@ async function loadTablesNow() {
             ? FloorView.order(data.data.table_details)
             : tables.map((name) => ({ table_number: name, minutes: null }));
 
+        // Older servers only provide ticket counts. Read quantities without
+        // mistaking ticket count for item count; keep totals if lookup fails.
+        const countItems = async detail => {
+            if (Number.isFinite(detail.item_count)) return;
+            try {
+                let count = 0;
+                const filters = detail.sale_id ? {_id: detail.sale_id} : {sale_process:'KOT', payment_status:detail.awaiting_close ? 'Paid' : 'Unpaid', table_number:detail.table_number};
+                for (let page=1; page<=20; page++) {
+                    const response = await POSNIC.api.get('/sales/getListKot?page='+page+'&limit=100&filters='+encodeURIComponent(JSON.stringify(filters))+'&branchId='+encodeURIComponent(branchId || ''));
+                    if (response.type !== 'success' || !Array.isArray(response.data?.list)) return;
+                    const sales = response.data.list.filter(sale => !sale.floor_closed_at && !['cancelled','canceled'].includes(String(sale.status || '').toLowerCase()));
+                    if (sales.some(sale => !Array.isArray(sale.items))) return;
+                    count += sales.reduce((sum,sale) => sum + FloorView.itemCount(sale.items),0);
+                    if (response.data.list.length < 100) { detail.item_count = count; return; }
+                }
+            } catch { /* Unavailable counts are omitted, never invented. */ }
+        };
+        const loadPayable = async detail => {
+            // Use the same authoritative bill as collection/printing. Never
+            // add tax to sales_total locally: it may already be tax-inclusive.
+            detail.amount = null;
+            try {
+                const query = detail.sale_id ? 'saleId='+encodeURIComponent(detail.sale_id)+'&receipt=true' : 'table='+encodeURIComponent(detail.table_number);
+                const bill = await POSNIC.api.get('/captain/v1/bill?'+query);
+                if (!Number.isSafeInteger(bill.totalMinor) || bill.totalMinor < 0) return;
+                const policy = CaptainMoney.snapshot(bill);
+                detail.amount = CaptainMoney.fromMinor(bill.totalMinor, policy);
+                detail.payableLabel = CaptainMoney.format(detail.amount, policy);
+            } catch { /* Omit an unverified total rather than show a subtotal. */ }
+        };
+        const takeawayDetails = Array.isArray(data.data.takeaway_orders) ? data.data.takeaway_orders : [];
+        await Promise.all([...detailed, ...takeawayDetails].flatMap(detail => [countItems(detail), loadPayable(detail)]));
+        if (branchId !== (localStorage.getItem('branch_id') || null) || countOwner !== POSNIC.session.shopKey || countUser !== POSNIC.session.user?.id || !POSNIC.session.active || window.CaptainAccess?.locked) return;
+
         const card = (name, detail, extraClass) => {
             const awaitingClose = detail?.awaiting_close === true;
             const minutes = awaitingClose ? null : detail ? detail.minutes : null;
@@ -541,8 +592,10 @@ async function loadTablesNow() {
                    recognised by its own label, and the label here is "Take
                    away" while the code looking for it asked for "Takeaway". */
                 (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
+                (detail?.sale_id ? ' data-sale-id="' + escapeFloor(detail.sale_id) + '"' : '') +
                 ' data-table-number="' + safe + '">' +
-                '<div class="floor-name">' + safe + '</div>' +
+                floorCardHeading(name, extraClass === 'is-takeaway') +
+                (extraClass === 'is-takeaway' && detail?.payment_status ? '<div class="takeaway-payment-badge ' + (detail.payment_status === 'Paid' ? 'is-paid' : '') + '">' + escapeFloor(window.I18N?.t(detail.payment_status) || detail.payment_status) + '</div>' : '') +
                 (awaitingClose ? '<div class="floor-meta">' + escapeFloor(window.I18N?.t('Paid') || 'Paid') + ' · ' + escapeFloor(window.I18N?.t('Close order') || 'Close order') + '</div>' : '') +
                 (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
                 (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
@@ -554,20 +607,39 @@ async function loadTablesNow() {
             html += card(detail.table_number, detail);
         });
 
-        if (hasTakeaway) {
-            const takeaway = data.data.takeaway_detail || null;
-            const withMinutes = takeaway
-                ? { ...takeaway, minutes: FloorView.minutesSince(takeaway.since) }
-                : null;
-            html += card('Take away', withMinutes, 'is-takeaway');
+        const takeawayOrders = Array.isArray(data.data.takeaway_orders) ? data.data.takeaway_orders : [];
+        let takeawayCount = takeawayOrders.length;
+        if (takeawayOrders.length) {
+            for (const order of takeawayOrders) {
+                html += card('Take Away ' + order.number, {...order, minutes: FloorView.minutesSince(order.since)}, 'is-takeaway');
+            }
+        } else if (hasTakeaway) {
+            // Older servers return a grouped summary. Read the individual
+            // sales instead; never open multiple customers as one takeaway.
+            for (let page=1; page<=20; page++) {
+                const filters={sale_process:'KOT',payment_status:'Unpaid',dine_type:'Take away'};
+                const response=await POSNIC.api.get('/sales/getListKot?page='+page+'&limit=100&filters='+encodeURIComponent(JSON.stringify(filters))+'&branchId='+encodeURIComponent(branchId || ''));
+                if(response.type!=='success'||!Array.isArray(response.data?.list))throw new Error('Tables unavailable');
+                const rows=response.data.list;
+                for(const sale of rows){
+                    takeawayCount++;
+                    const number=sale.takeaway_number || sale.token_id || sale.sales_id || sale._id;
+                    const detail={sale_id:sale._id,item_count:FloorView.itemCount(sale.items),minutes:FloorView.minutesSince(sale.created_date?.$date || sale.created_date),payment_status:sale.payment_status};
+                    await loadPayable(detail);
+                    html+=card('Take Away '+number,detail,'is-takeaway');
+                }
+                if(rows.length<100)break;
+                if(page===20)throw new Error('Tables unavailable');
+            }
         }
 
+        if (branchId !== (localStorage.getItem('branch_id') || null) || countOwner !== POSNIC.session.shopKey || countUser !== POSNIC.session.user?.id || !POSNIC.session.active || window.CaptainAccess?.locked) return;
         container.innerHTML = html;
 
         /* One count, said once, so a glance answers "how busy is it". */
         const count = document.getElementById('floor-count');
         if (count) {
-            const open = detailed.length + (hasTakeaway ? 1 : 0);
+            const open = detailed.length + takeawayCount;
             /* Just the number now: the words are on the heading beside it,
                and "3 tables open" under "Active tables" says tables twice. */
             count.textContent = open === 1 ? '1 open' : open + ' open';
@@ -586,6 +658,8 @@ async function loadTablesNow() {
         return false;
     } finally {
         tablesLoading = false;
+        container.setAttribute('aria-busy','false');
+        container.querySelectorAll('.floor-loading').forEach(node=>node.remove());
         hideSectionLoader('tables-list');
     }
 }
@@ -601,6 +675,7 @@ function openSlidingPanel() {
 
 // Close sliding panel
 function closeSlidingPanel() {
+    if (window.InlineOrderEditor?.active) { void window.OrderEditor.cancel(); return; }
     floorDetailRevision++;
     floorDetailLoading = false;
     const panel = document.getElementById('kot-sliding-panel');
@@ -664,9 +739,10 @@ function isTakeawayName(name) {
 
 let floorDetail = null, floorDetailRevision = 0, floorDetailLoading = false;
 async function selectTable(tableName, takeaway, options = {}) {
+    if (window.InlineOrderEditor?.active) return false;
     const revision = ++floorDetailRevision;
     floorDetailLoading = true;
-    floorDetail = { id: String(tableName), takeaway: takeaway === true || isTakeawayName(tableName) };
+    floorDetail = { id: String(tableName), saleId: options.saleId, takeaway: takeaway === true || isTakeawayName(tableName) };
     const isTakeaway = takeaway === true || isTakeawayName(tableName);
     const panelContent = document.getElementById('sliding-panel-content');
     const panelTitle = document.getElementById('panel-title');
@@ -685,7 +761,7 @@ async function selectTable(tableName, takeaway, options = {}) {
     }
 
     // Update panel title
-    panelTitle.textContent = isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
+    panelTitle.textContent = isTakeaway ? (options.saleId ? tableName : 'Takeaway Orders') : `Table ${tableName}`;
     
     // Open the sliding panel
     openSlidingPanel();
@@ -720,7 +796,9 @@ async function selectTable(tableName, takeaway, options = {}) {
          */
         const stillOpen = { sale_process: 'KOT', payment_status: 'Unpaid' };
         if (isTakeaway) {
-            filters = { ...stillOpen, dine_type: 'Take away' };
+            // A paid takeaway still needs preparation and handover. Its stable
+            // sale ID opens just this customer, without the old unpaid filter.
+            filters = options.saleId ? {_id: options.saleId, dine_type: 'Take away'} : { ...stillOpen, dine_type: 'Take away' };
         } else {
             filters = { ...stillOpen, table_number: tableName };
         }
@@ -741,110 +819,26 @@ async function selectTable(tableName, takeaway, options = {}) {
         const kots = data.data.list;
         currentKotOrders = kots; // Store orders globally
         const kotCount = kots.length;
+        const targetSaleId = isTakeaway ? String(options.saleId || '') : '';
+        const targetAttribute = targetSaleId ? ` data-sale-id="${escapeFloor(targetSaleId)}"` : '';
+        const alreadyPaid = isTakeaway && kots.every(kot => kot.payment_status === 'Paid');
 
         // Header shown once
         let headerHtml = `
             <div class="kot-details-header">
                 <span class="active-kot-badge">${kotCount} orders</span>
                 ${
-                  isTakeaway
+                  isTakeaway && (!targetSaleId || alreadyPaid)
                     ? ''
-                    : `<div class="floor-bill-actions"><button type="button" class="floor-bill-btn" data-review-bill="${escapeFloor(tableName)}">Bill</button><button type="button" class="floor-bill-btn" hidden data-collect-table="${escapeFloor(tableName)}">Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}">Split bill</button><button type="button" class="floor-bill-btn" id="ask-for-bill"
+                    : `<div class="floor-bill-actions" ${targetSaleId ? 'hidden data-takeaway-billing="true"' : ''}><button type="button" class="floor-bill-btn" data-review-bill="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-receipt" aria-hidden="true"></i><span>Bill</span></button><button type="button" class="floor-bill-btn" data-collect-table="${escapeFloor(tableName)}"${targetAttribute}>Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-columns" aria-hidden="true"></i><span>Split bill</span></button><button type="button" class="floor-bill-btn" id="ask-for-bill"${targetAttribute}
                          data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>
         `;
 
-        let kotsCardsHtml = '';
-        
-        kots.forEach((kot, kotIndex) => {
-            // Handle MongoDB date format
-            let timestamp;
-            if (kot.updated_date?.$date) {
-                if (typeof kot.updated_date.$date === 'object' && kot.updated_date.$date.$numberLong) {
-                    timestamp = parseInt(kot.updated_date.$date.$numberLong);
-                } else {
-                    timestamp = kot.updated_date.$date;
-                }
-            } else if (kot.created_date?.$date) {
-                if (typeof kot.created_date.$date === 'object' && kot.created_date.$date.$numberLong) {
-                    timestamp = parseInt(kot.created_date.$date.$numberLong);
-                } else {
-                    timestamp = kot.created_date.$date;
-                }
-            } else {
-                timestamp = Date.now();
-            }
-            
-            const kotDate = new Date(timestamp);
-            const dateStr = kotDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const timeStr = kotDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-            const pax = kot.person_count || 0;
-            const total = parseFloat(kot.sales_total || 0).toFixed(2);
-            const items = kot.items || [];
-
-            let itemsHtml = '';
-            items.forEach((item, index) => {
-                const itemName = item.sale_inline_item_name || item.item_name || 'Item';
-                const itemQty = item.item_quantity || item.sale_inline_item_qty || item.quantity || 1;
-                /*
-                 * A cancelled line is struck through here too.
-                 *
-                 * Owner: "whenever order cancel or item cancel those line item
-                 * name should be strick in the middle." The floor is where a
-                 * waiter reads the ticket back to a table, so a dish that is
-                 * off has to be visible without opening anything.
-                 */
-                const off = kotIsCancelled(kot) || itemIsCancelled(item) ? ' is-cancelled' : '';
-                /* Escaped, both of them. A dish name comes from the shop's
-                   own catalogue, but a note is free text somebody typed at a
-                   table - an apostrophe in "don't" or a "<" for "less than
-                   medium" would otherwise end the attribute or the tag. */
-                const note = lineNote(item);
-                itemsHtml += `
-                    <div class="kot-item${off}">
-                        <span class="item-index">${index + 1}.</span>
-                        <span class="item-name" translate="no">${escapeFloor(itemName)}</span>
-                        <span class="item-qty">x${itemQty}</span>
-                        ${note ? `<span class="item-note" translate="no">${escapeFloor(note)}</span>` : ''}
-                    </div>
-                `;
-            });
-
-            if (window.ServiceRounds && Array.isArray(kot.kitchen_rounds)) {
-                itemsHtml = ServiceRounds.render(kot, !kotIsCancelled(kot));
-            }
-
-            kotsCardsHtml += `
-                <div class="kot-card">
-                    <div class="kot-meta">
-                        <div class="kot-meta-item">
-                            <i class="fas fa-calendar"></i> ${dateStr} ${timeStr}
-                        </div>
-                        <div class="kot-meta-item">
-                            <i class="fas fa-users"></i> PAX: ${pax}
-                        </div>
-                    </div>
-                    <div class="kot-items-list">
-                        ${itemsHtml}
-                    </div>
-                    <div class="kot-total">
-                        <span>Total:</span>
-                        <span class="total-amount">${CaptainMoney.html(total)}</span>
-                    </div>
-                    <div class="kot-actions">
-                        <button class="kot-action-btn btn-modify" onclick="modifyKot('${kot._id}')">
-                            <i class="fas fa-edit"></i> Modify
-                        </button>
-                        <button class="kot-action-btn btn-cancel" onclick="cancelKot('${kot._id}')">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        panelContent.innerHTML = headerHtml + `<div class="kot-cards-container">${kotsCardsHtml}</div>`;
+        panelContent.innerHTML = CaptainOrderView.render(kots, {takeaway:isTakeaway, financialActions:headerHtml});
+        CaptainOrderView.mount(panelContent);
+        window.OrderPhotos?.mount(panelContent);
         if (!options.refresh) panelContent.scrollTop = 0;
         return true;
     } catch (error) {
@@ -891,6 +885,7 @@ let currentKotOrders = []; // Store current KOT orders
 
 function cancelKot(kotId) {
     cancelKotId = kotId;
+    document.getElementById('cancel-order-reason').value = '';
     const modalElement = document.getElementById('cancelOrderModal');
     if (modalElement && typeof bootstrap !== 'undefined') {
         const modal = new bootstrap.Modal(modalElement);
@@ -903,7 +898,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const confirmBtn = document.getElementById('confirm-cancel-order');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', async function() {
-            if (!cancelKotId) return;
+            if (!cancelKotId || confirmBtn.disabled) return;
+            const reasonField = document.getElementById('cancel-order-reason');
+            reasonField.value = reasonField.value.trim();
+            if (!reasonField.reportValidity()) return;
+            const reason = reasonField.value;
             let cancellationConfirmed = false;
             
             try {
@@ -937,7 +936,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     order_id: cancelKotId,
                     items: order.items,
                     total_amount: order.sales_total || order.total_amount,
-                    status: 'cancelled'
+                    status: 'cancelled',
+                    change_reason: reason
                 });
                 console.log('Cancel response:', result);
 
@@ -1208,25 +1208,45 @@ window.addEventListener('captain:back', event => {
     }
 });
 
+window.addEventListener('captain:items-served', () => loadTables());
 window.addEventListener('captain:payment-recorded', event => {
-    if (event.detail?.completed) { closeSlidingPanel(); showToast(event.detail.message); }
+    if (event.detail?.completed) {
+        showToast(event.detail.message);
+        if (floorDetail?.takeaway) selectTable(floorDetail.id,true,{refresh:true,saleId:floorDetail.saleId});
+        else closeSlidingPanel();
+    }
     loadTables();
 });
 const captainPaymentButtons = new MutationObserver(() => {
-    const button = document.querySelector('[data-collect-table][hidden]:not([data-payment-checked])');
+    const button = document.querySelector('[data-collect-table]:not([data-payment-checked])');
     if (!button || !window.CaptainPayments) return;
     button.dataset.paymentChecked='true';
-    CaptainPayments.available().then(enabled => { if (button.isConnected) button.hidden=!enabled; });
+    CaptainPayments.available({saleId:button.dataset.saleId}).then(enabled => { if (button.isConnected) {
+            button.hidden=false;
+            button.dataset.collectionAvailable=String(enabled);
+            const sheet=document.querySelector('.order-workspace');
+            const serve=sheet?.querySelector('[data-serve-all]');
+            if(enabled && serve && serve.closest('.order-sheet')?.dataset.paymentStatus !== 'Paid' && sheet.querySelectorAll('.order-sheet').length===1 && !sheet.querySelector('[data-serve-and-collect]')) {
+                const combined=serve.cloneNode(true);combined.setAttribute('data-serve-and-collect','');
+                const label=serve.closest('[data-takeaway="true"]')?'Hand over & collect payment':'Serve all & collect payment';
+                combined.setAttribute('aria-label',label);combined.querySelector('span').textContent=label;
+                serve.parentElement.append(combined);
+            }
+        } });
+    const takeawayActions = button.closest('[data-takeaway-billing]');
+    if (takeawayActions) POSNIC.api.get('/captain/v1/payment-options').then(options => {
+        if (takeawayActions.isConnected) takeawayActions.hidden = options.takeawayPayments !== true;
+    }).catch(() => {});
 });
 captainPaymentButtons.observe(document.body,{childList:true,subtree:true});
 
 window.FloorMobileDetails = {
     root: () => document.querySelector('#kot-sliding-panel.open'),
     header: '.sliding-panel-header', body: '#sliding-panel-content',
-    current: () => floorDetail?.id,
-    entries: () => [...document.querySelectorAll('#tables-list .floor-card')].map(card => ({id:card.dataset.tableNumber, takeaway:card.dataset.takeaway === 'true'})),
+    current: () => floorDetail?.saleId || floorDetail?.id,
+    entries: () => [...document.querySelectorAll('#tables-list .floor-card:not([data-awaiting-close])')].map(card => ({id:card.dataset.saleId || card.dataset.tableNumber, label:card.dataset.tableNumber, saleId:card.dataset.saleId, takeaway:card.dataset.takeaway === 'true'})),
     busy: () => floorDetailLoading || !!document.querySelector('[data-serving="true"]'),
-    show: entry => selectTable(entry.id, entry.takeaway),
-    refresh: () => floorDetail && selectTable(floorDetail.id, floorDetail.takeaway, {refresh:true}),
+    show: entry => selectTable(entry.label, entry.takeaway, {saleId:entry.saleId}),
+    refresh: () => floorDetail && selectTable(floorDetail.id, floorDetail.takeaway, {refresh:true, saleId:floorDetail.saleId}),
     dismiss: closeSlidingPanel,
 };

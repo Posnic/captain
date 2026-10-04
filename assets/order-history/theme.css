@@ -35,55 +35,62 @@ body { background: var(--ground); color: var(--ink); }
 .status-cancelled { background: #f8d7da; color: #842029; }
 .order-items-table tfoot tr:last-child { border-top: 2px solid var(--line-strong) !important; }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+html[data-color-scheme="dark"] {
     color-scheme: dark;
     --bs-light-rgb: 13, 21, 38;
     --bs-primary-rgb: 147, 197, 253;
     --bs-success-rgb: 134, 239, 172;
     --bs-danger-rgb: 252, 165, 165;
   }
-  .mobile-header, .table-card:not(.all-tables), .order-card,
-  .search-filter-container, .product-suggestions,
-  #editItemNotesModal .modal-content {
+
+html[data-color-scheme="dark"] .mobile-header, html[data-color-scheme="dark"] .table-card:not(.all-tables), html[data-color-scheme="dark"] .order-card, html[data-color-scheme="dark"] .search-filter-container, html[data-color-scheme="dark"] .product-suggestions, html[data-color-scheme="dark"] #editItemNotesModal .modal-content {
     background: var(--surface);
     color: var(--ink);
     border-color: var(--line-strong);
   }
-  .order-item-card, .item-preview, .empty-state, .product-suggestion:hover {
+
+html[data-color-scheme="dark"] .order-item-card, html[data-color-scheme="dark"] .item-preview, html[data-color-scheme="dark"] .empty-state, html[data-color-scheme="dark"] .product-suggestion:hover {
     background: var(--surface-sunk);
     color: var(--ink);
     border-color: var(--line-strong);
   }
-  .screen-header p, .order-meta, .order-items-preview, .item-info .item-price,
-  .edit-notes-hint, .search-box i, .table-number,
-  .order-items-table .order-item-notes { color: var(--ink-soft); }
-  .modal h6, .modal .modal-title, .qty-display, .item-info h6,
-  #editOrderModal h6, #editOrderModal .modal-title,
-  #editItemNotesModal .edit-notes-header .modal-title { color: var(--ink); }
-  input:not([type=checkbox]):not([type=radio]), textarea, select, .form-control,
-  .qty-btn, .filter-btn:not(.active), .close-btn, .cancel-notes-btn,
-  #editOrderModal .modal-footer .close-btn {
+
+html[data-color-scheme="dark"] .screen-header p, html[data-color-scheme="dark"] .order-meta, html[data-color-scheme="dark"] .order-items-preview, html[data-color-scheme="dark"] .item-info .item-price, html[data-color-scheme="dark"] .edit-notes-hint, html[data-color-scheme="dark"] .search-box i, html[data-color-scheme="dark"] .table-number, html[data-color-scheme="dark"] .order-items-table .order-item-notes { color: var(--ink-soft); }
+
+html[data-color-scheme="dark"] .modal h6, html[data-color-scheme="dark"] .modal .modal-title, html[data-color-scheme="dark"] .qty-display, html[data-color-scheme="dark"] .item-info h6, html[data-color-scheme="dark"] #editOrderModal h6, html[data-color-scheme="dark"] #editOrderModal .modal-title, html[data-color-scheme="dark"] #editItemNotesModal .edit-notes-header .modal-title { color: var(--ink); }
+
+html[data-color-scheme="dark"] input:not([type=checkbox]):not([type=radio]), html[data-color-scheme="dark"] textarea, html[data-color-scheme="dark"] select, html[data-color-scheme="dark"] .form-control, html[data-color-scheme="dark"] .qty-btn, html[data-color-scheme="dark"] .filter-btn:not(.active), html[data-color-scheme="dark"] .close-btn, html[data-color-scheme="dark"] .cancel-notes-btn, html[data-color-scheme="dark"] #editOrderModal .modal-footer .close-btn {
     color: var(--ink);
     background-color: var(--surface-sunk);
     border-color: var(--line-strong);
   }
-  input::placeholder, textarea::placeholder { color: var(--ink-soft); opacity: 1; }
-  .form-control:focus, input:focus, textarea:focus, select:focus {
+
+html[data-color-scheme="dark"] input::placeholder, html[data-color-scheme="dark"] textarea::placeholder { color: var(--ink-soft); opacity: 1; }
+
+html[data-color-scheme="dark"] .form-control:focus, html[data-color-scheme="dark"] input:focus, html[data-color-scheme="dark"] textarea:focus, html[data-color-scheme="dark"] select:focus {
     color: var(--ink);
     background-color: var(--surface-sunk);
     border-color: #93c5fd;
   }
-  .modal-header, .modal-footer, .order-actions, .order-header,
-  #editOrderModal .modal-header { border-color: var(--line-strong); }
-  .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .85; }
-  .text-dark { color: var(--ink) !important; }
-  .order-count { background: #16304e; color: #bfdbfe; }
-  .order-count.no-orders { background: #1e293b; color: #cbd5e1; }
-  .status-pending, .order-count.has-pending { background: #422d0b; color: #fde68a; }
-  .status-completed { background: #123c36; color: #a7f3d0; }
-  .status-cancelled { background: #491f2b; color: #fecdd3; }
-  .edit-btn, #editOrderModal .modal-footer .edit-btn { background: #1d4ed8; color: #fff; }
-  .cancel-btn, .remove-btn { background: #b91c1c; color: #fff; }
-  #page-loader { background: var(--ground); }
-}
+
+html[data-color-scheme="dark"] .modal-header, html[data-color-scheme="dark"] .modal-footer, html[data-color-scheme="dark"] .order-actions, html[data-color-scheme="dark"] .order-header, html[data-color-scheme="dark"] #editOrderModal .modal-header { border-color: var(--line-strong); }
+
+html[data-color-scheme="dark"] .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: .85; }
+
+html[data-color-scheme="dark"] .text-dark { color: var(--ink) !important; }
+
+html[data-color-scheme="dark"] .order-count { background: #16304e; color: #bfdbfe; }
+
+html[data-color-scheme="dark"] .order-count.no-orders { background: #1e293b; color: #cbd5e1; }
+
+html[data-color-scheme="dark"] .status-pending, html[data-color-scheme="dark"] .order-count.has-pending { background: #422d0b; color: #fde68a; }
+
+html[data-color-scheme="dark"] .status-completed { background: #123c36; color: #a7f3d0; }
+
+html[data-color-scheme="dark"] .status-cancelled { background: #491f2b; color: #fecdd3; }
+
+html[data-color-scheme="dark"] .edit-btn, html[data-color-scheme="dark"] #editOrderModal .modal-footer .edit-btn { background: #1d4ed8; color: #fff; }
+
+html[data-color-scheme="dark"] .cancel-btn, html[data-color-scheme="dark"] .remove-btn { background: #b91c1c; color: #fff; }
+
+html[data-color-scheme="dark"] #page-loader { background: var(--ground); }

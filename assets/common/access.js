@@ -428,6 +428,8 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
+          if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base))) continue;
+          if (start !== generation || locked) throw Object.assign(new Error('Unlock this phone first.'), {code:'PIN_LOCKED'});
           if (orderKey) orderAuthority(orderKey, authority(credential));
           attempted = true;
           let result;

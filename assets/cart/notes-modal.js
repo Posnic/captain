@@ -8,7 +8,7 @@ $(document).ready(function () {
     console.log("✅ Cart notes modal script loaded");
 
     /*
-     * Open the notes editor by tapping the line.
+     * Open the notes editor only through the explicit Note button.
      *
      * THE SELECTORS FOLLOW THE BILL MARKUP, which was rewritten: .item-details
      * and .cart-item no longer exist, and a jQuery selector that matches
@@ -19,7 +19,7 @@ $(document).ready(function () {
      * The row's id is deliberately unchanged: cart-item-<id> is what the write
      * back below looks up, and what every other screen expects.
      */
-    $(document).on("click", ".bill-body", function (e) {
+    $(document).on("click", ".bill-note-action", function (e) {
         e.stopPropagation();
 
         const $cartItem = $(this).closest('.bill-line');

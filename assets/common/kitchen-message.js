@@ -10,6 +10,7 @@
     refreshing = null,
     leaving = false,
     sending = false;
+  let hold=null, suppressRecordClick=false;
   const identity = () =>
     JSON.stringify([
       win.POSNIC.session.shopKey,
@@ -103,6 +104,7 @@
     el("voice-duration").textContent =
       Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0");
     el("voice-composer").dataset.recording = String(recording);
+    el("voice-composer").dataset.hasRecording=String(!!draft || recording);
     const canvas = el("voice-wave"),
       ctx = canvas.getContext("2d"),
       peaks = recorder?.peaks?.length ? recorder.peaks : draft?.peaks || [];
@@ -117,7 +119,7 @@
     }
     const status = t(
       recording
-        ? "Recording…"
+        ? hold?.cancel ? "Release to discard" : hold?.locked ? "Recording locked · Tap to pause" : hold?.active ? "Slide left to cancel · Slide up to lock" : "Recording…"
         : draft?.complete
           ? "Playback completed"
           : draft?.sent
@@ -136,7 +138,7 @@
     el("voice-error").textContent = "";
     try {
       check();
-      el("voice-preview").pause();
+      document.querySelectorAll('audio').forEach(audio=>audio.pause());
       if (recorder.state === "recording") await stop();
       else await recorder.start();
     } catch (e) {
@@ -160,6 +162,12 @@
     try {
       check();
       save();
+      if(!draft.archiveId){draft.archiveId=crypto.randomUUID();save();}
+      if(!draft.archived){
+        const stored=await api('archive',{id:draft.archiveId,data:draft.data,duration:draft.duration});
+        if(!stored?.stored)throw Error(t('Could not save. Please try again.'));
+        draft.archived=true;draft.storage=stored.storage;save();
+      }
       // Persist the session before uploading so an ambiguous response retries the same message.
       if (!draft.id) {
         const session = await api("start");
@@ -175,54 +183,51 @@
       await refresh();
     } catch (e) {
       error(e);
+      if(draft?.archived){await refresh();el('voice-error').textContent=t('Recording saved. Kitchen delivery is not confirmed. Reconnect to the kitchen and retry.');}
     } finally {
       busy = false;
       sending = false;
       render();
     }
   }
+  function historyPlayer(job) {
+    const row=document.createElement('article');row.className='voice-history-item';
+    const label=document.createElement('p');label.className='voice-message-time';label.textContent=new Date(job.created).toLocaleString();
+    const track=document.createElement('div');track.className='voice-track';
+    const play=document.createElement('button');play.type='button';play.className='voice-history-play';
+    const audio=document.createElement('audio');audio.hidden=true;audio.preload='none';
+    const seek=document.createElement('input');seek.type='range';seek.min='0';seek.max='100';seek.value='0';seek.setAttribute('aria-label',t('Playback position'));
+    const time=document.createElement('span');time.className='voice-message-time';
+    const draw=()=>{play.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true">'+icons[audio.paused?'play':'pause']+'</svg>';play.setAttribute('aria-label',t(audio.paused?'Play recording':'Pause playback'));const seconds=Math.floor(audio.currentTime || job.duration/1000 || 0);time.textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');if(Number.isFinite(audio.duration))seek.value=String(audio.currentTime/audio.duration*100);};
+    play.onclick=async()=>{try{check();if(busy||sending)return;if(await stop()===false)return;if(!audio.paused){audio.pause();return;}play.disabled=true;if(!audio.src){const result=await api('playback',{id:job.id});if(!/^data:audio\//.test(result.data||''))throw Error(t('Recording unavailable'));audio.src=result.data;}document.querySelectorAll('audio').forEach(other=>{if(other!==audio)other.pause();});await audio.play();}catch(e){error(e);}finally{play.disabled=false;draw();}};
+    seek.oninput=()=>{if(Number.isFinite(audio.duration))audio.currentTime=audio.duration*Number(seek.value)/100;};
+    for(const name of ['play','pause','ended','timeupdate'])audio.addEventListener(name,draw);
+    track.append(play,seek,time,audio);row.append(track,label);draw();return row;
+  }
   function refresh() {
-    if (refreshing) return refreshing;
-    el("voice-refresh").disabled = true;
-    refreshing = (async () => {
-      try {
-        const result = await api("status");
-        if (
-          draft?.sent &&
-          result.jobs?.some((job) => job.id === draft.id && job.complete)
-        ) {
-          draft.complete = true;
-          save();
-          render();
+    if(refreshing)return refreshing;
+    el('voice-refresh').disabled=true;
+    refreshing=(async()=>{
+      try{
+        const [history,status]=await Promise.allSettled([api('recordings'),api('status')]);
+        const host=el('voice-history');
+        if(history.status==='fulfilled'){
+          const jobs=history.value.recordings||[],signature=JSON.stringify(jobs);
+          if(host.dataset.signature!==signature){host.querySelectorAll('audio').forEach(a=>a.pause());host.replaceChildren(...jobs.map(historyPlayer));host.dataset.signature=signature;}
+          if(!jobs.length && !host.children.length){const empty=document.createElement('p');empty.textContent=t('Sent recordings will appear here for replay.');host.append(empty);}
+        }else if(status.status==='fulfilled'){
+          host.replaceChildren();
+          for(const job of status.value.jobs||[]){const row=document.createElement('div');row.className='voice-history-item';row.textContent=t(job.complete?'Playback completed':'Queued for playback');for(const target of job.targets||[]){const p=document.createElement('p');p.textContent=target.label+' · '+t(target.status);row.append(p);}host.append(row);}
         }
-        const host = el("voice-history");
-        host.replaceChildren();
-        for (const job of result.jobs || []) {
-          const row = document.createElement("div");
-          row.className = "voice-history-item";
-          const title = document.createElement("strong");
-          title.textContent = t(
-            job.complete ? "Playback completed" : "Queued for playback",
-          );
-          row.append(title);
-          for (const target of job.targets || []) {
-            const p = document.createElement("p");
-            p.textContent = target.label + " · " + t(target.status);
-            row.append(p);
-          }
-          host.append(row);
-        }
-        el("voice-error").textContent = "";
-        return true;
-      } catch (e) {
-        error(e);
-        return false;
-      } finally {
-        refreshing = null;
-        el("voice-refresh").disabled = false;
-      }
-    })();
-    return refreshing;
+        if(status.status==='fulfilled'){
+          if(draft?.sent && status.value.jobs?.some(job=>job.id===draft.id&&job.complete)){draft.complete=true;save();render();}
+          el('voice-error').textContent='';
+        }else if(history.status==='fulfilled')el('voice-error').textContent=t('Recordings are available. Connect to the kitchen POS to broadcast a message.');
+        else error(status.reason);
+        return history.status==='fulfilled'||status.status==='fulfilled';
+      }catch(e){error(e);return false;}
+      finally{refreshing=null;el('voice-refresh').disabled=false;}
+    })();return refreshing;
   }
   async function back(event) {
     event?.preventDefault();
@@ -280,7 +285,35 @@
       };
       for (const event of ["play", "pause", "ended", "timeupdate"])
         el("voice-preview").addEventListener(event, render);
-      el("voice-record").onclick = record;
+      const recordButton=el('voice-record');
+      recordButton.onclick=()=>{if(suppressRecordClick){suppressRecordClick=false;return;}void record();};
+      recordButton.onpointerdown=event=>{
+        if(event.button!==0 || recordButton.disabled)return;
+        suppressRecordClick=false;
+        if(recorder.state==='recording')return;
+        const gesture={x:event.clientX,y:event.clientY,active:false,cancel:false,locked:false};hold=gesture;
+        recordButton.setPointerCapture?.(event.pointerId);
+        gesture.timer=setTimeout(()=>{gesture.active=true;gesture.start=record();},220);
+      };
+      recordButton.onpointermove=event=>{
+        if(!hold?.active)return;
+        hold.cancel=event.clientX-hold.x < -65;
+        if(hold.y-event.clientY>65){hold.locked=true;hold.cancel=false;}
+        render();
+      };
+      const release=async event=>{
+        const gesture=hold;if(!gesture)return;clearTimeout(gesture.timer);
+        if(!gesture.active){hold=null;return;}
+        suppressRecordClick=true;
+        await gesture.start;
+        if(!gesture.locked || event.type==='pointercancel'){
+          if(gesture.cancel && event.type!=='pointercancel'){
+            try{check();await recorder.discard();localStorage.removeItem(key);draft=null;}catch(e){error(e);}
+          }else await stop();
+        }
+        hold=null;render();
+      };
+      recordButton.onpointerup=release;recordButton.onpointercancel=release;
       el("voice-send").onclick = send;
       if (!win.MobileGestures) el("voice-refresh").onclick = refresh;
       win.MobileGestures?.setRefresh(refresh);

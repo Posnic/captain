@@ -50,35 +50,10 @@ async function modifyingAnOrder(page) {
   await page.goto('/order-history.html');
   await page.waitForFunction(() => typeof openItemPicker === 'function');
 
-  await page.evaluate((seed) => {
-    /*
-     * Seeded through the accessor the sheet itself reads.
-     *
-     * `let editingOrder` is script-scoped and shadows any window property of
-     * the same name, so assigning window.editingOrder gives the application
-     * nothing - a mistake made twice here, invisible both times. The sheet
-     * asks `orderBeingModified()`, so that is what a test replaces, and the
-     * app's own add and quantity functions are pointed at the same array.
-     */
-    const order = { _id: 'o-1', sales_id: 'INV-1', items: seed, person_count: 2 };
-    window.__order = order;
-    window.orderBeingModified = () => order;
-
-    window.addProductToOrder = (id, name, price) => {
-      const line = order.items.find((i) => i.product_id === id);
-      if (line) line.quantity += 1;
-      else order.items.push({ product_id: id, name, price, selling_price: price, quantity: 1 });
-    };
-    window.updateItemQuantity = (at, change) => {
-      const line = order.items[at];
-      if (!line) return;
-      line.quantity += change;
-      if (line.quantity <= 0) order.items.splice(at, 1);
-    };
-
-    const modal = new window.bootstrap.Modal(document.getElementById('editOrderModal'));
-    modal.show();
-  }, []);
+  await page.evaluate(() => {
+    allOrders=[{_id:'o-1',sales_id:'INV-1',status:'pending',items:[],person_count:2}];
+    editOrder('o-1');window.__order=orderBeingModified();
+  });
   await expect(page.locator('#editOrderModal')).toBeVisible();
   await page.evaluate(() => openItemPicker());
   await expect(page.locator('#item-picker')).toBeVisible();
@@ -175,39 +150,17 @@ test('- counts down without leaving the menu', async ({ page }) => {
   ).toBe(1);
 });
 
-test('a dish already on the order opens as a counter, not as ADD', async ({ page }) => {
-  /*
-   * Reopening the menu must not forget. Before, a waiter who added two
-   * biryanis, closed the sheet and opened it again saw ADD, added two more,
-   * and found four on the bill.
-   */
-  await onTheMenu(page, 'nothing', { menu: MENU });
-  await page.goto('/order-history.html');
-  await page.waitForFunction(() => typeof openItemPicker === 'function');
-
-  await page.evaluate(() => {
-    const order = {
-      items: [
-        { product_id: 'p-1', name: 'Chicken Biryani', price: 220, selling_price: 220, quantity: 2 },
-      ],
-    };
-    window.orderBeingModified = () => order;
-    new window.bootstrap.Modal(document.getElementById('editOrderModal')).show();
-  });
-  await page.evaluate(() => openItemPicker());
-
-  /*
-   * EVERY copy of the row, because a dish on the order now appears twice: once
-   * in the "On this table" strip at the top and once in its own category. Both
-   * have to say the same thing - a shortcut showing ADD for a dish already on
-   * the order is the exact confusion the counter exists to end.
-   */
-  const rows = page.locator('#item-picker .dish[data-id="p-1"]');
-  await expect(rows).not.toHaveCount(0);
-  const counts = await rows.locator('.dish-qty').allTextContents();
-  expect(counts.length).toBeGreaterThan(0);
-  expect(counts.every((said) => said === '2')).toBe(true);
-  await expect(rows.locator('.btn-add')).toHaveCount(0);
+test('unsent additions retain their counter when the picker is reopened',async({page})=>{
+ await modifyingAnOrder(page);
+ await page.locator('#item-picker .dish[data-id="p-1"] .btn-add').click();
+ await page.locator('#item-picker .dish[data-id="p-1"] .btn-increase').click();
+ await page.locator('#item-picker-done').click();
+ await page.locator('#open-item-picker').click();
+ const rows=page.locator('#item-picker .dish[data-id="p-1"]');
+ await expect(rows).not.toHaveCount(0);
+ const counts=await rows.locator('.dish-qty').allTextContents();
+ expect(counts.length).toBeGreaterThan(0);expect(counts.every(text=>text==='2')).toBe(true);
+ await expect(rows.locator('.btn-add')).toHaveCount(0);
 });
 
 test('a counted dish stays counted after a search and back', async ({ page }) => {

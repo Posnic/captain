@@ -28,11 +28,6 @@
     for(let attempt=0;attempt<4;attempt++){
       try{return await POSNIC.api.post('/sales/updateOrder',request);}
       catch(error){
-        if(error.message==='Enter a reason for this change.'){
-          const reason=await ask({title:'Reason for change',label:'Reason'});
-          if(reason===null)throw new Error(t('Changes were not saved.'));
-          request.change_reason=reason;continue;
-        }
         if(['Manager approval required: cancellation','Manager approval required: discount'].includes(error.message)){
           const action=error.message.endsWith('cancellation')?'void_sale':'discount_apply';
           const pin=await ask({title:'Manager approval',label:'Manager PIN',secret:true});
@@ -142,5 +137,35 @@
     };
     refresh.onclick=load;await load();
   });
+  function installCancellationReasons() {
+    for (const id of ['cancel-order-reason', 'history-cancel-reason', 'cancel-item-reason']) {
+      const field = document.getElementById(id);
+      if (!field || field.parentElement.querySelector('[data-cancellation-reasons]')) continue;
+      const choices = document.createElement('div');
+      choices.className = 'cancellation-reason-choices';
+      choices.dataset.cancellationReasons = '';
+      choices.setAttribute('role', 'group');
+      choices.setAttribute('aria-label', t('Quick cancellation reasons'));
+      const refresh = () => {
+        for (const button of choices.children)
+          button.setAttribute('aria-pressed', String(field.value.trim() === button.textContent));
+      };
+      for (const reason of ['Customer requested', 'Entered by mistake', 'Duplicate order', 'Item unavailable', 'Customer left']) {
+        const button = document.createElement('button');
+        button.type = 'button'; button.textContent = t(reason); button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', () => {
+          field.value = button.textContent;
+          field.dispatchEvent(new Event('input', {bubbles: true}));
+        });
+        choices.append(button);
+      }
+      field.before(choices);
+      field.placeholder = t('Choose a reason above or write your own.');
+      field.addEventListener('input', refresh);
+      field.closest('.modal')?.addEventListener('show.bs.modal', refresh);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', installCancellationReasons);
+  else installCancellationReasons();
   root.CaptainOrderActions={save,ask};
 })(window);

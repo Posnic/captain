@@ -4,6 +4,8 @@
     const byId = id => document.getElementById(id);
     let view = 'items', setting = '', beforeSetting = null, initial = null, originalOrder = null;
     let originalLines = new WeakSet(), saving = false, saved = false, cancelling = false;
+    let originalQuantities = new WeakMap(), originalCancellations = new WeakMap();
+    const cancellationFields = ['cancelled', 'cancelled_quantity', 'cancellation_reason'];
     let ownsHistory = false;
     let settingLoad = 0, legacyGuestSupported = false;
     const identity = () => JSON.stringify([POSNIC.session?.shopKey, POSNIC.session?.user?.id, localStorage.getItem('branch_id'), POSNIC.session?.base || POSNIC.server?.baseUrl]);
@@ -29,7 +31,7 @@
         };
     }
     function fingerprint() {
-        return JSON.stringify({ details: details(), items: order()?.items || [] });
+        return JSON.stringify({ details: details(), items: order()?.items || [], preparationNote:order()?.preparation_note || '' });
     }
     function restore(value) {
         document.querySelectorAll('input[name="edit_dine_type"]').forEach(input => input.checked = input.value === value.type);
@@ -129,7 +131,11 @@
         document.querySelector('[data-editor-setting="table"]').hidden = !dineIn;
         document.querySelector('[data-editor-setting="guests"]').hidden = !dineIn;
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
-        for (const prefix of ['editor', 'picker']) {
+        const additions = (order().items || []).filter(item => !originalLines.has(item) && !lineIsCancelled(item, order()));
+        const addedCount = additions.reduce((sum,item)=>sum+Number(item.quantity || 0),0);
+        byId('picker-item-count').textContent = addedCount === 1 ? '1 new item' : addedCount + ' new items';
+        byId('picker-total-value').textContent = CaptainMoney.display(additions.reduce((sum,item)=>sum+Number(item.quantity || 0)*Number(item.selling_price ?? item.price ?? 0),0));
+        for (const prefix of ['editor']) {
             byId(prefix + '-item-count').textContent = count === 1 ? '1 item' : count + ' items';
             const total = byId(prefix + '-total-value');
             total.textContent = order().pricing_preview ? (priceState === 'ready' ? CaptainMoney.display(confirmedTotal) : priceState === 'loading' ? '…' : '—') : CaptainMoney.display(reviewTotal(value));
@@ -143,17 +149,47 @@
             retry.hidden = !order().pricing_preview || priceState !== 'error';
         }
         byId('cancel-order-changes').disabled = saving;
-        byId('save-order-changes').disabled = saving || (initial !== null && initial === fingerprint());
+        const dirty = initial !== null && initial !== fingerprint();
+        byId('save-order-changes').disabled = saving || !dirty;
+        byId('save-order-changes').hidden = !dirty;
+        byId('cancel-order-changes').textContent = dirty ? 'Discard changes' : 'Close';
     }
     function begin() {
         resetPrice();
+        let note=byId('editor-preparation-note');
+        if (!note) {
+            const label=document.createElement('label');label.className='editor-preparation-note';
+            label.innerHTML='<span>Kitchen note</span><textarea id="editor-preparation-note" maxlength="500" rows="2"></textarea>';
+            byId('current-order-items').after(label);
+            note=byId('editor-preparation-note');
+            note.addEventListener('input',()=>{if(order()){order().preparation_note=note.value;refresh();}});
+        }
+        note.value=order()?.preparation_note || '';
+        note.parentElement.hidden=!order()?.preparation_notes;
         legacyGuestSupported = false; settingLoad++;
         saved = false; saving = false; beforeSetting = null;
         originalOrder = JSON.parse(JSON.stringify(order()));
         document.querySelectorAll('#edit-type-section input, #edit-table-section input, #edit-pax-section input, #edit-pax-section button').forEach(input => input.disabled=false);
         originalLines = new WeakSet(order()?.items || []);
+        originalQuantities = new WeakMap((order()?.items || []).map(item => [item, Number(item.quantity) || 0]));
+        originalCancellations = new WeakMap((order()?.items || []).map(item => [item,
+            Object.fromEntries(cancellationFields.filter(key => Object.hasOwn(item, key)).map(key => [key, item[key]]))]));
         initial = fingerprint();
+        renderCurrentOrderItems();
         show('items');
+    }
+    function undoCancellation(item) {
+        if (saving || initial === null || !originalLines.has(item) || !order()?.items.includes(item) ||
+            !(originalQuantities.get(item) > Number(item.quantity))) return false;
+        item.quantity = originalQuantities.get(item);
+        const original = originalCancellations.get(item);
+        for (const key of cancellationFields) {
+            if (Object.hasOwn(original, key)) item[key] = original[key];
+            else delete item[key];
+        }
+        renderCurrentOrderItems();
+        updateOrderTotal();
+        return true;
     }
     async function openSetting(name) {
         if (saving) return;
@@ -222,8 +258,8 @@
             if (!input.reportValidity()) return;
             const reason = byId('edit-discount-description');
             reason.value = reason.value.trim();
-            reason.required = value.discount !== beforeSetting.discount || value.discountType !== beforeSetting.discountType;
-            reason.minLength = 3; reason.maxLength = 200;
+            reason.required = false;
+            reason.removeAttribute('minlength'); reason.maxLength = 200;
             if (!reason.reportValidity()) return;
         }
         if (value.type === 'Dine-in' && !value.table) {
@@ -330,10 +366,9 @@
         byId('edit-discount-value').step = String(1 / CaptainMoney.current().factor);
         byId('edit-discount-value').required = true;
         byId('edit-discount-value').inputMode = 'decimal';
-        byId('edit-discount-description').placeholder = window.I18N?.t('Reason for change') || 'Reason for change';
+        byId('edit-discount-description').closest('.row').hidden = true;
         discountSection.querySelector('label.form-label').htmlFor = 'edit-discount-value';
         byId('edit-discount-description').previousElementSibling.htmlFor = 'edit-discount-description';
-        byId('edit-discount-description').previousElementSibling.textContent = window.I18N?.t('Reason for change') || 'Reason for change';
 
         modal.addEventListener('show.bs.modal', () => {
             if (ownsHistory) return;
@@ -360,6 +395,7 @@
         modal.addEventListener('hide.bs.modal', event => {
             if (saved || cancelling) return;
             if (saving) { event.preventDefault(); return; }
+            if (byId('picker-index') && !byId('picker-index').hidden) { event.preventDefault(); closePickerIndex(); return; }
             if (!byId('item-picker').hidden) { event.preventDefault(); closeItemPicker(); return; }
             if (view === 'settings') { event.preventDefault(); back(); return; }
             if (view === 'details') { event.preventDefault(); show('items'); return; }
@@ -380,8 +416,14 @@
     });
     window.OrderEditor = {
         whenClosed() { return ownsHistory || historyClosing ? new Promise(resolve => closeWaiters.push(resolve)) : null; },
-        begin, refresh, typeChanged,
+        whenClosing() {
+            return historyClosing || (ownsHistory && !byId('editOrderModal')?.classList.contains('show'))
+                ? new Promise(resolve => closeWaiters.push(resolve)) : null;
+        },
+        begin, refresh, typeChanged, cancel, undoCancellation,
+        dirty: () => initial !== null && initial !== fingerprint(),
         isAdded: item => initial !== null && !originalLines.has(item),
+        previousQuantity: item => originalQuantities.get(item) || 0,
         setSaving(value) { saving = value; refresh(); },
         saved() { saved = true; },
     };

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:translations && npm run i18n:audit && npm run i18n:build && vite build",
+    "build": "npm run check:translations && npm run i18n:audit && npm run i18n:build && vite build && node scripts/check-web-package.js",
     "test": "node --test tests/*.test.js",
     "check": "npm test && npx playwright test",
     "check:attribution": "node scripts/check-ai-attribution.js --all --commits",

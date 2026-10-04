@@ -27,6 +27,7 @@ async function setup(page) {
     dueMinor: 10001,
     version: 0,
     enabled: true,
+    mixedPayment: true,
     methods: ["Cash", "Card", "Upi"],
     upiPayee: { id: "captain-test@invalid", name: "Test Branch" },
     guests: [
@@ -45,6 +46,51 @@ async function setup(page) {
   await expect(page.locator("#cp-guest")).toBeVisible();
   return plan;
 }
+test('split payment is optional, validates totals and retries one combined journal request', async ({page}) => {
+  await setup(page);
+  await expect(page.locator('#cp-mixed')).not.toBeChecked();
+  await page.locator('#cp-mixed').check();
+  await page.locator('[data-tender="Cash"]').fill('40');
+  await page.locator('[data-tender="Card"]').fill('50');
+  await page.locator('[data-action="record"]').click();
+  await expect(page.locator('.cp-error')).toContainText('Payment amounts must equal the bill.');
+  await page.locator('[data-tender="Card"]').fill('60.01');
+  await page.locator('#cp-verified').check();
+  const posts=[];
+  await page.route('**/captain/v1/payments/record', r => {
+    const body = r.request().postDataJSON(); posts.push(body);
+    return posts.length === 1 ? r.fulfill({status:503,json:{message:'unconfirmed'}}) : r.fulfill({json:{id:'plan1',confirmed:body.request_id,totalMinor:10001,dueMinor:0,methods:['Cash','Card','Upi'],guests:[],payments:[{...body,id:body.request_id,changeMinor:0}]}});
+  });
+  await page.locator('[data-action="record"]').click();
+  await expect(page.locator('.cp-review').last()).toContainText('₹60.01');
+  await page.locator('[data-action="record"]').click();
+  await expect(page.locator('.cp-error')).toContainText('Retry this request');
+  await page.locator('[data-action="record"]').click();
+  await expect(page.locator('#captain-payments')).not.toBeVisible();
+  expect(posts).toHaveLength(2);
+  expect(posts[1]).toEqual(posts[0]);
+  expect(posts[0].method).toBe('Mixed');
+  expect(posts[0].tenders.map(row=>[row.method,row.amountMinor])).toEqual([['Cash',4000],['Card',6001]]);
+});
+
+test('mixed payment keeps the selected guest visible in entry and review', async ({page}) => {
+  await setup(page);
+  await page.locator('#cp-guest').selectOption('0');
+  await page.locator('#cp-mixed').check();
+  await expect(page.locator('.cp-paying-guest')).toContainText('Guest 1');
+  await expect(page.locator('.cp-balance')).toContainText('₹50.01');
+  await page.locator('[data-tender="Cash"]').fill('20');
+  await page.locator('[data-tender="Card"]').fill('30.01');
+  await page.locator('#cp-verified').check();
+  await page.locator('[data-action="record"]').click();
+  await expect(page.locator('.cp-review').first()).toContainText('Guest 1');
+  await expect(page.locator('.cp-review').first()).toContainText('Split payment');
+  await page.locator('[data-action="back"]').click();
+  await expect(page.locator('[data-tender="Card"]')).toHaveValue('30.01');
+  await page.locator('#cp-mixed').uncheck();
+  await expect(page.locator('#cp-guest')).toHaveValue('0');
+});
+
 test("guest cash payment shows change and updates remaining balance; card requires confirmation", async ({
   page,
 }) => {
@@ -241,4 +287,29 @@ test('confirmed full card payment returns to tables with a receipt toast', async
  await expect(page.locator('#captain-payments')).not.toBeVisible();
  await expect(page.locator('#order-toast-message')).toContainText('Payment recorded · ₹100.01 · Card');
  expect(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('posnic.payment:')))).toEqual([]);
+});
+
+for(const scenario of ['light','dark','partial','rejected','unconfirmed','reduced'])test(`gold payment celebration ${scenario}`,async({page})=>{
+ await page.emulateMedia({colorScheme:scenario==='dark'?'dark':'light',reducedMotion:scenario==='reduced'?'reduce':'no-preference'});
+ const plan=await setup(page);
+ await page.route('**/captain/v1/payments/record',r=>{
+  const body=r.request().postDataJSON();
+  if(scenario==='rejected')return r.fulfill({status:503,json:{message:'Unavailable'}});
+  return r.fulfill({json:{...plan,confirmed:scenario==='unconfirmed'?'wrong-id':body.request_id,paidMinor:body.amountMinor,dueMinor:scenario==='partial'?5000:0}});
+ });
+ if(scenario==='partial')await page.locator('#cp-guest').selectOption('0');
+ await page.locator('#captain-payments [data-action=record]').click();
+ await expect(page.locator('.cp-celebration')).toHaveCount(0);
+ await page.locator('#captain-payments [data-action=record]').click();
+ if(['rejected','unconfirmed'].includes(scenario)){
+  await expect(page.locator('.cp-error')).toContainText('not confirmed');await expect(page.locator('.cp-celebration')).toHaveCount(0);
+ }else if(scenario==='reduced'){
+  await expect(page.locator('#captain-payments')).not.toBeVisible();await expect(page.locator('.cp-celebration')).toHaveCount(0);
+ }else{
+  const scene=page.locator('.cp-celebration');await expect(scene).toBeVisible();await expect(scene).toHaveCSS('pointer-events','none');
+  if(scenario==='partial')await expect(page.locator('#captain-payments .cp-celebration')).toBeVisible();
+  await scene.evaluate(el=>el.getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=450;}));
+  await page.screenshot({path:`test-artifacts/payment-gold-${scenario}.png`});
+  await expect(scene).toHaveCount(0);
+ }
 });

@@ -35,3 +35,9 @@ body.floor-screen { height:100dvh; min-height:0; }
 
 .service-order-action { width:100%; justify-content:flex-end; padding-block:8px; }
 .service-order-action button { border-color:var(--primary,#2456ed); color:var(--primary,#2456ed); }
+
+.floor-line-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; grid-column:1/-1; width:100%; padding-top:8px; }
+.floor-line-actions button { min-width:44px; min-height:44px; padding:8px 10px; border:1px solid var(--line,#dce3eb); border-radius:9px; background:var(--surface,#fff); color:var(--accent,#2459de); font:inherit; font-size:14px; }
+.floor-line-actions [data-line-action="cancel"] { color:var(--danger,#c52c40); }
+.floor-line-quantity { display:flex; gap:8px; margin-inline-start:auto; }
+.floor-line-actions button:disabled { opacity:.5; }

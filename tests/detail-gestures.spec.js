@@ -16,7 +16,7 @@ async function swipe(page,selector,{dx=0,dy=140,cancel=false}={}) {
 async function floor(page) {
  await onTheMenu(page,'nothing');
  let calls=0,fail=false;
- await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['1','2','3']}}}));
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['1','2','3'],table_details:['1','2','3'].map(table_number=>({table_number,item_count:1}))}}}));
  await page.route('**/sales/getListKot?*',r=>{calls++;return r.fulfill({json:fail?{type:'error',message:'offline'}:{type:'success',data:{list:[{_id:'sale',items:[{item_name:'Soup',quantity:1,price:10}],created_date:'2026-09-28T10:00:00Z'}]}}});});
  await page.goto('/kot-management.html');await page.locator('.floor-card').first().click();
  await expect(page.locator('.mobile-detail-position')).toHaveText('1 / 3');

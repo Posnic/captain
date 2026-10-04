@@ -437,6 +437,8 @@
       adopt(url) {
         const clean = trimSlashes(url);
         if (!clean) return false;
+        if (!internetChoice.allowed(clean)) return false;
+        if (isLanUrl(clean) && active && !isLanUrl(active)) internetChoice.reset(active);
         state[isLanUrl(clean) ? 'lan' : 'cloud'] = clean;
         return setActive(clean);
       },
@@ -1383,6 +1385,41 @@
    * One runs at a time, so a burst of failed requests cannot start a burst of
    * scans.
    */
+  const internetChoice = (() => {
+    let flight = null;
+    const key = base => 'captain.internet-consent:' + (session.shopKey || '') + ':' + base;
+    const read = base => { try { return sessionStorage.getItem(key(base)); } catch (_) { return null; } };
+    const write = (base,value) => { try { sessionStorage.setItem(key(base),value); } catch (_) {} };
+    const required = base => !isLanUrl(base) && isLanUrl(server.baseUrl || session.base || '');
+    const allowed = base => !required(base) || read(base) === 'yes';
+    function offerAgain(base) {
+      if (document.getElementById('captain-internet-choice')) return;
+      const button=document.createElement('button');button.id='captain-internet-choice';
+      button.textContent='Shop Wi-Fi unavailable · Switch to internet';
+      button.style.cssText='position:fixed;bottom:85px;left:12px;right:12px;z-index:2147483646;padding:14px;border:1px solid #a9bee8;border-radius:12px;background:#edf3ff;color:#183b75;font:500 14px system-ui';
+      button.onclick=async()=>{write(base,'');button.remove();if(await ask(base)) net.check(true);};
+      document.body.append(button);
+    }
+    async function ask(base) {
+      if (allowed(base)) return true;
+      if (read(base)==='no') { offerAgain(base); return false; }
+      if (flight) { await flight; return allowed(base); }
+      flight=new Promise(resolve=>{
+        const dialog=document.createElement('dialog');dialog.id='captain-internet-consent';
+        dialog.setAttribute('aria-labelledby','internet-consent-title');
+        dialog.style.cssText='width:min(380px,calc(100vw - 32px));box-sizing:border-box;border:1px solid var(--line,#dce4ee);border-radius:18px;padding:22px;background:var(--surface,#fff);color:var(--ink,#17243a);font:15px/1.5 Inter,system-ui;box-shadow:0 16px 60px #0004';
+        dialog.innerHTML='<h2 id="internet-consent-title" style="font-size:20px;margin:0 0 12px">Switch to internet?</h2><p>The shop’s Wi-Fi server is unavailable. Use Posnic Cloud instead? Orders may reach the kitchen more slowly than over shop Wi-Fi.</p><p>Your pending orders stay saved on this phone if you choose to wait.</p><div style="display:flex;gap:10px"><button type="button" data-wait style="flex:1;min-height:48px;border:1px solid #cad5e4;border-radius:10px;background:#f4f7fb;color:#26394f">Stay on Wi-Fi</button><button type="button" data-switch style="flex:1;min-height:48px;border:0;border-radius:10px;background:#2459de;color:white">Switch to internet</button></div>';
+        const finish=yes=>{write(base,yes?'yes':'no');dialog.close();dialog.remove();if(!yes)offerAgain(base);resolve(yes);};
+        dialog.querySelector('[data-wait]').onclick=()=>finish(false);
+        dialog.querySelector('[data-switch]').onclick=()=>finish(true);
+        dialog.oncancel=e=>{e.preventDefault();finish(false);};
+        document.body.append(dialog);dialog.showModal();
+      }).finally(()=>{flight=null;});
+      return flight;
+    }
+    return {ask,allowed,reset(base){write(base,'');document.getElementById('captain-internet-choice')?.remove();}};
+  })();
+
   function resolve({ allowScan = false } = {}) {
     if (resolving) return resolving;
 
@@ -1396,6 +1433,7 @@
         const seen = [];
         const hit = await probe(candidate, PROBE_TIMEOUT_MS, { seen });
         if (hit && server.canAdopt(hit.base)) {
+          if (!(await internetChoice.ask(hit.base))) continue;
           noteSuccess(hit.base);
           server.adopt(hit.base);
           /* Which Wi-Fi this worked on, so a phone that wakes up somewhere
@@ -1739,7 +1777,7 @@
      * and that is a worse failure than any amount of waiting.
      */
     const other = hedge
-      ? server.candidates().find((url) => url !== base && server.canAdopt(url)) || null
+      ? server.candidates().find((url) => url !== base && server.canAdopt(url) && internetChoice.allowed(url)) || null
       : null;
 
     let response;
@@ -2488,6 +2526,7 @@
      * real seconds to watch an address cool off, and a suite that sleeps is a
      * suite people stop running.
      */
+    internetChoice,
     debugTiming: {
       noteFailure,
       noteSuccess,

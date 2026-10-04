@@ -23,6 +23,26 @@ async function setting(page, name) {
 async function apply(page) {
   await page.locator('#editor-setting-apply').click();
 }
+
+test('direct Add items opens menu, keeps earlier preparation separate and selects search', async ({page}) => {
+  await onTheMenu(page, 'nothing');
+  await page.route('**/sales/getOrderHistory', r => r.fulfill({json:{type:'success',data:{orders:[original]}}}));
+  await page.goto('/kot-management.html');
+  await page.evaluate(() => addItemsToOrder('order-1'));
+  await expect(page.locator('#item-picker')).toBeVisible();
+  await page.locator('#picker-search-input').fill('Chicken Biryani');
+  await page.locator('#item-picker .btn-add[data-id="p-biryani"]').first().click();
+  await expect(page.locator('#picker-search-input')).toHaveValue('Chicken Biryani');
+  expect(await page.locator('#picker-search-input').evaluate(input=>input.selectionEnd-input.selectionStart)).toBe('Chicken Biryani'.length);
+  await page.locator('#item-picker-done').click();
+  await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(2);
+  await expect(page.locator('.editor-added')).toHaveCount(1);
+  const rows = await page.evaluate(()=>editingOrder.items);
+  expect(rows.map(item=>item.quantity)).toEqual([2,1]);
+  expect(rows[1].item_description || '').toBe('');
+  await expect(page.locator('.editor-added')).toHaveText('Added');
+  await expect(page.locator('#current-order-items .order-item-card').last()).toContainText('1');
+});
 test('Back during guest capability discovery ignores the late response',async({page})=>{
  await editor(page);
  let answer;
@@ -104,7 +124,7 @@ for (const where of ['order-history.html','kot-management.html']) {
   await page.screenshot({path:`test-artifacts/editor-${where}.png`});
   await page.locator('#open-item-picker').click();
   await page.locator('#item-picker .btn-add[data-id="p-coffee"]').click();
-  await expect(page.locator('#picker-item-count')).toHaveText('3 items');
+  await expect(page.locator('#picker-item-count')).toHaveText('1 new item');
   await page.screenshot({path:'test-artifacts/editor-menu.png'});
   await page.locator('#item-picker-done').click();
   await expect(page.locator('#current-order-items')).toContainText('Coffee');
@@ -141,29 +161,27 @@ test('takeaway clears the old table and guest count',async({page})=>{
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0]).toMatchObject({table_number:'',table_id:'',person_count:'',dine_type:'Take away'});
 });
-test('guest edits can be applied and discarded without losing item edits',async({page})=>{
+test('item additions remain separate when keeping a draft and disappear when discarded',async({page})=>{
  await editor(page);
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
- await setting(page,'guests');
- await page.locator('.edit-person-btn[data-person="4"]').click();
- await apply(page);
- await expect(page.locator('#order-editor-meta')).toContainText('4');
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await page.locator('#editOrderModal .modal-header .btn-close').click();
  await page.locator('#captain-discard [data-confirm-action=keep]').click();
  await expect(page.locator('#editOrderModal')).toBeVisible();
- await expect(page.locator('.qty-display')).toHaveText('3');
+ expect(await page.evaluate(()=>orderBeingModified().items.map(i=>i.quantity))).toEqual([2,1]);
  await page.locator('#editOrderModal .modal-header .btn-close').click();
  await page.locator('#captain-discard [data-confirm-action=discard]').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  await page.evaluate(()=>editOrder('order-1'));
- await expect(page.locator('.qty-display')).toHaveText('2');
+ await expect(page.locator('#editOrderModal')).toBeVisible();
+ expect(await page.evaluate(()=>orderBeingModified().items.map(i=>i.quantity))).toEqual([2]);
  await expect(page.locator('#order-editor-meta')).toContainText('2');
 });
+
 test('repeated taps cannot send twice and conflicts close safely',async({page})=>{
  const posts=await editor(page);
  let release;
  await page.route('**/sales/updateOrder',async route=>{posts.push(route.request().postDataJSON());await new Promise(resolve=>release=resolve);await route.fulfill({status:409,json:{message:'order_changed'}});});
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await page.locator('#save-order-changes').click();
  await expect.poll(()=>posts.length).toBe(1);
  await page.evaluate(()=>saveOrderChanges());
@@ -173,6 +191,7 @@ test('repeated taps cannot send twice and conflicts close safely',async({page})=
 });
 test('Arabic and narrow screens keep actions in view and shop names unchanged',async({page})=>{
  await editor(page);
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await page.setViewportSize({width:320,height:700});
  await page.evaluate(()=>I18N.use('ar'));
  const words=JSON.parse(fs.readFileSync('assets/common/locales/ar.json','utf8'));
@@ -243,6 +262,23 @@ test('Android Back exits an unchanged editor without a save request',async({page
  expect(posts).toHaveLength(0);
 });
 
+test('rapid reopen waits for modal and history cleanup without disposing an active transition',async({page})=>{
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const posts=await editor(page);
+ await page.waitForFunction(()=>!bootstrap.Modal.getInstance(document.getElementById('editOrderModal'))._isTransitioning);
+ await page.evaluate(()=>{
+  const modal=document.getElementById('editOrderModal');
+  window.editorReopened=new Promise(resolve=>modal.addEventListener('shown.bs.modal',resolve,{once:true}));
+  bootstrap.Modal.getInstance(modal).hide();
+  editOrder('order-1');editOrder('order-1');
+ });
+ await page.evaluate(()=>window.editorReopened.then(()=>true));
+ await expect(page.locator('#editOrderModal')).toBeVisible();
+ expect(await page.evaluate(()=>orderBeingModified().items.map(item=>item.quantity))).toEqual([2]);
+ await expect(page.locator('.modal-backdrop')).toHaveCount(1);
+ expect(errors).toEqual([]);expect(posts).toHaveLength(0);
+});
+
 test('claimed orders change to takeaway through a durable seating transition without resending their items',async({page})=>{
  const posts=await editor(page,'order-history.html',{seating_request_id:'initial-seating',seating_table_ids:['table-1'],seating_primary_id:'table-1'});
  const moves=[];
@@ -296,6 +332,8 @@ for(const type of ['amount','price','fixed','percent'])test(`item edits preserve
  await expect(page.locator('#edit-discount-value')).toHaveValue('10');
  await expect(page.locator(type==='percent'?'#edit-discount-percent':'#edit-discount-amount')).toBeChecked();
  await page.locator('.qty-btn[aria-label="Decrease quantity"]').click();
+ await page.locator('#cancel-item-reason').fill('Customer requested');
+ await page.locator('#confirm-remove-item-btn').click();
  await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts).toHaveLength(1);
@@ -306,7 +344,7 @@ for(const type of ['amount','price','fixed','percent'])test(`item edits preserve
 
 test('ordinary fixed discount remains in legacy-server item updates',async({page})=>{
  const posts=await editor(page,'order-history.html',{extra_discount:10,extra_discount_type:'price'});
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0]).toMatchObject({extra_discount:10,extra_discount_type:'amount'});
@@ -323,32 +361,29 @@ for(const where of ['order-history.html','kot-management.html'])test(`discount h
  await expect(page.locator('#edit-discount-value')).toHaveValue('10');
  await page.locator('#edit-discount-value').fill('0');
  await apply(page);
- await expect(page.locator('#edit-discount-section')).toBeVisible();
- await page.locator('#edit-discount-description').fill('Customer requested');
- await apply(page);
  await expect(page.locator('#order-editor-items')).toBeVisible();
  expect(posts).toHaveLength(0);
  await expect(page.locator('#save-order-changes')).toBeEnabled();
  await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts).toHaveLength(1);
- expect(posts[0]).toMatchObject({extra_discount:0,extra_discount_type:'amount',discount_description:'Customer requested'});
+ expect(posts[0]).toMatchObject({extra_discount:0,extra_discount_type:'amount',discount_description:''});
 });
 
 test('percentage discount cannot exceed 100 and back retains unsaved item edits',async({page})=>{
  const posts=await editor(page);
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await setting(page,'discount');
  await page.locator('label[for="edit-discount-percent"]').click();
  await page.locator('#edit-discount-value').fill('101');
- await page.locator('#edit-discount-description').fill('Customer requested');
+
  await apply(page);
  await expect(page.locator('#edit-discount-section')).toBeVisible();
  await page.locator('#editor-setting-back').click();
  await page.locator('[data-editor-view="items"]').click();
  await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
- expect(posts[0].items[0].quantity).toBe(3);
+ expect(posts[0].items.map(i=>i.quantity)).toEqual([2,1]);
  expect(posts[0].extra_discount).toBe(0);
 });
 
@@ -373,7 +408,7 @@ test('allocated discount review uses confirmed tax-inclusive total without compo
    await setting(page,'discount');
    await page.locator(`label[for="edit-discount-${type}"]`).click();
    await page.locator('#edit-discount-value').fill(value);
-   await page.locator('#edit-discount-description').fill('Customer requested');
+
    await apply(page);
    await expect(page.locator('#editor-total-value')).toHaveText(total);
  }
@@ -384,11 +419,13 @@ test('allocated discount review uses confirmed tax-inclusive total without compo
 test('opening and editing preserves stored unit-price precision',async({page})=>{
  const posts=await editor(page,'order-history.html',{total_amount:1.234,items:[{product_id:'p-biryani',name:'Chicken Biryani',quantity:1,price:1.234,unit_price:1.234}]});
  await page.evaluate(()=>CaptainMoney.remember({currencyCode:'KWD',currencySymbol:'KD'}));
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.locator('.editor-note-link').click();
+ await page.locator('#edit-item-notes-text').fill('No chilli');
+ await page.locator('#edit-item-notes-apply').click();
  await page.locator('#save-order-changes').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  expect(posts[0].items[0].price).toBe(1.234);
- expect(Number(posts[0].total_amount)).toBe(2.468);
+ expect(Number(posts[0].total_amount)).toBe(1.234);
 });
 
 
@@ -397,11 +434,11 @@ for (const where of ['order-history.html','kot-management.html']) test(`server p
  const waiting=new Promise(resolve=>release=resolve), first=new Promise(resolve=>started=resolve);
  const setup=()=>page.route('**/captain/v1/orders/edit/preview',async route=>{
   const body=route.request().postDataJSON();
-  if(body.items[0].quantity===2){started();await waiting;await route.fulfill({json:{total_amount:462}});}
+  if(body.items.reduce((sum,item)=>sum+item.quantity,0)===2){started();await waiting;await route.fulfill({json:{total_amount:462}});}
   else await route.fulfill({json:{total_amount:693}});
  });
  const posts=await editor(page,where,{pricing_preview:true},setup); await first;
- await page.locator('.qty-btn[aria-label="Increase quantity"]').click();
+ await page.getByRole('button',{name:'Add again',exact:true}).click();
  await expect(page.locator('#editor-total-value')).toContainText('693');
  release(); await page.waitForTimeout(100);
  await expect(page.locator('#editor-total-value')).toContainText('693');
@@ -623,9 +660,9 @@ test('closing transfer removes its history entry and rapid reopen keeps a workin
 for (const where of ['order-history.html', 'kot-management.html']) {
  test(`menu additions keep transferred portions separate on ${where}`, async({page})=>{
   const posts=await editor(page,where,{transfer_allocated:true});
-  await page.locator('#current-order-items button[aria-label="Add items"]').click();
+  await page.locator('#open-item-picker').click();
   await expect(page.locator('#item-picker')).toBeVisible();
-  await page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first().click();
+  await page.locator('#item-picker .btn-add[data-id="p-biryani"]').first().click();
   await page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first().click();
   await page.locator('#item-picker-done').click();
   await expect(page.locator('#current-order-items .order-item-card')).toHaveCount(2);
@@ -684,7 +721,7 @@ for (const where of ['order-history.html','kot-management.html']) {
   const posts=await editor(page,where,{transfer_allocated:true});
   await page.locator('#open-item-picker').click();
   const plus=page.locator('#item-picker .btn-increase[data-id="p-biryani"]').first();
-  await plus.click();await plus.click();
+  await page.locator('#item-picker .btn-add[data-id="p-biryani"]').first().click();await plus.click();
   await page.locator('#item-picker .btn-decrease[data-id="p-biryani"]').first().click();
   await page.locator('#item-picker-done').click();
   await page.locator('#save-order-changes').click();
@@ -693,16 +730,15 @@ for (const where of ['order-history.html','kot-management.html']) {
  });
 }
 
-test('ambiguous menu minus opens review without changing a transferred original',async({page})=>{
+test('menu quantity controls cannot decrease already sent transferred portions',async({page})=>{
  await editor(page,'order-history.html',{transfer_allocated:true,items:[{product_id:'p-coffee',name:'Coffee',quantity:1,price:40},...original.items]});
  await page.locator('#open-item-picker').click();
- await page.locator('#item-picker .btn-decrease[data-id="p-biryani"]').first().click();
- await expect(page.locator('#item-picker')).toBeHidden();
+ await expect(page.locator('#item-picker .btn-decrease[data-id="p-biryani"]')).toHaveCount(0);
+ await expect(page.locator('#item-picker .btn-add[data-id="p-biryani"]').first()).toBeVisible();
+ await page.locator('#item-picker-done').click();
  await expect(page.locator('#save-order-changes')).toBeDisabled();
- await expect(page.locator('#current-order-items .order-item-card').nth(1).locator('.qty-btn').first()).toBeFocused();
  expect(await page.evaluate(()=>editingOrder.items[1].quantity)).toBe(2);
 });
-
 
 test('queued transfer reopen is discarded after changing branch',async({page})=>{
  await editor(page);await page.locator('#cancel-order-changes').click();

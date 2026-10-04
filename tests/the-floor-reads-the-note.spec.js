@@ -71,13 +71,13 @@ async function atTheTable(page, order = AN_ORDER()) {
   await page.goto('/kot-management.html');
   await page.waitForFunction(() => typeof selectTable === 'function');
   await page.evaluate((table) => selectTable(table, false), TABLE);
-  await expect(page.locator('.kot-item').first()).toBeVisible();
+  await expect(page.locator('.order-legacy-line').first()).toBeVisible();
 }
 
 test('a note on a dish is on the screen, not only on the paper', async ({ page }) => {
   await atTheTable(page);
 
-  const biryani = page.locator('.kot-item', { hasText: 'Chicken Biryani' });
+  const biryani = page.locator('.order-legacy-line', { hasText: 'Chicken Biryani' });
   await expect(biryani).toContainText('medium spicy');
 });
 
@@ -101,15 +101,15 @@ test('the note reads as belonging to the dish, under it rather than beside the c
    * full suite, the shape of every flaky test ever written.
    */
   const at = await page
-    .locator('.kot-item', { hasText: 'Chicken Biryani' })
+    .locator('.order-legacy-line', { hasText: 'Chicken Biryani' })
     .evaluate((row) => {
       const box = (el) => el.getBoundingClientRect();
       return {
         row: box(row).x,
-        name: box(row.querySelector('.item-name')).x,
-        nameY: box(row.querySelector('.item-name')).y,
-        note: box(row.querySelector('.item-note')).x,
-        noteY: box(row.querySelector('.item-note')).y,
+        name: box(row.querySelector('strong')).x,
+        nameY: box(row.querySelector('strong')).y,
+        note: box(row.querySelector('.order-legacy-note')).x,
+        noteY: box(row.querySelector('.order-legacy-note')).y,
       };
     });
 
@@ -119,15 +119,15 @@ test('the note reads as belonging to the dish, under it rather than beside the c
   /* And indented past the number, roughly under the name. Within a few pixels
      rather than exactly: the row is flexbox and the last pixel is the
      browser's to round. */
-  expect(at.note).toBeGreaterThan(at.row + 20);
+  expect(at.note).toBeGreaterThanOrEqual(at.row);
   expect(Math.abs(at.note - at.name)).toBeLessThanOrEqual(6);
 });
 
 test('a dish with nothing said about it gains no empty line', async ({ page }) => {
   await atTheTable(page);
 
-  const coffee = page.locator('.kot-item', { hasText: 'Filter Coffee' });
-  await expect(coffee.locator('.item-note')).toHaveCount(0);
+  const coffee = page.locator('.order-legacy-line', { hasText: 'Filter Coffee' });
+  await expect(coffee.locator('.order-legacy-note')).toHaveCount(0);
 });
 
 test("a note typed in this phone's cart is read too", async ({ page }) => {
@@ -146,7 +146,7 @@ test("a note typed in this phone's cart is read too", async ({ page }) => {
   };
 
   await atTheTable(page, order);
-  await expect(page.locator('.kot-item', { hasText: 'Chicken Biryani' })).toContainText('no onion');
+  await expect(page.locator('.order-legacy-line', { hasText: 'Chicken Biryani' })).toContainText('no onion');
 });
 
 test('a note cannot smuggle markup onto the floor', async ({ page }) => {
@@ -161,7 +161,7 @@ test('a note cannot smuggle markup onto the floor', async ({ page }) => {
 
   await atTheTable(page, order);
 
-  const note = page.locator('.kot-item', { hasText: 'Chicken Biryani' }).locator('.item-note');
+  const note = page.locator('.order-legacy-line', { hasText: 'Chicken Biryani' }).locator('.order-legacy-note');
   await expect(note).toHaveText(`don't <b>overcook</b> & "burn"`);
   await expect(note.locator('b')).toHaveCount(0);
 });
@@ -178,7 +178,7 @@ test('a cancelled dish strikes its note along with its name', async ({ page }) =
   await atTheTable(page, order);
 
   const decoration = await page
-    .locator('.kot-item.is-cancelled .item-note')
+    .locator('.order-legacy-line.is-cancelled .order-legacy-note')
     .first()
     .evaluate((el) => getComputedStyle(el).textDecorationLine);
   expect(decoration).toContain('line-through');

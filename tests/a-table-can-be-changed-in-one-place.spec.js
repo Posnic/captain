@@ -63,7 +63,7 @@ const ORDERS = [
 ];
 
 /** The order list, with a floor and three orders on it. */
-async function onTheOrderList(page) {
+async function onTheOrderList(page, { cleaningEnabled } = {}) {
   await onTheMenu(page, 'nothing');
 
   /*
@@ -76,7 +76,7 @@ async function onTheOrderList(page) {
     route.fulfill({ json: { type: 'success', data: { orders: ORDERS } } })
   );
 
-  await page.route('**/captain/v1/tables', async route => route.fulfill({json:{tables:await page.evaluate(()=>JSON.parse(localStorage.getItem('kiosk_tableorders') || '[]'))}}));
+  await page.route('**/captain/v1/tables', async route => route.fulfill({json:{cleaningEnabled,tables:await page.evaluate(()=>JSON.parse(localStorage.getItem('kiosk_tableorders') || '[]'))}}));
   await page.goto('/order-history.html');
   await page.waitForFunction(() => typeof moveOrder === 'function');
   await page.evaluate(
@@ -190,7 +190,7 @@ test('a takeaway has no table to move it to, and is not offered one', async ({ p
 });
 
 test('held, cleaning and undersized tables are unavailable before confirming a move',async({page})=>{
- await onTheOrderList(page);
+ await onTheOrderList(page, { cleaningEnabled: true });
  await page.evaluate(()=>{localStorage.setItem('kiosk_tableorders',JSON.stringify([
   {tableorder_value:'4',capacity:4,max_capacity:4},
   {tableorder_value:'12',capacity:4,max_capacity:4,service_state:'cleaning'},
@@ -202,6 +202,21 @@ test('held, cleaning and undersized tables are unavailable before confirming a m
  await expect(page.locator('.move-table[data-value="17"]')).toBeEnabled();
  await expect(page.locator('.move-table[data-value="12"]')).toContainText('Cleaning');
 });
+
+for (const cleaningEnabled of [undefined, false]) {
+ test(`cleaning does not block moving a table when ${cleaningEnabled === undefined ? 'unset' : 'disabled'}`,async({page})=>{
+  await onTheOrderList(page, { cleaningEnabled });
+  await page.evaluate(()=>{
+   localStorage.setItem('kiosk_tableorders',JSON.stringify([
+    {tableorder_value:'4',capacity:4},
+    {tableorder_value:'12',capacity:4,service_state:'cleaning'}
+   ]));
+   moveOrder('ord-1');
+  });
+  await expect(page.locator('.move-table[data-value="12"]')).toBeEnabled();
+  await expect(page.locator('.move-table[data-value="12"]')).not.toContainText('Cleaning');
+ });
+}
 
 
 test('pending move cannot be dismissed or submitted twice and failure restores selection',async({page})=>{

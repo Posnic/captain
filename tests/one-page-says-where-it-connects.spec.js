@@ -22,7 +22,7 @@ test("connection settings reuse setup without claiming that a saved address is c
 }) => {
   await settings(page);
   await expect(page.locator("#captain-onboarding .setup-title")).toHaveText(
-    "Connect to your shop",
+    "Change server",
   );
   await expect(page.locator("#connection-lan")).toBeHidden();
   await expect(page.locator("#serverModal")).toHaveCount(0);

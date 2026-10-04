@@ -32,7 +32,7 @@ const floor = fs.readFileSync(
 /** Just the part that asks the till for a table's tickets. */
 const asking = floor.slice(
   floor.indexOf('const stillOpen'),
-  floor.indexOf('getListKot') + 200
+  floor.indexOf('getListKot', floor.indexOf('const stillOpen')) + 200
 );
 
 test('the panel asks only for tickets that are still open', () => {
@@ -70,7 +70,7 @@ test('the whole app is not hidden while one list loads', () => {
    */
   const opening = floor.slice(floor.indexOf('await loadTables()') - 600, floor.indexOf('await loadTables()') + 40);
   assert.ok(!/showLoader\(\);/.test(opening), 'loading the tables still covers the whole screen');
-  assert.match(floor, /showSectionLoader\('tables-list'\)/, 'the tables list has no loader of its own');
+  assert.match(floor, /class="floor-loading" role="status"/, 'initial orders load needs its own nonblocking status');
 });
 
 test('cancelling shows its progress on the button, not over the app', () => {

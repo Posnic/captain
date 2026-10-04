@@ -19,9 +19,18 @@ for(const [width,height] of [[390,640],[768,1024]]) test(`all tables scroll abov
  }
  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await expect.poll(()=>page.evaluate(()=>document.scrollingElement.scrollTop)).toBeGreaterThan(before);
- // Continue with user scrolling rather than scrollIntoView, which can bypass a clipped shell.
- await page.mouse.move(width/2,height/2);
- await page.mouse.wheel(0,10000);
+ // Keep using finger swipes: a mouse wheel during touch inertia can be ignored
+ // by mobile Chromium. Programmatic scrollIntoView would bypass a clipped shell.
+ for (let swipe=0;swipe<25;swipe++) {
+   if (await page.locator('.floor-card').last().evaluate(el=>el.getBoundingClientRect().bottom) < height-80) break;
+   await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+   for(let step=1;step<=10;step++) {
+     await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-step*30}]});
+     await page.waitForTimeout(20);
+   }
+   await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   await page.waitForTimeout(100);
+ }
  await expect.poll(()=>page.locator('.floor-card').last().evaluate(el=>el.getBoundingClientRect().bottom)).toBeLessThan(height-80);
 
  const result=await page.locator('.floor-card').last().evaluate(el=>{const r=el.getBoundingClientRect(),nav=document.querySelector('.captain-navigation').getBoundingClientRect();return {bottom:r.bottom,top:r.top,navTop:nav.top,scroll:document.scrollingElement.scrollHeight,viewport:innerHeight};});

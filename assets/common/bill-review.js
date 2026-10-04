@@ -16,6 +16,9 @@
   let dialog,
     table,
     branch,
+    saleId,
+    receipt = false,
+    printRequestId,
     bill,
     generation = 0,
     busy = false,
@@ -49,7 +52,7 @@
               "",
             )}<div><strong>${esc(t("Total"))}</strong><strong translate="no">${esc(money(bill.totalMinor))}</strong></div><div><span>${esc(t("Paid"))}</span><span translate="no">${esc(money(bill.paidMinor))}</span></div><div><strong>${esc(t("Remaining balance"))}</strong><strong translate="no">${esc(money(bill.dueMinor))}</strong></div></div>`
         : ""
-    }<p role="status">${esc(t(message))}</p></div><footer>${bill ? `<button type="button" data-bill-print>${esc(t("Print the bill"))}</button>${bill.dueMinor > 0 ? `<button type="button" data-bill-split>${esc(t("Split bill"))}</button>${bill.collectEnabled ? `<button type="button" class="profile-primary" data-bill-pay>${esc(t("Collect payment"))}</button>` : ""}` : `<a class="profile-primary" href="tables.html?source=floor&table=${encodeURIComponent(table)}">${esc(t("Close order"))}</a>`}` : `<button type="button" data-bill-refresh>${esc(t("Retry"))}</button>`}</footer>`;
+    }<p role="status">${esc(t(message))}</p></div><footer>${bill ? `<button type="button" data-bill-print>${esc(t("Print the bill"))}</button>${!receipt && bill.dueMinor > 0 ? `<button type="button" data-bill-split>${esc(t("Split bill"))}</button>${bill.collectEnabled ? `<button type="button" class="profile-primary" data-bill-pay>${esc(t("Collect payment"))}</button>` : ""}` : saleId ? `<button type="button" class="profile-primary" data-bill-back>${esc(t("Close"))}</button>` : `<a class="profile-primary" href="tables.html?source=floor&table=${encodeURIComponent(table)}">${esc(t("Close order"))}</a>`}` : `<button type="button" data-bill-refresh>${esc(t("Retry"))}</button>`}</footer>`;
     if (loading)
       dialog
         .querySelectorAll("button:not([data-bill-back])")
@@ -64,7 +67,7 @@
     render("Loading...");
     try {
       const data = await POSNIC.api.get(
-        "/captain/v1/bill?table=" + encodeURIComponent(table),
+        "/captain/v1/bill?" + (saleId ? "saleId=" + encodeURIComponent(saleId) + (receipt ? "&receipt=true" : "") : "table=" + encodeURIComponent(table)),
       );
       if (ticket !== generation || !dialog.open) return;
       if (
@@ -94,11 +97,14 @@
       if (ticket === generation) loading = false;
     }
   }
-  async function open(value) {
+  async function open(value, target = {}) {
     if (busy) return;
     generation++;
     loading = false;
     table = String(value);
+    saleId = String(target.saleId || "");
+    receipt = target.receipt === true;
+    printRequestId = crypto.randomUUID();
     branch = localStorage.getItem("branch_id");
     bill = null;
     if (!dialog) {
@@ -117,10 +123,10 @@
         if (event.target.closest("[data-bill-back]")) close();
         if (event.target.closest("[data-bill-refresh]") && !busy) void load();
         if (event.target.closest("[data-bill-split]")) {
-          await GuestBills.open(table);
+          await GuestBills.open(table, {saleId});
         }
         if (event.target.closest("[data-bill-pay]")) {
-          await CaptainPayments.open(table, branch);
+          await CaptainPayments.open(table, branch, null, {saleId});
         }
         const button = event.target.closest("[data-bill-print]");
         if (button && !busy) {
@@ -134,12 +140,14 @@
               typeof storedBillCopies === "function"
                 ? Number(storedBillCopies())
                 : 0;
-            const result = await POSNIC.api.post("/sales/requestBillPrint", {
+            const result = await POSNIC.api.post(receipt ? "/captain/v1/bill/reprint" : "/sales/requestBillPrint", {
+              ...(receipt ? {request_id:printRequestId} : {}),
               branchId: branch,
               table_number: table,
+              ...(saleId ? {saleId} : {}),
               ...(copies ? { copies } : {}),
             });
-            if (result.type !== "success")
+            if (result.type !== "success" || result.data?.status === false || result.status === false)
               throw new Error(result.message || "Could not load the bill.");
             printed = true;
             dialog.querySelector("[role=status]").textContent =
@@ -163,7 +171,7 @@
   }
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-review-bill]");
-    if (button) void open(button.dataset.reviewBill);
+    if (button) void open(button.dataset.reviewBill, {saleId:button.dataset.saleId,receipt:button.dataset.receipt === 'true'});
   });
   window.addEventListener(
     "captain:back",

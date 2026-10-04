@@ -74,7 +74,7 @@ for (const width of [320, 768])
 
     await page.locator("[data-floor-filter=ready]").click();
     await expect(page.locator(".floor-card")).toHaveCount(1);
-    await expect(page.locator(".floor-name")).toHaveText("2");
+    await expect(page.locator(".floor-name")).toHaveText("Table 2");
     await page.locator("[data-floor-filter=all]").click();
     await expect(page.locator(".floor-card")).toHaveCount(3);
     await page.locator("#floor-area").selectOption("Main");

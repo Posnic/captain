@@ -96,10 +96,10 @@
     el.hidden = !page && !rows.length && !lastError;
     el.querySelector(`#${ID}-text`).textContent =
       lastError ||
-      (rows.length === 1 ? `${rows.length} order saved · Not sent to kitchen` : `${rows.length} orders saved · Not sent to kitchen`);
+      (rows.length === 1 ? `${rows.length} order waiting to sync` : `${rows.length} orders waiting to sync`);
     window.dispatchEvent(new CustomEvent("captain:pending-changed"));
     if (!page) return;
-    if (!rows.length && !lastError) el.querySelector(`#${ID}-text`).textContent = "No pending orders";
+    if (!rows.length && !lastError) el.querySelector(`#${ID}-text`).textContent = "All orders synced";
     const list = el.querySelector(`#${ID}-rows`);
     list.replaceChildren();
     const needsAccess =
