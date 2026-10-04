@@ -21,6 +21,22 @@ on:
       tag:
         description: 'Tag to build and release (e.g. v1.0.0)'
         required: true
+      platform:
+        description: 'Platform to build'
+        type: choice
+        options: [all, android, ios]
+        default: all
+      publish:
+        description: 'Publish artifacts to a GitHub release'
+        type: boolean
+        default: false
+      version:
+        description: 'Numeric version when building a branch or commit (e.g. 1.3.42)'
+        required: false
+      testflight:
+        description: 'Sign iOS for App Store Connect and upload to TestFlight'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -28,6 +44,7 @@ permissions:
 jobs:
   android:
     name: Android
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
     runs-on: ubuntu-latest
     outputs:
       signed: ${{ steps.build.outputs.signed }}
@@ -116,6 +133,8 @@ jobs:
 
       - name: Build
         id: build
+        env:
+          POSNIC_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ steps.signing.outputs.have }}" = "true" ]; then
             node build-apk.js --release
@@ -135,6 +154,7 @@ jobs:
 
   ios:
     name: iOS
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'android'
     # Xcode exists on nothing else. This is the only reason the job is here
     # rather than alongside Android.
     runs-on: macos-latest
@@ -169,8 +189,13 @@ jobs:
         env:
           CERT_P12: ${{ secrets.IOS_CERT_P12 }}
           CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
-          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          PROFILE: ${{ inputs.testflight && secrets.IOS_APPSTORE_PROVISIONING_PROFILE || secrets.IOS_PROVISIONING_PROFILE }}
+          TESTFLIGHT: ${{ inputs.testflight }}
         run: |
+          if [ "$TESTFLIGHT" = "true" ] && { [ -z "$CERT_P12" ] || [ -z "$PROFILE" ]; }; then
+            echo "::error::TestFlight requires a distribution certificate and App Store profile."
+            exit 1
+          fi
           if [ -z "$CERT_P12" ]; then
             echo "have=false" >> "$GITHUB_OUTPUT"
             echo "::warning::No IOS_CERT_P12 secret; building unsigned (will not install on a device)."
@@ -193,12 +218,13 @@ jobs:
 
       - name: Build
         env:
+          POSNIC_VERSION: ${{ inputs.version }}
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
           # The profile is named, not identified by UUID: xcodebuild's export
           # options take the name, and a name survives the profile being
           # regenerated (adding a device does that) where a UUID does not.
-          IOS_PROVISIONING_PROFILE_NAME: ${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}
-          IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
+          IOS_PROVISIONING_PROFILE_NAME: ${{ inputs.testflight && secrets.IOS_APPSTORE_PROVISIONING_PROFILE_NAME || secrets.IOS_PROVISIONING_PROFILE_NAME }}
+          IOS_EXPORT_METHOD: ${{ inputs.testflight && 'app-store-connect' || vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
         run: node build-ipa.js
 
       - uses: actions/upload-artifact@v7
@@ -206,6 +232,26 @@ jobs:
           name: ios
           path: build-output/*.ipa
           if-no-files-found: error
+
+      - name: Upload to TestFlight
+        if: inputs.testflight
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER: ${{ secrets.ASC_API_ISSUER }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          test -n "$ASC_API_KEY_ID"
+          test -n "$ASC_API_ISSUER"
+          test -n "$ASC_API_KEY_P8"
+          KEY_DIR="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$KEY_DIR"
+          KEY_FILE="$KEY_DIR/AuthKey_${ASC_API_KEY_ID}.p8"
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s' "$ASC_API_KEY_P8" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          xcrun altool --upload-app --type ios --file build-output/Captain.ipa \
+            --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER"
 
   publish:
     name: Publish release
@@ -217,7 +263,7 @@ jobs:
     # platform being unbuildable - no certificate, an Xcode version gone,
     # Apple changing something - should not withhold the other from the people
     # waiting for it. The notes say which platforms are actually attached.
-    if: always() && needs.android.result == 'success'
+    if: always() && (github.event_name != 'workflow_dispatch' || inputs.publish) && needs.android.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
