@@ -44,8 +44,8 @@
     "@playwright/test": "^1.63.0",
     "acorn": "^8.18.0",
     "bootstrap": "^5.3.8",
-    "sharp": "^0.35.4",
-    "vite": "^8.3.0"
+    "sharp": "^0.35.5",
+    "vite": "^8.3.2"
   },
   "description": "Order-taking app for restaurant floor staff. Talks to a Posnic POS server on the shop Wi-Fi or in the cloud.",
   "repository": {
