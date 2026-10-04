@@ -1728,6 +1728,29 @@ function onCancelClick() {
     document.getElementById("cancelModal").style.display = "flex";
 }
 
+// Starting another order must resolve the previous draft, including when the
+// table number is reused. A paid bill does not own this phone's local basket.
+async function resolvePreviousDraft() {
+    await waitForCartMutations();
+    return queueCartMutation(async () => {
+        const previous = await getCartData();
+        if (!previous.length) return true;
+        const table = localStorage.getItem('kiosk_table_no');
+        const details = [table ? `${I18N.t('Table')} ${table}` : '',
+            ...previous.map(item => `${item.name || item.item_name || ''} × ${item.quantity}`)]
+            .filter(Boolean).join('\n');
+        if (!await CaptainConfirm.discard({details})) {
+            // Preserve the old table, prices and idempotency key as well as items.
+            window.location.href = 'cart.html';
+            return false;
+        }
+        await saveCartData([]);
+        resetOrderKey();
+        localStorage.removeItem('note');
+        return true;
+    });
+}
+
 async function confirmCancelOrder() {
     // Clear the cart
     await saveCartData([]); // Clear IndexedDB cart
@@ -2029,6 +2052,7 @@ function showPopup() {
 
 function hidePopup() {
     const popup = document.getElementById('popup');
+    if (!popup) return;
     popup.classList.remove('show');
     setTimeout(() => {
         popup.style.display = 'none';

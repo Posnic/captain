@@ -3,7 +3,7 @@
   'use strict';
   let active = null;
   const t = value => root.I18N?.t(value) || value;
-  function discard() {
+  function discard(options = {}) {
     // A second tap must not attach a second destructive continuation.
     if (active) return Promise.resolve(false);
     const previous = document.activeElement;
@@ -21,7 +21,13 @@
       button.textContent = t(label);
       footer.append(button);
     }
-    dialog.append(title, footer);
+    dialog.append(title);
+    if (options.details) {
+      const details = document.createElement('p');
+      details.textContent = options.details;
+      dialog.append(details);
+    }
+    dialog.append(footer);
     document.body.append(dialog);
     return new Promise(resolve => {
       const finish = value => {

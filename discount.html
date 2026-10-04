@@ -180,7 +180,11 @@
         </div>
     </div>
     <script>
+        let startingOrder = false;
         async function goToProductsWithTableCheck() {
+            if (startingOrder) return;
+            startingOrder = true;
+            try {
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
@@ -254,6 +258,8 @@
             }
 
 
+            if (!await resolvePreviousDraft()) return;
+
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
             localStorage.setItem('kiosk_discount_percentage', percentage);
@@ -277,6 +283,11 @@
 
             // finally go to products
             window.location.href = 'products.html';
+            } catch (error) {
+                showErrorPopup(error.message || 'Could not load the menu');
+            } finally {
+                startingOrder = false;
+            }
         }
         /* Delegated once, after the page is up: these two buttons exist for the
            whole life of the screen, and setPersonCount already clamps 1..99. */
