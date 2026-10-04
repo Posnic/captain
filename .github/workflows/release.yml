@@ -70,7 +70,7 @@ jobs:
 
       # Android Gradle Plugin wants 17. The runner default has moved past it
       # before now, and the failure names a Gradle internal rather than the JDK.
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           # CAPACITOR 8's ANDROID LIBRARY IS COMPILED FOR JAVA 21.
