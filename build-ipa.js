@@ -135,6 +135,7 @@ stamp.stampBundle(path.join(root, 'dist'), {
 console.log(`Version ${version}`);
 if (!fs.existsSync(iosDir)) run('npx cap add ios');
 run('npx cap sync ios');
+run('node scripts/install-native-branding.js ios');
 mergeInfoPlist();
 require('./scripts/install-ios-plugins').install(root);
 

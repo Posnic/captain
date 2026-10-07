@@ -984,15 +984,13 @@
     ],
     "version": "1.3.55",
     "remaining": [
-      "Final full local commit gate",
-      "Rebuild signed APK with exact source commit and publish to GitHub",
-      "POS production promotion requires maintainer approval",
-      "Physical printer output and real-shop Wi-Fi roaming remain unverified"
+      "Physical printer output and real-shop Wi-Fi roaming not verified",
+      "iOS/TestFlight not verified in this Android release"
     ],
     "translations": "30 offline catalogs, 1246 messages each; 83 added messages including Internet. Manual Tamil/Nepali and reviewed AWS draft translations; protected product names and corrected Shop Wi-Fi meaning.",
     "serverPR": "https://github.com/Posnic/POS/pull/1198",
     "branch": "codex/captain-1.3.55",
-    "status": "final-full-local-gate-pending",
+    "status": "android-test-release-published",
     "regressionReview": {
       "initial": "909 passed, 66 failed; obsolete navigation/control expectations updated to the approved design",
       "fixed": [
@@ -1011,6 +1009,30 @@
         "test-artifacts/release-1.3.55-upgrade.png"
       ]
     },
-    "securityPR": "https://github.com/Posnic/POS/pull/1202"
+    "securityPR": "https://github.com/Posnic/POS/pull/1202",
+    "commit": "1a5ac9b7393e70ba4de1fbecc974837acee91c51",
+    "release": "https://github.com/Posnic/captain/releases/tag/captain-1.3.55-test.1",
+    "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.55-test.1/captain-1.3.55.apk",
+    "sha256": "7c23a438273b22c63fac0c9be3cf6c561c0ac4d245c8e79eca1341ff23c28af6",
+    "serverMain": "ce1b3c755c7c2498e585be7d21d61813e81bcd57",
+    "serverDeployment": "https://github.com/Posnic/POS/actions/runs/37605276008",
+    "finalChecks": [
+      "667 unit tests and 975 browser scenarios passed (47.7 minutes browser run)",
+      "Normal signed release build passed translation and package audits",
+      "Version 1.3.55 / 10355 and existing signing certificate verified",
+      "Final signed APK installed and welcome-to-connection navigation verified on Android 36",
+      "GitHub APK downloaded back and SHA-256 matched",
+      "API deployment: 3229/3229 checks across 67 testable shops; 127 untestable, zero failures"
+    ],
+    "finalEvidence": [
+      "artifacts/release-1.3.55-final-commit.log",
+      "artifacts/release-1.3.55-android-final.log",
+      "test-artifacts/release-1.3.55-final-android.png",
+      "test-artifacts/release-1.3.55-final-setup.png"
+    ],
+    "securityReview": {
+      "pos": "High code issue corrected in PR1202; dependency patches in PR1205; unpatched development-only http-cache-semantics and sprintf-js remain tracked.",
+      "captain": "Default-branch alerts remain: development xcode/uuid v3-v6 buffer issue, with no app usage; DOMPurify conditional IN_PLACE/afterSanitize hook issue, with no such hooks configured by Captain. These dependencies were not represented as patched."
+    }
   }
 }

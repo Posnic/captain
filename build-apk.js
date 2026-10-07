@@ -131,6 +131,7 @@ if (!fs.existsSync(androidDir)) {
 }
 
 run(`${npx} cap sync android`);
+run('node scripts/install-native-branding.js android');
 
 /* After sync, because `cap add` writes the gradle file this edits. */
 stamp.stampGradle(path.join(androidDir, 'app', 'build.gradle'), version);
