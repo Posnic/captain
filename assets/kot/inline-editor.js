@@ -1,5 +1,12 @@
 /* Use the existing draft/save controller inside the order, without another screen. */
 (function(root){
+ document.addEventListener('click',event=>{
+  const title=event.target.closest('[data-item-note]');
+  if(title)title.closest('.service-line,.order-legacy-line')?.querySelector('[data-line-action="note"]')?.click();
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.target.matches('[data-item-note]') && ['Enter',' '].includes(event.key)){event.preventDefault();event.target.click();}
+ });
  let home=null, sheet=null, modal=null, pendingReveal=null, footerObserver=null;
  function alignFooter(){
   if(!home)return;

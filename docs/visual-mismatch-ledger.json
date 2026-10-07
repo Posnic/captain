@@ -1,5 +1,30 @@
 {
-  "releaseGate": "All approved screens must have reviewed reference/actual captures; unresolved discrepancies block release.",
+  "connectionSetup20261007": {
+    "status": "local-implementation-review-required",
+    "reference": "captain-connection-setup.html approved revised Wi-Fi/account flow",
+    "actual": "index.html with assets/common/setup-flow.js and setup-flow.css",
+    "evidence": [
+      "test-artifacts/setup-welcome-320.png",
+      "test-artifacts/setup-found-320-light.png",
+      "test-artifacts/setup-found-320-dark.png",
+      "test-artifacts/setup-found-820-light.png",
+      "test-artifacts/setup-found-820-dark.png",
+      "test-artifacts/setup-signin-320-dark.png"
+    ],
+    "resolved": [
+      "Optional PIN and remember-sign-in controls have adequate checkbox size and spacing",
+      "Found-shop addresses wrap on 320px phones",
+      "Found-shop dialog has a distinct return action",
+      "Light/dark phone/tablet screens do not overflow horizontally"
+    ],
+    "open": [
+      "Compare each actual setup step side by side with approved mockup before release",
+      "Translate new copy before packaged release",
+      "Physical-device safe-area and touch drag verification"
+    ],
+    "finalCheck": "6 layout/priority checks passed in artifacts/setup-final-visual.log. Welcome and found-shop steps fill the phone viewport, with bottom actions; tablet uses a centered dialog."
+  },
+  "releaseGate": "Full visual acceptance remains outstanding. Latest direct user authorized the Android test release for their own phone review; this does not close per-screen discrepancies.",
   "screens": {
     "existing-item-note": {
       "status": "review-in-progress",
@@ -103,6 +128,43 @@
       ],
       "open": [
         "User visual acceptance of refined seating layout"
+      ]
+    },
+    "paper-staged-review": {
+      "status": "implemented-targeted-browser-verified-awaiting-user-acceptance",
+      "reference": "User screenshot and instruction 2026-10-05: upload first, select area, extract, dedicated editable draft",
+      "resolved": [
+        "Removed per-item dropdowns",
+        "Full-screen draft and searchable item picker",
+        "Direct remove, quantity, kitchen note and add actions",
+        "Existing tax-aware Quick sale linked with durable recovery",
+        "Pinned review footer",
+        "Separate upload and recognition waiting states"
+      ],
+      "actual": "test-artifacts/paper-searchable-review.png",
+      "remaining": [
+        "Native staged-flow verification",
+        "User review of final APK"
+      ],
+      "limits": "Browser screenshots use isolated mocked menu; real AWS pipeline separately tested with handwritten sample."
+    },
+    "order-reference-photos": {
+      "status": "targeted-browser-verified-awaiting-user-acceptance",
+      "reference": "User order-details screenshot and request 2026-10-05",
+      "resolved": [
+        "Standalone Transfer items moved into Order options",
+        "Photo actions grouped in dedicated gallery",
+        "Native file control replaced with camera/gallery buttons",
+        "Multiple reference uploads do not block order editing"
+      ],
+      "evidence": [
+        "test-artifacts/order-reference-gallery.png",
+        "test-artifacts/reference-picker-light.png",
+        "test-artifacts/reference-picker-dark.png"
+      ],
+      "remaining": [
+        "Physical handset gallery and camera feedback",
+        "Owner quality-review acceptance"
       ]
     }
   },
@@ -383,5 +445,572 @@
     "remaining": [
       "Native keyboard checks and paired API deployment remain pending."
     ]
+  },
+  "publishedTestRelease20261005": {
+    "tag": "captain-1.3.43-test.1",
+    "commit": "814f8cc23edc36a60079c55b125369d8819dbc79",
+    "status": "Released for user testing; open discrepancies remain open. No screen edits in this follow-up."
+  },
+  "androidSafeViewport20261005": {
+    "status": "Shared Android safe viewport implemented; signed local candidate built; native visual verification blocked by emulator system failure",
+    "branch": "codex/ios-test-build",
+    "baseCommit": "814f8cc23edc36a60079c55b125369d8819dbc79",
+    "cause": "Modern WebView system-bar passthrough allowed page controls under status icons; individual page CSS was inconsistent.",
+    "change": "MainActivity owns window insets for all pages and HTML dialogs, pads system bars/cutouts and keyboard, and dispatches zero handled insets to avoid double padding. Disable competing SystemBars inset listener.",
+    "checks": [
+      "656 unit tests passed",
+      "Native project generation passed",
+      "Release Java/Android compilation passed",
+      "APK signature verified against existing Captain certificate",
+      "18 browser startup checks passed covering all 17 app pages and page inventory; browser checks do not prove native inset geometry"
+    ],
+    "candidate": "C:/Users/Kayal/Downloads/Captain-safe-area-test-20261005/captain-1.3.46-safe-area-test.apk",
+    "limits": [
+      "Emulator-5554 reports missing window service; system crash logs include DeadSystemException. Native portrait/landscape, keyboard and dialog screenshots remain unverified.",
+      "Working-tree candidate includes earlier camera, bill recovery and login-message fixes; not a new main merge or GitHub release."
+    ],
+    "logs": [
+      "artifacts/safe-area-native-check.log",
+      "artifacts/safe-area-apk.log",
+      "artifacts/safe-area-unit.log",
+      "artifacts/safe-area-pages.log"
+    ]
+  },
+  "paperDialogTheme20261005": {
+    "status": "Local theme and viewport correction verified; not packaged in 1.3.46",
+    "change": "Paper capture dialog now uses shared theme colours, border-box sizing and a 12px viewport margin.",
+    "checks": [
+      "All 9 paper browser tests passed, including capture/recovery/provenance and 320/900px light/dark geometry checks.",
+      "Visually inspected 320px dark and 900px light captures."
+    ],
+    "evidence": [
+      "artifacts/paper-dialog-theme.log",
+      "test-artifacts/paper-capture-320-dark.png",
+      "test-artifacts/paper-capture-900-light.png"
+    ],
+    "remaining": [
+      "Approved-reference side-by-side comparison remains open; these tests do not establish complete mockup parity.",
+      "Native emulator briefly recovered window service, but streamed APK install failed without a reason; package/UI queries stalled. Native geometry and camera prompt remain unverified."
+    ]
+  },
+  "paperReviewFooter20261005": {
+    "status": "Local implementation and targeted browser checks complete; paper presentation parity remains open",
+    "branch": "codex/ios-test-build",
+    "baseCommit": "814f8cc23edc36a60079c55b125369d8819dbc79",
+    "changes": [
+      "Moved Send to kitchen outside the scrolling list into a fixed dialog footer.",
+      "Constrained form grid inputs to prevent clipping on 320px screens."
+    ],
+    "checks": [
+      "10 paper tests passed after footer change.",
+      "After input-width correction, all 5 phone/tablet/theme/long-order checks passed, including no horizontal content overflow."
+    ],
+    "evidence": [
+      "artifacts/paper-review-pinned.log",
+      "artifacts/paper-review-comparison.log",
+      "test-artifacts/paper-comparison-320-light.png",
+      "test-artifacts/paper-comparison-320-dark.png",
+      "test-artifacts/paper-comparison-900-light.png",
+      "test-artifacts/paper-comparison-900-dark.png"
+    ],
+    "comparisonMethod": "Extracted approved paper flow from full review, navigated to draft with prototype controls, captured reference and actual at matching 320/900 by 640 viewport dimensions and light/dark preferences. Reference retains its original fixed-width device frame; no tablet design extrapolated. Fixture content differs (reference 3 items, implementation 1).",
+    "unresolved": [
+      "Reference uses dedicated review header and draft subtitle; actual has generic Paper order header plus repeated review heading.",
+      "Reference has equal seating columns in a separate surface, compact photo summary and quantity steppers; actual still has form rows and details photo control.",
+      "Reference has expandable kitchen notes, icon removal, summary footer; actual has inline note/removal and no item summary.",
+      "Reference photo/crop/zoom stages and current integrated dialog still need cohesive presentation replacement.",
+      "Native runtime verification and actual handset camera permission remain open."
+    ],
+    "release": "Changes after 1.3.46 are not yet packaged; no new release claimed."
+  },
+  "paperReviewControls20261005": {
+    "status": "Integrated review controls implemented locally; complete visual parity remains open",
+    "changes": [
+      "Dedicated Review order heading without duplicate heading",
+      "Equal-width table and optional guest fields",
+      "Quantity increase/decrease buttons, expandable saved kitchen notes and SVG removal control",
+      "Preserved photo reference, durable draft storage and submission queue"
+    ],
+    "archive": "docs/archive/paper-review-20261005",
+    "checks": [
+      "11 paper browser tests passed, including quantity/note persistence across reload, sending photo reference and notes, long-list footer and 320/900 light/dark geometry",
+      "30-language translation integrity and string audit passed"
+    ],
+    "evidence": [
+      "artifacts/paper-review-controls.log",
+      "artifacts/paper-review-translations.log",
+      "artifacts/paper-review-i18n.log",
+      "test-artifacts/paper-comparison-320-light.png",
+      "test-artifacts/paper-comparison-320-dark.png",
+      "test-artifacts/paper-comparison-900-light.png",
+      "test-artifacts/paper-comparison-900-dark.png"
+    ],
+    "remaining": [
+      "Draft subtitle and compact photo-summary placement differ from reference",
+      "Modal dimensions, header spacing and narrow-width note wrapping differ from reference",
+      "Item/portion footer summary and photo crop/zoom stage remain to be implemented",
+      "Native verification and release packaging remain open"
+    ],
+    "release": "No new APK or release produced in this iteration."
+  },
+  "paperSummary20261005": {
+    "status": "Integrated live summary and saved photo preview verified locally; not released",
+    "changes": [
+      "Pinned footer displays live line count, summed positive quantities and selected table.",
+      "Empty drafts cannot be sent.",
+      "Photo thumbnail sits below seating fields and expands the retained original photo/crop controls.",
+      "Dialog title has an explicit accessible label."
+    ],
+    "checks": [
+      "12 paper browser tests passed: photo reference submission, draft persistence, empty-draft guard, decimal quantities, removal updates and phone/tablet light/dark layouts.",
+      "30-language integrity passed and translation audit has no missing strings."
+    ],
+    "evidence": [
+      "artifacts/paper-summary.log",
+      "artifacts/paper-summary-translations.log",
+      "artifacts/paper-summary-i18n.log",
+      "test-artifacts/paper-comparison-320-light.png",
+      "test-artifacts/paper-comparison-320-dark.png",
+      "test-artifacts/paper-comparison-900-light.png",
+      "test-artifacts/paper-comparison-900-dark.png"
+    ],
+    "remaining": [
+      "Dedicated crop/zoom stage remains incomplete.",
+      "Header subtitle, modal geometry and note wrapping remain visually different from approved reference.",
+      "Reference shows raw handwriting summary; implementation uses actual photo thumbnail. Not yet accepted as a design deviation.",
+      "Native Android/iOS verification and packaging remain open."
+    ]
+  },
+  "paperPhotoReplacement20261005": {
+    "status": "Saved-draft replacement recovery fixed and tested locally; no release",
+    "cause": "Replacement photo assigned a fresh in-memory draft before IndexedDB commit; write failure left the visible reviewed form bound to an empty draft. FileReader errors escaped the handler.",
+    "change": "Read and decode the replacement, commit it, then change the active draft. Block concurrent edits/submission during replacement. Catch read/abort/decode/storage failure and retain existing rows, photo and provenance. Reset file input so the same photo can be retried.",
+    "checks": [
+      "Existing 12 paper flow cases passed in initial full run; photo-read failure case passed.",
+      "Initial storage-failure fixture also broke menu refresh and could interrupt initial recognition. Scoped failure to draft writes and awaited original saved review. Both replacement failure tests passed on final rerun.",
+      "30-language integrity and translation audit passed."
+    ],
+    "evidence": [
+      "artifacts/paper-photo-replacement.log",
+      "artifacts/paper-photo-replacement-final.log",
+      "artifacts/paper-photo-replacement-translations.log",
+      "artifacts/paper-photo-replacement-i18n.log"
+    ],
+    "visual": "No layout change this iteration; prior comparison discrepancies remain open.",
+    "remaining": [
+      "Native permission/camera handoff verification",
+      "Complete approved paper capture/review presentation",
+      "Release packaging and full acceptance"
+    ]
+  },
+  "paperCropZoom20261005": {
+    "status": "Functional crop/zoom and durable crop retry implemented locally; approved presentation still differs",
+    "changes": [
+      "Zoom slider scales preview from 1x to 2x without changing original image.",
+      "Pointer selection maps preview coordinates to original image coordinates.",
+      "Whole photo clears crop and resets zoom; canceled pointer gestures discard incomplete selections.",
+      "Saved crop and recognition ID survive reload/retry; explicit new crop or whole-photo choice generates a new recognition ID.",
+      "Read photo and Whole photo actions pinned in initial photo footer.",
+      "Zoom translated in all 30 language packs."
+    ],
+    "checks": [
+      "4 targeted photo/replacement/crop tests passed.",
+      "Reload/retry crop test passed.",
+      "Final zoom/reload/reset and offline capture tests both passed after pinned-footer change.",
+      "30 languages contain 1146 messages with intact placeholders; string audit empty."
+    ],
+    "evidence": [
+      "artifacts/paper-zoom.log",
+      "artifacts/paper-zoom-recovery.log",
+      "artifacts/paper-zoom-footer.log",
+      "artifacts/paper-zoom-translations.log",
+      "artifacts/paper-zoom-i18n.log",
+      "test-artifacts/paper-crop-comparison-390-light.png"
+    ],
+    "remaining": [
+      "Comparison shows modal header, file input, crop tools and spacing still differ from approved dedicated photo screen.",
+      "Dark/tablet crop comparisons remain outstanding; 390px light comparison inspected.",
+      "Native camera/permission/keyboard verification and release remain pending."
+    ],
+    "release": "Local changes only; no newer APK than 1.3.46 claimed."
+  },
+  "paperAndroidBack20261005": {
+    "status": "Native-back event handling implemented; browser event-contract checks passed; handset runtime remains unverified",
+    "change": "Paper dialog consumes captain:back while open. Idle Back closes it and restores scan-button focus; busy recognition/replacement/send stays open. Higher dialogs and PIN lock retain control. Draft remains available when reopened.",
+    "checks": [
+      "2 browser tests passed: reviewed draft survives Back/reopen without navigation, in-flight recognition blocks Back then allows closing after failure and preserves photo.",
+      "JavaScript syntax and Git whitespace checks passed."
+    ],
+    "evidence": "artifacts/paper-native-back.log",
+    "nativeGap": "Emulator-5554 currently reports missing window and package services. No physical Android or iOS check claimed.",
+    "visual": "No presentation change; prior per-screen mismatch records remain open.",
+    "release": "Local working tree only; not a new APK or release."
+  },
+  "paperStagePresentation20261005": {
+    "status": "Photo/review stage copy integrated; remaining visual mismatches still block full acceptance",
+    "changes": [
+      "Photo stage uses Use this photo; review shows Draft · not sent to kitchen beneath the title.",
+      "Removed redundant success-status text above reviewed items; errors remain visible.",
+      "Separated header from content with theme-aware spacing and border; close target remains 44px.",
+      "Added both stage phrases to all 30 languages and rebuilt offline language bundle."
+    ],
+    "checks": [
+      "All 17 paper-flow browser tests passed.",
+      "Initial unit run found stale generated language bundle; after i18n:build all 656 units passed.",
+      "30-language catalog integrity and untranslated-string audit passed."
+    ],
+    "evidence": [
+      "artifacts/paper-stage-review.log",
+      "artifacts/paper-stage-translations.log",
+      "artifacts/paper-stage-i18n.log",
+      "artifacts/paper-stage-unit-final.log",
+      "test-artifacts/paper-comparison-320-light.png",
+      "test-artifacts/paper-comparison-320-dark.png",
+      "test-artifacts/paper-comparison-900-light.png",
+      "test-artifacts/paper-comparison-900-dark.png",
+      "test-artifacts/paper-crop-comparison-390-light.png"
+    ],
+    "resolved": [
+      "Review draft subtitle and stage heading now match reference wording."
+    ],
+    "remaining": [
+      "Modal geometry, photo-stage native file-input presentation, crop tools and header navigation still differ from approved reference.",
+      "Compact photo summary differs, and notes wrap below quantity on narrow viewport.",
+      "Native runtime checks and release packaging remain open."
+    ],
+    "release": "No new APK or public release generated."
+  },
+  "paperSelectionMode20261005": {
+    "status": "Explicit crop selection integrated and verified locally; full visual acceptance remains open",
+    "changes": [
+      "Select area toggle controls crop gestures; normal mode permits image scrolling.",
+      "Selection outline updates during dragging and follows current theme accent.",
+      "Whole photo resets crop, zoom and selection mode.",
+      "Select area translated in all 30 languages; offline bundle rebuilt."
+    ],
+    "checks": [
+      "Six initial offline/geometry/zoom cases passed.",
+      "New drag test exposed an incomplete handler edit; corrected pointer tracking and repaint helper. Final crop and non-selection drag tests both passed with zero browser errors.",
+      "Translation integrity and missing-string audit passed."
+    ],
+    "evidence": [
+      "artifacts/paper-select-area.log",
+      "artifacts/paper-select-final.log",
+      "artifacts/paper-select-translations.log",
+      "artifacts/paper-select-i18n.log",
+      "test-artifacts/paper-crop-comparison-390-light.png"
+    ],
+    "remaining": [
+      "Dedicated photo-stage framing, camera/retake presentation and layout geometry still differ from approved reference.",
+      "Dark/tablet crop comparisons, touch-device runtime and native camera handoff remain open.",
+      "No release or new APK produced."
+    ]
+  },
+  "scanIconVisibility20261005": {
+    "status": "User-reported missing scan entry fixed in local Android test APK",
+    "cause": "Orders markup hid scan until capability lookup completed, and explicitly disabled branch setting removed the icon.",
+    "change": "Icon always visible before New order. Local capture remains available. Read photo still enforces server enablement/configuration; no branch settings changed or upload permission bypassed.",
+    "checks": [
+      "3 targeted browser cases passed: disabled scanning remains visible but cannot upload, missing configuration explained, offline camera entry and durable photo recovery.",
+      "Signed Android release build completed and certificate verified."
+    ],
+    "candidate": "C:/Users/Kayal/Downloads/Captain-scan-icon-20261005/captain-1.3.47-scan-icon-test.apk",
+    "limits": [
+      "User clarification about Captain versus Windows screen remains pending. This change applies to Captain Android.",
+      "Native permission/runtime and remaining visual-parity checks remain open.",
+      "Local working-tree candidate includes intervening paper-flow changes; no main merge or public release claimed."
+    ],
+    "evidence": [
+      "artifacts/scan-icon-visible.log",
+      "artifacts/scan-icon-apk.log"
+    ]
+  },
+  "paperRetakeControls20261005": {
+    "status": "Photo capture controls refined; visual acceptance remains open",
+    "branch": "codex/ios-test-build",
+    "baseCommit": "814f8cc23edc36a60079c55b125369d8819dbc79",
+    "changes": [
+      "Replaced exposed native file chooser presentation with accessible camera-style capture/Retake control; actual image input and environment capture retained.",
+      "Pinned Retake beside Read photo after capture; Whole photo reset remains in scrollable content.",
+      "Retake translated in all 30 catalogs; footer made inert during recognition to prevent competing camera interactions."
+    ],
+    "checks": [
+      "22 paper-flow browser tests passed, including four new phone/tablet light/dark chooser-cancellation and persisted-original cases.",
+      "3 focused cases passed after footer busy-state change, covering recognition failure recovery, successful send provenance and disabled-server upload gate.",
+      "656 unit tests passed; translation check reports 30 languages with 1150 messages each and intact placeholders; missing-string audit empty.",
+      "Inspected reference/actual crop comparisons at 320 and 900 pixels in both themes."
+    ],
+    "evidence": [
+      "artifacts/paper-retake-tests.log",
+      "artifacts/paper-retake-busy.log",
+      "artifacts/paper-retake-unit.log",
+      "test-artifacts/paper-retake-comparison-320-light.png",
+      "test-artifacts/paper-retake-comparison-900-light.png",
+      "test-artifacts/paper-retake-comparison-320-dark.png",
+      "test-artifacts/paper-retake-comparison-900-dark.png"
+    ],
+    "remaining": [
+      "Overall modal framing, back/close navigation, instruction placement, preview surface/geometry and crop icon still differ from approved reference.",
+      "Reference uses a handwriting illustration and simulated phone frame; actual screenshots use an isolated synthetic photo. Image-content differences are not claimed as visual parity.",
+      "Actual native camera permission, activity handoff and touch-device runtime remain unverified; emulator package/window services previously unavailable.",
+      "Working-tree change only. Previously delivered local APK 1.3.47 does not contain this iteration; no release or new installer produced."
+    ]
+  },
+  "scanFixGitHubDelivery20261005": {
+    "status": "Published existing signed 1.3.47 test APK at user request",
+    "release": "https://github.com/Posnic/captain/releases/tag/captain-1.3.47-test.1",
+    "versionCode": 10347,
+    "sha256": "73e18541a3fa2457ffbe7cf24da4dfa1dd04f10d6086c10efef351b0d75451e9",
+    "verification": "GitHub asset uploaded, 10325543 bytes, server digest matches local APK.",
+    "limits": "Test prerelease from previously built working-tree candidate; tag/source archive identifies base only, explicitly disclosed in release notes. No main merge or native runtime verification claimed. Later Retake refinements excluded.",
+    "automation": "Paused at user request; remains paused."
+  },
+  "scanNativeVerification20261005": {
+    "date": "2026-10-05",
+    "status": "focused-scan-native-flow-passed",
+    "captainBase": "814f8cc",
+    "captainBranch": "codex/ios-test-build",
+    "posMain": "77fd9742af534820d42422a234c1fd419be43b59",
+    "serverPR": "https://github.com/Posnic/POS/pull/1125",
+    "fixes": [
+      "Separate native Take photo and Choose photo actions; Android image capture intent visibility",
+      "Full viewport photo editor with fit-to-width-and-height preview and pinned actions",
+      "Durable capture under original owner before PIN navigation",
+      "Normal page navigation no longer relocks PIN; native background lock retained",
+      "Private order photo retrieval timeout extended to 45 seconds",
+      "Production Textract parser joins unambiguous quantity columns and recognizes Guests metadata"
+    ],
+    "checks": {
+      "browser": "30 paper-order/order-photos tests passed",
+      "access": "33 access lifecycle/security tests passed",
+      "native": "Android API 36 emulator: camera permission, shutter, photo return, PIN unlock and restored 1392x1856 photo passed",
+      "endToEnd": "Isolated real POS API and real AWS Textract/S3: sample Table 4, Guests 3, Chicken Biryani x2, Mutton Biryani x1, Paneer Butter Masala x1; submitted exactly one order, queue empty, original photo retrieved",
+      "production": "Main parser deployed and actual Textract fixture verified; Azure paper feature explicitly enabled"
+    },
+    "artifacts": [
+      "artifacts/scan-native-recognition-evidence.json",
+      "artifacts/scan-native-submission-evidence.json",
+      "artifacts/scan-native-pin-evidence.json",
+      "artifacts/scan-pin-restored.png"
+    ],
+    "limits": [
+      "Physical handset camera not connected; native runtime verification used Android emulator",
+      "Overall Captain visual acceptance and iOS runtime remain open",
+      "Scheduled automation remains paused at user request"
+    ],
+    "release": {
+      "version": "1.3.48",
+      "versionCode": 10348,
+      "url": "https://github.com/Posnic/captain/releases/tag/captain-1.3.48-test.1",
+      "sha256": "92098afc4de9b0e38988cd3c60425ba6d82bb7781d61021fa734ec7824990852",
+      "signedApkSmoke": "Installed and onboarding rendered on Android API 36 emulator; debug disabled, no test harness, certificate matches previous release",
+      "source": "Exact source zip attached; working tree based on 814f8cc, not represented as merged"
+    }
+  },
+  "scanLiveFailure20261005": {
+    "status": "merged-develop-main-review-required",
+    "cause": "Paired Captain session allowlist omitted all paper-order routes. Live Android options calls at 05:04 UTC returned 403 before OCR.",
+    "verificationGap": "Earlier native test used staff login without paired-session restriction. Real AWS success did not verify this authorization path.",
+    "fix": "POS ae2f97ee, PR https://github.com/Posnic/POS/pull/1126; permits options, recognize, reference and UUID photo reads, not settings.",
+    "evidence": "Real paired-token HTTP plus real AWS sample recognition and private-photo roundtrip passed; 12 focused access tests and 15 paper tests passed. Full access suite hit cumulative rate limits.",
+    "apk": "Existing 1.3.48 can use server fix; not asking user to reinstall.",
+    "production": "Pending one required maintainer review on main; no deployment claimed",
+    "automation": "paused",
+    "promotion": "https://github.com/Posnic/POS/pull/1127",
+    "checks": "All required CI green on PR1126; full access suite 23 pass / 2 opt-in skipped; opt-in real AWS paired HTTP test passed separately."
+  },
+  "floorLoading20261005": {
+    "status": "targeted-tests-passed",
+    "cause": "Floor waited for all per-table bill and quantity reads; native managed transport skipped route-health events.",
+    "fix": "Render confirmed order cards before supplementary requests, omit unverified totals, publish route health after successful authenticated managed requests.",
+    "checks": "7 browser tests and 659 unit tests passed; signed APK installed and onboarding rendered on Android emulator",
+    "release": "https://github.com/Posnic/captain/releases/tag/captain-1.3.49-test.1",
+    "scope": "Does not resolve the separate live Table 4 bill 409; billing integrity remains enforced.",
+    "sha256": "fea8e3d59b1f904c048c760efc663ccb5bd8ea6501612f0ce1a0abc2b8472131",
+    "limits": "Physical handset startup-to-floor remains unverified; live Table 4 bill conflict remains separate."
+  },
+  "compactOrder20261006": {
+    "status": "local-preview",
+    "decisions": "Remove Bill entry and combined serve/collect; dish tap opens notes; mobile icon-only plus/minus; tablet Add again label retained. Standalone service/payment preserved.",
+    "preview": "http://127.0.0.1:41732/artifacts/order-preview.html",
+    "evidence": [
+      "test-artifacts/compact-preview-browser.png",
+      "test-artifacts/compact-order-tablet.png",
+      "artifacts/compact-order-tests.log",
+      "artifacts/compact-order-regression.log"
+    ],
+    "limits": "Isolated local API preview, no release or physical printer confirmation. Remote printing default changed in POS, explicit opt-out preserved; till registration still required.",
+    "checks": "4 focused browser scenarios and live isolated API preview verified; 9 quantity/layout/cancellation regression scenarios; 4 POS hardware preference tests passed. Phone and tablet light/dark renders inspected."
+  },
+  "orderPriority20261006": {
+    "status": "local-preview",
+    "changes": "Prominent per-item Serve; Serve all beside Add items. Print bill primary and Collect payment secondary in pinned footer; Move table direct. Photos, Split bill, cancellation and service settings under More options. Item tap and kitchen note remain direct.",
+    "evidence": [
+      "test-artifacts/compact-preview-browser.png",
+      "artifacts/order-priority-tests-recheck.log",
+      "artifacts/order-priority-serve.log"
+    ],
+    "preview": "http://127.0.0.1:41732/artifacts/order-preview.html",
+    "limits": "Local HTML only. No APK release or physical printer test."
+  },
+  "automaticOrders20261006": {
+    "status": "local-preview",
+    "change": "Removed Order sync navigation and account entry. Background retries continue with original idempotency key; connectivity recovery bypasses only waiting-order delay. No automatic bypass of authorization or validation blocks. Contextual Needs attention recovery retained.",
+    "checks": "18 queue unit tests passed; contextual recovery browser test passed. Reconnect browser evidence in artifacts/automatic-orders-reconnect.log.",
+    "limits": "Not yet released in APK. Retries run while app is active and resume when reopened; no OS background execution claim."
+  },
+  "duplicateTable20261006": {
+    "status": "local-fix",
+    "change": "Fresh authenticated occupancy and owned pending-order check before menu entry, including normalized custom table names. Confirmed rejected or never-attempted pending orders can be cancelled with confirmation. In-flight and uncertain deliveries cannot be locally discarded.",
+    "checks": "20 queue tests passed; occupied custom P/p and rejected-order cancel/keep browser scenarios passed. Final confirmation wording rerun in artifacts/duplicate-table-final.log.",
+    "limits": "Local source only, not in installed APK. New explanatory copy still requires translation before release. Existing server occupancy enforcement retained for concurrent captains."
+  },
+  "orderActionSheet20261006": {
+    "status": "local-preview",
+    "change": "Replace nested More/Order options disclosures with a single modal action sheet. Consistent icon rows, separate photo sheet, destructive cancellation styling. Existing authenticated action handlers retained.",
+    "checks": "Frequent-action browser scenario passed. Actual isolated API preview opened dark action sheet and photo sheet; screenshots inspected. Empty photo state included.",
+    "evidence": [
+      "artifacts/action-sheet-test.log",
+      "test-artifacts/order-action-sheet-dark.png",
+      "test-artifacts/order-photo-sheet-dark.png"
+    ],
+    "limits": "Not released in APK; preview test shop has photo uploading disabled."
+  },
+  "historyActions20261006": {
+    "status": "local-preview",
+    "change": "Replace expanding coloured action grid with ellipsis-triggered action sheet; direct order view retained, order/table identity in sheet, consistent rows and destructive colour only on cancellation.",
+    "checks": "4 browser scenarios passed at 320/820/900px: card view, search retention, layout, action sheet and selected-order Move table. Live isolated API dark preview inspected.",
+    "evidence": [
+      "artifacts/history-actions-tests.log",
+      "test-artifacts/history-actions-real-list.png",
+      "test-artifacts/history-actions-real-sheet.png"
+    ],
+    "preview": "http://127.0.0.1:41732/artifacts/history-preview.html",
+    "limits": "Not released in APK."
+  },
+  "historyDetailModify20261006": {
+    "status": "local-preview",
+    "change": "History detail uses a flat action sheet for photos, transfer and cancellation. Modify uses dish-name tap for notes, compact phone quantity controls and consistent dark footer colours.",
+    "checks": "Targeted history detail/Modify browser scenario passed. Isolated API dark phone screenshots inspected; existing history view/filter scenarios passed.",
+    "evidence": [
+      "artifacts/history-modify-recheck.log",
+      "test-artifacts/history-modify-real.png",
+      "test-artifacts/history-detail-options-real.png"
+    ],
+    "preview": "http://127.0.0.1:41732/artifacts/history-preview.html",
+    "limits": "Local preview only; not released in APK. No production order mutations or device runtime verification in this change."
+  },
+  "historyReadOnly20261006": {
+    "status": "local-preview",
+    "change": "Order History is read-only for pending and other orders: removed card mutations, detail Modify/cancel, service/transfer actions and More options. Shared main Orders editing remains available.",
+    "evidence": [
+      "artifacts/history-read-only-final.log",
+      "test-artifacts/history-read-only-320.png",
+      "test-artifacts/history-read-only-820.png"
+    ],
+    "limits": "Local preview; not yet in APK."
+  },
+  "savedConnections20261007": {
+    "open": [
+      "New strings still require translation audit completion before build/release",
+      "Physical Android/iOS secure restart, Wi-Fi radio and touch reordering not verified",
+      "First-time discovery and sign-in visual acceptance remains open",
+      "320px layout keeps controls inside viewport; reference clips right edge. Responsive adaptation needs acceptance",
+      "No APK or deployment from this change"
+    ],
+    "evidence": [
+      "artifacts/saved-settings-regression.log",
+      "artifacts/saved-settings-routing.log",
+      "artifacts/saved-settings-security-final.log",
+      "artifacts/saved-settings-final.log",
+      "artifacts/saved-settings-account-final.log",
+      "artifacts/saved-settings-visual-final.log",
+      "artifacts/connection-settings-comparison.html"
+    ],
+    "status": "local-implementation-tested",
+    "changes": [
+      "Actual Shop connections page with Wi-Fi search, verified address editing, priority arrows and drag, automatic switching, connection checking and recovery",
+      "Account Sign-in & PIN page with remembered login preference and optional PIN setup/removal",
+      "Verified backup addresses recorded as belonging to the current shop; authentication proof preserved"
+    ],
+    "baseCommit": "814f8cc",
+    "checks": [
+      "63 onboarding regression checks passed before final presentation refinements",
+      "79 connection routing checks passed",
+      "48 combined security/PIN checks passed; 33 secure-access checks rerun after route-recording correction passed",
+      "9 saved-settings functional scenarios passed; 4 final responsive screenshots passed",
+      "Account navigation and actual PIN enable/remove controls verified"
+    ],
+    "branch": "codex/ios-test-build"
+  },
+  "connectionMonitor20261007": {
+    "limits": [
+      "Emulator development build only; translation release gate not bypassed for publication",
+      "No physical printer output or real shop Wi-Fi roaming verified",
+      "Signed-in routes tested with isolated browser API fixtures; no customer orders/payments created",
+      "No APK published or remote CI triggered"
+    ],
+    "design": "User accepted saved-connections comparison on 2026-10-07",
+    "changes": [
+      "Connection checks from timer, resume and Retry share one in-flight operation",
+      "While cloud works and Wi-Fi has priority, the existing background monitor attempts verified LAN recovery without blocking service",
+      "Android discovery uses connected Wi-Fi network capabilities instead of a stale wlan interface"
+    ],
+    "checks": [
+      "146 onboarding and routing browser checks passed",
+      "Debug APK compiled and installed on Android 36 emulator",
+      "Native Wi-Fi bridge returned 10.0.2.16; settings fit 412px viewport and Search has 44px touch target",
+      "Native radio-off test passed: wifi false, discovery skipped",
+      "Automatic-switch opt-out persisted through native WebView reload"
+    ],
+    "evidence": [
+      "artifacts/connection-monitor-regression.log",
+      "artifacts/connection-simulator-radio-build.log",
+      "artifacts/connection-native-final.log",
+      "artifacts/connection-native-wifi-off.log",
+      "test-artifacts/connection-settings-android.png"
+    ],
+    "printing": "POS relay is enabled when preference is unset; explicit false remains off. Four POS preference checks passed.",
+    "status": "implemented-and-android-emulator-tested"
+  },
+  "release15520261007": {
+    "checks": [
+      "667 unit tests passed",
+      "146 connection/onboarding browser checks passed before translation-only changes",
+      "All 30 languages passed 360px settings and address-editor browser checks",
+      "Normal npm run build passed including translation audit and web-package validation",
+      "Signed release APK: com.posnic.captain, versionCode 10355, matching 1.3.54 signing certificate",
+      "Signed APK installed and displayed first-time setup in Android 36 emulator"
+    ],
+    "version": "1.3.55",
+    "remaining": [
+      "Final full local commit gate",
+      "Rebuild signed APK with exact source commit and publish to GitHub",
+      "POS production promotion requires maintainer approval",
+      "Physical printer output and real-shop Wi-Fi roaming remain unverified"
+    ],
+    "translations": "30 offline catalogs, 1246 messages each; 83 added messages including Internet. Manual Tamil/Nepali and reviewed AWS draft translations; protected product names and corrected Shop Wi-Fi meaning.",
+    "serverPR": "https://github.com/Posnic/POS/pull/1198",
+    "branch": "codex/captain-1.3.55",
+    "status": "final-full-local-gate-pending",
+    "regressionReview": {
+      "initial": "909 passed, 66 failed; obsolete navigation/control expectations updated to the approved design",
+      "fixed": [
+        "Read-only history retains saved reference photos without upload/edit controls",
+        "Serving preserves staff assignment when secondary controls move to More options"
+      ],
+      "reruns": [
+        "17 setup and split-bill tests passed",
+        "57 of 62 previously failed cases passed; remaining 5 passed after final corrections",
+        "Signed 1.3.55 installed over signed 1.3.54 on Android 36 emulator"
+      ],
+      "evidence": [
+        "artifacts/release-settings-rerun.log",
+        "artifacts/release-failure-rerun.log",
+        "artifacts/release-failure-final.log",
+        "test-artifacts/release-1.3.55-upgrade.png"
+      ]
+    },
+    "securityPR": "https://github.com/Posnic/POS/pull/1202"
   }
 }

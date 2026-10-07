@@ -565,7 +565,7 @@ async function loadTablesNow() {
             detail.amount = null;
             try {
                 const query = detail.sale_id ? 'saleId='+encodeURIComponent(detail.sale_id)+'&receipt=true' : 'table='+encodeURIComponent(detail.table_number);
-                const bill = await POSNIC.api.get('/captain/v1/bill?'+query);
+                const bill = await CaptainBill.read('/captain/v1/bill?'+query);
                 if (!Number.isSafeInteger(bill.totalMinor) || bill.totalMinor < 0) return;
                 const policy = CaptainMoney.snapshot(bill);
                 detail.amount = CaptainMoney.fromMinor(bill.totalMinor, policy);
@@ -573,7 +573,6 @@ async function loadTablesNow() {
             } catch { /* Omit an unverified total rather than show a subtotal. */ }
         };
         const takeawayDetails = Array.isArray(data.data.takeaway_orders) ? data.data.takeaway_orders : [];
-        await Promise.all([...detailed, ...takeawayDetails].flatMap(detail => [countItems(detail), loadPayable(detail)]));
         if (branchId !== (localStorage.getItem('branch_id') || null) || countOwner !== POSNIC.session.shopKey || countUser !== POSNIC.session.user?.id || !POSNIC.session.active || window.CaptainAccess?.locked) return;
 
         const card = (name, detail, extraClass) => {
@@ -601,6 +600,20 @@ async function loadTablesNow() {
                 (meta ? '<div class="floor-meta">' + escapeFloor(meta) + '</div>' : '') +
                 '</a>';
         };
+
+        // Orders are usable as soon as the floor response arrives. A slow or
+        // conflicting bill must not hide every table behind a loading screen.
+        for (const detail of [...detailed, ...takeawayDetails]) {
+            detail.amount = null;
+            delete detail.payableLabel;
+        }
+        container.innerHTML = detailed.map(detail => card(detail.table_number, detail)).join('') +
+            takeawayDetails.map(detail => card('Take Away ' + detail.number, {...detail, minutes: FloorView.minutesSince(detail.since)}, 'is-takeaway')).join('');
+        hideSectionLoader('tables-list');
+        const initialCount = document.getElementById('floor-count');
+        if (initialCount) initialCount.textContent = (detailed.length + takeawayDetails.length) + ' open';
+        await Promise.all([...detailed, ...takeawayDetails].flatMap(detail => [countItems(detail), loadPayable(detail)]));
+        if (branchId !== (localStorage.getItem('branch_id') || null) || countOwner !== POSNIC.session.shopKey || countUser !== POSNIC.session.user?.id || !POSNIC.session.active || window.CaptainAccess?.locked) return;
 
         let html = '';
         detailed.forEach((detail) => {
@@ -830,7 +843,7 @@ async function selectTable(tableName, takeaway, options = {}) {
                 ${
                   isTakeaway && (!targetSaleId || alreadyPaid)
                     ? ''
-                    : `<div class="floor-bill-actions" ${targetSaleId ? 'hidden data-takeaway-billing="true"' : ''}><button type="button" class="floor-bill-btn" data-review-bill="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-receipt" aria-hidden="true"></i><span>Bill</span></button><button type="button" class="floor-bill-btn" data-collect-table="${escapeFloor(tableName)}"${targetAttribute}>Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-columns" aria-hidden="true"></i><span>Split bill</span></button><button type="button" class="floor-bill-btn" id="ask-for-bill"${targetAttribute}
+                    : `<div class="floor-bill-actions" ${targetSaleId ? 'hidden data-takeaway-billing="true"' : ''}><button type="button" class="floor-bill-btn" data-collect-table="${escapeFloor(tableName)}"${targetAttribute}>Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-columns" aria-hidden="true"></i><span>Split bill</span></button><button type="button" class="floor-bill-btn" id="ask-for-bill"${targetAttribute}
                          data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
                 }
             </div>
@@ -1088,7 +1101,12 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-window.addEventListener('beforeunload', stopKotTablePolling);
+window.addEventListener('captain:resumed', () => {
+    startKotTablePolling();
+    // A request started before suspension must settle before a fresh read.
+    void Promise.resolve(tablesRequest).catch(() => {}).then(() => loadTables()).catch(() => {});
+  });
+  window.addEventListener('beforeunload', stopKotTablePolling);
 
 document.addEventListener('DOMContentLoaded', async () => {
     let activeBranch = localStorage.getItem('kiosk_selected_branch') || localStorage.getItem('branch_id');
@@ -1224,14 +1242,6 @@ const captainPaymentButtons = new MutationObserver(() => {
     CaptainPayments.available({saleId:button.dataset.saleId}).then(enabled => { if (button.isConnected) {
             button.hidden=false;
             button.dataset.collectionAvailable=String(enabled);
-            const sheet=document.querySelector('.order-workspace');
-            const serve=sheet?.querySelector('[data-serve-all]');
-            if(enabled && serve && serve.closest('.order-sheet')?.dataset.paymentStatus !== 'Paid' && sheet.querySelectorAll('.order-sheet').length===1 && !sheet.querySelector('[data-serve-and-collect]')) {
-                const combined=serve.cloneNode(true);combined.setAttribute('data-serve-and-collect','');
-                const label=serve.closest('[data-takeaway="true"]')?'Hand over & collect payment':'Serve all & collect payment';
-                combined.setAttribute('aria-label',label);combined.querySelector('span').textContent=label;
-                serve.parentElement.append(combined);
-            }
         } });
     const takeawayActions = button.closest('[data-takeaway-billing]');
     if (takeawayActions) POSNIC.api.get('/captain/v1/payment-options').then(options => {

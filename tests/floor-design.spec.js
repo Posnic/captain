@@ -140,10 +140,65 @@ test("saved orders stay grey on the floor and the navigation count excludes othe
   await expect(page.locator(".floor-card.is-pending")).toContainText("7");
   await expect(page.locator(".floor-card.is-pending")).toContainText("Table is unavailable");
   await expect(page.locator(".floor-card.is-pending")).toContainText("Needs attention");
-  await expect(page.locator(".navigation-count")).toHaveText("1");
+  await expect(page.locator('.captain-navigation a[href="pending.html"]')).toHaveCount(0);
+  await expect(page.locator("[data-needs-attention]")).toBeVisible();
   await expect(page.getByText("Private table")).toHaveCount(0);
   await expect(page.locator("#no-orders-message")).toBeHidden();
   await page.locator(".floor-card.is-pending").click();
   await expect(page).toHaveURL(/pending.html$/);
   await expect(page.locator(".pending-order-card")).toHaveCount(1);
+});
+
+test('waiting order retries on reconnect without a sync menu or duplicate key',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.goto('/kot-management.html');
+ await page.waitForFunction(()=>window.POSNIC_ORDER_QUEUE_UI && POSNIC.session.active);
+ let online=false;const bodies=[];
+ await page.route('**/sales/qrOrder',route=>{
+  bodies.push(route.request().postDataJSON());
+  return route.fulfill(online?{json:{type:'success'}}:{status:503,json:{message:'Unavailable'}});
+ });
+ await page.evaluate(async()=>{
+  OrderQueue.add({key:'auto-retry-test',body:{idempotencyKey:'auto-retry-test',kiosk_table_no:'7',items:[]}});
+  await POSNIC_ORDER_QUEUE_UI.flush(true);
+  OrderQueue.update('auto-retry-test',{state:'waiting',nextAt:Date.now()+60000});
+  POSNIC_ORDER_QUEUE_UI.render();
+ });
+ await expect(page.locator('.captain-navigation a')).toHaveCount(3);
+ await expect(page.locator('#posnic-unsent-text')).toContainText('Sending automatically');
+ await expect(page.locator('[data-needs-attention]')).toBeHidden();
+ online=true;
+ await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+ await expect.poll(()=>page.evaluate(()=>OrderQueue.count())).toBe(0);
+ await expect(page.locator('#posnic-unsent')).toBeHidden();
+ expect(bodies.length).toBeGreaterThanOrEqual(2);
+ expect(new Set(bodies.map(body=>body.idempotencyKey))).toEqual(new Set(['auto-retry-test']));
+});
+
+test('duplicate custom table is stopped before the menu opens',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['P'],table_details:[{table_number:'P',orders:1}]}}}));
+ await page.goto('/discount.html');
+ await page.locator('#manual_table_input').fill('p');
+ await page.locator('[onclick*="goToProductsWithTableCheck"]').click();
+ await expect(page.getByText('Table P already has an order. Open it from Tables to add items, or choose another table.',{exact:true})).toBeVisible();
+ await expect(page).toHaveURL(/discount.html$/);
+ await page.screenshot({path:'test-artifacts/duplicate-table-warning.png'});
+});
+test('rejected duplicate can be cancelled without changing the existing kitchen order',async({page})=>{
+ await onTheMenu(page,'nothing');await page.goto('/pending.html');
+ await page.waitForFunction(()=>window.POSNIC_ORDER_QUEUE_UI && POSNIC.session.active);
+ await page.evaluate(()=>{
+  OrderQueue.add({key:'rejected-P',body:{idempotencyKey:'rejected-P',kiosk_table_no:'P',items:[]}});
+  OrderQueue.update('rejected-P',{state:'attention',attempts:1,message:'Table P already has an open order. Add to it, or settle it first.'});
+  POSNIC_ORDER_QUEUE_UI.render();
+ });
+ await page.locator('[data-discard-pending]').click();
+ await page.screenshot({path:'test-artifacts/pending-order-cancel.png'});
+ await page.locator('[data-confirm-action=keep]').click();
+ expect(await page.evaluate(()=>OrderQueue.count())).toBe(1);
+ await page.locator('[data-discard-pending]').click();
+ await page.locator('[data-confirm-action=discard]').click();
+ await expect(page.locator('.pending-order-card')).toHaveCount(0);
+ expect(await page.evaluate(()=>OrderQueue.count())).toBe(0);
 });

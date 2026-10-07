@@ -69,6 +69,7 @@
     <link rel="stylesheet" href="assets/common/app-design.css">
     <link rel="stylesheet" href="assets/table/entry.css">
     <link rel="stylesheet" href="assets/common/appearance.css">
+<script src="assets/common/order-photos.js" defer></script>
 </head>
 
 <body class="seat-screen">
@@ -262,6 +263,27 @@
                 return;
             }
 
+
+            if (orderType === 'Dine-in') {
+                const normalize = value => String(value || '').trim().toUpperCase();
+                tableNo = normalize(tableNo);
+                const response = await POSNIC.api.post('/sales/getTablesWithActiveOrders', {
+                    branch_id: localStorage.getItem('branch_id') || localStorage.getItem('kiosk_selected_branch')
+                });
+                if (response?.type !== 'success' || !Array.isArray(response.data?.tables)) {
+                    showErrorPopup('Could not check this table. Please try again.');
+                    return;
+                }
+                const occupied = response.data.tables.some(value => normalize(value) === tableNo) ||
+                    (response.data.table_details || []).some(row => normalize(row.table_number) === tableNo && Number(row.orders) > 0);
+                const pending = window.POSNIC_ORDER_QUEUE_UI?.visibleRows().some(row => normalize(row.body?.kiosk_table_no) === tableNo);
+                if (occupied || pending) {
+                    showErrorPopup(occupied
+                        ? `Table ${tableNo} already has an order. Open it from Tables to add items, or choose another table.`
+                        : `Table ${tableNo} already has a saved order. Check it from Tables before starting another.`);
+                    return;
+                }
+            }
 
             if (!await resolvePreviousDraft()) return;
 

@@ -12,9 +12,9 @@
     dialog.setAttribute('aria-labelledby', 'captain-discard-title');
     const title = document.createElement('h2');
     title.id = 'captain-discard-title';
-    title.textContent = t('Discard changes?');
+    title.textContent = t(options.title || 'Discard changes?');
     const footer = document.createElement('footer');
-    for (const [action, label] of [['keep', 'Keep editing'], ['discard', 'Discard changes']]) {
+    for (const [action, label] of [['keep', options.keepLabel || 'Keep editing'], ['discard', options.confirmLabel || 'Discard changes']]) {
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.confirmAction = action;

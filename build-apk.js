@@ -194,6 +194,11 @@ if (fs.existsSync(manifestPath)) {
     ].join('\n');
     manifest = manifest.replace('<application', camera);
   }
+  // Android package visibility must let Capacitor resolve the camera intent.
+  if (!manifest.includes('android.media.action.IMAGE_CAPTURE')) {
+    const cameraQuery='<intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>';
+    manifest=manifest.includes('</queries>')?manifest.replace('</queries>',cameraQuery+'</queries>'):manifest.replace('<application','<queries>'+cameraQuery+'</queries>\n    <application');
+  }
 
   /*
    * The microphone, for a waiter who says the order instead of tapping it.

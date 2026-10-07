@@ -145,14 +145,27 @@
       ? plan?.dueMinor || 0
       : plan?.guests[Number(selected)]?.totalMinor || 0;
   let qrReady = false;
+  const upiAmount = () => mixed ? (tenderRows().find(row => row.method === 'Upi')?.amountMinor || 0) : amount();
   function upiUri() {
     const payee = plan?.upiPayee;
     const currency = monetary();
     if (!payee?.id || !payee?.name || currency.currencyDigits !== 2 ||
         !(currency.currencyCode === "INR" || (!currency.currencyCode && currency.currencySymbol === "₹")) ||
-        !Number.isSafeInteger(amount()) || amount() <= 0) return "";
-    const fields = { pa: payee.id, pn: payee.name, am: (amount() / 100).toFixed(2), cu: "INR", tn: saleId ? table : "Table " + table };
+        !Number.isSafeInteger(upiAmount()) || upiAmount() <= 0 || upiAmount() > amount()) return "";
+    const fields = { pa: payee.id, pn: payee.name, am: (upiAmount() / 100).toFixed(2), cu: "INR", tn: saleId ? table : "Table " + table };
     return "upi://pay?" + Object.entries(fields).map(([k,v]) => k + "=" + encodeURIComponent(v)).join("&");
+  }
+  function mixedQr() {
+    const host = dialog?.querySelector('#cp-mixed-upi');
+    if (!host) return;
+    qrReady = false;
+    host.replaceChildren();
+    if (!(upiAmount() > 0)) return;
+    const uri = upiUri();
+    if (!uri) { host.innerHTML = `<p class="cp-error">${esc(t('Set up UPI in Branch details. UPI QR payments require INR.'))}</p>`; return; }
+    host.innerHTML = `<section class="cp-upi"><strong translate="no">${esc(plan.upiPayee.name)}</strong><div translate="no">${esc(plan.upiPayee.id)}</div><div id="cp-qr" role="img" aria-label="${esc(t('UPI'))}"></div><strong translate="no">${esc(money(upiAmount()))}</strong></section>`;
+    try { const qr=host.querySelector('#cp-qr');new QRCode(qr,{text:uri,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});qr.removeAttribute('title');qrReady=true; }
+    catch { host.textContent=t('Set up UPI in Branch details. UPI QR payments require INR.'); }
   }
   const save = () => {
     try {
@@ -185,8 +198,8 @@
     if (plan?.dueMinor > 0 && !pending && !reviewing && !receipt && plan.mixedPayment && plan.methods.length > 1) {
       if (mixed) body = `<p class="cp-paying-guest">${esc(t('Guest'))}: <strong translate="no">${esc(selected === '' ? t('All remaining guests') : plan.guests[Number(selected)].name)}</strong></p><div class="cp-balance"><span>${esc(t('Total'))}</span><strong translate="no">${esc(money(amount()))}</strong></div>` +
         plan.methods.map(m => `<label>${esc(t(m === 'Upi' ? 'UPI' : m))}<input data-tender="${esc(m)}" inputmode="decimal" type="number" min="0" step="${1 / monetary().factor}" value="${esc(tenderAmounts[m] || '')}"></label>`).join('') +
-        `<div class="cp-change"><span>${esc(t('Remaining balance'))}</span><strong id="cp-tender-remaining" translate="no">${esc(money(amount() - tenderTotal()))}</strong></div><label class="cp-confirm"><input type="checkbox" id="cp-verified" ${verified ? 'checked' : ''}><span>${esc(t('I verified this payment on the terminal or bank app.'))}</span></label>`;
-      body += `<label class="cp-confirm"><input type="checkbox" id="cp-mixed" ${mixed ? 'checked' : ''}><span>${esc(t('Split payment'))}</span></label>`;
+        `<div class="cp-change"><span>${esc(t('Remaining balance'))}</span><strong id="cp-tender-remaining" translate="no">${esc(money(amount() - tenderTotal()))}</strong></div><div id="cp-mixed-upi"></div><label class="cp-confirm"><input type="checkbox" id="cp-verified" ${verified ? 'checked' : ''}><span>${esc(t('I verified this payment on the terminal or bank app.'))}</span></label>`;
+      body = `<label class="cp-confirm cp-split-choice"><input type="checkbox" id="cp-mixed" ${mixed ? 'checked' : ''}><span>${esc(t('Split payment'))} · ${plan.methods.map(m=>esc(t(m==='Upi'?'UPI':m))).join(' / ')}</span></label>${mixed && plan.methods.includes('Cash') && plan.methods.includes('Upi') ? `<button type="button" data-action="half">${esc(t('Cash'))} 50% · ${esc(t('UPI'))} 50%</button>` : ''}` + body;
     }
     if (reviewing && plan && !pending) {
       const guest = selected === "" ? t("All remaining guests") : plan.guests[Number(selected)].name;
@@ -199,6 +212,7 @@
     }
     dialog.innerHTML = `<header><h2>${esc(t("Collect payment"))} <small translate="no">${esc(table)}</small></h2><button type="button" data-action="close" aria-label="${esc(t("Close"))}">×</button></header><div class="cp-body">${saleId ? `<p class="cp-help">${esc(t("Payment only. Food stays active until handed over."))}</p>` : ""}${body}${error ? `<p class="cp-error" role="status">${esc(t(error))}</p>${error === "Payment collection is not enabled for this phone." ? `<p class="cp-help">${esc(t("Payment is collected at the desktop cashier."))}</p><a class="cp-settings" href="payment-settings.html">${esc(t("Payment settings"))}</a>` : ""}` : ""}</div><footer><button type="button" data-action="${reviewing ? "back" : "close"}">${esc(t(reviewing ? "Back" : plan?.dueMinor === 0 ? "Close" : "Cancel"))}</button>${receipt ? (plan?.dueMinor > 0 ? `<button type="button" class="cp-primary" data-action="continue">${esc(t("Continue"))}</button>` : "") : plan?.dueMinor === 0 ? "" : `<button type="button" class="cp-primary" data-action="record" ${busy ? "disabled" : ""}>${esc(t(busy ? "Loading..." : pending || !plan ? "Retry" : reviewing ? "Record payment" : "Continue"))}${plan && !pending ? ` · <span translate="no">${esc(money(amount()))}</span>` : ""}</button>`}</footer>`;
     const qr = dialog.querySelector("#cp-qr");
+    if (mixed && !reviewing) mixedQr();
     if (qr) {
       try {
         new QRCode(qr, { text: upiUri(), width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
@@ -289,7 +303,9 @@
       if (mixed && (tenderRows().length < 2 || tenderRows().some(row => !Number.isSafeInteger(row.amountMinor) || row.amountMinor <= 0) || tenderTotal() !== amount())) {
         error = 'Payment amounts must equal the bill.'; render(); return;
       }
-      if (method === "Upi" && !qrReady) return;
+      if ((method === "Upi" || (mixed && upiAmount() > 0)) && !qrReady) {
+        error = 'Set up UPI in Branch details. UPI QR payments require INR.'; render(); return;
+      }
       const paid = amount(),
         cash = cashMinor();
       if (method === "Cash" && (!Number.isFinite(cash) || cash < paid)) {
@@ -414,6 +430,11 @@
       if (action === "back" && !busy) { reviewing = false; render(); }
       if (action === "record" && !receipt) record();
       if (action === "continue" && !busy) { receipt = null; render(); }
+      if (action === 'half' && mixed && !busy && !pending) {
+        const upi=Math.floor(amount()/2);
+        tenderAmounts={Cash:CaptainMoney.fromMinor(amount()-upi,monetary()).toFixed(monetary().currencyDigits),Upi:CaptainMoney.fromMinor(upi,monetary()).toFixed(monetary().currencyDigits)};
+        verified=false;error='';render();
+      }
       const m = e.target.closest("[data-method]")?.dataset.method;
       if (m) {
         method = m;
@@ -447,6 +468,7 @@
         verified = false;
         const confirmation = dialog.querySelector('#cp-verified'); if (confirmation) confirmation.checked = false;
         dialog.querySelector('#cp-tender-remaining').textContent = money(amount() - tenderTotal());
+        mixedQr();
       }
       if (e.target.id === "cp-reference") reference = e.target.value;
       if (e.target.id === "cp-received") {

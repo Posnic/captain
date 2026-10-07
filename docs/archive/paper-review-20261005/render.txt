@@ -1,0 +1,39 @@
+  function render() {
+    const host=dialog.querySelector('[data-content]');
+    const actions=dialog.querySelector('.paper-actions');
+    actions.replaceChildren();actions.hidden=true;
+    if(draft.submission){
+      host.innerHTML='<p>Order saved. Retry sending the same order.</p><button type="button" data-retry>Retry</button>';
+      host.querySelector('[data-retry]').onclick=send;return;
+    }
+    host.innerHTML=`${draft.result?'<details><summary>Photo</summary>':''}<label class="paper-camera">Take or choose photo<input type="file" accept="image/jpeg,image/png" capture="environment"></label>
+      ${draft.original?'<div class="paper-preview"><canvas aria-label="Drag to select the writing area"></canvas></div><p>Drag around the writing to crop, or process the whole photo. The original is kept.</p><button type="button" data-process>Read photo</button><button type="button" data-reset>Whole photo</button>':''}
+      ${draft.result?`</details><section><h3>Review order</h3><p>Check every item and quantity before sending.</p>
+      <div class="paper-seating"><label>Table<select data-table><option value="">Choose table</option>${tables.map(t=>`<option value="${esc(t.id)}" ${t.id===draft.table?'selected':''}>${esc(t.tableorder_value)}</option>`).join('')}</select></label><label>Guests (optional)<input data-pax type="number" min="1" max="999" value="${esc(draft.pax)}"></label></div>
+      <div data-rows>${draft.rows.map((r,i)=>`<div class="paper-row" data-row="${i}"><small>${esc(r.text||'Added item')}${r.confidence<90?' · Check handwriting':''}</small>
+      <label>Item<select data-item>${itemOptions(r.item)}</select></label><label>Quantity<input data-qty type="number" min="0.01" max="999" step="0.01" value="${esc(r.quantity??'')}"></label><label>Kitchen note<input data-note maxlength="200" value="${esc(r.note||'')}"></label><button type="button" data-remove>Remove</button></div>`).join('')}</div>
+      <button type="button" data-add>Add item</button><button class="paper-send" type="button" data-send>Send to kitchen</button></section>`:''}`;
+    host.querySelector('input[type=file]').onchange=async e=>{
+      if(busy)return; const file=e.target.files[0]; if(!file)return;
+      if(file.size>5*1024*1024){message('Choose a photo under 5 MB.');return;}
+      const original=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(file);});
+      draft={id:crypto.randomUUID(),original,rows:[],table:'',pax:''};cropStart=cropEnd=null;
+      try {await storage(draft);render();}catch{message('Photo could not be saved. Free phone storage and retry.');}
+    };
+    if(draft.original) { draw(); host.querySelector('[data-process]').onclick=process;
+      host.querySelector('[data-reset]').onclick=()=>{cropStart=cropEnd=null;draw();}; }
+    if(!draft.result)return;
+    host.querySelector('[data-table]').onchange=e=>{draft.table=e.target.value;persist();};
+    host.querySelector('[data-pax]').oninput=e=>{draft.pax=e.target.value;persist();};
+    host.querySelectorAll('[data-row]').forEach(row=>{
+      const i=Number(row.dataset.row);
+      row.querySelector('[data-item]').onchange=e=>{draft.rows[i].item=e.target.value;persist();};
+      row.querySelector('[data-qty]').oninput=e=>{draft.rows[i].quantity=e.target.value===''?null:Number(e.target.value);persist();};
+      row.querySelector('[data-note]').oninput=e=>{draft.rows[i].note=e.target.value;persist();};
+      row.querySelector('[data-remove]').onclick=()=>{draft.rows.splice(i,1);persist();render();};
+    });
+    host.querySelector('[data-add]').onclick=()=>{draft.rows.push({text:'',item:'',quantity:1,confidence:100});persist();render();};
+    const sendButton=host.querySelector('[data-send]');
+    sendButton.onclick=send;
+    actions.append(sendButton);actions.hidden=false;
+  }

@@ -313,3 +313,34 @@ for(const scenario of ['light','dark','partial','rejected','unconfirmed','reduce
   await expect(scene).toHaveCount(0);
  }
 });
+
+test('cash and UPI split uses only the UPI portion in QR and safely retries both tenders',async({page})=>{
+ const plan=await setup(page);
+ await page.setViewportSize({width:390,height:844});
+ await page.locator('[data-method=Upi]').click();
+ await page.locator('#cp-mixed').check();
+ await page.locator('[data-action=half]').click();
+ await expect(page.locator('[data-tender=Cash]')).toHaveValue('50.01');
+ await expect(page.locator('[data-tender=Upi]')).toHaveValue('50.00');
+ await page.addScriptTag({path:'node_modules/jsqr/dist/jsQR.js'});
+ const qrAmount=()=>page.evaluate(()=>{const c=document.querySelector('#cp-qr canvas');const p=c.getContext('2d').getImageData(0,0,c.width,c.height);return new URL(jsQR(p.data,c.width,c.height).data).searchParams.get('am');});
+ expect(await qrAmount()).toBe('50.00');
+ await page.locator('#cp-verified').check();
+ await page.locator('[data-tender=Upi]').fill('40');
+ await expect(page.locator('#cp-verified')).not.toBeChecked();
+ expect(await qrAmount()).toBe('40.00');
+ await page.locator('[data-tender=Cash]').fill('60.01');
+ await expect(page.locator('#cp-tender-remaining')).toHaveText('₹0.00');
+ await page.screenshot({path:'test-artifacts/mobile-cash-upi-split.png'});
+ const posts=[];
+ await page.route('**/captain/v1/payments/record',r=>{const b=r.request().postDataJSON();posts.push(b);return posts.length===1?r.fulfill({status:503,json:{message:'lost response'}}):r.fulfill({json:{...plan,dueMinor:0,paidMinor:10001,confirmed:b.request_id,payments:[{...b,id:b.request_id}]}});});
+ await page.locator('#cp-verified').check();
+ await page.locator('[data-action=record]').click();
+ await expect(page.locator('.cp-review').last()).toContainText('₹40.00');
+ await page.locator('[data-action=record]').click();
+ await expect(page.locator('.cp-error')).toContainText('Retry this request');
+ await page.locator('[data-action=record]').click();
+ await expect(page.locator('#captain-payments')).not.toBeVisible();
+ expect(posts[1]).toEqual(posts[0]);
+ expect(posts[0].tenders.map(t=>[t.method,t.amountMinor])).toEqual([['Cash',6001],['Upi',4000]]);
+});

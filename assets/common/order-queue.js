@@ -112,6 +112,17 @@
     return true;
   }
 
+  function canDiscard(row) {
+    return !!row && !row.held && ((row.attempts || 0) === 0 ||
+      (row.state === 'attention' && (row.rejectedBeforeSave === true ||
+        /already has (?:an open order|\d+ open orders)/.test(row.message || ''))));
+  }
+  function discard(key) {
+    if (flight) return false;
+    const row = read().find(row => row.key === key);
+    return canDiscard(row) && remove(key);
+  }
+
   function noteAttempt(key) {
     const rows = read();
     const row = rows.find((r) => r.key === key);
@@ -168,7 +179,7 @@
     return flight;
   }
 
-  async function drain(send, { force = false, key, eligible = () => true, now = Date.now } = {}) {
+  async function drain(send, { force = false, connectionRestored = false, key, eligible = () => true, now = Date.now } = {}) {
     const rows = read();
     let sent = 0;
 
@@ -179,7 +190,7 @@
       if (key && row.key !== key) continue;
       if (row.state === "attention" && key !== row.key) continue;
       if (row.state === "blocked" && !force) break;
-      if (!force && row.nextAt > now()) break;
+      if (!force && !(connectionRestored && row.state === "waiting") && row.nextAt > now()) break;
       try {
         if (!noteAttempt(row.key)) break; // Never send if durable bookkeeping failed.
         const result = await send(row);
@@ -208,6 +219,7 @@
         if (
           !update(row.key, {
             state,
+            rejectedBeforeSave: state === 'attention' && [400,422].includes(Number(e.status)),
             message: e.message || "Waiting for connection.",
             code: e.code || "",
             nextAt: now() + delay,
@@ -222,6 +234,8 @@
 
   return {
     newKey,
+    canDiscard,
+    discard,
     add,
     remove,
     all,

@@ -37,7 +37,7 @@ async function setup(page) {
       json: {
         type: "success",
         data: {
-          tables: [{ table_number: "T1", order_count: 1, total: 100.01 }],
+          tables: ["T1"],
         },
       },
     }),
@@ -72,7 +72,8 @@ async function setup(page) {
   await page.goto("/kot-management.html");
   await page.waitForFunction(() => typeof selectTable === "function");
   await page.evaluate(() => selectTable("T1", false));
-  await page.locator('[data-split-table="T1"]').click();
+  await page.locator('[data-order-more]').click();
+  await page.getByRole('button', {name:await page.evaluate(()=>I18N.t('Split bill')), exact:true}).click();
   await expect(page.locator("#guest-bills [data-action=next]")).toBeEnabled();
   return posts;
 }
@@ -177,7 +178,8 @@ test("Cancel keeps a prepared split available offline and leaves the floor usabl
   await page.route("**/sales/guestBills/table?**", (r) =>
     r.fulfill({ status: 503, json: { message: "Offline" } }),
   );
-  await page.locator('[data-split-table="T1"]').click();
+  await page.locator('[data-order-more]').click();
+  await page.getByRole('button',{name:await page.evaluate(()=>I18N.t('Split bill')),exact:true}).click();
   await expect(page.locator(".guest-bill-error")).toContainText("Offline.");
   await expect(page.locator(".guest-bill-review")).toHaveCount(2);
   await page.locator("#guest-bills header [data-action=close]").click();

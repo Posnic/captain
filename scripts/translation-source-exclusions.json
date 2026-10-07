@@ -44,5 +44,9 @@
   "Invalid bill",
   "Invalid component",
   "Missing bill components",
-  "Order bill unavailable"
+  "Order bill unavailable",
+  "history photos",
+  "history-action-sheet history-photo-sheet",
+  "photos home",
+  "setup-hint setup-session-help"
 ]

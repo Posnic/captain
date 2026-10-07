@@ -59,7 +59,8 @@ test("main Tamil journeys have no untranslated interface labels", async ({
           !parent.getClientRects().length
         )
           continue;
-        if (/[A-Za-z]{2}/.test(text) && I18N.t(text) === text)
+        // PIN is an intentional security acronym inside otherwise translated labels.
+        if (/[A-Za-z]{2}/.test(text.replace(/\bPIN\b/g, '')) && I18N.t(text) === text)
           values.push(text);
       }
       return [...new Set(values)];

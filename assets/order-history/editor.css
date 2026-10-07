@@ -107,3 +107,11 @@
 #item-picker .product-search-inner,
 #item-picker .product-search-inner:focus-within{background:var(--surface-sunk);color:var(--ink)}
 #item-picker .product-search-inner input{background:transparent;color:var(--ink)}
+
+/* Full-page Modify uses the same direct dish editing as the order screen. */
+#editOrderModal:not(.inline-order-editor) .editor-item-actions .editor-note-link{display:none}
+#editOrderModal:not(.inline-order-editor) .order-item-card:has(.editor-item-actions) .editor-item-actions{grid-column:1;grid-row:2}
+#editOrderModal:not(.inline-order-editor) .order-item-card:has(.editor-item-actions) .item-controls{grid-column:2;grid-row:2;flex-wrap:nowrap}
+#editOrderModal:not(.inline-order-editor) .editor-cancel{background:var(--surface-sunk);color:var(--ink);border-color:var(--line)}
+#editOrderModal:not(.inline-order-editor) #current-order-items>.editor-items-heading{padding:10px 0 8px;margin:0;font-size:12px;color:var(--ink-soft)}
+#editOrderModal:not(.inline-order-editor) .order-item-card .item-controls .qty-btn{background:var(--surface-sunk);color:var(--accent)}

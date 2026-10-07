@@ -3,6 +3,7 @@ import {onTheMenu} from './support/shop.js';
 test('Wi-Fi fallback explains delay, waits for consent and does not repeatedly prompt after refusal',async({page})=>{
  await onTheMenu(page,'nothing');
  await page.evaluate(()=>{
+  localStorage.setItem('posnic.automatic-connections','0');
   POSNIC.server.pin('http://192.168.1.20:5555/api');
   window.switchResult=undefined;
   POSNIC.internetChoice.ask('https://smoke.posnic.io/api').then(v=>window.switchResult=v);

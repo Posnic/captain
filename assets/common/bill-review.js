@@ -13,6 +13,34 @@
           "'": "&#39;",
         })[ch],
     );
+  // Coalesce only in-flight reads. Never cache a payable balance after a mutation.
+  const reads = new Map();
+  function read(path) {
+    const identity = () => JSON.stringify([POSNIC.session.shopKey, POSNIC.session.user?.id,
+      localStorage.getItem("branch_id")]);
+    const owner = identity(), key = owner + (POSNIC.session.base || POSNIC.server.baseUrl) + path;
+    if (reads.has(key)) return reads.get(key);
+    const current = () => identity() === owner && POSNIC.session.active && !window.CaptainAccess?.locked;
+    const flight = (async () => {
+      for (let attempt = 0; ; attempt++) {
+        if (!current()) throw new Error("Reconnect your account before sending.");
+        try {
+          const result = await POSNIC.api.get(path);
+          if (!current()) throw Object.assign(new Error("Reconnect your account before sending."), {status:401});
+          return result;
+        } catch (error) {
+          const status = Number(error.status || error.statusCode || 0);
+          // Read-only recovery; payment recording never passes through this helper.
+          if (attempt >= 2 || !current() || error.code === "PIN_LOCKED" ||
+              !(!status || [408,409,429,500,502,503,504].includes(status))) throw error;
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+    })();
+    reads.set(key, flight);
+    flight.finally(() => { if (reads.get(key) === flight) reads.delete(key); }).catch(() => {});
+    return flight;
+  }
   let dialog,
     table,
     branch,
@@ -66,7 +94,7 @@
     const user = POSNIC.session.user?.id;
     render("Loading...");
     try {
-      const data = await POSNIC.api.get(
+      const data = await read(
         "/captain/v1/bill?" + (saleId ? "saleId=" + encodeURIComponent(saleId) + (receipt ? "&receipt=true" : "") : "table=" + encodeURIComponent(table)),
       );
       if (ticket !== generation || !dialog.open) return;
@@ -191,5 +219,5 @@
     if (event.detail?.completed) { close(); return; }
     if (dialog?.open) void load();
   });
-  window.CaptainBill = { open };
+  window.CaptainBill = { open, read };
 })();

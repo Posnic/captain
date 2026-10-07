@@ -49,7 +49,7 @@ test('older servers do not offer an unsupported order note editor',async({page})
 });
 for(const rounds of [false,true])test(`Note beside a dish opens its exact preparation directly, rounds=${rounds}`,async({page})=>{
  const posts=await floor(page,{rounds});
- await page.locator('[data-line-key="second"] [data-line-action=note]').click();
+ await page.locator('[data-line-key="second"]').locator('..').locator('[data-item-note]').click();
  await expect(page.locator('#editItemNotesModal')).toBeVisible();
  await expect(page.locator('#edit-item-notes-text')).toHaveValue('Extra spicy');
  await page.locator('#edit-item-notes-text').fill('Less oil');
@@ -59,7 +59,7 @@ for(const rounds of [false,true])test(`Note beside a dish opens its exact prepar
  await expect(page.locator('#current-order-items [data-draft-line=false]').first()).toBeHidden();
  const unchangedRow=page.locator('.kot-items-list [data-line-key="second"]').locator('..');
  await expect(unchangedRow.locator('.service-item-note')).toHaveText('Less oil');
- await page.locator('.kot-items-list [data-line-key="second"] [data-line-action=note]').click();
+ await page.locator('.kot-items-list [data-line-key="second"]').locator('..').locator('[data-item-note]').click();
  await expect(page.locator('#edit-item-notes-text')).toHaveValue('Less oil');
  await page.locator('#edit-item-notes-apply').click();
  expect(posts).toEqual([]);
@@ -117,15 +117,15 @@ for(const batch of [0,1]) test(`Add again works from repeated dish batch ${batch
 
 test('direct cancellation asks before altering the item and does not submit automatically',async({page})=>{
  const posts=await floor(page);
- await page.locator('[data-line-key="second"] [data-line-action=cancel]').click();
+ await page.locator('[data-line-key="second"] [data-line-action=less]').click();
  await expect(page.locator('#removeItemConfirmModal')).toBeVisible();
- await expect(page.locator('#remove-item-name')).toHaveText('Chicken Biryani');
+ await expect(page.locator('#remove-item-name')).toHaveText('1 × Chicken Biryani');
  expect(posts).toEqual([]);
  expect(await page.evaluate(()=>editingOrder.items.find(item=>item.line_id==='second').quantity)).toBe(1);
 });
 test('existing-order quick notes preserve typing, toggle and apply only to the draft',async({page})=>{
  const posts=await floor(page,{rounds:true});
- await page.locator('[data-line-key="second"] [data-line-action=note]').click();
+ await page.locator('[data-line-key="second"]').locator('..').locator('[data-item-note]').click();
  const dialog=page.locator('#editItemNotesModal');
  const field=dialog.locator('textarea');
  await expect(dialog.locator('[data-editor-note="Extra spicy"]')).toHaveAttribute('aria-pressed','true');
@@ -185,7 +185,7 @@ test('short line actions fit a narrow phone and stale removed lines are not repl
  for(let i=1;i<boxes.length;i++)expect(boxes[i].top>=boxes[i-1].bottom || boxes[i].left>=boxes[i-1].right).toBe(true);
  await page.screenshot({path:'test-artifacts/direct-order-actions-320.png'});
  await page.route('**/sales/getOrderHistory',r=>r.fulfill({json:{type:'success',data:{orders:[{...order,items:[order.items[0]]}]}}}));
- await row.locator('[data-line-action=cancel]').click();
+ await row.locator('[data-line-action=less]').click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
  await expect(page.locator('#removeItemConfirmModal')).toBeHidden();
  await expect(page.locator('body')).toContainText('Table changed. Refresh and try again.');
@@ -229,7 +229,7 @@ test('history cancellation sends the entered reason',async({page})=>{
 
 test('declining item cancellation leaves the original order without an empty edit screen',async({page})=>{
  const posts=await floor(page);
- await page.locator('[data-line-key="second"] [data-line-action=cancel]').click();
+ await page.locator('[data-line-key="second"] [data-line-action=less]').click();
  await expect(page.locator('#removeItemConfirmModal')).toBeVisible();
  await page.locator('#removeItemConfirmModal [data-bs-dismiss=modal]').last().click();
  await expect(page.locator('#editOrderModal')).toBeHidden();
@@ -257,11 +257,11 @@ for(const width of [320,390,480])test(`compact item actions stay readable at ${w
  await page.setViewportSize({width,height:850});
  await floor(page,{rounds:true});
  const row=page.locator('.service-line').first();
- await expect(row.locator('[data-line-action=note] i')).toBeVisible();
+ await expect(row.locator('[data-item-note]')).toBeVisible();
  await expect(row.locator('[data-line-action=cancel]')).toHaveAttribute('aria-label','Cancel item');
  await expect(row.locator('[data-serve-line]')).toHaveAttribute('aria-label','Mark served');
  await expect(row.locator('.serve-item-icon')).toBeVisible();
- const noteBox=await row.locator('[data-line-action=note]').boundingBox(),serveBox=await row.locator('[data-serve-line]').boundingBox();
+ const noteBox=await row.locator('[data-line-action=less]').boundingBox(),serveBox=await row.locator('[data-serve-line]').boundingBox();
  expect(Math.abs(noteBox.y-serveBox.y)).toBeLessThan(3);
  expect(serveBox.width).toBeGreaterThanOrEqual(44);
  expect(await row.evaluate(node=>node.scrollWidth<=node.clientWidth)).toBe(true);
@@ -279,7 +279,8 @@ for(const width of [320,424])test(`editor preparation is a compact icon beside N
  await expect(prep).toHaveAttribute('aria-label','Preparation');
  await expect(prep.locator('i')).toBeVisible();
  await expect(prep).toHaveText('');
- const p=await prep.boundingBox(),n=await note.boundingBox();
+ // Read both rectangles in one frame while the inline draft scrolls into view.
+ const {p,n}=await row.evaluate(row=>({p:row.querySelector('[data-preparation-order]').getBoundingClientRect().toJSON(),n:row.querySelector('.editor-note-link').getBoundingClientRect().toJSON()}));
  expect(p.width).toBe(width<=360?32:40);expect(p.height).toBeGreaterThanOrEqual(44);
  expect(Math.abs(p.y-n.y)).toBeLessThan(3);expect(p.x).toBeGreaterThanOrEqual(n.x+n.width+7);
  expect(await row.evaluate(n=>n.scrollWidth<=n.clientWidth)).toBe(true);
@@ -441,7 +442,7 @@ test('Add again keeps kitchen batches visible and repeated taps share the inline
 for(const rounds of [false,true])test(`remove item confirms and marks the original row in place, rounds=${rounds}`,async({page})=>{
  const posts=await floor(page,{rounds});
  const url=page.url();
- await page.locator('[data-line-key="second"] [data-line-action=cancel]').click();
+ await page.locator('[data-line-key="second"] [data-line-action=less]').click();
  await expect(page.locator('.order-sheet > .kot-items-list')).toBeVisible();
  await expect(page.locator('#removeItemConfirmModal')).toBeVisible();
  expect(posts).toHaveLength(0);
@@ -545,7 +546,7 @@ for(const minus of [false,true])test(`unsent removal needs no confirmation and c
 });
 test('sent item cancellation requires a reason and includes it in the save',async({page})=>{
  const posts=await floor(page);
- await page.locator('[data-line-key="second"] [data-line-action=cancel]').click();
+ await page.locator('[data-line-key="second"] [data-line-action=less]').click();
  await page.locator('#confirm-remove-item-btn').click();
  await expect(page.locator('#removeItemConfirmModal')).toBeVisible();
  expect(await page.evaluate(()=>editingOrder.items.find(i=>i.line_id==='second').quantity)).toBe(1);
@@ -598,7 +599,7 @@ for(const width of [320,540])test(`menu additions keep original rows and compact
  const existing=page.locator('.kot-items-list .service-line').first();
  const styles=el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.lineHeight];};
  expect(await row.locator('.line-name').evaluate(styles)).toEqual(await existing.locator('.service-dish strong').evaluate(styles));
- expect(await row.locator('.editor-note-link').evaluate(el=>el.offsetHeight)).toBe(await existing.locator('[data-line-action=note]').evaluate(el=>el.offsetHeight));
+ expect(await row.locator('.editor-note-link').evaluate(el=>el.offsetHeight)).toBe(await existing.locator('[data-line-action=less]').evaluate(el=>el.offsetHeight));
  const offset=await row.evaluate(el=>Math.abs(el.querySelector('[aria-label="Note"]').getBoundingClientRect().y-el.querySelector('[aria-label="Increase quantity"]').getBoundingClientRect().y));
  expect(offset).toBeLessThan(3);
  expect((await row.boundingBox()).height).toBeLessThan(130);
@@ -613,7 +614,7 @@ for(const width of [320,540])test(`menu additions keep original rows and compact
 for(const width of [390,768])for(const mode of ['light','dark'])test(`item note dialog design ${width} ${mode}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:mode});
  await floor(page,{rounds:true});
- await page.locator('[data-line-key="second"] [data-line-action=note]').click();
+ await page.locator('[data-line-key="second"]').locator('..').locator('[data-item-note]').click();
  const dialog=page.locator('#editItemNotesModal');
  await expect(dialog).toBeVisible();await expect(dialog).toHaveCSS('opacity','1');
  await expect(dialog.locator('textarea')).toHaveCSS('font-weight','400');
@@ -635,7 +636,7 @@ for(const width of [320,390,768])for(const mode of ["light","dark"])for(const di
  await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme:mode});
  const posts=await floor(page,{rounds:true,quantity:3});
  const line=page.locator('.kot-items-list [data-line-key="second"]').locator('..');
- const edits=await line.locator('[data-line-action=note]').boundingBox();
+ const edits=await line.locator('[data-line-action=less]').boundingBox();
  const serving=await line.locator('[data-serve-line]').boundingBox();
  expect(Math.abs(edits.y-serving.y)).toBeLessThan(2);
  expect(await line.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
@@ -681,10 +682,11 @@ for(const width of [320,390,768])for(const mode of ["light","dark"])for(const di
 });
 
 for(const whole of [false,true])test(`undo pending cancellation preserves other edits, whole=${whole}`,async({page})=>{
+ await page.setViewportSize({width:820,height:1180});
  const posts=await floor(page,{rounds:true,quantity:3});
  const line=page.locator('.kot-items-list [data-line-key="second"]').locator('..');
  await page.locator('[data-line-key="first"] [data-line-action=more]').click();
- await line.locator('[data-line-action=note]').click();
+ await line.locator('[data-item-note]').click();
  await page.locator('#edit-item-notes-text').fill('Keep this note');
  await page.locator('#edit-item-notes-apply').click();
  await line.locator(`[data-line-action=${whole?'cancel':'less'}]`).click();
@@ -735,6 +737,39 @@ test('added item is revealed and highlighted without replacing kitchen rows',asy
  await expect.poll(async()=>{const box=await row.boundingBox(),footer=await page.locator('#editOrderModal .editor-footer').boundingBox();return box.y+box.height<=footer.y;}).toBe(true);
  await expect(page.locator('.order-sheet > .kot-items-list')).toBeVisible();
 });
+test('successful managed requests publish route health for the connection indicator',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.goto('/kot-management.html');
+ const result=await page.evaluate(async()=>{
+   const session=POSNIC.session;
+   Object.defineProperty(session,'managed',{value:true,configurable:true});
+   session.request=async()=>({ok:true});
+   let health;
+   const listener=e=>health=e.detail;
+   window.addEventListener('posnic:route-health',listener);
+   await POSNIC.api.get('/captain/v1/session');
+   window.removeEventListener('posnic:route-health',listener);
+   return {health,base:POSNIC.server.baseUrl};
+ });
+ expect(result.health).toEqual({base:result.base,reachable:true});
+});
+
+test('floor shows active orders while bill and quantity lookups are pending',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:['1'],table_details:[{table_number:'1',amount:999}]}}}));
+ let release;const pending=new Promise(resolve=>release=resolve);
+ await page.route('**/captain/v1/bill?*',async r=>{await pending;await r.fulfill({status:409,json:{error:{message:'Bill changed'}}});});
+ await page.route('**/sales/getListKot?*',async r=>{await pending;await r.fulfill({json:{type:'success',data:{list:[order]}}});});
+ await page.goto('/kot-management.html');
+ await expect(page.locator('.floor-card')).toHaveCount(1);
+ await expect(page.locator('.floor-card')).not.toContainText('999');
+ await expect(page.locator('.floor-loading')).toHaveCount(0);
+ await expect(page.locator('.section-loader')).toHaveCount(0);
+ release();
+ await expect(page.locator('#tables-list')).toHaveAttribute('aria-busy','false');
+ await expect(page.locator('.floor-card')).toHaveCount(1);
+});
+
 test('floor waits for confirmation before empty state and retains cards during refresh',async({page})=>{
  await onTheMenu(page,'nothing');let release;const gate=new Promise(r=>release=r);
  await page.route('**/sales/getTablesWithActiveOrders',async r=>{await gate;await r.fulfill({json:{type:'success',data:{tables:['1']}}});});
@@ -964,5 +999,93 @@ test('order heading uses offline translations in every supported language',async
   await expect(page.locator('.order-items-heading h2')).toHaveText(words['Order items']);
   const labels=await page.evaluate(()=>['Cancel item','Remove item','Item note','Save note','Payment settings','Serve all','Custom table'].map(key=>I18N.t(key)));
   expect(labels).toEqual(['Cancel item','Remove item','Item note','Save note','Payment settings','Serve all','Custom table'].map(key=>words[key]));
+ }
+});
+
+
+test('inline bill recovers brief server failures without blocking Collect payment',async({page})=>{
+ await floor(page);
+ await expect(page.locator('.order-tax-status button')).toBeVisible();
+ let calls=0;
+ await page.route('**/captain/v1/bill?*',r=>{
+  calls++;
+  return calls<3?r.fulfill({status:503,json:{error:{message:'Temporary bill outage'}}}):r.fulfill({json:{orderIds:['order-1'],currency:'₹',totalMinor:44000,labels:{base:'Subtotal'},lines:[{components:[{key:'base',minor:44000}]}]}});
+ });
+ await expect(page.locator('[data-collect-table]').first()).toBeEnabled();
+ await page.locator('.order-tax-status button').click();
+ await expect(page.locator('.order-tax-breakdown')).toContainText('₹440.00');
+ expect(calls).toBe(3);
+ await expect(page.locator('.order-tax-status')).toHaveCount(0);
+ await expect(page.locator('[data-collect-table]').first()).toBeEnabled();
+});
+
+test('Orders refreshes automatically after the native session resumes',async({page})=>{
+ await floor(page);let reads=0;
+ await page.route('**/sales/getTablesWithActiveOrders',r=>{reads++;return r.fulfill({json:{type:'success',data:{tables:[]}}});});
+ await page.evaluate(()=>window.dispatchEvent(new Event('captain:resumed')));
+ await expect.poll(()=>reads).toBeGreaterThan(0);
+});
+
+test('compact phone actions and tablet labels retain item notes',async({page})=>{
+ await floor(page,{rounds:true});
+ await expect(page.locator('[data-review-bill]')).toHaveCount(0);
+ await expect(page.locator('[data-serve-and-collect]')).toHaveCount(0);
+ await expect(page.locator('[data-serve-all]')).toBeVisible();
+ const row=page.locator('[data-line-key="second"]');
+ await expect(row.locator('[data-line-action=note]')).toBeHidden();
+ await expect(row.locator('[data-line-action=more] span')).toBeHidden();
+ await expect(row.locator('[data-line-action=less]')).toBeVisible();
+ await page.screenshot({path:'test-artifacts/compact-order-phone.png'});
+ await page.setViewportSize({width:820,height:1180});
+ await expect(row.locator('[data-line-action=more] span')).toBeVisible();
+ await page.screenshot({path:'test-artifacts/compact-order-tablet.png'});
+});
+
+test('frequent actions stay direct and rare actions are collapsed',async({page})=>{
+ await floor(page,{rounds:true,notes:true});
+ await expect(page.locator('.order-items-heading [data-serve-all]')).toBeVisible();
+ await expect(page.locator('.order-items-heading [data-order-add]')).toBeVisible();
+ await expect(page.locator('[data-floor-order-note]')).toBeVisible();
+ await expect(page.locator('.order-financial [data-floor-move-order]')).toBeVisible();
+ await expect(page.locator('.order-financial #ask-for-bill')).toBeVisible();
+ await expect(page.locator('[data-split-table]')).toBeHidden();
+ await expect(page.locator('.order-photos-panel')).toBeHidden();
+ await page.locator('[data-order-more]').click();
+ await expect(page.locator('.order-action-sheet').getByRole('button',{name:'Split bill',exact:true})).toBeVisible();
+ await expect(page.locator('.order-action-sheet').getByRole('button',{name:'Cancel order',exact:true})).toBeVisible();
+ await page.locator('.order-action-close').click();
+ await page.locator('[data-floor-move-order]').click();
+ await expect(page.locator('#moveTableModal')).toBeVisible();
+});
+
+test('Serve all in the item heading updates the order without duplicate actions',async({page})=>{
+ await floor(page,{rounds:true});
+ let body;
+ await page.route('**/sales/serveKitchenItems',route=>{
+  body=route.request().postDataJSON();
+  return route.fulfill({json:{type:'success',data:[{id:'batch1',ordered_at:'2026-10-04T00:00:00Z',items:order.items.map((item,i)=>({id:'round-'+i,line_key:item.line_id,name:item.name,quantity:1,remaining:0,served:1}))}]}});
+ });
+ await page.locator('.order-items-heading [data-serve-all]').click();
+ await expect(page.locator('[data-serve-all]')).toHaveCount(0);
+ await expect(page.locator('[data-serve-line]')).toHaveCount(0);
+ expect(body.saleId).toBe('order-1');
+ expect(body.items).toHaveLength(2);
+ await expect(page.locator('[data-order-add]')).toBeVisible();
+ await expect(page.locator('.order-more')).toHaveCount(1);
+});
+
+test('payment and add items labels have readable contrast in both themes',async({page})=>{
+ await floor(page,{rounds:true});
+ for(const theme of ['light','dark']){
+  await page.evaluate(theme=>document.documentElement.dataset.colorScheme=theme,theme);
+  for(const selector of ['[data-collect-table]','.order-add','#ask-for-bill']){
+   const button=page.locator('.order-workspace '+selector);await expect(button).toBeVisible();
+   const contrast=await button.evaluate(el=>{
+    const style=getComputedStyle(el);
+    const luminance=color=>{const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4;});return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722;};
+    const a=luminance(style.color),b=luminance(style.backgroundColor);return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+   });
+   expect(contrast,theme+' '+selector).toBeGreaterThanOrEqual(4.5);
+  }
  }
 });

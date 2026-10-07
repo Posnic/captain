@@ -781,9 +781,10 @@ function renderOrders() {
                     ${(order.items || []).length > 2 ? `... +${(order.items || []).length - 2} more` : ''}
                 </div>
             </div>
+            <span class="history-view-label"><span>View order</span><span aria-hidden="true"> →</span></span>
             </button>
-            ${order.status === 'cancelled' || order.status === 'completed' ? '' : `
-        <details class="order-actions-menu"><summary>Order options</summary><div class="order-actions">
+            ${location.pathname.endsWith('/order-history.html') || order.status === 'cancelled' || order.status === 'completed' ? '' : `
+        <button type="button" class="history-more-button" data-history-more="${safe(order._id)}" aria-label="More options" aria-haspopup="dialog"><span aria-hidden="true">•••</span></button><div class="order-actions" hidden>
             <button class="action-btn edit-btn" data-edit-order="${safe(order._id)}">
                 <i class="fas fa-edit"></i> Modify
             </button>
@@ -795,13 +796,47 @@ function renderOrders() {
             <button class="action-btn cancel-btn" data-cancel-order="${safe(order._id)}">
                 <i class="fas fa-times"></i> Cancel order
             </button>
-        </div></details>
+        </div>
         `}
     </div>
 `).join('');
 
     container.innerHTML = ordersHtml;
 }
+
+function showHistoryActions(trigger) {
+    const card=trigger.closest('.order-card,#order-details-content'),order=allOrders.find(row=>row._id===trigger.dataset.historyMore);
+    if(!card||!order||document.querySelector('.history-action-sheet'))return;
+    const t=value=>window.I18N?.t(value)||value;
+    const dialog=document.createElement('dialog');dialog.className='history-action-sheet';
+    const header=document.createElement('header'),heading=document.createElement('div'),title=document.createElement('h2'),subtitle=document.createElement('p');
+    title.id='history-action-title';title.textContent=t('Order options');subtitle.textContent='#'+(order.order_id||order._id)+' · '+(order.table_number?t('Table')+' '+order.table_number:t('Take Away'));
+    heading.append(title,subtitle);dialog.setAttribute('aria-labelledby',title.id);
+    const close=document.createElement('button');close.type='button';close.className='history-action-close';close.textContent='×';close.setAttribute('aria-label',t('Close'));header.append(heading,close);dialog.append(header);
+    const list=document.createElement('div');list.className='history-action-list';dialog.append(list);
+    const finish=()=>{dialog.close();dialog.remove();window.removeEventListener('captain:back',back);if(trigger.isConnected)trigger.focus({preventScroll:true});};
+    const back=event=>{event.preventDefault();event.stopImmediatePropagation();finish();};close.onclick=finish;dialog.addEventListener('cancel',back);window.addEventListener('captain:back',back);
+    dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)finish();}});
+    for(const [selector,label,icon] of [['[data-edit-order]','Modify','pen'],['[data-move-order]','Move table','exchange-alt'],['[data-merge-order]','Merge orders','object-group'],['.order-photos-panel','Order photos','camera'],['[data-transfer-order]','Transfer items','exchange-alt'],['[data-cancel-order]','Cancel order','trash-alt']]){
+        const source=card.querySelector(selector);if(!source)continue;
+        const action=document.createElement('button');action.type='button';action.className='history-action-row'+(selector==='[data-cancel-order]'?' is-danger':'');
+        const symbol=document.createElement('span');symbol.className='history-action-icon';symbol.setAttribute('aria-hidden','true');symbol.innerHTML=`<i class="fas fa-${icon}"></i>`;
+        const labelNode=document.createElement('span');labelNode.textContent=t(label);const arrow=document.createElement('span');arrow.className='history-action-arrow';arrow.textContent='›';arrow.setAttribute('aria-hidden','true');action.append(symbol,labelNode,arrow);
+        action.onclick=()=>{finish();if(selector==='.order-photos-panel')showHistoryPhotos(source,trigger);else source.click();};list.append(action);
+    }
+    document.body.append(dialog);dialog.showModal();close.focus();
+}
+function showHistoryPhotos(panel,trigger){
+ const t=value=>window.I18N?.t(value)||value;
+ const dialog=document.createElement('dialog');dialog.className='history-action-sheet history-photo-sheet';
+ const header=document.createElement('header'),title=document.createElement('h2'),close=document.createElement('button');title.textContent=t('Order photos');close.type='button';close.className='history-action-close';close.textContent='×';close.setAttribute('aria-label',t('Close'));header.append(title,close);dialog.append(header);
+ const content=document.createElement('div');content.className='history-action-list';dialog.append(content);
+ const home=document.createComment('history photos');panel.before(home);content.append(panel);
+ if(!panel.querySelector('[data-order-photo]')){const empty=document.createElement('p');empty.textContent=t('No photos yet.');content.append(empty);}
+ const finish=()=>{home.replaceWith(panel);dialog.close();dialog.remove();window.removeEventListener('captain:back',back);trigger.focus({preventScroll:true});};
+ const back=e=>{e.preventDefault();finish();};close.onclick=finish;dialog.addEventListener('cancel',back);window.addEventListener('captain:back',back);document.body.append(dialog);dialog.showModal();
+}
+document.addEventListener('click',event=>{const trigger=event.target.closest('[data-history-more]');if(trigger)showHistoryActions(trigger);});
 
 document.addEventListener('click', event => {
     const button=event.target.closest('[data-view-order],[data-edit-order],[data-move-order],[data-merge-order],[data-cancel-order]');
@@ -847,16 +882,24 @@ function viewOrderDetails(orderId) {
         ${order.customer_name ? `<p translate="no">${safe(order.customer_name)}</p>` : ''}
       </section>
       ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
-      ${window.OrderPhotos ? OrderPhotos.render(order) : ""}
+      <div class="history-detail-tools" hidden>${window.OrderPhotos ? OrderPhotos.render(order,{readOnly:location.pathname.endsWith('/order-history.html')}) : ""}</div>
       <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div><div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
       ${order.status === 'completed' || order.payment_status === 'Paid' ? `<div class="history-receipt-action"><button type="button" class="btn action-btn" data-review-bill="${safe(order.table_number || order.order_id || order._id)}" data-sale-id="${safe(order._id)}" data-receipt="true"><i class="fas fa-print" aria-hidden="true"></i> View / Print bill</button>${order.payment_status ? `<span>${safe(order.payment_status)}</span>` : ''}</div>` : ''}
       ${order.discount_description ? `<section class="history-detail-note"><h3>Order Notes:</h3><p translate="no">${safe(order.discount_description)}</p></section>` : ''}
-      ${['completed','cancelled'].includes(order.status) ? '' : `<details class="history-detail-options"><summary>Order options</summary><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></details>`}
+      <button type="button" class="history-detail-more" data-history-more="${safe(order._id)}" aria-haspopup="dialog"><span aria-hidden="true">•••</span> <span>More options</span></button>${['completed','cancelled'].includes(order.status) ? '' : `<div class="history-detail-options" hidden><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></div>`}
     `;
 
     const detailsContent = document.getElementById('order-details-content');
     if (detailsContent) {
         detailsContent.innerHTML = detailsHtml;
+        const transferAction=detailsContent.querySelector("[data-transfer-order]")?.closest(".service-order-action");
+        const optionsPanel=detailsContent.querySelector(".history-detail-tools");
+        if(transferAction && optionsPanel) optionsPanel.append(transferAction);
+        if (location.pathname.endsWith('/order-history.html')) {
+            detailsContent.querySelectorAll('.history-detail-more,.history-detail-options,.service-order-action,.service-action,.service-order-options').forEach(node=>node.remove());
+            const photos=detailsContent.querySelector('.history-detail-tools');
+            if(photos)photos.hidden=!photos.querySelector('[data-order-photo]');
+        }
         window.OrderPhotos?.mount(detailsContent);
     }
 
@@ -864,7 +907,7 @@ function viewOrderDetails(orderId) {
     const editBtn = document.getElementById('edit-order-btn');
     const cancelBtn = document.getElementById('cancel-order-btn');
 
-    if (order.status === 'completed' || order.status === 'cancelled') {
+    if (location.pathname.endsWith('/order-history.html') || order.status === 'completed' || order.status === 'cancelled') {
         if (editBtn) editBtn.style.display = 'none';
         if (cancelBtn) cancelBtn.style.display = 'none';
     } else {
@@ -1341,7 +1384,7 @@ function renderGroupMoveTables() {
         return `<button type="button" class="move-table${selected?' is-chosen':''}" data-id="${esc(row.id)}" data-value="${esc(row.value)}" aria-pressed="${selected}" ${unavailable||(!selected&&!adjacent)?'disabled':''}>
           <span class="move-table-no">${esc(row.label)}</span><span class="move-table-note">${esc(row.description)}</span>
           ${unavailable?`<span class="move-table-note">${esc(t(row.serviceState==='cleaning'?'Cleaning':row.serviceState==='held'?'Held':'Occupied'))}</span>`:''}
-          <span class="move-table-note">${esc(t('Can combine with'))}: ${esc(moveTables.filter(other=>row.adjacent.includes(other.id)||other.adjacent.includes(row.id)).map(other=>other.label).join(', ')||'—')}</span>
+          <span class="move-table-note">${esc(moveTables.filter(other=>row.adjacent.includes(other.id)||other.adjacent.includes(row.id)).map(other=>other.label).join(', ') ? t('Can combine with')+': '+moveTables.filter(other=>row.adjacent.includes(other.id)||other.adjacent.includes(row.id)).map(other=>other.label).join(', ') : '')}</span>
         </button>`;
     }).join('');
     if(moveSelected.length){
@@ -1349,7 +1392,7 @@ function renderGroupMoveTables() {
         container.querySelector('#move-primary').addEventListener('change',event=>{movePrimary=event.target.value;renderGroupMoveTables();});
     }
     const message=document.getElementById('move-table-status');
-    message.textContent=moveSelected.length ? t('Seat capacity')+': '+current.maximum+' · '+t('Guests')+': '+current.guests : t('Choose a table');
+    message.textContent=moveSelected.length ? (current.maximum>0?t('Seat capacity')+': '+current.maximum+' · ':'')+t('Guests')+': '+current.guests : t('Choose a table');
     const unchanged=orderBeingMoved.seating_request_id
         ? JSON.stringify([...moveSelected].sort())===JSON.stringify([...(orderBeingMoved.seating_table_ids||[])].sort()) && movePrimary===orderBeingMoved.seating_primary_id
         : moveSelected.length===1 && moveTables.find(row=>row.id===moveSelected[0])?.value===tableOf(orderBeingMoved);
@@ -1920,7 +1963,7 @@ function renderCurrentOrderItems() {
         return `
         ${groupHeading}<div class="order-item-card${struck(item, editingOrder)}" data-draft-line="${added}">
             <div class="item-info">
-                <h6><span class="line-name" translate="no">${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
+                <h6><span class="line-name" translate="no"${!lineIsCancelled(item, editingOrder)?` role="button" tabindex="0" data-editor-note-index="${index}"`:""}>${editorEscape(item.name)}</span>${window.OrderEditor?.isAdded(item) ? '<span class="editor-added">Added</span>' : ''}</h6>
                 ${totalSellingPrice > 0 ? `<p class="item-selling-price"><strong>Final: ${CaptainMoney.html(totalSellingPrice)}</strong></p>` : ''}
                 ${item.item_description ? `<p class="item-notes small text-muted" translate="no">${editorEscape(item.item_description)}</p>` : ""}
                 ${ServiceDetails.summary(item)}
@@ -1970,6 +2013,13 @@ function editorEscape(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }
 
+document.addEventListener('click',event=>{
+ const title=event.target.closest('[data-editor-note-index]');
+ if(title)document.querySelector(`#current-order-items .editor-note-link[data-index="${Number(title.dataset.editorNoteIndex)}"]`)?.click();
+});
+document.addEventListener('keydown',event=>{
+ if(event.target.matches('[data-editor-note-index]')&&['Enter',' '].includes(event.key)){event.preventDefault();event.target.click();}
+});
 // Existing orders offer the same quick preparation notes as menu/cart entry.
 const editorNoteSuggestions = ['Less spicy', 'Medium spicy', 'Extra spicy',
     'Less salt', 'Less sweet', 'Less oil', 'No onion', 'No garlic', 'No ice',

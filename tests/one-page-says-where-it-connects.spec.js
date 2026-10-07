@@ -6,6 +6,7 @@ async function settings(
   { lan = LAN, cloud = CLOUD, pinned = null } = {},
 ) {
   await page.goto("/index.html");
+  await page.getByRole('button',{name:'Set up this phone',exact:true}).click();
   await page.evaluate(
     ({ lan, cloud, pinned }) => {
       POSNIC.server.remember({ lan, cloud });
@@ -36,24 +37,25 @@ test("the screen explains the fastest method and the internet alternative", asyn
   );
   await expect(page.locator("#setup-wifi-hint")).toContainText("internet");
 });
-test("both server addresses have a dedicated view with Back to setup", async ({
+test("both server addresses have a dedicated view with Back to Account", async ({
   page,
 }) => {
   await settings(page);
   await page.locator("#connection-settings").click();
-  await expect(page.locator("#connection-lan")).toHaveValue(LAN);
-  await expect(page.locator("#connection-cloud")).toHaveValue(CLOUD);
-  await page.locator("#connection-back").click();
-  await expect(page.locator("#connection-lan")).toBeHidden();
+  await expect(page.locator('#shop-connections [data-kind=lan]')).toContainText('192.168.1.8:5555');
+  await expect(page.locator('#shop-connections [data-kind=cloud]')).toContainText('azure.posnic.io');
+  await page.locator('[data-connection-action=back]').click();
+  await expect(page).toHaveURL(/me.html/);
 });
-test("saving both addresses enables automatic selection instead of preserving an old pin", async ({
+test("automatic switching can be changed without replacing saved addresses", async ({
   page,
 }) => {
   await settings(page, { pinned: CLOUD });
   await page.locator("#connection-settings").click();
-  await page.locator("#connection-save").click();
-  await expect(page.locator("#captain-note")).toContainText("Saved");
-  expect(await page.evaluate(() => POSNIC.server.pinned)).toBeNull();
+  await page.locator('#shop-connection-auto').uncheck();
+  expect(await page.evaluate(() => localStorage.getItem('posnic.automatic-connections'))).toBe('0');
+  await page.locator('#shop-connection-auto').check();
+  expect(await page.evaluate(() => localStorage.getItem('posnic.automatic-connections'))).toBe('1');
   expect(await page.evaluate(() => POSNIC.server.cloud)).toBe(CLOUD);
   expect(await page.evaluate(() => POSNIC.server.lan)).toBe(LAN);
 });
@@ -62,16 +64,17 @@ test("empty connection settings cannot replace the saved shop", async ({
 }) => {
   await settings(page, { pinned: CLOUD });
   await page.locator("#connection-settings").click();
-  await page.locator("#connection-lan").fill("");
-  await page.locator("#connection-cloud").fill("");
-  await page.locator("#connection-save").click();
-  await expect(page.locator("#captain-note")).toContainText("Check");
+  await page.locator('[data-connection-action=edit-cloud]').click();
+  await page.locator('#shop-connection-address').fill('');
+  await page.locator('[data-connection-action=save]').click();
+  await expect(page.locator('.shop-connection-message')).not.toBeEmpty();
   expect(await page.evaluate(() => POSNIC.server.baseUrl)).toBe(CLOUD);
 });
 test("a new phone offers every connection method without an account or network check", async ({
   page,
 }) => {
   await page.goto("/index.html");
+  await page.getByRole('button',{name:'Set up this phone',exact:true}).click();
   await page.evaluate(() => openServerModal());
   for (const id of [
     "captain-cloud-login",

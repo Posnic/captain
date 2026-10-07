@@ -175,9 +175,9 @@ test('a takeaway has no table to move it to, and is not offered one', async ({ p
   await page.evaluate(() => showOrderListScreen('all'));
   await expect(page.locator('.order-card').first()).toBeVisible();
 
-  /* All three orders are listed; only the two on tables can be moved. */
+  /* History is read-only; all changes start from active orders. */
   expect(await page.locator('.order-card').count()).toBe(3);
-  expect(await page.locator('.order-card .move-btn').count()).toBe(2);
+  expect(await page.locator('.order-card .move-btn').count()).toBe(0);
 
   /*
    * And it is the takeaway that is missing one, not whichever card happened

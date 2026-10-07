@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
+// First-time education is exercised in captain-onboarding.spec.js. These
+// scenarios model a phone whose user has already acknowledged that screen.
+test.beforeEach(async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('posnic.setup-intro-seen','1'));
+});
+
 /*
  * How the app decides which server to talk to.
  *
@@ -318,6 +324,7 @@ test('Wi-Fi discovery checks the known local server before sweeping', async ({ p
   await expect(server.locator('.setup-server-action')).toContainText('Connect');
   await expect(page.locator('#captain-legacy')).toBeHidden();
   await server.click();
+  await page.getByRole('dialog').getByRole('button',{name:'Sign in to this shop'}).click();
   await expect(page.locator('#captain-legacy')).toBeVisible();
   expect(await baseUrl(page)).toBe(LAN);
 });
@@ -1670,4 +1677,12 @@ test('a stalled native network lookup cannot hold discovery open forever', async
   });
   expect(result.elapsed).toBeLessThan(4000);
   expect(result.networks).toContain('192.168.1');
+});
+
+test('automatic setup skips LAN with Wi-Fi off and preserves cloud priority',async({page})=>{
+ await seed(page,{lan:LAN,cloud:CLOUD,priority:'cloud'});
+ await page.addInitScript(()=>{localStorage.setItem('posnic.setup-intro-seen','1');localStorage.setItem('posnic.automatic-connections','1');window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:async()=>({wifi:false})}}};});
+ let localCalls=0;await page.route(LAN_ORIGIN+'/**',r=>{localCalls++;return r.abort();});await serve(page,CLOUD_ORIGIN);
+ await page.goto('/index.html');await expect.poll(()=>baseUrl(page)).toBe(CLOUD);
+ expect(localCalls).toBe(0);expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('cloud');
 });

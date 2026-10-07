@@ -363,6 +363,12 @@
       get shopCode() {
         return state.shopCode || null;
       },
+      get priority() { return state.priority === 'cloud' ? 'cloud' : 'lan'; },
+      get priorityConfigured() { return state.priority === 'cloud' || state.priority === 'lan'; },
+      setPriority(value) {
+        state.priority = value === 'cloud' ? 'cloud' : 'lan';
+        persist();
+      },
       get imageOrigin() {
         return originOf(active);
       },
@@ -374,7 +380,8 @@
       candidates() {
         const pinned = normalize(state.pinned);
         if (pinned) return [pinned];
-        return [normalize(state.lan), normalize(state.cloud), normalize(state.active)]
+        if (localStorage.getItem('posnic.automatic-connections') === '0') return [normalize(state.active)].filter(Boolean);
+        return [...(state.priority === 'cloud' ? [normalize(state.cloud), normalize(state.lan)] : [normalize(state.lan), normalize(state.cloud)]), normalize(state.active)]
           .filter(Boolean)
           .filter((url, i, all) => all.indexOf(url) === i);
       },
@@ -549,6 +556,9 @@
   const session = (function () {
     if (window.CaptainAccess) return window.CaptainAccess.session;
     let state = load(STORE_SESSION);
+    if(localStorage.getItem('posnic.remember-session')==='0'&&!sessionStorage.getItem('posnic.current-session')) {
+      state={};save(STORE_SESSION,state);
+    }
 
     return {
       get token() {
@@ -1356,6 +1366,8 @@
   let cameHomeAt = 0;
 
   function comeHome() {
+    if (localStorage.getItem('posnic.automatic-connections') === '0') return;
+    if (server.priority === 'cloud') return;
     /* An explicit choice is never second-guessed, and a phone with no till
        address has nowhere to come home to. */
     if (server.pinned || !server.lan) return;
@@ -1390,7 +1402,7 @@
     const key = base => 'captain.internet-consent:' + (session.shopKey || '') + ':' + base;
     const read = base => { try { return sessionStorage.getItem(key(base)); } catch (_) { return null; } };
     const write = (base,value) => { try { sessionStorage.setItem(key(base),value); } catch (_) {} };
-    const required = base => !isLanUrl(base) && isLanUrl(server.baseUrl || session.base || '');
+    const required = base => localStorage.getItem('posnic.automatic-connections') !== '1' && !isLanUrl(base) && isLanUrl(server.baseUrl || session.base || '');
     const allowed = base => !required(base) || read(base) === 'yes';
     function offerAgain(base) {
       if (document.getElementById('captain-internet-choice')) return;
@@ -1426,12 +1438,22 @@
     resolving = (async () => {
       /* Warm addresses first, the ones that just failed after them - the same
          list, in the order most likely to answer on the first try. */
-      const all = server.candidates();
+      let wifi = null;
+      const networkPlugin = window.Capacitor?.Plugins?.LocalNetwork;
+      if (networkPlugin?.getLocalIp) {
+        try {
+          const result = await Promise.race([networkPlugin.getLocalIp(), new Promise(resolve => setTimeout(() => resolve(null), 800))]);
+          if (typeof result?.wifi === 'boolean') wifi = result.wifi;
+        } catch (_) { /* Unknown network state still uses bounded probes. */ }
+      }
+      const all = server.candidates().filter(url => wifi !== false || !server.isLanUrl(url));
       const order = [...all.filter((url) => !coolingOff(url)), ...all.filter(coolingOff)];
-
-      for (const candidate of order) {
+      const probes = await Promise.all(order.map(async candidate => {
         const seen = [];
         const hit = await probe(candidate, PROBE_TIMEOUT_MS, { seen });
+        return {candidate, hit, seen};
+      }));
+      for (const {candidate, hit, seen} of probes) {
         if (hit && server.canAdopt(hit.base)) {
           if (!(await internetChoice.ask(hit.base))) continue;
           noteSuccess(hit.base);
@@ -1506,7 +1528,7 @@
        * truth the instant it appears - and if the search then finds the till,
        * the screen clears itself and nobody had to do anything.
        */
-      if ((allowScan || Date.now() - sweptAt >= SWEEP_EVERY_MS) && !server.pinned) {
+      if (localStorage.getItem('posnic.automatic-connections') !== '0' && wifi !== false && (allowScan || Date.now() - sweptAt >= SWEEP_EVERY_MS) && !server.pinned) {
         sweptAt = Date.now();
 
         /*
@@ -1709,8 +1731,14 @@
   ) {
     const authenticating = path === '/users/kioskMobileLogin' && method === 'POST';
     if (!authenticating && session.whenReady) await session.whenReady();
-    if (!authenticating && session.managed && session.request)
-      return session.request(path, {method, body, headers, raw, timeout});
+    if (!authenticating && session.managed && session.request) {
+      const result = await session.request(path, {method, body, headers, raw, timeout});
+      net.setOnline();
+      window.dispatchEvent(new CustomEvent('posnic:route-health', {
+        detail: {base: server.baseUrl, reachable: true}
+      }));
+      return result;
+    }
     if (session.prepare && !authenticating) await session.prepare();
     if (!server.baseUrl) {
       throw new ApiError('No shop server has been chosen yet', { code: 'NO_SERVER' });
@@ -1939,6 +1967,7 @@
     let attempts = 0;
     let nextAt = 0;
     let ticker = null;
+    let checkFlight = null;
 
     /*
      * Show that waiting is a real option.
@@ -2405,7 +2434,15 @@
         document.documentElement.classList.remove('posnic-offline-active');
       },
 
-      async check(manual = false) {
+      check(manual = false) {
+        // Resume, the timer and Retry share one check, rather than racing
+        // different routes and overwriting each other's connection state.
+        if (checkFlight) return checkFlight;
+        checkFlight = net.checkOnce(manual).finally(() => { checkFlight = null; });
+        return checkFlight;
+      },
+
+      async checkOnce(manual = false) {
         if (!manual && document.hidden) return false;
         try {
           if (manual && window.CaptainAccess) await window.CaptainAccess.resume();
@@ -2416,7 +2453,7 @@
           try {
             await session.request('/captain/v1/session', {method:'GET', timeout:3000});
             net.setOnline();
-            if (!server.isLocal) void recoverManagedServer(manual);
+            if (!server.isLocal && server.priority !== 'cloud') void recoverManagedServer(manual);
             return true;
           } catch (error) {
             if (error.code === 'PIN_LOCKED' || session.needsReconnect || [401,403].includes(error.status)) return false;
@@ -2477,6 +2514,7 @@
 
   let recoveryFlight = null, nextRecovery = 0;
   function recoverManagedServer(manual = false) {
+    if (localStorage.getItem('posnic.automatic-connections') === '0') return Promise.resolve(null);
     if (recoveryFlight) return recoveryFlight;
     if (!session.hasLocalConnection || (!manual && Date.now() < nextRecovery)) return Promise.resolve(null);
     nextRecovery = Date.now() + SWEEP_EVERY_MS;
@@ -2543,6 +2581,7 @@
 
   /* Coming back onto the shop Wi-Fi should not need a tap. */
   window.addEventListener('online', () => net.check(false));
+  window.addEventListener('captain:resumed', () => net.check(false));
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) net.check(false);
   });

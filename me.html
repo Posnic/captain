@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="assets/common/app-design.css">
 <script src="assets/common/navigation.js" defer></script>
     <link rel="stylesheet" href="assets/common/appearance.css">
+<script src="assets/common/order-photos.js" defer></script>
 </head>
 
 <body data-offline-page>
@@ -47,11 +48,11 @@
         <section data-me-page="home">
             <section class="me-card">
                 <a class="me-row me-row-go" href="#account"><span class="me-row-label">Account<span class="me-row-sub" id="me-home-who"></span></span></a>
-                <button type="button" class="me-row me-row-go" id="me-server"><span class="me-row-label">Change shop server<span class="me-row-sub" id="me-server-where" translate="no"></span></span></button>
+                <button type="button" class="me-row me-row-go" id="me-server"><span class="me-row-label">Shop connections<span class="me-row-sub" id="me-server-where" translate="no"></span></span></button>
+                <a class="me-row me-row-go" href="#security"><span class="me-row-label">Sign-in &amp; PIN<span class="me-row-sub">Stay signed in · PIN optional</span></span></a>
                 <a class="me-row me-row-go" href="#language"><span class="me-row-label">Language</span><span class="me-row-value" id="me-language-name" translate="no"></span></a>
                 <a class="me-row me-row-go" href="#preferences"><span class="me-row-label">This phone</span></a>
                 <a class="me-row me-row-go" href="my-sales.html" id="me-sales"><span class="me-row-label">My sales today</span><span class="me-row-value" id="me-today"></span></a>
-                <a class="me-row me-row-go" href="pending.html" onclick="sessionStorage.setItem('captain_pending_return', 'me.html')"><span class="me-row-label">Order sync</span></a>
             </section>
             <section class="me-card"><a class="me-row me-row-go" href="help.html"><span class="me-row-label">Help</span></a></section>
             <h2 class="me-heading">About</h2>
@@ -62,8 +63,7 @@
                 <p class="me-who" id="me-who"></p>
                 <button type="button" class="me-row me-row-go" id="me-profile"><span class="me-row-label">Profile details</span></button>
                 <button type="button" class="me-row me-row-go" id="me-password"><span class="me-row-label">Change password</span></button>
-                <button type="button" class="me-row" id="me-lock"><span class="me-row-label">Screen lock</span><span class="me-row-value" id="me-lock-state">Off</span></button>
-                <button type="button" class="me-row me-row-quiet" id="me-lock-off" hidden><span class="me-row-label">Turn the lock off</span></button>
+                <a class="me-row me-row-go" href="#security"><span class="me-row-label">Sign-in &amp; PIN</span></a>
             </section>
             <h2 class="me-heading">Account</h2>
             <section class="me-card">
@@ -71,6 +71,17 @@
                 <button type="button" class="me-row me-row-go" data-account-change="cloud"><span class="me-row-label">Use another cloud account</span></button>
                 <button type="button" class="me-row me-row-danger" id="me-sign-out"><span class="me-row-label">Sign out</span></button>
             </section>
+        </section>
+        <section data-me-page="security" hidden>
+            <h2 class="me-heading">Make this phone yours</h2>
+            <section class="me-card">
+                <label class="me-row"><span class="me-row-label">Keep me signed in<span class="me-row-sub">No password each time Captain opens.</span></span><input id="me-remember-session" type="checkbox" aria-label="Keep me signed in" style="width:22px;height:22px;accent-color:var(--accent)"></label>
+                <label class="me-row"><span class="me-row-label">Use a PIN<span class="me-row-sub">Optional protection when reopening Captain.</span></span><input id="me-pin-enabled" type="checkbox" aria-label="Use a PIN" style="width:22px;height:22px;accent-color:var(--accent)"></label>
+                <button type="button" class="me-row" id="me-lock" hidden><span class="me-row-label">Change the PIN</span><span class="me-row-value" id="me-lock-state">Off</span></button>
+                <button type="button" id="me-lock-off" hidden>Turn the lock off</button>
+            </section>
+            <p class="me-note">Your shop addresses stay saved if you turn off remembered sign-in.</p>
+            <a class="me-row me-row-go" href="#"><span class="me-row-label">Done</span></a>
         </section>
         <section data-me-page="language" hidden>
             <section class="me-card"><label class="me-field"><span class="me-row-label">Language</span><select id="me-language" class="ui-field"><option value="en">English</option><option value="ta">தமிழ்</option></select></label></section>

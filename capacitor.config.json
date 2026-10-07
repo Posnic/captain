@@ -12,6 +12,9 @@
     "webContentsDebuggingEnabled": false
   },
   "plugins": {
+    "SystemBars": {
+      "insetsHandling": "disable"
+    },
     "CapacitorHttp": {
       "enabled": false
     }

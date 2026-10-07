@@ -3,6 +3,23 @@ const assert = require("node:assert/strict");
 const { webcrypto } = require("node:crypto");
 const { createAccess } = require("../assets/common/access");
 
+test('automatic switching off retains the selected route; enabling it permits verified fallback',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='b'.repeat(64),calls=[];
+ f.storage.setItem('posnic.automatic-connections','0');
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  calls.push(url);
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  if(url.startsWith(lan))throw Error('offline');
+  return {ok:true,json:async()=>({connected:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:lan,routeKey:key,routes:[cloud]});
+ await assert.rejects(access.session.request('/captain/v1/session',{method:'GET'}));
+ assert.equal(calls.some(url=>url.startsWith(cloud)),false);
+ f.storage.setItem('posnic.automatic-connections','1');
+ assert.deepEqual(await access.session.request('/captain/v1/session',{method:'GET'}),{connected:true});
+ assert.equal(calls.some(url=>url===cloud+'/captain/v1/route-proof'),true);
+});
+
 test("a lost local reply falls back to the verified domain with the identical order, never a second sale", async () => {
   const f = fixture(),
     routeKey = "a".repeat(64),
@@ -148,6 +165,7 @@ test("iOS uses native secure storage and locks on background just like Android",
     Capacitor: {isNativePlatform:()=>true,getPlatform:()=>"ios",Plugins:{SecureSession:f.plugin}},
     localStorage:f.storage,crypto:webcrypto,fetch:async()=>({}),
     location:{pathname:"/index.html"},
+    addEventListener:(name,action)=>{listeners[name]=action},setTimeout,clearTimeout,
     document:{hidden:false,addEventListener:(name,action)=>{listeners[name]=action}},
   };
   require("node:vm").runInNewContext(
@@ -937,4 +955,21 @@ test('cloud order fallback requires consent before transmitting the order', asyn
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,1);
   assert.deepEqual(writes[0].body,writes.at(-1).body);
  }finally {if(previous===undefined)delete globalThis.POSNIC;else globalThis.POSNIC=previous;}
+});
+
+test('reopening preserves a successful Internet route ahead of an unavailable Wi-Fi address',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='a'.repeat(64),calls=[];
+ const fetcher=async(url,options)=>{calls.push(url);if(url.startsWith(lan))throw Error('No Wi-Fi');if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};return {ok:true,json:async()=>({ok:true})};};
+ const access=createAccess(f.plugin,f.storage,fetcher,webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan],lastRoute:cloud});
+ await access.session.suspend();await access.resume();await access.session.request('/captain/v1/session',{method:'GET'});
+ assert.equal(calls.some(url=>url.startsWith(lan)),false);assert.equal(f.vault().lastRoute,cloud);
+ const reopened=createAccess(f.plugin,f.storage,fetcher,webcrypto);await reopened.ready;await reopened.session.request('/captain/v1/session',{method:'GET'});assert.equal(calls.some(url=>url.startsWith(lan)),false);
+});
+
+test('turning off remembered sign-in clears credentials on next app session but retains queued work',async()=>{
+ const f=fixture({'posnic.remember-session':'0','posnic.pending-orders':'[{"id":"saved"}]'});
+ await f.plugin.save({session:f.grant});
+ const access=createAccess(f.plugin,f.storage,async()=>{throw Error('network not required');},webcrypto);
+ await access.ready;assert.equal(access.session.active,false);assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"saved"}]');
 });

@@ -139,3 +139,17 @@ test('history dates accept legacy timestamps and never display Invalid Date',asy
  expect(await page.evaluate(()=>formatDateTime({$date:{$numberLong:'1790769600000'}}))).not.toBe('—');
  expect(await page.evaluate(()=>formatDateTime('malformed'))).toBe('—');
 });
+
+
+for(const width of [320,820])test(`history is read only including pending orders at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:900});await onTheMenu(page,'nothing');
+ await page.route('**/sales/getOrderHistory',r=>r.fulfill({json:{type:'success',data:{orders:[{_id:'o1',order_id:'A1',table_number:'P',status:'pending',payment_status:'Unpaid',total_amount:40,items:[{name:'Coffee',quantity:1,price:40}]}]}}}));
+ await page.goto('/order-history.html');
+ await expect(page.locator('[data-history-more],.order-actions')).toHaveCount(0);
+ await page.locator('[data-view-order]').click();
+ await expect(page.locator('#order-details-content')).toContainText('Coffee');
+ await expect(page.locator('#edit-order-btn')).toBeHidden();
+ await expect(page.locator('#cancel-order-btn')).toBeHidden();
+ await expect(page.locator('#order-details-content .history-detail-more,#order-details-content .service-action,#order-details-content [data-transfer-order]')).toHaveCount(0);
+ await page.screenshot({path:`test-artifacts/history-read-only-${width}.png`});
+});

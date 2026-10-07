@@ -56,6 +56,9 @@
     }
     const ready = (async () => {
       apply(await plugin.status());
+      if(storage.getItem('posnic.remember-session')==='0'&&!host.sessionStorage?.getItem('posnic.current-session')) {
+        await plugin.clear();apply(await plugin.status());storage.removeItem('posnic.session');
+      }
       const legacy = JSON.parse(storage.getItem("posnic.session") || "{}");
       if (!profile && legacy.token) {
         state = legacy;
@@ -362,12 +365,20 @@
           .filter(Boolean)) {
           if (!credentials.has(base)) credentials.set(base, credential);
         }
+      const preferred=host.POSNIC?.server.pinned || host.POSNIC?.server.baseUrl || state.lastRoute;
+      const preferredLocal=host.POSNIC?.server.priority !== 'cloud';
+      let wifi=null;
+      if(host.Capacitor?.Plugins?.LocalNetwork?.getLocalIp) {
+        try { const network=await Promise.race([host.Capacitor.Plugins.LocalNetwork.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]);wifi=network?.wifi; } catch (_) {}
+      }
       const routes = [...credentials.keys()].sort(
         (a, b) =>
           Number((cooling.get(a) || 0) > Date.now()) -
             Number((cooling.get(b) || 0) > Date.now()) ||
-          Number(local(b)) - Number(local(a)),
-      );
+          (host.POSNIC?.server.pinned || !host.POSNIC?.server.priorityConfigured ? Number(b===preferred)-Number(a===preferred) : 0) ||
+          (preferredLocal ? Number(local(b))-Number(local(a)) : Number(local(a))-Number(local(b))) ||
+          Number(b===preferred)-Number(a===preferred),
+      ).filter(base=>(wifi!==false||!local(base))&&(storage.getItem('posnic.automatic-connections')!=='0'||base===(preferred||state.base)));
       const orderKey =
         path === "/sales/qrOrder" && options.body?.idempotencyKey;
       let last;
@@ -504,6 +515,7 @@
               code: "PIN_LOCKED",
             });
           cooling.delete(base);
+          if(state.lastRoute!==base){state.lastRoute=base;await persist().catch(()=>{});}
           host.POSNIC?.server.adopt(base);
           host.POSNIC?.net.setOnline();
           return result;
@@ -671,6 +683,7 @@
           }
           if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
           verified.add(clean);
+          host.POSNIC?.server.recordShop(clean, state.shopKey);
           host.POSNIC?.server.remember({
             [local(clean) ? "lan" : "cloud"]: clean,
           });
@@ -844,8 +857,35 @@
       resume,
     };
   }
+  function bindVisibility(host) {
+    let leavingPage = false, pending;
+    host.addEventListener("pagehide", () => {
+      leavingPage = true;
+      host.clearTimeout(pending);
+    });
+    host.addEventListener("pageshow", () => { leavingPage = false; });
+    host.document.addEventListener("visibilitychange", () => {
+      host.clearTimeout(pending);
+      if (host.document.hidden) {
+        // Navigation also hides the document. Native onPause still locks
+        // immediately when the app actually leaves the foreground.
+        pending = host.setTimeout(() => {
+          if (!leavingPage && host.document.hidden)
+            void host.CaptainAccess.session.suspend().catch(() => {});
+        }, 0);
+      } else if (!leavingPage) {
+        void Promise.all([host.CaptainPaperCapture?.waitForPhoto?.(),host.CaptainReferenceCapture?.waitForPhoto?.()])
+          .then(() => host.CaptainAccess.resume())
+          .then(() => {
+            if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
+              host.location.href = "index.html";
+            else if(!host.CaptainAccess.locked)host.dispatchEvent?.(new Event("captain:resumed"));
+          }).catch(() => {});
+      }
+    });
+  }
   if (typeof module === "object" && module.exports)
-    module.exports = { createAccess };
+    module.exports = { createAccess, bindVisibility };
   if (
     host.Capacitor?.isNativePlatform?.() &&
     (!host.Capacitor.getPlatform || ["android", "ios"].includes(host.Capacitor.getPlatform()))
@@ -871,13 +911,6 @@
           host.location.href = "index.html";
         });
     }
-    host.document.addEventListener("visibilitychange", () => {
-      if (host.document.hidden) void host.CaptainAccess.session.suspend().catch(() => {});
-      else
-        void host.CaptainAccess.resume().then(() => {
-          if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
-            host.location.href = "index.html";
-        }).catch(() => {});
-    });
+    bindVisibility(host);
   }
 })(typeof window !== "undefined" ? window : globalThis);

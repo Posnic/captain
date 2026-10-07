@@ -26,6 +26,7 @@
     }
   }
   let view = "start";
+  let returningToSettings = false;
   let navigationVersion = 0;
   function showView(next, focus = true) {
     showStep(false);
@@ -206,10 +207,16 @@
       );
     if (signal?.aborted)
       throw new Error("Connection cancelled. Ask your manager for a new code.");
-    if (CaptainAccess.locked || POSNIC.session.active)
+    const sameAccount = POSNIC.session.shopKey === grant.shopKey && POSNIC.session.user?.id === grant.user.id;
+    if (CaptainAccess.locked && sameAccount && !(await POSNIC.lock.unlock())) return;
+    if (!sameAccount && (CaptainAccess.locked || POSNIC.session.active))
       await POSNIC.session.end();
     POSNIC.server.pin(base);
     await POSNIC.session.start({ ...grant, base });
+    for (const route of grant.routes || []) {
+      const address=POSNIC.server.normalize(route);
+      if(address)POSNIC.server.remember({[POSNIC.server.isLanUrl(address)?'lan':'cloud']:address});
+    }
     if (prepared) {
       POSNIC.server.remember({
         cloud: base,
@@ -226,13 +233,13 @@
       "kiosk_selected_branch",
       branch.store_id || branch.branch_id,
     );
-    note("Phone approved. Choose your daily unlock PIN.");
-    if (!(await POSNIC.lock.choose())) {
-      await POSNIC.session.end();
-      note("Setup paused. Ask your manager for a new code when you are ready.");
-      return;
-    }
-    await selectBranch(branch.store_id || branch.branch_id);
+    // Pairing authorizes this phone. A local PIN is a separate, optional choice.
+    // Do not remove an existing PIN or make a new PIN a condition of signing in.
+    localStorage.setItem('posnic.setup-complete', '1');
+    await window.CaptainSetupFlow?.finishSetup(branch.branch_id);
+    note("Loading the menu...");
+    if (await selectBranch(branch.store_id || branch.branch_id) === false)
+      note("Could not load the menu");
   }
   async function search(signal) {
     $("captain-results").replaceChildren();
@@ -248,8 +255,10 @@
       "Could not read this phone’s Wi-Fi. Retry, scan the till’s QR, or enter its address.",
     );
     if (signal.aborted) return;
-    if (!network.wifi || !network.ip)
-      throw new Error("Connect this phone to the shop Wi-Fi and try again.");
+    if (!network.wifi || !network.ip) {
+      showView('start');
+      throw new Error("Wi-Fi is off. Sign in with Posnic to find your shop, or scan its QR.");
+    }
     const subnet = network.ip.split(".").slice(0, 3).join(".");
     if (
       !/^\d{1,3}(\.\d{1,3}){3}$/.test(network.ip) ||
@@ -275,7 +284,7 @@
       button.type = "button";
       button.className = "setup-server-card";
       button.innerHTML = '<span class="setup-server-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span><span class="setup-server-info"><strong translate="no"></strong><span class="setup-server-network">Wi-Fi</span></span><span class="setup-server-action"><span>Connect</span><span aria-hidden="true">→</span></span>';
-      button.querySelector("strong").textContent = new URL(hit.base).host;
+      button.querySelector("strong").textContent = hit.info?.connections?.shopName || new URL(hit.base).host;
       if (!hit.info.features?.captainAccessV1) {
         const compatibility = document.createElement("small");
         compatibility.textContent = "· Update required for pairing";
@@ -554,6 +563,17 @@
       throw new Error(
         "Could not reach this shop. Check the address or connect to the shop Wi-Fi.",
       );
+    // Public metadata is a hint only. The authenticated route proof remains
+    // mandatory before credentials or orders may use the returned address.
+    try {
+      const http=window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null;
+      const response=await bounded(http ? http.request({url:hit.base+'/captain/v1/discovery',method:'GET',headers:{Accept:'application/json'},connectTimeout:1200,readTimeout:1200,disableRedirects:true}) : fetch(hit.base+'/captain/v1/discovery', {signal,credentials:'omit',redirect:'error'}),1500,signal,'Discovery timed out.');
+      if(response.ok || (response.status>=200&&response.status<300)) {
+        const details=http ? (typeof response.data==='string'?JSON.parse(response.data):response.data) : await bounded(response.json(),500,signal,'Discovery timed out.');
+        if(details?.connections)hit.info.connections=details.connections;
+      }
+    } catch (_) { /* Older servers still support address sign-in. */ }
+    if(signal?.aborted||navigationVersion!==startedAt)return;
     if (window.CaptainAccess?.locked) {
       POSNIC.server.remember({ lan: hit.base });
       localStorage.setItem(
@@ -567,17 +587,30 @@
       await POSNIC.session.addAddress(hit.base, signal);
       if (signal?.aborted || navigationVersion !== startedAt) return;
       note("Connected");
+      if (returningToSettings) { returningToSettings=false; showView('settings'); }
       return;
     }
     if (POSNIC.session.active && hit.base !== POSNIC.session.base)
       await POSNIC.session.end();
     if (signal?.aborted || navigationVersion !== startedAt) return;
     POSNIC.server.pin(hit.base);
+    const cloud = POSNIC.server.normalize(hit.info?.connections?.cloud);
+    // Discovery is a candidate, not authority to send a credential to a peer.
+    // Existing canAdopt / route-proof checks still gate authenticated failover.
+    POSNIC.server.remember({lan: hit.base, ...(cloud && !POSNIC.server.isLanUrl(cloud) ? {cloud} : {})});
     note("");
+    if (window.CaptainSetupFlow && !(await CaptainSetupFlow.found(hit, signal))) {
+      POSNIC.server.unpin();
+      showView('start');
+      return;
+    }
+    if (signal?.aborted) return;
     showStep(true);
     $("username").focus();
   }
   window.CaptainOnboarding = {
+    searchSaved() { returningToSettings=true; $("captain-search").click(); },
+    signInSaved() { returningToSettings=false; showStep(true); },
     get busy() {
       return !!operation || !!selection;
     },
@@ -722,6 +755,7 @@
     };
     $("connection-orders").onclick = $("connection-done").onclick = () => CaptainOnboarding.close();
     $("connection-back").onclick = () => {
+      if(returningToSettings){returningToSettings=false;operation?.abort();cancelSelection();showView('settings');return;}
       if (view === "start") return CaptainOnboarding.close();
       operation?.abort();
       cancelSelection();

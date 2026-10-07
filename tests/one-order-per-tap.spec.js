@@ -261,7 +261,7 @@ test("no network still saves the order and reload retains it without blocking or
   const key = await page.evaluate(() => OrderQueue.all()[0].key);
   await page.reload();
   await expect(page.locator("#posnic-unsent-text")).toContainText(
-    "1 order waiting to sync",
+    "1 order saved. Sending automatically…",
   );
   const headerBox = await page.locator('.floor-head').boundingBox();
   const noticeBox = await page.locator('#posnic-unsent').boundingBox();
@@ -273,9 +273,10 @@ test("no network still saves the order and reload retains it without blocking or
   await expect(page.locator('#order-toast')).not.toHaveClass(/show/);
   await expect(page).toHaveURL(/kot-management\.html$/);
   expect(await page.evaluate(() => OrderQueue.all()[0].key)).toBe(key);
-  // Open the saved order while still offline. Restoring connectivity may
-  // deliver it before a Retry button can be clicked; that is the desired flow.
-  await page.locator('#posnic-unsent a[href="pending.html"]').click();
+  // Routine offline delivery has no action link; the diagnostics route still
+  // verifies durable recovery without teaching staff to manage synchronization.
+  await expect(page.locator('#posnic-unsent a')).not.toHaveAttribute('href');
+  await page.goto('/pending.html');
   await expect(page).toHaveURL(/pending\.html$/);
   const delivered = [];
   await page.unroute(`${SHOP_ORIGIN}/**`);
@@ -286,7 +287,7 @@ test("no network still saves the order and reload retains it without blocking or
     .toBe(0);
   expect(delivered).toHaveLength(1);
   expect(delivered[0].idempotencyKey).toBe(key);
-  await expect(page.locator("#posnic-unsent-text")).toHaveText("All orders synced");
+  await expect(page.locator("#posnic-unsent-text")).toHaveText("All orders sent");
   await page.locator("#pending-back").click();
   await expect(page.locator("#posnic-unsent")).toBeHidden();
 });
@@ -376,7 +377,9 @@ for (const width of [320, 768]) {
     await page.locator("#pending-back").click();
     await expect(page).toHaveURL(/kot-management\.html$/);
     await page.goto('/me.html');
-    await page.locator('.me-row[href="pending.html"]').click();
+    await expect(page.locator('.me-row[href="pending.html"]')).toHaveCount(0);
+    await page.evaluate(()=>sessionStorage.setItem('captain_pending_return','me.html'));
+    await page.goto('/pending.html');
     await expect(page.locator(".pending-order-card")).toHaveCount(1);
     await page.evaluate(() => window.dispatchEvent(new Event("captain:back", {cancelable:true})));
     await expect(page).toHaveURL(/me\.html$/);
@@ -400,7 +403,7 @@ test("pulling pending orders retries delivery and keeps the same request ID", as
   for(let y=190;y<=350;y+=20) await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:150,y}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await cdp.detach();
-  await expect(page.locator('#posnic-unsent-text')).toHaveText('All orders synced');
+  await expect(page.locator('#posnic-unsent-text')).toHaveText('All orders sent');
   expect(orders).toHaveLength(2);
   expect(orders[0].idempotencyKey).toBe(orders[1].idempotencyKey);
 });

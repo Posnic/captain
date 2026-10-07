@@ -20,8 +20,7 @@ test('route signals show measured reachability and open the shared address edito
   await page.reload();
   await expect(page.locator('#connection-addresses')).toBeVisible();
   await expect(page).toHaveURL(/index.html/);
-  await page.locator('#connection-back').click();
-  await page.locator('#connection-back').click();
+  await page.locator('[data-connection-action=orders]').click();
   await expect(page).toHaveURL(/kot-management/);
 });
 

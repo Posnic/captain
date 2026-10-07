@@ -63,7 +63,7 @@ function resolveVersion(root) {
       const described = execSync(command, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] })
         .toString()
         .trim();
-      if (described) return described.replace(/^v/, '');
+      if (described) return described.replace(/^(?:captain-|v)/, '');
     } catch (e) {
       /* not on a tag, or no tags at all - try the next, then package.json */
     }

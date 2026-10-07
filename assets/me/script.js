@@ -81,11 +81,32 @@
         }
 
         state.textContent = on ? 'On' : 'Off';
-        row.querySelector('.me-row-label').textContent = on ? 'Change the PIN' : 'Screen lock';
-        off.hidden = !on;
+        row.querySelector('.me-row-label').textContent = on ? 'Change the PIN' : 'Use a PIN (optional)';
+        off.hidden = true;
+        row.hidden = !on;
+        if (at('me-pin-enabled')) at('me-pin-enabled').checked = on;
     }
 
     function wireLock() {
+        const pinToggle=at('me-pin-enabled');
+        if(pinToggle)pinToggle.onchange=async()=>{
+            const enable=pinToggle.checked;pinToggle.disabled=true;
+            try {
+                if(enable)await POSNIC.lock.choose();
+                else if(await POSNIC.lock.unlock('',{why:'Enter your PIN to turn the lock off',escape:'Not now'})) {
+                    if(window.CaptainAccess?.pinSet)await CaptainAccess.removePin();
+                    else POSNIC.lock.clear();
+                }
+            } finally {pinToggle.disabled=false;paintLock();}
+        };
+        const remember = at('me-remember-session');
+        if (remember) {
+            remember.checked = localStorage.getItem('posnic.remember-session') !== '0';
+            remember.onchange = () => {
+                localStorage.setItem('posnic.remember-session', remember.checked ? '1' : '0');
+                sessionStorage.setItem('posnic.current-session','1');
+            };
+        }
         const row = at('me-lock');
         const off = at('me-lock-off');
         if (row) {
@@ -201,6 +222,7 @@
                    would drift from the first the week after it was made. */
                 try {
                     sessionStorage.setItem('posnic_change_server', '1');
+                    sessionStorage.setItem('posnic_connection_view', 'settings');
                 } catch (e) {
                     /* private mode: the page still opens, just without the sheet */
                 }
@@ -218,6 +240,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         paintWho();
         paintLock();
+        Promise.resolve(POSNIC.session.ready).then(paintLock).catch(()=>{});
         paintPreferences();
         wireLock();
         wirePreferences();

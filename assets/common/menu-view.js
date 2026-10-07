@@ -390,7 +390,7 @@
       if (!items.length) continue;
       out.push({
         key,
-        name: items[0].category_name || key.replace(/_/g, ' '),
+        name: /^quick sale$/i.test(items[0].category_name || '') ? 'Custom items' : (items[0].category_name || key.replace(/_/g, ' ')),
         /* Where the shop put this category on its card. Number.MAX_VALUE for
            an item stored before this was recorded, so an old cache sinks to
            the bottom rather than jumping to the front. */

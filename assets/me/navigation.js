@@ -1,7 +1,7 @@
 /* One account hub; hash routes retain browser and Android Back navigation. */
 (function () {
   "use strict";
-  const titles = { home: "Me", account: "Account", language: "Language", preferences: "This phone", printers: "Printing" };
+  const titles = { home: "Me", account: "Account", security: "Sign-in & PIN", language: "Language", preferences: "This phone", printers: "Printing" };
   const current = () => Object.hasOwn(titles, location.hash.slice(1)) ? location.hash.slice(1) : "home";
   let renderedHash = location.hash;
   function render() {

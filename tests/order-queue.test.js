@@ -272,3 +272,32 @@ test("an unavailable order owned by another session cannot silently block eligib
     assert.deepEqual(OrderQueue.all().map(row => row.key), ["other"]);
   }
 });
+
+test('connection restored retries waiting orders immediately with the original key', async () => {
+ reset();OrderQueue.add(order('reconnect'));
+ await OrderQueue.flush(async()=>{throw Object.assign(Error('Offline'),{status:503});},{now:()=>100});
+ let sent;
+ await OrderQueue.flush(async row=>{sent=row.body.idempotencyKey;return {type:'success'};},{now:()=>101,connectionRestored:true});
+ assert.equal(sent,'reconnect');assert.equal(OrderQueue.count(),0);
+});
+test('connection restored does not bypass an account or validation block', async () => {
+ for(const state of ['blocked','attention']){
+  reset();OrderQueue.add(order(state));OrderQueue.update(state,{state,nextAt:99999});
+  let calls=0;await OrderQueue.flush(async()=>{calls++;return {type:'success'};},{connectionRestored:true});
+  assert.equal(calls,0);assert.equal(OrderQueue.count(),1);
+ }
+});
+
+test('discard removes only unsent or definitely rejected orders',async()=>{
+ reset();OrderQueue.add(order('new'));assert.equal(OrderQueue.discard('new'),true);
+ OrderQueue.add(order('unknown'));await OrderQueue.flush(async()=>{throw Object.assign(Error('Timeout'),{status:408});});
+ assert.equal(OrderQueue.discard('unknown'),false);assert.equal(OrderQueue.count(),1);
+ reset();OrderQueue.add(order('duplicate'));await OrderQueue.flush(async()=>({type:'error',message:'Table P already has an open order. Add to it, or settle it first.'}));
+ assert.equal(OrderQueue.discard('duplicate'),true);assert.equal(OrderQueue.count(),0);
+});
+test('an in-flight send cannot be discarded',async()=>{
+ reset();OrderQueue.add(order('sending'));let finish;
+ const sent=OrderQueue.flush(()=>new Promise(resolve=>{finish=resolve;}));
+ assert.equal(OrderQueue.discard('sending'),false);
+ finish({type:'success'});await sent;
+});

@@ -128,10 +128,10 @@
     document.getElementById('ask-run-out-dish').translate = !nameOf(product);
     document.getElementById('ask-run-out-dish').textContent = nameOf(product) || 'This dish';
     document.getElementById('ask-run-out-why').textContent = off
-      ? 'This is off the menu today. Put it back and the floor can order it again straight away.'
-      : 'Takes it off the menu for the rest of today. Nobody can order it, and tomorrow it comes back by itself.';
+      ? 'This item is sold out. Make it available to order again.'
+      : 'Stop orders for this item today. It will be available again tomorrow.';
 
-    ok.textContent = off ? 'Put back on' : 'It has run out';
+    ok.textContent = off ? 'Make available' : 'Mark sold out';
     ok.classList.toggle('is-back', off);
 
     scrim.classList.add('is-open');

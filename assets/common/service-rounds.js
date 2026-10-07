@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   const escape = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const serveIcon = `<svg class="serve-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h18M5 13a7 7 0 0 1 10-6M3 19h18M11 4h2M16 9l2 2 4-5"/></svg>`;
   function time(value) {
     const date = new Date(value);
     return value && Number.isFinite(date.getTime()) ? date.toLocaleString(undefined, {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}) : '';
@@ -13,7 +14,7 @@
     const takeaway = /^take[\s_-]*away$/i.test(order.dine_type || order.fulfilment || '');
     const serviceable = editable || (takeaway && order.payment_status === 'Paid' && !root.kotIsCancelled?.(order));
     const pending = order.kitchen_rounds.some(round => round.items.some(line => !line.held && line.remaining > 0));
-    const all = serviceable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" aria-label="${takeaway?'Handed over':'Mark all served'}"><i class="fas fa-check-double" aria-hidden="true"></i><span>${takeaway?'Handed over':'Serve all'}</span></button></div>` : '';
+    const all = serviceable && pending ? `<div class="service-order-action service-action"><button type="button" data-serve-all data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" aria-label="${takeaway?'Handed over':'Mark all served'}">${serveIcon}<span>${takeaway?'Handed over':'Serve all'}</span></button></div>` : '';
     const options = editable && root.ServiceDetails?.supported(order.branch_id) ? `<details class="service-order-options"><summary><i class="fas fa-sliders-h" aria-hidden="true"></i> <span>Order options</span></summary><button type="button" data-delivery-sale="${escape(order._id)}">Kitchen delivery</button><button type="button" data-handover-sale="${escape(order._id)}" data-handover-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Assign staff</button><p class="service-assignee" translate="no">${escape(order.assigned_staff?.name || '')}</p></details>` : '';
     const lineCounts = new Map();
     order.kitchen_rounds.forEach(round=>round.items.forEach(line=>lineCounts.set(line.line_key,(lineCounts.get(line.line_key)||0)+1)));
@@ -21,7 +22,7 @@
       <h3><span>Ordered at</span> <time translate="no">${escape(time(round.ordered_at))}</time></h3>
       ${round.fired_at ? `<p><span>Sent to the kitchen</span> <time translate="no">${escape(time(round.fired_at))}</time></p>` : ''}
       ${round.items.map(line => `<div class="service-line${line.remaining ? '' : ' is-served'}">
-        <div class="service-dish"><strong translate="no">${escape(line.name)}</strong>
+        <div class="service-dish"><strong translate="no"${editable && line.line_key && lineCounts.get(line.line_key)===1 ? ' role="button" tabindex="0" data-item-note' : ''}>${escape(line.name)}</strong>
         ${root.ServiceDetails?.summary(line) || ''}
         ${line.note ? `<p class="service-item-note" translate="no">${escape(line.note)}</p>` : ''}
         ${line.served ? `<small><span>Served</span> <span translate="no">${line.served} / ${line.quantity}${line.served_at ? ' · ' + escape(time(line.served_at)) : ''}</span></small>` : ''}</div>
@@ -30,14 +31,15 @@
         ${editable && line.held && line.remaining > 0 ? `<div class="service-action"><button type="button" data-fire-line="${escape(line.id)}" data-fire-sale="${escape(order._id)}" data-fire-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}">Send to kitchen</button></div>` : ''}
         ${serviceable && !line.held && line.remaining > 0 ? `<div class="service-action">
           ${line.remaining > 1 ? `<input type="number" aria-label="Quantity to serve" min="0.001" max="${line.remaining}" step="any" value="${line.remaining}">` : ''}
-          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}" title="${takeaway?'Hand over item':'Mark served'}" aria-label="${takeaway?'Hand over item':'Mark served'}"><svg class="serve-item-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 16h18M5 13a7 7 0 0 1 10-6M3 19h18M11 4h2M16 9l2 2 4-5"/></svg><span>${takeaway?'Handed over':'Served'}</span></button>
+          <button type="button" data-serve-sale="${escape(order._id)}" data-serve-branch="${escape(order.branch_id || localStorage.getItem('branch_id') || '')}" data-serve-line="${escape(line.id)}" data-served="${line.served}" data-remaining="${line.remaining}" title="${takeaway?'Hand over item':'Mark served'}" aria-label="${takeaway?'Hand over item':'Mark served'}">${serveIcon}<span>${takeaway?'Handed over':'Served'}</span></button>
         </div>` : ''}
       </div>`).join('')}</section>`).join('');
   }
   function updateRounds(container, saleId, branchId, rounds, changedLines) {
     const list = container.querySelector('.kot-items-list');
-    const optionsOpen = list.querySelector('.service-order-options')?.open;
-    const assignedName = list.querySelector('.service-assignee')?.textContent || '';
+    // Secondary actions may live outside the item list in More options.
+    const optionsOpen = container.querySelector('.service-order-options')?.open;
+    const assignedName = container.querySelector('.service-assignee')?.textContent || '';
     const quantities = new Map();
     list.querySelectorAll('[data-serve-line]').forEach(button => {
       const input = button.parentElement.querySelector('input');
@@ -52,6 +54,7 @@
       // Keep another item's partial-quantity draft only while it remains valid.
       if (input && value !== undefined && Number(value) > 0 && Number(value) <= Number(input.max)) input.value = value;
     });
+    root.CaptainOrderView?.arrange(container.closest('.order-workspace') || container);
     root.I18N?.apply(list);
   }
   document.addEventListener('click', async event => {

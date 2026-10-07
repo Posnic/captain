@@ -1,0 +1,17 @@
+.captain-setup-dialog{width:min(390px,calc(100% - 32px));max-height:calc(100dvh - 48px);overflow:auto;border:1px solid var(--line,#dce3ed);border-radius:22px;padding:26px 22px;background:var(--surface,#fff);color:var(--ink,#17243a);font-family:Inter,system-ui,sans-serif}
+.captain-setup-dialog::backdrop{background:#10182770;backdrop-filter:blur(5px)}
+.captain-setup-dialog h2{font-size:26px;margin:0 0 18px}.captain-setup-dialog p{font-size:15px;line-height:1.55;color:var(--ink-soft,#647084)}
+.captain-setup-dialog button{width:100%;min-height:48px;margin-top:14px}.setup-found-addresses{background:var(--surface-sunk,#f3f6fb);padding:16px;border-radius:14px}.setup-found-addresses dt{font-weight:600;margin-top:10px}.setup-found-addresses dd{margin:6px 0 16px;overflow-wrap:anywhere;font-size:14px}
+.setup-priority-row{display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--surface-sunk,#f3f6fb);border-radius:12px;margin:8px 0}.setup-priority-row button{min-width:44px;min-height:44px;border:1px solid var(--line,#dce3ed);border-radius:10px;background:var(--surface,#fff);color:var(--ink,#17243a)}
+.setup-ip-suffix{display:flex;gap:8px;align-items:center}.setup-ip-suffix input{width:80px;padding:12px;font-size:16px}.setup-welcome-step{animation:setup-arrive .4s ease both;padding:12px 0;border-bottom:1px solid var(--line,#dce3ed)}@keyframes setup-arrive{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}@media(prefers-reduced-motion:reduce){.setup-welcome-step{animation:none}}
+.setup-priority-row{gap:10px}.setup-priority-row>span:not(.setup-priority-grip){flex:1}.setup-priority-grip{touch-action:none;cursor:grab;font-size:25px;min-width:36px;min-height:44px;display:grid;place-items:center}.setup-priority-row.is-moving{outline:2px solid var(--accent,#2855db)}
+#staff-signin-form .setup-confirm{display:flex;align-items:center;gap:12px;min-height:44px;margin:4px 0;font-size:14px;font-weight:500;line-height:1.4;color:var(--ink,#17243a)}
+#staff-signin-form .setup-confirm input{width:19px;height:19px;flex:0 0 19px;accent-color:var(--accent,#2855db);margin:0}
+#staff-signin-form .setup-session-help{font-size:12px;line-height:1.5;margin:4px 0 20px;color:var(--ink-soft,#647084)}
+@media(max-width:600px){
+ .captain-setup-dialog[open]{display:flex;flex-direction:column;box-sizing:border-box;width:100%;max-width:none;height:100dvh;max-height:100dvh;inset:0;margin:0;border:0;border-radius:0;padding:calc(env(safe-area-inset-top,0px) + 32px) 24px calc(env(safe-area-inset-bottom,0px) + 24px)}
+ .captain-setup-dialog h2{margin-top:12px}
+ .captain-setup-dialog .setup-primary{margin-top:auto;flex-shrink:0}
+ .captain-setup-dialog .setup-link{flex-shrink:0}
+ .captain-setup-dialog .setup-found-addresses{margin:18px 0}
+}
