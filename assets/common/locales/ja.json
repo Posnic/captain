@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "保存した注文は安全です。これからも自動的に試し続けます。™",
   "Your shop addresses are saved. Sign in again to continue.": "ショップの住所が保存されました。続けるには再度ログインしてください。",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "記憶型ログインをオフにしても、ショップの住所は保存されたままになります。",
-  "Internet": "インターネット"
+  "Internet": "インターネット",
+  "Connect to Wi-Fi": "Wi-Fi に接続する",
+  "Shop Wi-Fi is available": "ショップの Wi-Fi が利用可能です。",
+  "Shop Wi-Fi is back": "ショップWi-Fiが復活しました",
+  "Shop Wi-Fi isn’t available": "ショップの Wi-Fi がご利用いただけません",
+  "Shop connection lost": "ショップへの接続が失われました",
+  "Stay on internet": "インターネットに常時接続してください。",
+  "Switch automatically next time": "次回からは自動的に切り替える",
+  "Use internet": "インターネットを使う",
+  "Use shop Wi-Fi": "ショップの Wi-Fi を使う",
+  "Wait for shop Wi-Fi": "ショップの Wi-Fi を待ってください",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "ショップの接続を確認しました。今すぐ使用するか、インターネットを利用してください。",
+  "Your shop is available through internet. Your order stays safe when you switch.": "ショップはインターネット経由で利用できます。切り替えても、注文は安全に保たれます。"
 }

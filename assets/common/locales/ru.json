@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Ваши сохраненные заказы в безопасности. ™ Мы продолжим пытаться автоматически.",
   "Your shop addresses are saved. Sign in again to continue.": "Адреса ваших магазинов сохранены. Чтобы продолжить, войдите снова.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Адреса ваших магазинов останутся сохраненными, если вы отключите функцию «Запоминаемый вход».",
-  "Internet": "Интернет"
+  "Internet": "Интернет",
+  "Connect to Wi-Fi": "Подключитесь к Wi-Fi",
+  "Shop Wi-Fi is available": "В магазине доступен Wi-Fi",
+  "Shop Wi-Fi is back": "Wi-Fi в магазине вернулся",
+  "Shop Wi-Fi isn’t available": "Wi-Fi в магазине недоступен",
+  "Shop connection lost": "Связь с магазином потеряна",
+  "Stay on internet": "Оставайтесь в Интернете",
+  "Switch automatically next time": "В следующий раз переключитесь автоматически",
+  "Use internet": "Используйте интернет",
+  "Use shop Wi-Fi": "Используйте Wi-Fi в магазине",
+  "Wait for shop Wi-Fi": "Дождитесь выхода Wi-Fi в магазине",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Мы проверили подключение к вашему магазину. Используйте его сейчас или оставайтесь в Интернете.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Ваш магазин доступен через Интернет. Ваш заказ останется в безопасности при переходе."
 }

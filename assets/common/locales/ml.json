@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "നിങ്ങളുടെ സംരക്ഷിച്ച ഓർഡറുകൾ സുരക്ഷിതമാണ്. ഞങ്ങൾ യാന്ത്രികമായി ശ്രമിക്കുന്നത് തുടരും.™",
   "Your shop addresses are saved. Sign in again to continue.": "നിങ്ങളുടെ ഷോപ്പ് വിലാസങ്ങൾ സംരക്ഷിച്ചിരിക്കുന്നു. തുടരാൻ വീണ്ടും സൈൻ ഇൻ ചെയ്യുക.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "ഓർമ്മിച്ച സൈൻ ഇൻ ഓഫാക്കിയാൽ നിങ്ങളുടെ ഷോപ്പ് വിലാസങ്ങൾ സംരക്ഷിക്കപ്പെടും.",
-  "Internet": "ഇന്റർനെറ്റ്"
+  "Internet": "ഇന്റർനെറ്റ്",
+  "Connect to Wi-Fi": "വൈഫൈയിലേക്ക് കണക്റ്റുചെയ്യുക",
+  "Shop Wi-Fi is available": "ഷോപ്പ് വൈഫൈ ലഭ്യമാണ്",
+  "Shop Wi-Fi is back": "ഷോപ്പ് വൈഫൈ തിരിച്ചെത്തി",
+  "Shop Wi-Fi isn’t available": "ഷോപ്പ് വൈഫൈ ലഭ്യമല്ല",
+  "Shop connection lost": "ഷോപ്പ് കണക്ഷൻ നഷ്ടപ്പെട്ടു",
+  "Stay on internet": "ഇന്റർനെറ്റിൽ തുടരുക",
+  "Switch automatically next time": "അടുത്ത തവണ യാന്ത്രികമായി മാറുക",
+  "Use internet": "ഇന്റർനെറ്റ് ഉപയോഗിക്കുക",
+  "Use shop Wi-Fi": "ഷോപ്പ് വൈഫൈ ഉപയോഗിക്കുക",
+  "Wait for shop Wi-Fi": "ഷോപ്പ് വൈഫൈയ്ക്കായി കാത്തിരിക്കുക",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "നിങ്ങളുടെ ഷോപ്പ് കണക്ഷൻ ഞങ്ങൾ പരിശോധിച്ചു. ഇപ്പോൾ ഉപയോഗിക്കുക, അല്ലെങ്കിൽ ഇന്റർനെറ്റിൽ തുടരുക.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "നിങ്ങളുടെ ഷോപ്പ് ഇന്റർനെറ്റ് വഴി ലഭ്യമാണ്. നിങ്ങൾ മാറുമ്പോൾ നിങ്ങളുടെ ഓർഡർ സുരക്ഷിതമായി തുടരുന്നു."
 }

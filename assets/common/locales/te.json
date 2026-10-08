@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "మీ సేవ్ చేసిన ఆర్డర్లు సురక్షితంగా ఉన్నాయి. మేము స్వయంచాలకంగా ప్రయత్నిస్తూనే ఉంటాము.™",
   "Your shop addresses are saved. Sign in again to continue.": "మీ దుకాణం చిరునామాలు సేవ్ చేయబడతాయి. కొనసాగించడానికి మళ్ళీ సైన్ ఇన్ చేయండి.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "మీరు జ్ఞాపకం చేసుకున్న సైన్-ఇన్ను ఆపివేస్తే మీ షాప్ చిరునామాలు సేవ్ చేయబడి ఉంటాయి.",
-  "Internet": "ఇంటర్నెట్"
+  "Internet": "ఇంటర్నెట్",
+  "Connect to Wi-Fi": "Wi-Fi కి కనెక్ట్ అవ్వండి",
+  "Shop Wi-Fi is available": "షాప్ వై-ఫై అందుబాటులో ఉంది",
+  "Shop Wi-Fi is back": "షాప్ వై-ఫై తిరిగి వచ్చింది",
+  "Shop Wi-Fi isn’t available": "షాప్ వై-ఫై అందుబాటులో లేదు",
+  "Shop connection lost": "షాప్ కనెక్షన్ కోల్పోయింది",
+  "Stay on internet": "ఇంటర్నెట్లో ఉండండి",
+  "Switch automatically next time": "తదుపరిసారి స్వయంచాలకంగా మారండి",
+  "Use internet": "ఇంటర్నెట్ ఉపయోగించండి",
+  "Use shop Wi-Fi": "షాప్ వై-ఫైని ఉపయోగించండి",
+  "Wait for shop Wi-Fi": "షాప్ వై-ఫై కోసం వేచి ఉండండి",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "మేము మీ షాప్ కనెక్షన్ను తనిఖీ చేసాము. ఇప్పుడే ఉపయోగించండి, లేదా ఇంటర్నెట్లో ఉండండి.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "మీ దుకాణం ఇంటర్నెట్ ద్వారా అందుబాటులో ఉంది. మీరు మారినప్పుడు మీ ఆర్డర్ సురక్షితంగా ఉంటుంది."
 }

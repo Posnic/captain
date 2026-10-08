@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "คำสั่งซื้อที่บันทึกไว้ของคุณปลอดภัยเราจะพยายามอย่างต่อเนื่องโดยอัตโนมัติ™",
   "Your shop addresses are saved. Sign in again to continue.": "ที่อยู่ร้านค้าของคุณจะถูกบันทึกไว้ลงชื่อเข้าใช้อีกครั้งเพื่อดำเนินการต่อ",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "ที่อยู่ร้านค้าของคุณจะถูกบันทึกไว้หากคุณปิดการลงชื่อเข้าใช้ที่จำไว้",
-  "Internet": "อินเทอร์เน็ต"
+  "Internet": "อินเทอร์เน็ต",
+  "Connect to Wi-Fi": "เชื่อมต่อกับ Wi-Fi",
+  "Shop Wi-Fi is available": "ร้านค้ามีบริการอินเทอร์เน็ตไร้สาย",
+  "Shop Wi-Fi is back": "ร้านค้า Wi-Fi กลับมาแล้ว",
+  "Shop Wi-Fi isn’t available": "ร้านค้า Wi-Fi ไม่พร้อมใช้งาน",
+  "Shop connection lost": "การเชื่อมต่อร้านค้าสูญหาย",
+  "Stay on internet": "อยู่บนอินเทอร์เน็ต",
+  "Switch automatically next time": "สลับโดยอัตโนมัติในครั้งต่อไป",
+  "Use internet": "ใช้อินเทอร์เน็ต",
+  "Use shop Wi-Fi": "ใช้ Wi-Fi ของร้านค้า",
+  "Wait for shop Wi-Fi": "รอช็อป Wi-Fi",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "เราได้ตรวจสอบการเชื่อมต่อร้านค้าของคุณแล้วใช้ตอนนี้หรืออยู่บนอินเทอร์เน็ต",
+  "Your shop is available through internet. Your order stays safe when you switch.": "ร้านค้าของคุณมีให้บริการผ่านอินเทอร์เน็ตคำสั่งซื้อของคุณจะปลอดภัยเมื่อคุณสวิตช์"
 }

@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "ඔබගේ සුරකින ලද ඇණවුම් ආරක්ෂිතයි. අපි ස්වයංක්රීයව උත්සාහ කරන්නෙමු.™",
   "Your shop addresses are saved. Sign in again to continue.": "ඔබේ වෙළඳසැල් ලිපින සුරකිනු ඇත. ඉදිරියට යාමට නැවත ලියාපදිංචි වන්න.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "ඔබ මතක සටහන් වීම ක්රියා විරහිත කළහොත් ඔබේ වෙළඳසැල් ලිපිනයන් සුරකිනු ඇත.",
-  "Internet": "අන්තර්ජාලය"
+  "Internet": "අන්තර්ජාලය",
+  "Connect to Wi-Fi": "Wi-Fi වෙත සම්බන්ධ වන්න",
+  "Shop Wi-Fi is available": "සාප්පු Wi-Fi ලබා ගත හැකිය",
+  "Shop Wi-Fi is back": "ෂොප් වයි-ෆයි නැවත පැමිණේ",
+  "Shop Wi-Fi isn’t available": "සාප්පු Wi-Fi ලබා ගත නොහැක",
+  "Shop connection lost": "වෙළඳසැල් සම්බන්ධතාවය අහිමි විය",
+  "Stay on internet": "අන්තර්ජාලයේ රැඳී සිටින්න",
+  "Switch automatically next time": "ඊළඟ වරට ස්වයංක්රීයව",
+  "Use internet": "අන්තර්ජාලය භාවිතා කරන්න",
+  "Use shop Wi-Fi": "සාප්පු Wi-Fi භාවිතා කරන්න",
+  "Wait for shop Wi-Fi": "සාප්පු Wi-Fi එනතුරු බලා සිටින්න",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "අපි ඔබේ වෙළඳසැල් සම්බන්ධතාවය පරීක්ෂා කර ඇත්තෙමු. දැන් එය භාවිතා කරන්න, නැතහොත් අන්තර්ජාලයේ රැඳී සිටින්න.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "ඔබේ වෙළඳසැල අන්තර්ජාලය හරහා ලබා ගත හැකිය. ඔබ මාරු වන විට ඔබේ ඇණවුම ආරක්ෂිතව පවතී."
 }

@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Seus pedidos salvos estão seguros. Continuaremos tentando automaticamente.™",
   "Your shop addresses are saved. Sign in again to continue.": "Os endereços da sua loja são salvos. Faça login novamente para continuar.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Os endereços da sua loja permanecem salvos se você desativar o login lembrado.",
-  "Internet": "Internet"
+  "Internet": "Internet",
+  "Connect to Wi-Fi": "Conecte-se ao Wi-Fi",
+  "Shop Wi-Fi is available": "O Wi-Fi da loja está disponível",
+  "Shop Wi-Fi is back": "O Wi-Fi da loja está de volta",
+  "Shop Wi-Fi isn’t available": "O Wi-Fi da loja não está disponível",
+  "Shop connection lost": "Conexão com a loja perdida",
+  "Stay on internet": "Fique na internet",
+  "Switch automatically next time": "Alterne automaticamente na próxima vez",
+  "Use internet": "Use a internet",
+  "Use shop Wi-Fi": "Use o Wi-Fi da loja",
+  "Wait for shop Wi-Fi": "Aguarde o Wi-Fi da loja",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Verificamos sua conexão com a loja. Use-o agora ou fique na internet.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Sua loja está disponível pela internet. Seu pedido permanece seguro quando você troca."
 }

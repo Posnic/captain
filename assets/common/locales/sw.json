@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Maagizo yako yaliyohifadhiwa ni salama. Tutaendelea kujaribu moja kwa moja.™",
   "Your shop addresses are saved. Sign in again to continue.": "Anwani yako ya duka zimehifadhiwa. Ingia tena ili kuendelea.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Anwani zako za duka zinakaa kuhifadhiwa ikiwa utazima kuingia uliokumbukwa.",
-  "Internet": "Intaneti"
+  "Internet": "Intaneti",
+  "Connect to Wi-Fi": "Unganisha kwenye Wi-Fi",
+  "Shop Wi-Fi is available": "Duka Wi-Fi inapatikana",
+  "Shop Wi-Fi is back": "Duka la Wi-Fi imerudi",
+  "Shop Wi-Fi isn’t available": "Duka Wi-Fi haipatikani",
+  "Shop connection lost": "Uunganisho wa duka uli",
+  "Stay on internet": "Kaa kwenye mtandao",
+  "Switch automatically next time": "Badilisha moja kwa moja wakati ujao",
+  "Use internet": "Tumia mtandao",
+  "Use shop Wi-Fi": "Tumia Wi-Fi ya duka",
+  "Wait for shop Wi-Fi": "Subiri Wi-Fi ya duka",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Tumeangalia unganisho la duka lako. Tumia sasa, au ukaa kwenye mtandao.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Duka lako linapatikana kupitia mtandao. Agizo lako linakaa salama unapobadilisha."
 }

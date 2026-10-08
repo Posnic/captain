@@ -3,9 +3,21 @@
   "use strict";
   const seen = new Map();
   const t = text => window.I18N?.t(text) || text;
+  let wifi = null;
   function paint() {
     if (!window.POSNIC) return;
     const {server,net} = POSNIC;
+    wifi=POSNIC.internetChoice?.wifi ?? wifi;
+    const anchor=document.querySelector('.floor-section');
+    if(anchor){
+      let banner=document.getElementById('captain-connection-status');
+      if(!banner){banner=document.createElement('div');banner.id='captain-connection-status';banner.setAttribute('role','status');banner.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--surface-alt,#f3f6fb);color:var(--ink,#172638);font:500 13px/1.5 Inter,system-ui';anchor.before(banner);}
+      banner.replaceChildren();
+      const text=document.createElement('span');text.textContent=t(net.offline?'Reconnecting':server.isLocal?'Shop Wi-Fi':'Internet');banner.append(text);
+      if(!net.offline&&!server.isLocal&&wifi===false){
+        const action=document.createElement('button');action.type='button';action.textContent=t('Connect to Wi-Fi');action.style.cssText='border:0;background:transparent;color:var(--accent,#2356dc);min-height:44px;font:inherit';action.onclick=()=>POSNIC.internetChoice.openWifi();banner.append(action);
+      }
+    }
     document.querySelectorAll("[data-route-signal]").forEach(button => {
       const local = button.dataset.routeSignal === "local";
       const base = (local ? server.lan : server.cloud) || (server.isLocal === local ? server.baseUrl : null);
@@ -32,6 +44,7 @@
   });
   window.addEventListener("posnic:offline", () => { seen.clear(); paint(); });
   window.addEventListener("posnic:server-changed", paint);
+  window.addEventListener('posnic:wifi-state',event=>{wifi=event.detail;paint();});
   document.addEventListener("visibilitychange", paint);
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-route-signal]").forEach(button => button.addEventListener("click", () => {

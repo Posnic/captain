@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Kaydedilen siparişleriniz güvende. Otomatik olarak denemeye devam edeceğiz.™",
   "Your shop addresses are saved. Sign in again to continue.": "Mağaza adresleriniz kaydedilir. Devamlamak için tekrar oturum açın.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Hatırlanan oturum açmayı kapatırsanız mağaza adresleriniz kaydedilir.",
-  "Internet": "İnternet"
+  "Internet": "İnternet",
+  "Connect to Wi-Fi": "Wi-Fi'ye bağlanın",
+  "Shop Wi-Fi is available": "Mağaza Wi-Fi mevcuttur",
+  "Shop Wi-Fi is back": "Mağaza Wi-Fi geri döndü",
+  "Shop Wi-Fi isn’t available": "Mağaza Wi-Fi'si mevcut değil",
+  "Shop connection lost": "Mağaza bağlantısı kesildi",
+  "Stay on internet": "İnternette kalın",
+  "Switch automatically next time": "Bir dahaki sefere otomatik geçiş",
+  "Use internet": "İnterneti kullan",
+  "Use shop Wi-Fi": "Mağaza Wi-Fi'sini kullanın",
+  "Wait for shop Wi-Fi": "Mağaza Wi-Fi'sini bekleyin",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Mağaza bağlantınızı kontrol ettik. Şimdi kullanın ya da internette kalın.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Mağazanıza internet üzerinden ulaşılabilir. Değiştirdiğinizde siparişiniz güvende kalır."
 }

@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Đơn đặt hàng đã lưu của bạn được an toàn. Chúng tôi™ sẽ tiếp tục tự động thử.",
   "Your shop addresses are saved. Sign in again to continue.": "Địa chỉ cửa hàng của bạn được lưu. Đăng nhập lại để tiếp tục.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Địa chỉ cửa hàng của bạn vẫn được lưu nếu bạn tắt đăng nhập được nhớ.",
-  "Internet": "Internet"
+  "Internet": "Internet",
+  "Connect to Wi-Fi": "Kết nối với Wi-Fi",
+  "Shop Wi-Fi is available": "Cửa hàng Wi-Fi có sẵn",
+  "Shop Wi-Fi is back": "Cửa hàng Wi-Fi đã trở lại",
+  "Shop Wi-Fi isn’t available": "Cửa hàng Wi-Fi không khả dụng",
+  "Shop connection lost": "Mất kết nối cửa hàng",
+  "Stay on internet": "Ở lại trên internet",
+  "Switch automatically next time": "Tự động chuyển đổi lần sau",
+  "Use internet": "Sử dụng internet",
+  "Use shop Wi-Fi": "Sử dụng Wi-Fi cửa hàng",
+  "Wait for shop Wi-Fi": "Chờ cửa hàng Wi-Fi",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Chúng tôi đã kiểm tra kết nối cửa hàng của bạn. Sử dụng nó ngay bây giờ, hoặc ở lại trên internet.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Cửa hàng của bạn có sẵn thông qua internet. Đơn đặt hàng của bạn vẫn an toàn khi bạn chuyển đổi."
 }

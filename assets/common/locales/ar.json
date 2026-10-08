@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "طلباتك المحفوظة آمنة. نحن™ سنواصل المحاولة تلقائيًا.",
   "Your shop addresses are saved. Sign in again to continue.": "يتم حفظ عناوين متجرك. قم بتسجيل الدخول مرة أخرى للمتابعة.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "تظل عناوين متجرك محفوظة إذا قمت بإيقاف تسجيل الدخول المتذكر.",
-  "Internet": "الإنترنت"
+  "Internet": "الإنترنت",
+  "Connect to Wi-Fi": "الاتصال بشبكة Wi-Fi",
+  "Shop Wi-Fi is available": "تتوفر خدمة الواي فاي في المتجر",
+  "Shop Wi-Fi is back": "خدمة الواي فاي في المتجر تعود",
+  "Shop Wi-Fi isn’t available": "خدمة الواي فاي الخاصة بالتسوق غير متوفرة",
+  "Shop connection lost": "انقطع الاتصال بالمحل",
+  "Stay on internet": "ابق على الإنترنت",
+  "Switch automatically next time": "قم بالتبديل تلقائيًا في المرة القادمة",
+  "Use internet": "استخدم الإنترنت",
+  "Use shop Wi-Fi": "استخدم خدمة الواي فاي في المتجر",
+  "Wait for shop Wi-Fi": "انتظر خدمة الواي فاي في المتجر",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "لقد تحققنا من اتصال متجرك. استخدمه الآن، أو ابق على الإنترنت.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "متجرك متاح من خلال الإنترنت. يظل طلبك آمنًا عند التبديل."
 }

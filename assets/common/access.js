@@ -353,6 +353,7 @@
       }
       return entries[id];
     }
+    let activeRequests = 0;
     async function transport(path, options, refreshBody) {
       if (refreshBody && !state.routeKey)
         return post(state.base, path, refreshBody);
@@ -371,18 +372,21 @@
       if(host.Capacitor?.Plugins?.LocalNetwork?.getLocalIp) {
         try { const network=await Promise.race([host.Capacitor.Plugins.LocalNetwork.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]);wifi=network?.wifi; } catch (_) {}
       }
+      host.POSNIC?.internetChoice?.setWifi?.(wifi);
       const routes = [...credentials.keys()].sort(
         (a, b) =>
           Number((cooling.get(a) || 0) > Date.now()) -
             Number((cooling.get(b) || 0) > Date.now()) ||
+          (!options.background ? Number(b===preferred)-Number(a===preferred) : 0) ||
           (host.POSNIC?.server.pinned || !host.POSNIC?.server.priorityConfigured ? Number(b===preferred)-Number(a===preferred) : 0) ||
           (preferredLocal ? Number(local(b))-Number(local(a)) : Number(local(a))-Number(local(b))) ||
           Number(b===preferred)-Number(a===preferred),
-      ).filter(base=>(wifi!==false||!local(base))&&(storage.getItem('posnic.automatic-connections')!=='0'||base===(preferred||state.base)));
+      ).filter(base=>(wifi!==false||!local(base))&&(!options.onlyBase||base===options.onlyBase));
       const orderKey =
         path === "/sales/qrOrder" && options.body?.idempotencyKey;
       let last;
       for (const base of routes) {
+        if(!host.POSNIC?.internetChoice && storage.getItem('posnic.automatic-connections')==='0' && base!==(preferred||state.base))continue;
         let attempted = false;
         const credential = credentials.get(base);
         if (
@@ -439,7 +443,13 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
-          if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base))) continue;
+          // A preferred route returning is checked over several health ticks.
+          // Ordinary requests stay on the working route; failed routes can fail
+          // over immediately, subject to the same consent and replay rules.
+          const returning=options.background && base!==preferred && local(base) && !local(preferred) && (cooling.get(preferred)||0)<=Date.now();
+          if(options.background && activeRequests) return {connectionCheckDeferred:true};
+          if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base,{returning}))) continue;
+          if(options.background && activeRequests) return {connectionCheckDeferred:true};
           if (start !== generation || locked) throw Object.assign(new Error('Unlock this phone first.'), {code:'PIN_LOCKED'});
           if (orderKey) orderAuthority(orderKey, authority(credential));
           attempted = true;
@@ -514,7 +524,9 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
+          if(options.background && activeRequests) return {connectionCheckDeferred:true};
           cooling.delete(base);
+          host.POSNIC?.internetChoice?.succeeded?.(base);
           if(state.lastRoute!==base){state.lastRoute=base;await persist().catch(()=>{});}
           host.POSNIC?.server.adopt(base);
           host.POSNIC?.net.setOnline();
@@ -532,6 +544,7 @@
           )
             throw error;
           cooling.set(base, Date.now() + 30000);
+          host.POSNIC?.internetChoice?.failed?.(base);
           const replayable =
             refreshBody ||
             options.method === "GET" ||
@@ -560,6 +573,7 @@
     }
     const session = {
       ready,
+      get busy() { return activeRequests > 0; },
       get token() {
         return locked ? null : state.token || null;
       },
@@ -624,6 +638,7 @@
         }
         await session.whenReady();
         void refreshConnections();
+        if(!options.background)activeRequests++;
         try {
           const result = await transport(path, options);
           if (state.blockedAccess) {
@@ -639,9 +654,11 @@
           if (error.status === 401 && state.refreshToken) {
             state.expiresAt = 0;
             await session.prepare();
-            return transport(path, options);
+            return await transport(path, options);
           }
           throw error;
+        } finally {
+          if(!options.background)activeRequests--;
         }
       },
       get base() {
@@ -651,7 +668,7 @@
         return [state, ...(state.connections || [])].some(credential =>
           credential.routeKey && [credential.base, ...(credential.routes || [])].some(base => local(base)));
       },
-      async addAddress(base, signal) {
+      async addAddress(base, signal, {remember = true} = {}) {
         const started = generation;
         await session.whenReady();
         if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
@@ -683,8 +700,8 @@
           }
           if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
           verified.add(clean);
-          host.POSNIC?.server.recordShop(clean, state.shopKey);
-          host.POSNIC?.server.remember({
+          if(remember)host.POSNIC?.server.recordShop(clean, state.shopKey);
+          if(remember)host.POSNIC?.server.remember({
             [local(clean) ? "lan" : "cloud"]: clean,
           });
           return;

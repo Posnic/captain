@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "சேமித்த ஆர்டர்கள் பாதுகாப்பாக உள்ளன. தானாகத் தொடர்ந்து முயல்வோம்.",
   "Your shop addresses are saved. Sign in again to continue.": "உங்கள் கடை முகவரிகள் சேமிக்கப்பட்டுள்ளன. தொடர மீண்டும் உள்நுழையவும்.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "உள்நுழைவை நினைவில் வைப்பதை அணைத்தாலும் உங்கள் கடை முகவரிகள் சேமிக்கப்பட்டிருக்கும்.",
-  "Internet": "இணையம்"
+  "Internet": "இணையம்",
+  "Connect to Wi-Fi": "வைஃபையுடன் இணைக்கவும்",
+  "Shop Wi-Fi is available": "கடையின் வைஃபை கிடைக்கிறது",
+  "Shop Wi-Fi is back": "கடையின் வைஃபை மீண்டும் கிடைக்கிறது",
+  "Shop Wi-Fi isn’t available": "கடையின் வைஃபை கிடைக்கவில்லை",
+  "Shop connection lost": "கடையுடனான இணைப்பு துண்டிக்கப்பட்டது",
+  "Stay on internet": "இணையத்திலேயே தொடரவும்",
+  "Switch automatically next time": "அடுத்த முறை தானாக மாற்றவும்",
+  "Use internet": "இணையத்தைப் பயன்படுத்தவும்",
+  "Use shop Wi-Fi": "கடையின் வைஃபையைப் பயன்படுத்தவும்",
+  "Wait for shop Wi-Fi": "கடையின் வைஃபைக்காகக் காத்திருக்கவும்",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "கடையுடனான இணைப்பைச் சரிபார்த்துவிட்டோம். இப்போது அதைப் பயன்படுத்தலாம் அல்லது இணையத்திலேயே தொடரலாம்.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "இணையம் வழியாக உங்கள் கடையை அணுகலாம். இணைப்பை மாற்றும்போதும் உங்கள் ஆர்டர் பாதுகாப்பாக இருக்கும்."
 }

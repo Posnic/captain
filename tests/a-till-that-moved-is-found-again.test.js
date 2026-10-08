@@ -47,6 +47,8 @@ const SOURCE = fs.readFileSync(path.join(ROOT, 'config.js'), 'utf8');
 function load(answers, saved) {
   const asked = [];
   const storage = new Map();
+  storage.set('posnic.automatic-connections','1');
+  let now=Date.now();
   if (saved) storage.set('posnic.server', JSON.stringify(saved));
 
   const sandbox = {
@@ -55,7 +57,7 @@ function load(answers, saved) {
     clearTimeout,
     setInterval,
     clearInterval,
-    Date,
+    Date:class extends Date {static now(){return now;}},
     Math,
     JSON,
     Promise,
@@ -139,7 +141,7 @@ function load(answers, saved) {
 
   vm.createContext(sandbox);
   vm.runInContext(SOURCE, sandbox);
-  return { POSNIC: sandbox.POSNIC, asked };
+  return { POSNIC: sandbox.POSNIC, asked, advance(ms){now+=ms;} };
 }
 
 const WAS_AT = 'http://192.168.1.2:5555';
@@ -227,7 +229,7 @@ test('A PHONE WORKING OVER THE INTERNET COMES HOME TO THE TILL', async () => {
    * EVERY address has failed, and one has not.
    */
   const CLOUD = 'https://azure.posnic.io/api';
-  const { POSNIC } = load((url) => url.startsWith(MOVED_TO) || url.startsWith(CLOUD), {
+  const { POSNIC, advance } = load((url) => url.startsWith(MOVED_TO) || url.startsWith(CLOUD), {
     lan: WAS_AT,
     cloud: CLOUD,
     active: CLOUD,
@@ -238,6 +240,12 @@ test('A PHONE WORKING OVER THE INTERNET COMES HOME TO THE TILL', async () => {
   /* The cloud answers first and is adopted, which is right: the waiter is not
      kept waiting. The search for the till happens behind that answer. */
   for (let i = 0; i < 80; i += 1) await new Promise((r) => setTimeout(r, 10));
+  assert.equal(POSNIC.server.baseUrl,CLOUD,'one Wi-Fi response must not switch a working route');
+  advance(20000);await POSNIC.net.check(false);
+  await new Promise(r=>setTimeout(r,20));
+  assert.equal(POSNIC.server.baseUrl,CLOUD,'two checks are still settling');
+  advance(20000);await POSNIC.net.check(false);
+  await new Promise(r=>setTimeout(r,20));
 
   assert.ok(
     String(POSNIC.server.baseUrl).startsWith('http://192.168.1.'),

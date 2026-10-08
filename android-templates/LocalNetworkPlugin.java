@@ -17,6 +17,16 @@ import android.net.NetworkCapabilities;
 @CapacitorPlugin(name = "LocalNetwork")
 public class LocalNetworkPlugin extends Plugin {
     @PluginMethod
+    public void openWifiSettings(PluginCall call) {
+        try {
+            android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS);
+            getActivity().startActivity(intent);
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("Unable to open Wi-Fi settings", error);
+        }
+    }
+    @PluginMethod
     public void getLocalIp(PluginCall call) {
         try {
             ConnectivityManager manager = (ConnectivityManager) getContext()

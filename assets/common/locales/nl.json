@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Je opgeslagen bestellingen zijn veilig. ™ We blijven het automatisch proberen.",
   "Your shop addresses are saved. Sign in again to continue.": "Je winkeladressen worden opgeslagen. Meld je opnieuw aan om verder te gaan.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Je winkeladressen blijven opgeslagen als je onthouden inloggen uitschakelt.",
-  "Internet": "Internet"
+  "Internet": "Internet",
+  "Connect to Wi-Fi": "Maak verbinding met wifi",
+  "Shop Wi-Fi is available": "Wi-Fi in de winkel is beschikbaar",
+  "Shop Wi-Fi is back": "De wifi in de winkel is terug",
+  "Shop Wi-Fi isn’t available": "Wi-Fi in de winkel is niet beschikbaar",
+  "Shop connection lost": "De verbinding met de winkel is verbroken",
+  "Stay on internet": "Blijf op het internet",
+  "Switch automatically next time": "Volgende keer automatisch overschakelen",
+  "Use internet": "Internet gebruiken",
+  "Use shop Wi-Fi": "Gebruik wifi in de winkel",
+  "Wait for shop Wi-Fi": "Wacht op wifi in de winkel",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "We hebben je winkelverbinding gecontroleerd. Gebruik het nu, of blijf op internet.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Je winkel is beschikbaar via internet. Je bestelling blijft veilig als je overstapt."
 }

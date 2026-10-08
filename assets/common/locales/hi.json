@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "आपके सेव किए गए ऑर्डर सुरक्षित हैं। हम अपने आप कोशिश करते रहेंगे.™",
   "Your shop addresses are saved. Sign in again to continue.": "आपकी दुकान के पते सहेजे गए हैं। जारी रखने के लिए फिर से साइन इन करें।",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "अगर आप याद किए गए साइन-इन को बंद कर देते हैं, तो आपके शॉप के पते सेव रहते हैं।",
-  "Internet": "इंटरनेट"
+  "Internet": "इंटरनेट",
+  "Connect to Wi-Fi": "Wi-Fi से कनेक्ट करें",
+  "Shop Wi-Fi is available": "शॉप वाई-फ़ाई उपलब्ध है",
+  "Shop Wi-Fi is back": "शॉप वाई-फ़ाई वापस आ गया है",
+  "Shop Wi-Fi isn’t available": "शॉप वाई-फ़ाई उपलब्ध नहीं है",
+  "Shop connection lost": "दुकान का कनेक्शन गुम हो गया",
+  "Stay on internet": "इंटरनेट पर बने रहें",
+  "Switch automatically next time": "अगली बार स्वचालित रूप से स्विच करें",
+  "Use internet": "इंटरनेट का इस्तेमाल करें",
+  "Use shop Wi-Fi": "शॉप वाई-फ़ाई का इस्तेमाल करें",
+  "Wait for shop Wi-Fi": "शॉप वाई-फ़ाई का इंतज़ार करें",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "हमने आपके शॉप कनेक्शन की जांच कर ली है। इसे अभी इस्तेमाल करें, या इंटरनेट पर बने रहें।",
+  "Your shop is available through internet. Your order stays safe when you switch.": "आपकी दुकान इंटरनेट के माध्यम से उपलब्ध है। स्विच करने पर आपका ऑर्डर सुरक्षित रहता है।"
 }

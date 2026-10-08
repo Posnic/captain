@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "सेभ गरिएका अर्डरहरू सुरक्षित छन्। हामी स्वचालित रूपमा प्रयास गरिरहन्छौँ।",
   "Your shop addresses are saved. Sign in again to continue.": "पसलका ठेगानाहरू सेभ गरिएका छन्। जारी राख्न फेरि साइन इन गर्नुहोस्।",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "साइन इन सम्झने सुविधा बन्द गरे पनि पसलका ठेगानाहरू सेभ रहन्छन्।",
-  "Internet": "इन्टरनेट"
+  "Internet": "इन्टरनेट",
+  "Connect to Wi-Fi": "Wi-Fi मा जोड्नुहोस्",
+  "Shop Wi-Fi is available": "पसलको Wi-Fi उपलब्ध छ",
+  "Shop Wi-Fi is back": "पसलको Wi-Fi फेरि उपलब्ध छ",
+  "Shop Wi-Fi isn’t available": "पसलको Wi-Fi उपलब्ध छैन",
+  "Shop connection lost": "पसलसँगको जडान टुट्यो",
+  "Stay on internet": "इन्टरनेटमै रहनुहोस्",
+  "Switch automatically next time": "अर्को पटक स्वतः बदल्नुहोस्",
+  "Use internet": "इन्टरनेट प्रयोग गर्नुहोस्",
+  "Use shop Wi-Fi": "पसलको Wi-Fi प्रयोग गर्नुहोस्",
+  "Wait for shop Wi-Fi": "पसलको Wi-Fi पर्खनुहोस्",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "हामीले तपाईंको पसलसँगको जडान जाँच गर्‍यौँ। अहिले त्यो प्रयोग गर्नुहोस् वा इन्टरनेटमै रहनुहोस्।",
+  "Your shop is available through internet. Your order stays safe when you switch.": "इन्टरनेटबाट तपाईंको पसलमा जडान गर्न सकिन्छ। जडान बदल्दा पनि तपाईंको अर्डर सुरक्षित रहन्छ।"
 }

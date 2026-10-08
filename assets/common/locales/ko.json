@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "저장한 주문은 안전합니다.계속 자동으로 시도하겠습니다™.",
   "Your shop addresses are saved. Sign in again to continue.": "매장 주소가 저장됩니다.계속하려면 다시 로그인하세요.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "기억형 로그인을 끄더라도 매장 주소는 계속 저장됩니다.",
-  "Internet": "인터넷"
+  "Internet": "인터넷",
+  "Connect to Wi-Fi": "와이파이에 연결",
+  "Shop Wi-Fi is available": "매장 Wi-Fi를 사용할 수 있습니다.",
+  "Shop Wi-Fi is back": "쇼핑 Wi-Fi가 다시 돌아왔습니다",
+  "Shop Wi-Fi isn’t available": "매장 Wi-Fi를 사용할 수 없습니다",
+  "Shop connection lost": "매장 연결이 끊어졌습니다.",
+  "Stay on internet": "인터넷 연결 끊기",
+  "Switch automatically next time": "다음 번에 자동으로 전환하세요",
+  "Use internet": "인터넷 사용",
+  "Use shop Wi-Fi": "매장 Wi-Fi 사용",
+  "Wait for shop Wi-Fi": "매장 Wi-Fi를 기다리세요",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "매장 연결을 확인했습니다.지금 사용하거나 인터넷을 계속 사용하세요.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "인터넷을 통해 매장을 이용할 수 있습니다.바꿔도 주문은 안전하게 보관됩니다."
 }

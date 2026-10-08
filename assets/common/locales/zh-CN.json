@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "您保存的订单是安全的。我们会继续自动尝试。™",
   "Your shop addresses are saved. Sign in again to continue.": "您的商店地址已保存。再次登录以继续。",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "如果您关闭 “记住登录”，您的商店地址将保持保存。",
-  "Internet": "互联网"
+  "Internet": "互联网",
+  "Connect to Wi-Fi": "连接到 Wi-Fi",
+  "Shop Wi-Fi is available": "商店提供无线上网",
+  "Shop Wi-Fi is back": "Shop Wi-Fi 回来了",
+  "Shop Wi-Fi isn’t available": "商店 Wi-Fi 不可用",
+  "Shop connection lost": "商店连接丢失",
+  "Stay on internet": "留在互联网上",
+  "Switch automatically next time": "下次自动切换",
+  "Use internet": "使用互联网",
+  "Use shop Wi-Fi": "使用商店的 Wi-Fi",
+  "Wait for shop Wi-Fi": "等着商店的 Wi-Fi",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "我们已经检查了您的商店连接。立即使用，或继续使用互联网。",
+  "Your shop is available through internet. Your order stays safe when you switch.": "您可以通过互联网访问您的商店。切换后，您的订单将保持安全。"
 }

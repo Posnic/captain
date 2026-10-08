@@ -56,6 +56,7 @@ const refuse = (page, origin) =>
 const seed = (page, state) => page.addInitScript(
   (value) => {
     localStorage.setItem('posnic.server', JSON.stringify(value));
+    localStorage.setItem('posnic.automatic-connections','1');
     // Routing checks model a staff member who accepted internet fallback.
     // Consent/refusal itself is covered by internet-consent.spec.js.
     if (value.cloud) for (const shop of ['', 'shop-a'])
@@ -113,12 +114,16 @@ test('addresses the user might type are all understood', async ({ page }) => {
   expect(results.nothing).toBeNull();
 });
 
-test('the Wi-Fi server is preferred over the online one', async ({ page }) => {
+test('the Wi-Fi server is preferred after stable checks over the working online one', async ({ page }) => {
   await seed(page, { lan: LAN, cloud: CLOUD, active: CLOUD });
   await serve(page, LAN_ORIGIN);
   await serve(page, CLOUD_ORIGIN);
 
   await page.goto('/index.html');
+  await page.evaluate(async()=>{
+    const original=Date.now;let now=original();Date.now=()=>now;
+    try{for(let i=0;i<3;i++){now+=20000;await POSNIC.net.check(false);}}finally{Date.now=original;}
+  });
   await expect.poll(() => baseUrl(page)).toBe(LAN);
   expect(await page.evaluate(() => POSNIC.server.isLocal)).toBe(true);
 });

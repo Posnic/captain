@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Your saved orders are safe. We’ll keep trying automatically.",
   "Your shop addresses are saved. Sign in again to continue.": "Your shop addresses are saved. Sign in again to continue.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Your shop addresses stay saved if you turn off remembered sign-in.",
-  "Internet": "Internet"
+  "Internet": "Internet",
+  "Connect to Wi-Fi": "Connect to Wi-Fi",
+  "Shop Wi-Fi is available": "Shop Wi-Fi is available",
+  "Shop Wi-Fi is back": "Shop Wi-Fi is back",
+  "Shop Wi-Fi isn’t available": "Shop Wi-Fi isn’t available",
+  "Shop connection lost": "Shop connection lost",
+  "Stay on internet": "Stay on internet",
+  "Switch automatically next time": "Switch automatically next time",
+  "Use internet": "Use internet",
+  "Use shop Wi-Fi": "Use shop Wi-Fi",
+  "Wait for shop Wi-Fi": "Wait for shop Wi-Fi",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "We’ve checked your shop connection. Use it now, or stay on internet.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Your shop is available through internet. Your order stays safe when you switch."
 }

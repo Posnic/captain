@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "Pesanan anda yang disimpan selamat. Kami akan terus mencuba secara automatik.™",
   "Your shop addresses are saved. Sign in again to continue.": "Alamat kedai anda disimpan. Log masuk sekali lagi untuk meneruskan.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "Alamat kedai anda kekal disimpan jika anda mematikan log masuk yang teringat.",
-  "Internet": "Internet"
+  "Internet": "Internet",
+  "Connect to Wi-Fi": "Sambungkan ke Wi-Fi",
+  "Shop Wi-Fi is available": "Wi-Fi di kedai boleh didapati",
+  "Shop Wi-Fi is back": "Kedai Wi-Fi kembali",
+  "Shop Wi-Fi isn’t available": "Kedai Wi-Fi tidak tersedia",
+  "Shop connection lost": "Sambungan kedai hilang",
+  "Stay on internet": "Tinggal di internet",
+  "Switch automatically next time": "Tukar secara automatik lain kali",
+  "Use internet": "Gunakan internet",
+  "Use shop Wi-Fi": "Gunakan Wi-Fi kedai",
+  "Wait for shop Wi-Fi": "Tunggu Wi-Fi kedai",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "Kami telah memeriksa sambungan kedai anda. Gunakan sekarang, atau kekal di internet.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "Kedai anda boleh didapati melalui internet. Pesanan anda kekal selamat apabila anda bertukar."
 }

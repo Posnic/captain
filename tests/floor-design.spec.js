@@ -65,11 +65,18 @@ for (const width of [320, 768])
     await page.goto("/kot-management.html");
     await expect(page.locator(".floor-ready")).toHaveText("Ready");
     await expect(page.locator(".floor-card")).toHaveCount(2);
-    const gap = await page.evaluate(() =>
-      document.querySelector('.floor-section').getBoundingClientRect().top -
-      document.querySelector('.floor-head').getBoundingClientRect().bottom);
-    expect(gap).toBeGreaterThanOrEqual(0);
-    expect(gap).toBeLessThanOrEqual(12);
+    const connection = page.locator('#captain-connection-status');
+    await expect(connection).toBeVisible();
+    await expect(connection).toContainText('Internet');
+    const gaps = await page.evaluate(() => {
+      const status = document.querySelector('#captain-connection-status').getBoundingClientRect();
+      return [status.top - document.querySelector('.floor-head').getBoundingClientRect().bottom,
+        document.querySelector('.floor-section').getBoundingClientRect().top - status.bottom];
+    });
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(0);
+      expect(gap).toBeLessThanOrEqual(12);
+    }
     await expect(page.getByRole('link', {name: 'Message kitchen'})).toHaveAttribute('href', 'kitchen-message.html');
 
     await page.locator("[data-floor-filter=ready]").click();

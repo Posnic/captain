@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "আপনার সংরক্ষিত অর্ডারগুলি নিরাপদ। আমরা স্বয়ংক্রিয়ভাবে চেষ্টা চালিয়ে যাব।™",
   "Your shop addresses are saved. Sign in again to continue.": "আপনার দোকানের ঠিকানা সংরক্ষণ করা হয়েছে। চালিয়ে যাওয়ার জন্য আবার সাইন ইন করুন।",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "আপনি যদি স্মরণ করা সাইন-ইন বন্ধ করেন তবে আপনার দোকানের ঠিকানাগুলি সংরক্ষিত থাকে।",
-  "Internet": "ইন্টারনেট"
+  "Internet": "ইন্টারনেট",
+  "Connect to Wi-Fi": "ওয়াই-ফাই সাথে সংযোগ করুন",
+  "Shop Wi-Fi is available": "দোকান ওয়াই-ফাই উপলব্ধ",
+  "Shop Wi-Fi is back": "শপ ওয়াই-ফাই ফিরে এসেছে",
+  "Shop Wi-Fi isn’t available": "দোকান ওয়াই-ফাই উপলব্ধ নয়",
+  "Shop connection lost": "দোকান সংযোগ হারিয়ে গেছে",
+  "Stay on internet": "ইন্টারনেটে থাকুন",
+  "Switch automatically next time": "পরের বার স্বয়ংক্রিয়ভাবে স্যু",
+  "Use internet": "ইন্টারনেট ব্যবহার করুন",
+  "Use shop Wi-Fi": "দোকান ওয়াই-ফাই ব্যবহার করুন",
+  "Wait for shop Wi-Fi": "দোকান Wi-Fi এর জন্য অপেক্ষা করুন",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "আমরা আপনার দোকান সংযোগ পরীক্ষা করেছি। এখনই এটি ব্যবহার করুন, অথবা ইন্টারনেটে থাকুন।",
+  "Your shop is available through internet. Your order stays safe when you switch.": "আপনার দোকান ইন্টারনেটের মাধ্যমে উপলব্ধ। আপনি যখন স্যুইচ করবেন তখন আপনার অর্ডার নিরাপদ থাকে"
 }

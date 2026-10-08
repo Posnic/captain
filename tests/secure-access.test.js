@@ -937,6 +937,7 @@ for (const existing of [undefined, ['https://previous.example/api']])
 
 test('cloud order fallback requires consent before transmitting the order', async () => {
  const f=fixture(), lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',routeKey='a'.repeat(64);
+ f.storage.setItem('posnic.automatic-connections','0');
  let agree=false;const writes=[];const previous=globalThis.POSNIC;
  globalThis.POSNIC={server:{adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{ask:async base=>base===lan||agree}};
  try {
@@ -955,6 +956,49 @@ test('cloud order fallback requires consent before transmitting the order', asyn
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,1);
   assert.deepEqual(writes[0].body,writes.at(-1).body);
  }finally {if(previous===undefined)delete globalThis.POSNIC;else globalThis.POSNIC=previous;}
+});
+
+test('healthy cloud stays selected during foreground work; only idle health checks offer stable Wi-Fi',async(t)=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='c'.repeat(64),calls=[],offers=[];
+ const old=globalThis.POSNIC;t.after(()=>{globalThis.POSNIC=old;});
+ let accept=false,release;
+ const server={baseUrl:cloud,priority:'lan',priorityConfigured:true,adopt(base){this.baseUrl=base;},recordShop(){},remember(){}};
+ globalThis.POSNIC={server,net:{setOnline(){},setOffline(){}},internetChoice:{ask:async(base,options)=>{offers.push({base,...options});return base===cloud||accept;}}};
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  calls.push(url);
+  if(url.endsWith('/payment'))await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan]});
+ await access.session.request('/items',{method:'GET'});
+ assert.equal(calls[0],cloud+'/items');
+ await access.session.request('/captain/v1/session',{method:'GET',background:true});
+ assert.equal(offers.some(o=>o.base===lan&&o.returning),true);assert.equal(server.baseUrl,cloud);
+ const payment=access.session.request('/payment',{method:'POST',body:{amount:10}});
+ while(!release)await new Promise(r=>setImmediate(r));
+ accept=true;
+ assert.equal(access.session.busy,true);
+ assert.deepEqual(await access.session.request('/captain/v1/session',{method:'GET',background:true}),{connectionCheckDeferred:true});
+ assert.equal(server.baseUrl,cloud);
+ release();await payment;assert.equal(access.session.busy,false);
+ await access.session.request('/captain/v1/session',{method:'GET',background:true});
+ assert.equal(server.baseUrl,lan);
+});
+
+test('foreground busy protection lasts through token renewal and the retried request',async()=>{
+ const f=fixture();let attempts=0,release;
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/refresh'))return {ok:true,json:async()=>({...f.grant,token:'renewed',refreshToken:JSON.parse(options.body).nextToken})};
+  if(++attempts===1)return {ok:false,status:401,json:async()=>({message:'Expired'})};
+  await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start(f.grant);
+ const request=access.session.request('/items',{method:'GET'});
+ while(!release)await new Promise(r=>setImmediate(r));
+ assert.equal(access.session.busy,true);
+ release();await request;assert.equal(access.session.busy,false);
 });
 
 test('reopening preserves a successful Internet route ahead of an unavailable Wi-Fi address',async()=>{

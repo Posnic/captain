@@ -1244,5 +1244,17 @@
   "Your saved orders are safe. We’ll keep trying automatically.": "ನಿಮ್ಮ ಉಳಿಸಿದ ಆದೇಶಗಳು ಸುರಕ್ಷಿತವಾಗಿವೆ. ನಾವು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಪ್ರಯತ್ನಿಸುತ್ತಲೇ ಇರುತ್ತೇವೆ.™",
   "Your shop addresses are saved. Sign in again to continue.": "ನಿಮ್ಮ ಅಂಗಡಿ ವಿಳಾಸಗಳನ್ನು ಉಳಿಸಲಾಗಿದೆ. ಮುಂದುವರಿಸಲು ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.",
   "Your shop addresses stay saved if you turn off remembered sign-in.": "ನೀವು ನೆನಪಿನಲ್ಲಿರುವ ಸೈನ್ ಇನ್ ಅನ್ನು ಆಫ್ ಮಾಡಿದರೆ ನಿಮ್ಮ ಅಂಗಡಿ ವಿಳಾಸಗಳು ಉಳಿಸಲ್ಪಟ್ಟಿರುತ್ತವೆ.",
-  "Internet": "ಇಂಟರ್ನೆಟ್"
+  "Internet": "ಇಂಟರ್ನೆಟ್",
+  "Connect to Wi-Fi": "ವೈ-ಫೈಗೆ ಸಂಪರ್ಕಿಸಿ",
+  "Shop Wi-Fi is available": "ಶಾಪ್ ವೈ-ಫೈ ಲಭ್ಯವಿದೆ",
+  "Shop Wi-Fi is back": "ಶಾಪ್ ವೈ-ಫೈ ಮರಳಿದೆ",
+  "Shop Wi-Fi isn’t available": "ಶಾಪ್ ವೈ-ಫೈ ಲಭ್ಯವಿಲ್ಲ",
+  "Shop connection lost": "ಅಂಗಡಿ ಸಂಪರ್ಕ ಕಳೆದುಹೋಗಿದೆ",
+  "Stay on internet": "ಇಂಟರ್ನೆಟ್ನಲ್ಲಿ ಉಳಿಯಿರಿ",
+  "Switch automatically next time": "ಮುಂದಿನ ಬಾರಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಬದಲಾಯಿಸಿ",
+  "Use internet": "ಇಂಟರ್ನೆಟ್ ಬಳಸಿ",
+  "Use shop Wi-Fi": "ಅಂಗಡಿ ವೈ-ಫೈ ಬಳಸಿ",
+  "Wait for shop Wi-Fi": "ಅಂಗಡಿ ವೈ-ಫೈಗಾಗಿ ಕಾಯಿರಿ",
+  "We’ve checked your shop connection. Use it now, or stay on internet.": "ನಿಮ್ಮ ಅಂಗಡಿ ಸಂಪರ್ಕವನ್ನು ನಾವು ಪರಿಶೀಲಿಸಿದ್ದೇವೆ. ಈಗ ಅದನ್ನು ಬಳಸಿ, ಅಥವಾ ಇಂಟರ್ನೆಟ್ನಲ್ಲಿ ಉಳಿಯಿರಿ.",
+  "Your shop is available through internet. Your order stays safe when you switch.": "ನಿಮ್ಮ ಅಂಗಡಿ ಇಂಟರ್ನೆಟ್ ಮೂಲಕ ಲಭ್ಯವಿದೆ. ನೀವು ಬದಲಾಯಿಸಿದಾಗ ನಿಮ್ಮ ಆರ್ಡರ್ ಸುರಕ್ಷಿತವಾಗಿರುತ್ತದೆ."
 }
