@@ -279,10 +279,13 @@ function setupEventListeners() {
 
 // Load order history from real API
 let historyRequest = null, historyRequestFilter = null, historyRevision = 0, historyLoaded = false;
+let historyLoading = false, historyLoadedFilter = null;
 function loadOrderHistory(options = {}) {
     if (historyRequest && historyRequestFilter === currentFilter) return historyRequest;
     historyRequestFilter = currentFilter;
     const revision = ++historyRevision;
+    historyLoading = true;
+    filterOrdersBySelectedTable();
     const request = loadOrderHistoryNow(options, revision).finally(() => {
         if (historyRequest === request) historyRequest = null;
     });
@@ -290,7 +293,8 @@ function loadOrderHistory(options = {}) {
     return request;
 }
 async function loadOrderHistoryNow(options, revision) {
-    if (!historyLoaded && !options.background) showLoader();
+    // Inline loading keeps filters available while this request is pending.
+    hideLoader();
 
     try {
         let branchId = localStorage.getItem('branch_id');
@@ -321,6 +325,7 @@ async function loadOrderHistoryNow(options, revision) {
         if (revision !== historyRevision) return false;
         if (data.type === 'success') {
             historyLoaded = true;
+            historyLoadedFilter = historyRequestFilter;
             allOrders = data.data.orders || [];
             if(allOrders.length) void refreshMergePermission(revision);
             generateTableCards(); // Generate table selection cards
@@ -339,7 +344,11 @@ async function loadOrderHistoryNow(options, revision) {
         if (!options.background) showToast('Could not load the order history: ' + error.message, 'error');
         return false;
     } finally {
-        hideLoader();
+        if (revision === historyRevision) {
+            historyLoading = false;
+            filterOrdersBySelectedTable();
+            hideLoader();
+        }
     }
 }
 
@@ -738,6 +747,32 @@ function renderOrders() {
     const emptyState = document.getElementById('empty-state');
 
     if (!container) return;
+
+    let requestState = document.getElementById('history-request-state');
+    if (!requestState) {
+        requestState = document.createElement('div');
+        requestState.id = 'history-request-state';
+        requestState.className = 'history-request-state';
+        requestState.setAttribute('role', 'status');
+        container.after(requestState);
+    }
+    requestState.hidden = true;
+    container.setAttribute('aria-busy', String(historyLoading));
+    if (historyLoadedFilter !== currentFilter) {
+        container.replaceChildren();
+        if (emptyState) emptyState.style.display = 'none';
+        requestState.hidden = false;
+        const message = historyLoading ? 'Loading...' : 'Could not load the order history:';
+        requestState.textContent = window.I18N?.t(message) || message;
+        if (!historyLoading) {
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.textContent = window.I18N?.t('Retry') || 'Retry';
+            retry.onclick = () => loadOrderHistory();
+            requestState.append(retry);
+        }
+        return;
+    }
 
     if (filteredOrders.length === 0) {
         container.innerHTML = '';

@@ -11,7 +11,7 @@
     const anchor=document.querySelector('.floor-section');
     if(anchor){
       let banner=document.getElementById('captain-connection-status');
-      if(!banner){banner=document.createElement('div');banner.id='captain-connection-status';banner.setAttribute('role','status');banner.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--surface-alt,#f3f6fb);color:var(--ink,#172638);font:500 13px/1.5 Inter,system-ui';anchor.before(banner);}
+      if(!banner){banner=document.createElement('div');banner.id='captain-connection-status';banner.setAttribute('role','status');banner.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--surface-sunk,#f3f6fb);color:var(--ink,#172638);font:500 13px/1.5 Inter,system-ui';anchor.before(banner);}
       banner.replaceChildren();
       const text=document.createElement('span');text.textContent=t(net.offline?'Reconnecting':server.isLocal?'Shop Wi-Fi':'Internet');banner.append(text);
       if(!net.offline&&!server.isLocal&&wifi===false){

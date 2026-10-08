@@ -1927,7 +1927,7 @@
     "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.57-test.1/captain-1.3.57.apk"
   },
   "discoveryNames20261008": {
-    "status": "release-gate-passed",
+    "status": "published-testing",
     "version": "1.3.58",
     "changes": [
       "Fetch public shop metadata as each Wi-Fi server is found, without blocking the scan",
@@ -1949,8 +1949,85 @@
       "test-artifacts/discovery-shop-name-tablet.png"
     ],
     "remaining": [
-      "Publish signed Android testing APK",
       "Physical phone discovery and iOS runtime not exercised for this patch"
-    ]
+    ],
+    "commit": "a50a3268ace8893f4adc136a75665196d6c1fca8",
+    "release": "https://github.com/Posnic/captain/releases/tag/captain-1.3.58-test.1",
+    "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.58-test.1/captain-1.3.58.apk",
+    "sha256": "ad36c5f647c5764ce951d8d559b6e3c31cab3f0ac0a85865242eba1a032584e7",
+    "publicationVerification": "Downloaded GitHub APK matches signed local APK; version 10358; existing signing certificate; packaged onboarding and compiled CSS verified; release debugging disabled"
+  },
+  "cloudDiscoveryBridge20261008": {
+    "task": "Captain automatic cloud address discovery",
+    "gateway": {
+      "pr": "https://github.com/Posnic/Gateway/pull/40",
+      "commit": "6246d07e3f7f5df995424dcae0009b5029bc3de6",
+      "status": "merged-deployed-live-verified"
+    },
+    "pos": {
+      "pr": "https://github.com/Posnic/POS/pull/1213",
+      "branch": "codex/captain-cloud-discovery-20261008",
+      "commit": "ea53ddc5",
+      "status": "merged-main-installed-live-verified",
+      "mainCommit": "d8824314342d2c7c962c27b2926a1328c7ad85f6",
+      "promotion": "https://github.com/Posnic/POS/pull/1214"
+    },
+    "checks": [
+      "6 gateway identity tests passed",
+      "51 related desktop tests passed",
+      "26 API integration tests passed, 2 opt-in cases skipped",
+      "API lint and docs generation passed",
+      "85 packaged modules checked",
+      "Packaged Electron API returned the correct shop name and internet URL using the running till database",
+      "No orders or payments changed",
+      "Installed local POS restarted; actual Wi-Fi API returned shopName and verified cloud URL",
+      "Cloud sync restarted after installation"
+    ],
+    "installer": {
+      "path": "C:/Users/Kayal/Downloads/Posnic-1.9.2-captain-cloud.1-windows-x64-installer.exe",
+      "sha256": "0ea0922d7869dc3229d279598ad588be25f82bde705443bbfb9e1ac52ef76f06",
+      "signed": false,
+      "installed": true
+    },
+    "remaining": [
+      "Fleet category-count smoke failure requires separate investigation; local discovery fix installed and verified"
+    ],
+    "cloudDeployment": {
+      "run": "https://github.com/Posnic/POS/actions/runs/37776723915",
+      "codeInstalled": true,
+      "sourceHashVerified": true,
+      "workflowConclusion": "failure",
+      "reason": "Fleet smoke: 3272/3273 checks passed; one shop category-count mismatch (API 0, database 6). Not attributed to this fix; not resolved in this task."
+    }
+  },
+  "historyDarkTheme20261008": {
+    "status": "verified locally; signed APK packaging next",
+    "branch": "codex/captain-1.3.55",
+    "baseCommit": "a50a3268ace8893f4adc136a75665196d6c1fca8",
+    "changes": [
+      "Connection banner uses theme surface instead of light fallback",
+      "All/Pending/Completed/Cancelled history list, metadata badges, IDs and navigation use paired theme colours",
+      "Selected-filter loading is separate from confirmed empty results; failed initial request offers Retry",
+      "Empty history fills remaining content without a white gap"
+    ],
+    "checks": {
+      "unit": 669,
+      "targetedBrowser": 18,
+      "translations": "30 languages, 1258 messages; audit clear",
+      "screenshots": "test-artifacts/history-{dark,light}-{360,800}-{all,pending,completed,cancelled}.png",
+      "bannerScreenshots": "test-artifacts/connection-banner-{dark,light}.png",
+      "fullBrowser": {
+        "passed": 994,
+        "failed": 1,
+        "total": 995,
+        "log": "artifacts/history-dark-full-browser-fast.log",
+        "failure": "Existing menu animation screenshot outlived cleanup timer; test clock now holds cleanup during inspection",
+        "recheck": "All 4 menu-add-feedback scenarios passed after deterministic clock fix; artifacts/history-dark-animation.log"
+      }
+    },
+    "runtimeLimitations": [
+      "Physical Android/iOS theme verification not performed for this patch"
+    ],
+    "release": null
   }
 }
