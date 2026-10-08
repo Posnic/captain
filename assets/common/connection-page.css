@@ -115,7 +115,7 @@
 .setup-server-icon { display:grid; place-items:center; flex:0 0 38px; height:38px; border-radius:12px; color:#087d52; background:#e7f7ef; }
 .setup-server-icon svg { width:24px; height:24px; }
 .setup-server-info { display:grid; gap:5px; flex:1; min-width:0; }
-.setup-server-info strong { font-size:15px; overflow-wrap:anywhere; direction:ltr; text-align:start; }
+.setup-server-info strong { font-size:15px; overflow-wrap:anywhere; text-align:start; }
 .setup-server-network { color:#087d52; font-size:12px; }
 .setup-server-info small { font-size:11px; color:#69758a; }
 .setup-server-action { grid-column:1/-1; display:flex; align-items:center; justify-content:center; gap:7px; background:#2457e7; color:#fff; border-radius:9px; padding:10px 12px; font-size:13px; font-weight:600; }

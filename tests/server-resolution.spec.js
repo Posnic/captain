@@ -325,7 +325,8 @@ test('Wi-Fi discovery checks the known local server before sweeping', async ({ p
   await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
   await page.locator('#captain-search').click();
   const server = page.locator('#captain-results .setup-server-card');
-  await expect(server.locator('strong')).toHaveText(new URL(LAN).host);
+  await expect(server.locator('strong')).toHaveText('Shop found');
+  await expect(server.locator('.setup-server-address')).toHaveText(new URL(LAN).host);
   await expect(server.locator('.setup-server-action')).toContainText('Connect');
   await expect(page.locator('#captain-legacy')).toBeHidden();
   await server.click();

@@ -1063,7 +1063,7 @@
     ]
   },
   "connectionSwitching20261008": {
-    "status": "release-gate-passed-awaiting-publication",
+    "status": "published-android-testing-release",
     "branch": "codex/captain-1.3.55",
     "baseCommit": "8b5f46f533d113a7c2db6b06d5968c8387af7c28",
     "changes": [
@@ -1084,7 +1084,9 @@
       "Native Android confirmation, saved automatic choice, reload persistence and Wi-Fi settings action passed",
       "Signed 1.3.57 release build and signature verification passed",
       "Native project template check and attribution check passed",
-      "669 unit tests and all 986 browser scenarios passed. The initial development server accumulated navigation delays; 366 completed results were retained and the remaining 620 scenarios, including all initial failures, passed on a plain local server serving the same app files. Two spacing assertions were updated to include the approved connection-status row. All 30 translation catalogs and small-phone action bounds passed. Native Android confirmation, preference persistence and opening Wi-Fi settings were verified on an isolated emulator."
+      "669 unit tests and all 986 browser scenarios passed. The initial development server accumulated navigation delays; 366 completed results were retained and the remaining 620 scenarios, including all initial failures, passed on a plain local server serving the same app files. Two spacing assertions were updated to include the approved connection-status row. All 30 translation catalogs and small-phone action bounds passed. Native Android confirmation, preference persistence and opening Wi-Fi settings were verified on an isolated emulator.",
+      "Published APK downloaded back from GitHub; SHA-256 matches signed local artifact",
+      "Version 1.3.57 / 10357 and original signing certificate verified; packaged code matches tested source and debugging is off"
     ],
     "evidence": [
       "artifacts/switch-all-unit-final.log",
@@ -1105,12 +1107,42 @@
     ],
     "remaining": [
       "Physical Wi-Fi/cellular roaming and real till outage not exercised",
-      "iOS runtime not verified",
-      "Publish signed testing APK after source commit and final version stamping"
+      "iOS runtime not verified"
     ],
     "build": {
       "version": "1.3.57",
-      "path": "output/release-1.3.57/captain-1.3.57.apk"
-    }
+      "path": "output/release-1.3.57/captain-1.3.57.apk",
+      "sha256": "d98d4b927f0fc69ff6f92b334b9ebcb7f5ea7e349ab75e302e0ee006465e43df"
+    },
+    "commit": "0ceac3c50cd9f447626d40550945aa9d5cbfbd32",
+    "release": "https://github.com/Posnic/captain/releases/tag/captain-1.3.57-test.1",
+    "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.57-test.1/captain-1.3.57.apk"
+  },
+  "discoveryNames20261008": {
+    "status": "release-gate-passed",
+    "version": "1.3.58",
+    "changes": [
+      "Fetch public shop metadata as each Wi-Fi server is found, without blocking the scan",
+      "Shop name above the IP address; retain name through confirmation and sign-in",
+      "Bounded credential-free metadata requests and cancellation-safe rendering"
+    ],
+    "checks": [
+      "Reported till public discovery endpoint returned configured name; runtime-info alone did not",
+      "71 targeted onboarding cases passed",
+      "669 unit tests passed; full browser run: 988 passed and one obsolete title assertion failed; all 79 server-resolution tests passed after correcting that assertion",
+      "Existing 30-language catalogs and source audit passed"
+    ],
+    "evidence": [
+      "artifacts/shop-discovery-check.log",
+      "artifacts/discovery-name-unit.log",
+      "artifacts/discovery-name-release.log",
+      "artifacts/discovery-name-server-recheck.log",
+      "test-artifacts/discovery-shop-name-phone.png",
+      "test-artifacts/discovery-shop-name-tablet.png"
+    ],
+    "remaining": [
+      "Publish signed Android testing APK",
+      "Physical phone discovery and iOS runtime not exercised for this patch"
+    ]
   }
 }

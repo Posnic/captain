@@ -2,6 +2,24 @@
   "use strict";
   let operation = null;
   let selection = null;
+  const shopNames = new Map();
+  const shopName = hit => typeof hit.info?.connections?.shopName === 'string'
+    ? hit.info.connections.shopName.trim().slice(0, 160) : '';
+  async function describeShop(hit, signal) {
+    // Fetch public presentation hints only from the server that answered.
+    // A discovered cloud address still needs authenticated route proof.
+    try {
+      const http=window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null;
+      const response=await bounded(http ? http.request({url:hit.base+'/captain/v1/discovery',method:'GET',headers:{Accept:'application/json'},connectTimeout:1200,readTimeout:1200,disableRedirects:true}) : fetch(hit.base+'/captain/v1/discovery', {signal,credentials:'omit',redirect:'error'}),1500,signal,'Discovery timed out.');
+      if(response.ok || (response.status>=200&&response.status<300)) {
+        const details=http ? (typeof response.data==='string'?JSON.parse(response.data):response.data) : await bounded(response.json(),500,signal,'Discovery timed out.');
+        if(!signal?.aborted && details?.connections && typeof details.connections==='object')
+          hit.info.connections={...hit.info.connections,...details.connections};
+      }
+    } catch (_) { /* Older servers can still be selected by their address. */ }
+    if(!signal?.aborted && shopName(hit))shopNames.set(hit.base,shopName(hit));
+    return hit;
+  }
   function cancelSelection() {
     selection?.abort();
     selection = null;
@@ -21,7 +39,7 @@
     if (signIn) {
       const base = POSNIC.server.baseUrl;
       $("captain-selected-shop").textContent = base
-        ? new URL(base).host
+        ? shopNames.get(base) || new URL(base).host
         : "Your shop";
     }
   }
@@ -284,7 +302,12 @@
       button.type = "button";
       button.className = "setup-server-card";
       button.innerHTML = '<span class="setup-server-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span><span class="setup-server-info"><strong translate="no"></strong><span class="setup-server-network">Wi-Fi</span></span><span class="setup-server-action"><span>Connect</span><span aria-hidden="true">→</span></span>';
-      button.querySelector("strong").textContent = hit.info?.connections?.shopName || new URL(hit.base).host;
+      const title=button.querySelector('strong');
+      title.dir='auto';
+      const paintName=()=>{title.textContent=shopName(hit) || window.I18N?.t('Shop found') || 'Shop found';};
+      paintName();
+      const address=document.createElement('small');address.className='setup-server-address';address.dir='ltr';address.translate=false;address.textContent=new URL(hit.base).host;
+      title.after(address);
       if (!hit.info.features?.captainAccessV1) {
         const compatibility = document.createElement("small");
         compatibility.textContent = "· Update required for pairing";
@@ -313,6 +336,10 @@
         }
       };
       results.append(button);
+      const foundAt=navigationVersion;
+      void describeShop(hit,signal).then(()=>{
+        if(!signal.aborted && navigationVersion===foundAt && button.isConnected)paintName();
+      });
     };
     note("Checking saved till addresses…");
     const saved = [
@@ -563,16 +590,7 @@
       throw new Error(
         "Could not reach this shop. Check the address or connect to the shop Wi-Fi.",
       );
-    // Public metadata is a hint only. The authenticated route proof remains
-    // mandatory before credentials or orders may use the returned address.
-    try {
-      const http=window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null;
-      const response=await bounded(http ? http.request({url:hit.base+'/captain/v1/discovery',method:'GET',headers:{Accept:'application/json'},connectTimeout:1200,readTimeout:1200,disableRedirects:true}) : fetch(hit.base+'/captain/v1/discovery', {signal,credentials:'omit',redirect:'error'}),1500,signal,'Discovery timed out.');
-      if(response.ok || (response.status>=200&&response.status<300)) {
-        const details=http ? (typeof response.data==='string'?JSON.parse(response.data):response.data) : await bounded(response.json(),500,signal,'Discovery timed out.');
-        if(details?.connections)hit.info.connections=details.connections;
-      }
-    } catch (_) { /* Older servers still support address sign-in. */ }
+    await describeShop(hit,signal);
     if(signal?.aborted||navigationVersion!==startedAt)return;
     if (window.CaptainAccess?.locked) {
       POSNIC.server.remember({ lan: hit.base });

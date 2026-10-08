@@ -1279,6 +1279,58 @@ test("an unsuccessful menu response after approval is visible instead of leaving
   await expect(page.locator("#loader")).toBeHidden();
 });
 
+for(const native of [false,true])test(`Wi-Fi discovery names the shop during the scan and keeps it at sign-in native=${native}`,async({page})=>{
+ await phone(page,false,false,false);
+ await page.setViewportSize({width:native?820:320,height:900});
+ const name='Azure Coastal Kitchen';
+ await page.route('**/captain/v1/discovery',async route=>{
+  expect(route.request().headers().authorization).toBeUndefined();
+  await route.fulfill({json:{connections:{shopName:name,cloud:'https://azure.posnic.io/api'}}});
+ });
+ await page.evaluate(({base,native,name})=>{
+  if(native)CaptainAppearance.set('dark');
+  if(native)Capacitor.Plugins.CapacitorHttp={request:async options=>{
+   window.discoveryRequest=options;
+   return {status:200,data:{connections:{shopName:name,cloud:'https://azure.posnic.io/api'}}};
+  }};
+  POSNIC.discovery.scanSubnet=async(_subnet,options)=>{
+   options.collect({base,info:{features:{captainAccessV1:true}}});
+   await new Promise(resolve=>{window.finishDiscovery=resolve;});
+  };
+ },{base,native,name});
+ await page.locator('#captain-search').click();
+ const card=page.locator('#captain-results .setup-server-card');
+ await expect(card.locator('strong')).toHaveText(name);
+ await expect(card.locator('.setup-server-address')).toHaveText('192.168.1.8:42590');
+ await expect(page.locator('#captain-search-again')).toBeDisabled();
+ expect(await page.evaluate(()=>POSNIC.server.isConfigured)).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ if(native)expect(await page.evaluate(()=>window.discoveryRequest.disableRedirects)).toBe(true);
+ await page.screenshot({path:`test-artifacts/discovery-shop-name-${native?'tablet':'phone'}.png`});
+ await card.click();
+ await expect(page.getByRole('dialog').getByRole('heading')).toHaveText(name);
+ await page.getByRole('button',{name:'Sign in to this shop',exact:true}).click();
+ await expect(page.locator('#captain-selected-shop')).toHaveText(name);
+ await page.evaluate(()=>window.finishDiscovery());
+});
+
+test('discovery metadata failure keeps a usable shop card and late cancelled metadata cannot reopen it',async({page})=>{
+ await phone(page,false,false,false);
+ await page.evaluate(base=>{
+  Capacitor.Plugins.CapacitorHttp={request:()=>new Promise(resolve=>{window.finishDetails=resolve;})};
+  POSNIC.discovery.scanSubnet=async(_subnet,options)=>options.collect({base,info:{features:{}}});
+ },base);
+ await page.locator('#captain-search').click();
+ const card=page.locator('#captain-results .setup-server-card');
+ await expect(card.locator('strong')).toHaveText('Shop found');
+ await expect(card.locator('.setup-server-address')).toHaveText('192.168.1.8:42590');
+ await expect(card).toBeEnabled();
+ await page.locator('#connection-back').click();
+ await page.evaluate(()=>window.finishDetails({status:200,data:{connections:{shopName:'Late shop'}}}));
+ await expect(page.locator('#captain-results')).toBeHidden();
+ await expect(page.locator('#username')).toBeHidden();
+});
+
 test('discovery shows configured internet hint without authorizing it',async({page})=>{
  await phone(page,true,false,false);
  await page.evaluate(()=>{POSNIC.discovery.probe=async base=>({base,info:{connections:{cloud:'https://azure.posnic.io/api',shopName:'Azure Kitchen'}}});});
