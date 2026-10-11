@@ -41,6 +41,7 @@ test("both server addresses have a dedicated view with Back to Account", async (
   page,
 }) => {
   await settings(page);
+  await page.locator("#setup-other-toggle").click();
   await page.locator("#connection-settings").click();
   await expect(page.locator('#shop-connections [data-kind=lan]')).toContainText('192.168.1.8:5555');
   await expect(page.locator('#shop-connections [data-kind=cloud]')).toContainText('azure.posnic.io');
@@ -51,6 +52,7 @@ test("automatic switching can be changed without replacing saved addresses", asy
   page,
 }) => {
   await settings(page, { pinned: CLOUD });
+  await page.locator("#setup-other-toggle").click();
   await page.locator("#connection-settings").click();
   await page.locator('#shop-connection-auto').uncheck();
   expect(await page.evaluate(() => localStorage.getItem('posnic.automatic-connections'))).toBe('0');
@@ -63,6 +65,7 @@ test("empty connection settings cannot replace the saved shop", async ({
   page,
 }) => {
   await settings(page, { pinned: CLOUD });
+  await page.locator("#setup-other-toggle").click();
   await page.locator("#connection-settings").click();
   await page.locator('[data-connection-action=edit-cloud]').click();
   await page.locator('#shop-connection-address').fill('');
@@ -78,12 +81,12 @@ test("a new phone offers every connection method without an account or network c
   await page.evaluate(() => openServerModal());
   for (const id of [
     "captain-cloud-login",
-    "captain-address-toggle",
+    "setup-other-toggle",
     "captain-search",
     "captain-scan",
-    "captain-code-toggle",
   ])
     await expect(page.locator("#" + id)).toBeVisible();
+  await page.locator("#setup-other-toggle").click();
   await page.locator("#captain-address-toggle").click();
   await expect(page.locator("#captain-server")).toBeVisible();
   await expect(page.locator("#captain-cancel")).toBeHidden();
@@ -92,6 +95,7 @@ test("an outage cannot cover the connection editor or start a competing search",
   page,
 }) => {
   await settings(page);
+  await page.locator("#setup-other-toggle").click();
   await page.locator("#captain-address-toggle").click();
   await page.evaluate(() => POSNIC.net.setOffline());
   await expect(page.locator("#captain-server")).toBeVisible();

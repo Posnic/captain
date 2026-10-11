@@ -1256,5 +1256,7 @@
   "Use shop Wi-Fi": "पसलको Wi-Fi प्रयोग गर्नुहोस्",
   "Wait for shop Wi-Fi": "पसलको Wi-Fi पर्खनुहोस्",
   "We’ve checked your shop connection. Use it now, or stay on internet.": "हामीले तपाईंको पसलसँगको जडान जाँच गर्‍यौँ। अहिले त्यो प्रयोग गर्नुहोस् वा इन्टरनेटमै रहनुहोस्।",
-  "Your shop is available through internet. Your order stays safe when you switch.": "इन्टरनेटबाट तपाईंको पसलमा जडान गर्न सकिन्छ। जडान बदल्दा पनि तपाईंको अर्डर सुरक्षित रहन्छ।"
+  "Your shop is available through internet. Your order stays safe when you switch.": "इन्टरनेटबाट तपाईंको पसलमा जडान गर्न सकिन्छ। जडान बदल्दा पनि तपाईंको अर्डर सुरक्षित रहन्छ।",
+  "Connection details": "जडानको विवरण",
+  "Sign in with Posnic Cloud": "Posnic Cloud मार्फत साइन इन गर्नुहोस्"
 }

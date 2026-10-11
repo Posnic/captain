@@ -18,7 +18,9 @@
   async function found(hit, signal) {
     const node=dialog(hit.info?.connections?.shopName || 'Shop found');
     paragraph(node,'Sign in to this shop to start taking orders.');
-    const addresses=document.createElement('dl');addresses.className='setup-found-addresses';node.append(addresses);
+    const details=document.createElement('details');details.className='setup-found-details';
+    const summary=document.createElement('summary');summary.textContent=text('Connection details');details.append(summary);node.append(details);
+    const addresses=document.createElement('dl');addresses.className='setup-found-addresses';details.append(addresses);
     const add=(label,url)=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=text(label);dd.textContent=url;addresses.append(dt,dd);};
     add(POSNIC.server.isLanUrl(hit.base)?'Shop Wi-Fi':'Internet',hit.base);
     const cloud=POSNIC.server.normalize(hit.info?.connections?.cloud);
@@ -65,8 +67,21 @@
   }
   window.CaptainSetupFlow={found,finishSetup};
   document.addEventListener('DOMContentLoaded',()=>{
-    $('captain-cloud-login').textContent=text('Sign in with Posnic');
-    $('captain-address-toggle').textContent=text('Other ways to connect');
+    $('captain-cloud-login').textContent=text('Sign in with Posnic Cloud');
+    $('captain-address-toggle').textContent=text('Shop code or server address');
+    // Keep the real discovery, camera and authentication handlers. Only move
+    // their controls into the approved hierarchy; no duplicate login flow.
+    const methods=$('setup-methods');
+    const wifi=document.createElement('div');wifi.id='setup-wifi-choice';wifi.className='setup-recommend';
+    const label=document.createElement('strong');label.textContent=text('Find shop on Wi-Fi');wifi.append(label);
+    methods.prepend(wifi);wifi.append($('setup-start-hint'),$('captain-search'));
+    $('captain-search').querySelector('span').textContent=text('Search this Wi-Fi');
+    methods.append($('captain-scan'),$('captain-cloud-login'));
+    const other=document.createElement('section');other.id='setup-other-methods';other.hidden=true;
+    other.append($('captain-code-toggle'),$('captain-address-toggle'),$('connection-settings'));methods.after(other);
+    const more=action(methods,'Other ways to connect',()=>CaptainOnboarding.otherWays(),true);more.id='setup-other-toggle';
+    methods.querySelector('.setup-alternatives')?.remove();methods.querySelector('.setup-tools')?.remove();
+    const code=action($('staff-signin-form'),'Enter pairing code',()=>CaptainOnboarding.pairingCode(),true);code.id='setup-signin-code';
     $('setup-start-hint').textContent=text('Find your shop on Wi-Fi, or sign in with Posnic. No server address needed.');
     const pin=document.createElement('label');pin.className='setup-confirm';
     pin.innerHTML='<input type="checkbox" id="setup-use-pin"><span>Use a PIN on this phone (optional)</span>';
@@ -96,7 +111,7 @@
     $('setup-auto-switch').onchange=e=>localStorage.setItem('posnic.automatic-connections',e.target.checked?'1':'0');
     const network=window.Capacitor?.Plugins?.LocalNetwork;
     if(network?.getLocalIp)Promise.race([network.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]).then(info=>{
-      if(info?.wifi===false){$('captain-search').hidden=true;$('setup-start-hint').textContent=text('Wi-Fi is off. Sign in with Posnic to find your shop.');}
+      if(info?.wifi===false){$('setup-wifi-choice').hidden=true;$('captain-cloud-login').classList.add('setup-cloud-recommended');methods.insertBefore($('captain-cloud-login'),$('captain-scan'));const hint=paragraph(methods,'Wi-Fi is off. Sign in with Posnic to find your shop.');methods.prepend(hint);}
       if(info?.wifi&&/^\d{1,3}(\.\d{1,3}){3}$/.test(info.ip)){
         const prefix=info.ip.split('.').slice(0,3).join('.')+'.';
         const label=document.createElement('label');label.className='setup-label';label.textContent=text('Last number of the billing computer’s address');
@@ -108,9 +123,14 @@
     }).catch(()=>{});
     if(!POSNIC.server.isConfigured&&!POSNIC.session.active&&!localStorage.getItem('posnic.setup-intro-seen')){
       const node=dialog('Let’s get you ready.');node.classList.add('setup-welcome');
+      const brand=document.createElement('div');brand.className='setup-welcome-brand';
+      brand.innerHTML='<img src="assets/common/captain-mark.svg" width="42" height="42" alt=""><div><strong>Captain</strong><small>By Posnic</small></div>';
+      const art=document.createElement('div');art.className='setup-welcome-art';art.setAttribute('aria-hidden','true');
+      art.innerHTML='<div class="setup-art-phone"><img src="assets/common/captain-mark.svg" width="26" height="26" alt=""><b></b><b></b><b></b></div><span class="setup-art-link">···</span><div class="setup-art-till"><img src="assets/common/captain-mark.svg" width="38" height="38" alt=""></div>';
+      node.prepend(brand,art);
       paragraph(node,'First-time setup');
       paragraph(node,'We’ll connect this phone to your shop, then help you sign in. You only need to set this up once.');
-      ['Find your shop','Sign in once','Start taking orders'].forEach((value,i)=>{const p=paragraph(node,(i+1)+'. '+text(value));p.className='setup-welcome-step';p.style.animationDelay=(i*120)+'ms';});
+      ['Find your shop','Sign in once','Start taking orders'].forEach((value,i)=>{const p=document.createElement('div');p.className='setup-welcome-step';const number=document.createElement('span');number.className='setup-welcome-number';number.textContent=String(i+1);const label=document.createElement('span');label.textContent=text(value);p.append(number,label);node.append(p);p.style.animationDelay=(i*120)+'ms';});
       const close=()=>{localStorage.setItem('posnic.setup-intro-seen','1');node.close();node.remove();};action(node,'Set up this phone',close);node.addEventListener('cancel',e=>{e.preventDefault();close();});node.showModal();
     }
   });

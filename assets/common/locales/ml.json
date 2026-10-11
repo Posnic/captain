@@ -1256,5 +1256,7 @@
   "Use shop Wi-Fi": "ഷോപ്പ് വൈഫൈ ഉപയോഗിക്കുക",
   "Wait for shop Wi-Fi": "ഷോപ്പ് വൈഫൈയ്ക്കായി കാത്തിരിക്കുക",
   "We’ve checked your shop connection. Use it now, or stay on internet.": "നിങ്ങളുടെ ഷോപ്പ് കണക്ഷൻ ഞങ്ങൾ പരിശോധിച്ചു. ഇപ്പോൾ ഉപയോഗിക്കുക, അല്ലെങ്കിൽ ഇന്റർനെറ്റിൽ തുടരുക.",
-  "Your shop is available through internet. Your order stays safe when you switch.": "നിങ്ങളുടെ ഷോപ്പ് ഇന്റർനെറ്റ് വഴി ലഭ്യമാണ്. നിങ്ങൾ മാറുമ്പോൾ നിങ്ങളുടെ ഓർഡർ സുരക്ഷിതമായി തുടരുന്നു."
+  "Your shop is available through internet. Your order stays safe when you switch.": "നിങ്ങളുടെ ഷോപ്പ് ഇന്റർനെറ്റ് വഴി ലഭ്യമാണ്. നിങ്ങൾ മാറുമ്പോൾ നിങ്ങളുടെ ഓർഡർ സുരക്ഷിതമായി തുടരുന്നു.",
+  "Connection details": "കണക്ഷൻ വിശദാംശങ്ങൾ",
+  "Sign in with Posnic Cloud": "പോസ്നിക് ക്ലൗഡ് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്യുക"
 }

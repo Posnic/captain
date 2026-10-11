@@ -58,15 +58,17 @@
       address: "Connect to your shop",
       code: "Enter pairing code",
       wifi: "Find shop on Wi-Fi",
-      cloud: "Sign in with your account",
+      cloud: "Sign in with Posnic Cloud",
       settings: "Connection settings",
+      other: "Other ways to connect",
     };
     $("setup-heading").textContent = titles[next];
 
     $("setup-address-entry").hidden = !["address", "code"].includes(next);
     $("setup-wifi-hint").hidden = next !== "address";
     $("setup-methods").hidden = next !== "start";
-    $("captain-address-toggle").hidden = next !== "start";
+    if ($('setup-other-methods')) $('setup-other-methods').hidden = next !== 'other';
+    $("captain-address-toggle").hidden = next !== "other";
     $("setup-start-hint").hidden = next !== "start";
     $("captain-connect").hidden = next !== "address";
     $("captain-code-options").hidden = next !== "code";
@@ -627,6 +629,8 @@
     $("username").focus();
   }
   window.CaptainOnboarding = {
+    otherWays() { if (!operation && !selection) showView('other'); },
+    pairingCode() { if (!operation && !selection) showCode(); },
     searchSaved() { returningToSettings=true; $("captain-search").click(); },
     signInSaved() { returningToSettings=false; showStep(true); },
     get busy() {

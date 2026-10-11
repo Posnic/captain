@@ -1,0 +1,31 @@
+/* First-time setup uses the same theme and real controls as the rest of Captain. */
+.captain-setup-dialog{--setup-teal:#087e89;--setup-tint:#e9f7f5}
+html[data-color-scheme="dark"] .captain-setup-dialog{--setup-teal:#74d4d5;--setup-tint:#183a3e}
+.setup-welcome-brand{display:flex;align-items:center;gap:10px;margin-bottom:20px;color:var(--ink)}
+.setup-welcome-brand strong{font-size:21px}.setup-welcome-brand small{display:block;color:var(--ink-soft);font-size:12px}
+.setup-welcome-art{min-height:150px;display:flex;align-items:center;justify-content:center;gap:20px;margin:4px 0 24px;background:radial-gradient(ellipse,var(--setup-tint),transparent 72%);flex-shrink:0}
+.setup-art-phone{width:65px;height:110px;border:2px solid var(--setup-teal);border-radius:15px;transform:rotate(-8deg);background:var(--surface);display:grid;align-content:center;gap:7px;padding:10px}
+.setup-art-phone img{margin:0 auto 3px}.setup-art-phone b{height:5px;border-radius:4px;background:var(--line)}.setup-art-phone b:last-child{height:12px;background:var(--accent)}
+.setup-art-link{font-size:24px;letter-spacing:4px;color:var(--setup-teal)}
+.setup-art-till{width:102px;height:78px;display:grid;place-items:center;border:2px solid var(--setup-teal);border-radius:12px;background:var(--surface);position:relative}
+.setup-art-till:after{content:'';position:absolute;width:46px;height:6px;border-radius:5px;bottom:-11px;background:var(--setup-teal)}
+.setup-welcome .setup-welcome-step{display:flex;align-items:center;gap:13px;padding:10px 0;border:0;font-size:14px;color:var(--ink);flex-shrink:0}
+.setup-welcome-number{display:grid;place-items:center;flex:0 0 30px;height:30px;background:var(--surface-sunk);border-radius:50%;color:var(--setup-teal);font-size:12px}
+.setup-welcome h2{letter-spacing:-.6px;font-size:29px}.setup-welcome .setup-primary{margin-top:26px}
+#captain-onboarding[data-setup-view="start"] #setup-methods{gap:0}
+#captain-onboarding .setup-recommend{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:17px;padding:18px;background:var(--surface-sunk);margin:8px 0 12px}
+#captain-onboarding .setup-recommend>strong{font-size:17px;color:var(--ink)}
+#captain-onboarding .setup-recommend .setup-hint{margin:0 0 8px;font-size:13px}
+#captain-onboarding[data-setup-view="start"] .setup-recommend>*{order:initial}
+#captain-onboarding #captain-search{background:var(--accent);color:var(--accent-ink)}
+#captain-onboarding #captain-scan,#captain-onboarding #captain-cloud-login,#setup-other-methods>button{display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;min-height:62px;padding:16px 0;background:var(--surface);color:var(--ink);border:0;border-bottom:1px solid var(--line);border-radius:0!important;text-align:start;font-size:14px}
+#captain-onboarding #captain-scan svg,#setup-other-methods svg{width:22px;height:22px;flex:none;color:var(--accent)}
+#captain-onboarding #setup-other-toggle{width:100%;text-align:center;margin-top:15px;color:var(--accent)}
+#setup-methods>.connection-cloud,#captain-onboarding #setup-methods>#connection-settings{display:none}
+#login-section .setup-steps{height:auto;min-height:36px;overflow:visible;align-items:center;margin-bottom:22px}
+#login-section .setup-steps li{min-width:0;line-height:1.4;font-style:normal}
+#setup-signin-code{width:100%;text-align:center}
+#captain-onboarding #captain-cloud-login.setup-cloud-recommended{background:var(--accent);color:var(--accent-ink);border-radius:12px!important;padding:15px;justify-content:center}
+.setup-found-details summary{min-height:44px;padding:12px 0;color:var(--accent);font-size:14px}
+@media(max-width:600px){.setup-welcome[open]{display:block}.setup-welcome-brand{margin-top:0}.setup-welcome .setup-primary{margin-top:24px}.setup-welcome-art{min-height:150px}.setup-welcome{padding-top:calc(env(safe-area-inset-top,0px) + 24px)}}
+@media(prefers-reduced-motion:reduce){.setup-welcome-step{animation:none}}

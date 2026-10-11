@@ -1256,5 +1256,7 @@
   "Use shop Wi-Fi": "দোকান ওয়াই-ফাই ব্যবহার করুন",
   "Wait for shop Wi-Fi": "দোকান Wi-Fi এর জন্য অপেক্ষা করুন",
   "We’ve checked your shop connection. Use it now, or stay on internet.": "আমরা আপনার দোকান সংযোগ পরীক্ষা করেছি। এখনই এটি ব্যবহার করুন, অথবা ইন্টারনেটে থাকুন।",
-  "Your shop is available through internet. Your order stays safe when you switch.": "আপনার দোকান ইন্টারনেটের মাধ্যমে উপলব্ধ। আপনি যখন স্যুইচ করবেন তখন আপনার অর্ডার নিরাপদ থাকে"
+  "Your shop is available through internet. Your order stays safe when you switch.": "আপনার দোকান ইন্টারনেটের মাধ্যমে উপলব্ধ। আপনি যখন স্যুইচ করবেন তখন আপনার অর্ডার নিরাপদ থাকে",
+  "Connection details": "সংযোগের বিবরণ",
+  "Sign in with Posnic Cloud": "পোস্নিক ক্লাউড দিয়ে সাইন ইন করুন"
 }

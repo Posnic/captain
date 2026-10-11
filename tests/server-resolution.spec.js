@@ -400,6 +400,7 @@ test('fresh setup offers Wi-Fi discovery before exposing staff credentials', asy
   await page.locator('#captain-search').click();
   await expect(page.locator('#captain-note')).toContainText('Wi-Fi search works in the installed phone app');
   await page.locator('#connection-back').click();
+  await page.locator("#setup-other-toggle").click();
   await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').fill('https://shop.example.com');
   await expect(page.locator('#captain-connect')).toHaveText('Continue');
@@ -447,11 +448,12 @@ test('a locked-out device is told to wait, not that its password is wrong', asyn
 
 test('connection settings offer browser approval, one address, Wi-Fi, QR and pairing code', async ({ page }) => {
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
-  for(const id of ['captain-cloud-login','captain-address-toggle','captain-search','captain-scan','captain-code-toggle']) await expect(page.locator('#'+id)).toBeVisible();
+  for(const id of ['captain-cloud-login','setup-other-toggle','captain-search','captain-scan']) await expect(page.locator('#'+id)).toBeVisible();
   await expect(page.locator('#captain-cancel')).toBeHidden();
 });
 test('address entry has a focused step and Back returns to discovery tools', async ({ page }) => {
   await page.goto('/index.html');await page.getByTitle('Connection settings').click();
+  await page.locator("#setup-other-toggle").click();
   await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').fill('myshop');
   await expect(page.locator('#captain-connect')).toBeVisible();
@@ -904,13 +906,15 @@ test('first-time setup presents QR without scanning the network automatically', 
 test('other connection options remain available without a cloud account', async ({ page }) => {
   await page.goto('/index.html');
   await expect(page.locator('#captain-search')).toBeVisible();
-  await expect(page.locator('#captain-code-toggle')).toBeVisible();
+  await expect(page.locator('#setup-other-toggle')).toBeVisible();
+  await page.locator("#setup-other-toggle").click();
   await page.locator('#captain-address-toggle').click();
   await expect(page.locator('#captain-server')).toBeVisible();
 });
 
 test('manual address entry opens directly without waiting for discovery', async ({ page }) => {
   await page.goto('/index.html');
+  await page.locator("#setup-other-toggle").click();
   await page.locator('#captain-address-toggle').click();
   await page.locator('#captain-server').click();
   await expect(page.locator('#connectAuto')).toBeHidden();
@@ -978,6 +982,7 @@ test('the dedicated address step retains the saved address and announces its hea
 
   await page.goto('/index.html');
   await expect(page.locator('#captain-onboarding')).toBeVisible();
+  await page.locator("#setup-other-toggle").click();
   await page.locator('#captain-address-toggle').click();
   await expect(page.locator('#captain-server')).toHaveValue(LAN);
   await expect(page.locator('#setup-heading')).toBeFocused();
