@@ -188,6 +188,7 @@ async function doLogin() {
          * a client never controls which version the server is on, and shops
          * update when they update.
          */
+        await window.CaptainValidateAccess(result, loginServer);
         const branches = result.branches || result.data || [];
         if (typeof OrderQueue !== 'undefined' && OrderQueue.all().some(row => row.owner && (row.owner.user !== result.user?.id || row.owner.shop !== result.shopKey || row.owner.base !== POSNIC.server.baseUrl))) throw new Error('Reconnect the original staff member and server to keep saved orders separate.');
         if (window.CaptainAccess?.locked) await POSNIC.session.end();

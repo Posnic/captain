@@ -26,7 +26,7 @@
   }
   const $ = (id) => document.getElementById(id);
   function showStep(signIn) {
-    if (signIn) { sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
+    if (signIn) { document.body.classList.remove('shop-connections-page'); sessionStorage.removeItem("posnic_editing_server"); sessionStorage.removeItem("posnic_connection_view"); }
     const canReturn = POSNIC.session.active && !window.CaptainAccess?.locked;
     $("connection-orders").hidden = !canReturn;
     document.querySelector('.setup-steps').hidden = canReturn;
@@ -230,6 +230,7 @@
       );
     if (signal?.aborted)
       throw new Error("Connection cancelled. Ask your manager for a new code.");
+    await window.CaptainValidateAccess(grant, base, signal);
     const sameAccount = POSNIC.session.shopKey === grant.shopKey && POSNIC.session.user?.id === grant.user.id;
     if (sessionStorage.getItem('captain.link-cloud') === '1' && POSNIC.session.active) {
       await POSNIC.session.link(grant, base);

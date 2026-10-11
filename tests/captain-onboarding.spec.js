@@ -995,6 +995,7 @@ test("expired cloud exchange recovers once without another browser approval", as
   });
   await page.route("https://azure.posnic.io/**", route => {
     if (new URL(route.request().url()).pathname.endsWith('/connections')) return route.fulfill({json:{branchId:'branch'}});
+    if (route.request().url().includes('/sales/getListKot')) return route.fulfill({json:{data:[]}});
     pairs++;
     if (pairs===1) return route.fulfill({status:401,json:{error:{code:"PAIR_EXPIRED",message:"This pairing code expired or was already used."}}});
     expect(route.request().postDataJSON().code).toBe("123456ABCDEF");
@@ -1543,4 +1544,26 @@ test('saved settings show outage without clearing saved addresses or staff',asyn
  await expect(panel).toContainText('Can’t reach your shop');
  expect(await page.evaluate(()=>POSNIC.server.lan)).toBe(base);
  expect(await page.evaluate(()=>POSNIC.session.user.id)).toBe('staff');
+});
+
+test('disabled Captain is rejected before initial sign-in saves a session',async({page})=>{
+ await phone(page);
+ await page.route('**/users/kioskMobileLogin',r=>r.fulfill({json:{token:'denied',shopKey:'shop',user:{id:'staff'},branches:[{branch_id:'branch'}]}}));
+ await page.route('**/sales/getListKot?**',r=>r.fulfill({status:403,json:{error:{code:'CAPTAIN_DISABLED',message:'Captain is disabled.'}}}));
+ await page.evaluate(base=>{POSNIC.server.pin(base);CaptainOnboarding.signInSaved();},base);
+ await page.locator('#username').fill('staff');await page.locator('#password').fill('password');await page.locator('#login-btn').click();
+ await expect(page.locator('#login-message')).toHaveText('Captain is disabled.');
+ expect(await page.evaluate(()=>POSNIC.session.active)).toBe(false);
+ await expect(page.locator('#captain-change-shop')).toBeVisible();
+});
+
+test('leaving connection settings restores sign-in spacing on a narrow phone',async({page})=>{
+ await phone(page);await page.setViewportSize({width:360,height:740});
+ await page.evaluate(base=>{POSNIC.server.pin(base);document.getElementById('captain-onboarding').dataset.setupView='settings';},base);
+ await expect(page.locator('body')).toHaveClass(/shop-connections-page/);
+ await page.evaluate(()=>CaptainOnboarding.signInSaved());
+ await expect(page.locator('body')).not.toHaveClass(/shop-connections-page/);
+ await expect(page.locator('.auth-header')).toBeVisible();
+ const bounds=await page.locator('#staff-signin-form').boundingBox();expect(bounds.x).toBeGreaterThanOrEqual(16);expect(bounds.x+bounds.width).toBeLessThanOrEqual(344);
+ await page.screenshot({path:'artifacts/signin-spacing-fixed.png',fullPage:true});
 });

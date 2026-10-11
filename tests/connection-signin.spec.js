@@ -48,3 +48,30 @@ for(const role of ['owner','staff'])test(`Posnic Cloud ${role} finds Internet, t
  const vault=await page.evaluate(()=>JSON.parse(localStorage.getItem('test.vault')));
  expect(vault.token).toBe('wifi-token');expect(vault.connections[0].token).toBe('cloud-token');
 });
+
+test('disabled Captain refuses a new route without saving its credential',async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ await page.route('https://disabled.example/**',r=>r.fulfill(r.request().url().includes('/getListKot')?{status:403,json:{error:{code:'CAPTAIN_DISABLED',message:'Captain is disabled.'}}}:{json:{token:'rejected-token',shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]}}));
+ await page.evaluate(()=>CaptainConnectionSignIn.open('cloud',{base:'https://disabled.example/api'}));
+ const sheet=page.locator('#connection-signin');await sheet.locator('[name=username]').fill('staff');await sheet.locator('[name=password]').fill('password');await sheet.locator('[type=submit]').click();
+ await expect(sheet.locator('[role=status]')).toHaveText('Captain is disabled.');
+ expect(await page.evaluate(()=>POSNIC.session.hasCredential('https://disabled.example/api'))).toBe(false);
+ await sheet.getByRole('button',{name:'Cancel',exact:true}).click();await expect(sheet).toHaveCount(0);
+});
+
+test('Wi-Fi sign-in search selects a discovered till without switching the active route',async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ const before=await page.evaluate(()=>POSNIC.server.baseUrl);
+ await page.evaluate(()=>{POSNIC.discovery.probe=async()=>null;POSNIC.discovery.scanSubnet=async(subnet,options)=>{options.collect({base:'http://192.168.1.11:5555/api',info:{connections:{shopName:'Test kitchen'}}});};CaptainConnectionSignIn.open('lan');});
+ const sheet=page.locator('#connection-signin');await sheet.getByRole('button',{name:'Search this Wi-Fi',exact:true}).click();await sheet.getByRole('button',{name:'Test kitchen',exact:true}).click();
+ await expect(sheet.locator('[name=address]')).toHaveValue('http://192.168.1.11:5555/api');expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(before);
+});
+
+test('Captain disabled during service offers recovery without clearing the saved session',async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ await page.route('**/sales/getListKot?**',r=>r.fulfill({status:403,json:{error:{code:'CAPTAIN_DISABLED',message:'Captain is disabled.'}}}));
+ await page.evaluate(async()=>{try{await POSNIC.api.get('/sales/getListKot?page=1&limit=1');}catch{}});
+ const dialog=page.locator('#captain-disabled');await expect(dialog).toBeVisible();await expect(dialog).toContainText('Captain is disabled.');
+ expect(await page.evaluate(()=>POSNIC.session.active)).toBe(true);
+ await dialog.getByRole('button',{name:'Change server',exact:true}).click();await expect(page).toHaveURL(/index.html/);await expect(page.locator('#captain-onboarding')).toBeVisible();
+});

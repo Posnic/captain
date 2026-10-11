@@ -134,11 +134,12 @@
       if(action==='orders')CaptainOnboarding.close();
     });
     const update=()=>{
-      const showing=document.getElementById('captain-onboarding').dataset.setupView==='settings';
+      const onboarding=document.getElementById('captain-onboarding');
+      const showing=!onboarding.hidden && onboarding.dataset.setupView==='settings';
       document.body.classList.toggle('shop-connections-page',showing);
       if(showing){draw();if(!busy&&!editing)void check();}else controller?.abort();
     };
-    new MutationObserver(update).observe(document.getElementById('captain-onboarding'),{attributes:true,attributeFilter:['data-setup-view']});
+    new MutationObserver(update).observe(document.getElementById('captain-onboarding'),{attributes:true,attributeFilter:['data-setup-view','hidden']});
     window.addEventListener('posnic:route-health',event=>{const d=event.detail||{};if(d.base)health.set(d.base,{ok:!!d.reachable,at:Date.now()});if(!editing)draw();});
     ['posnic:server-changed','posnic:online','posnic:offline','posnic:session-changed'].forEach(name=>window.addEventListener(name,()=>{if(!editing)draw();}));
     draw();update();

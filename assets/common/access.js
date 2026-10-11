@@ -1,5 +1,41 @@
 (function (host) {
   "use strict";
+  // Check the same authorization used by the orders screen before saving a grant.
+  // The credential is sent only to the server which just issued it.
+  host.CaptainValidateAccess = async function (grant, base, signal) {
+    if (!grant?.token) return; // Legacy servers do not issue bearer grants.
+    const branch = grant.branches?.[0]?.branch_id || grant.branches?.[0]?.store_id || '';
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, {once:true});
+    const timer = setTimeout(abort, 7000);
+    try {
+      if (signal?.aborted) controller.abort();
+      const response = await host.fetch(base + '/sales/getListKot?page=1&limit=1&branchId=' + encodeURIComponent(branch), {
+        credentials:'omit', redirect:'error', cache:'no-store', signal:controller.signal,
+        headers:{Accept:'application/json', Authorization:'Bearer ' + grant.token}
+      });
+      const body = await response.json();
+      if (!response.ok || body?.type === 'error') throw Object.assign(new Error(body?.error?.message || body?.message || 'Could not sign in.'), {status:response.status,code:body?.error?.code || body?.code});
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+  };
+  function showDisabled(error) {
+    if (!host.document || host.document.getElementById('captain-disabled')) return;
+    if(error.code !== 'CAPTAIN_DISABLED' && !/captain is disabled/i.test(error.message || ''))return;
+    const t = value => host.I18N?.t(value) || value;
+    const dialog=host.document.createElement('dialog');dialog.id='captain-disabled';
+    dialog.style.cssText='box-sizing:border-box;width:min(420px,calc(100% - 32px));margin:auto;padding:24px;border:1px solid var(--line,#ccd5e0);border-radius:20px;background:var(--surface,#fff);color:var(--ink,#172638)';
+    const message=host.document.createElement('p');message.textContent=t(error.message);dialog.append(message);
+    for(const label of ['Sign in','Change server']){
+      const button=host.document.createElement('button');button.textContent=t(label);
+      button.style.cssText='min-height:48px;width:100%;margin-top:12px;border-radius:12px;border:1px solid var(--line,#ccd5e0);background:var(--surface,#fff);color:var(--accent,#2458db);font:inherit';
+      button.onclick=()=>{host.sessionStorage.setItem('posnic_editing_server','1');host.sessionStorage.setItem('posnic_connection_view',label==='Change server'?'start':'address');host.location.href='index.html';};
+      dialog.append(button);
+    }
+    dialog.addEventListener('cancel',e=>e.preventDefault());
+    host.document.body.append(dialog);dialog.showModal();
+  }
+  host.CaptainShowDisabled = showDisabled;
   function createAccess(plugin, storage, fetcher, cryptoApi = host.crypto) {
     let state = {},
       profile = null,
@@ -539,6 +575,7 @@
         } catch (error) {
           if (start !== generation)
             throw Object.assign(new Error("Unlock this phone first."), {code:"PIN_LOCKED"});
+          showDisabled(error);
           last = error;
           if (error.code === "PIN_LOCKED" || error.accessRefused) throw error;
           if (

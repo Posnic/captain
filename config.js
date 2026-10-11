@@ -1951,6 +1951,10 @@
 
     if (!response.ok) {
       const error = toApiError(response, payload);
+      if (error.code === 'CAPTAIN_DISABLED' || /captain is disabled/i.test(error.message || '')) {
+        window.CaptainShowDisabled?.(error);
+        throw error;
+      }
       /* A credential the server will not accept is worse than none: every
          later request carries it and fails the same way. Drop it and let the
          sign-in screen take over.
