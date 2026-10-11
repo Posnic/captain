@@ -76,13 +76,25 @@
     const label=document.createElement('strong');label.textContent=text('Find shop on Wi-Fi');wifi.append(label);
     methods.prepend(wifi);wifi.append($('setup-start-hint'),$('captain-search'));
     $('captain-search').querySelector('span').textContent=text('Search this Wi-Fi');
-    methods.append($('captain-scan'),$('captain-cloud-login'));
+    methods.append($('captain-cloud-login'),$('captain-scan'));
+    const cloudChoices=document.createElement('section');cloudChoices.id='setup-cloud-choices';cloudChoices.hidden=$('captain-onboarding').dataset.setupView!=='cloud-choice';methods.after(cloudChoices);
+    PosnicConnectionSetup.cloudRoles({translate:text}).forEach(role=>{
+      const button=action(cloudChoices,role.label,()=>role.id==='owner'?CaptainOnboarding.cloudOwner():CaptainOnboarding.cloudStaff(),true);
+      button.id='captain-cloud-'+role.id;
+      PosnicConnectionSetupUI.decorateMethod(button,role,{posnicLogo:'packages/connection-setup/assets/posnic-mark.svg'});
+    });
     const other=document.createElement('section');other.id='setup-other-methods';other.hidden=true;
     other.append($('captain-code-toggle'),$('captain-address-toggle'),$('connection-settings'));methods.after(other);
     const more=action(methods,'Other ways to connect',()=>CaptainOnboarding.otherWays(),true);more.id='setup-other-toggle';
+    const sharedMethods=PosnicConnectionSetup.methods({translate:text});
+    const methodControls={qr:'captain-scan',cloud:'captain-cloud-login',other:'setup-other-toggle',code:'captain-code-toggle',address:'captain-address-toggle',settings:'connection-settings'};
+    sharedMethods.forEach(method=>{
+      const id=methodControls[method.id];
+      if(id)PosnicConnectionSetupUI.decorateMethod($(id),method,{posnicLogo:'packages/connection-setup/assets/posnic-mark.svg'});
+    });
     methods.querySelector('.setup-alternatives')?.remove();methods.querySelector('.setup-tools')?.remove();
     const code=action($('staff-signin-form'),'Enter pairing code',()=>CaptainOnboarding.pairingCode(),true);code.id='setup-signin-code';
-    $('setup-start-hint').textContent=text('Find your shop on Wi-Fi, or sign in with Posnic. No server address needed.');
+    $('setup-start-hint').textContent=text('Shop Wi-Fi is fastest.');
     const pin=document.createElement('label');pin.className='setup-confirm';
     pin.innerHTML='<input type="checkbox" id="setup-use-pin"><span>Use a PIN on this phone (optional)</span>';
     $('login-btn').before(pin);
@@ -123,15 +135,13 @@
     }).catch(()=>{});
     if(!POSNIC.server.isConfigured&&!POSNIC.session.active&&!localStorage.getItem('posnic.setup-intro-seen')){
       const node=dialog('Let’s get you ready.');node.classList.add('setup-welcome');
-      const brand=document.createElement('div');brand.className='setup-welcome-brand';
-      brand.innerHTML='<img src="assets/common/captain-mark.svg" width="42" height="42" alt=""><div><strong>Captain</strong><small>By Posnic</small></div>';
-      const art=document.createElement('div');art.className='setup-welcome-art';art.setAttribute('aria-hidden','true');
-      art.innerHTML='<div class="setup-art-phone"><img src="assets/common/captain-mark.svg" width="26" height="26" alt=""><b></b><b></b><b></b></div><span class="setup-art-link">···</span><div class="setup-art-till"><img src="assets/common/captain-mark.svg" width="38" height="38" alt=""></div>';
-      node.prepend(brand,art);
-      paragraph(node,'First-time setup');
-      paragraph(node,'We’ll connect this phone to your shop, then help you sign in. You only need to set this up once.');
-      ['Find your shop','Sign in once','Start taking orders'].forEach((value,i)=>{const p=document.createElement('div');p.className='setup-welcome-step';const number=document.createElement('span');number.className='setup-welcome-number';number.textContent=String(i+1);const label=document.createElement('span');label.textContent=text(value);p.append(number,label);node.append(p);p.style.animationDelay=(i*120)+'ms';});
-      const close=()=>{localStorage.setItem('posnic.setup-intro-seen','1');node.close();node.remove();};action(node,'Set up this phone',close);node.addEventListener('cancel',e=>{e.preventDefault();close();});node.showModal();
+      node.replaceChildren();
+      const close=()=>{localStorage.setItem('posnic.setup-intro-seen','1');node.close();node.remove();};
+      PosnicConnectionSetupUI.renderWelcome(node,{
+        name:'Captain',logo:'assets/common/captain-mark.svg',translate:text,
+        steps:['Find your shop','Sign in once','Start taking orders'],onContinue:close
+      });
+      node.addEventListener('cancel',e=>{e.preventDefault();close();});node.showModal();
     }
   });
 })();

@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "Wir haben Ihre Shop-Verbindung überprüft. Benutze es jetzt oder bleib im Internet.",
   "Your shop is available through internet. Your order stays safe when you switch.": "Ihr Shop ist über das Internet verfügbar. Ihre Bestellung bleibt sicher, wenn Sie wechseln.",
   "Connection details": "Angaben zur Verbindung",
-  "Sign in with Posnic Cloud": "Melden Sie sich bei Posnic Cloud an"
+  "Sign in with Posnic Cloud": "Melden Sie sich bei Posnic Cloud an",
+  "Owner or admin connects this phone.": "Der Inhaber oder Administrator verbindet dieses Telefon.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "Stellen Sie eine Verbindung über das Internet her",
+  "Owner or admin": "Besitzer oder Administrator",
+  "Sign in with Posnic. No shop address needed.": "Melde dich bei Posnic an. Keine Geschäftsadresse erforderlich.",
+  "Staff": "Mitarbeiter",
+  "Enter your shop address, then sign in.": "Geben Sie Ihre Geschäftsadresse ein und melden Sie sich an.",
+  "Shop address": "Adresse des Ladens"
 }

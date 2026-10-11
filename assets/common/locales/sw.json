@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "Tumeangalia unganisho la duka lako. Tumia sasa, au ukaa kwenye mtandao.",
   "Your shop is available through internet. Your order stays safe when you switch.": "Duka lako linapatikana kupitia mtandao. Agizo lako linakaa salama unapobadilisha.",
   "Connection details": "Maelezo ya muunganish",
-  "Sign in with Posnic Cloud": "Ingia na Posnic Cloud"
+  "Sign in with Posnic Cloud": "Ingia na Posnic Cloud",
+  "Owner or admin connects this phone.": "Mmiliki au msimamizi anaunganisha simu hii.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "Unganisha kwenye mtandao",
+  "Owner or admin": "Mmiliki au msimamizi",
+  "Sign in with Posnic. No shop address needed.": "Ingia na Posnic. Hakuna anwani ya duka inayohitajika.",
+  "Staff": "Wafanyakazi",
+  "Enter your shop address, then sign in.": "Ingiza anwani yako ya duka, kisha uingie.",
+  "Shop address": "Anwani ya duka"
 }

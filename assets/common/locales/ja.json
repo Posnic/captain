@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "ショップの接続を確認しました。今すぐ使用するか、インターネットを利用してください。",
   "Your shop is available through internet. Your order stays safe when you switch.": "ショップはインターネット経由で利用できます。切り替えても、注文は安全に保たれます。",
   "Connection details": "接続詳細",
-  "Sign in with Posnic Cloud": "Posnic クラウドでサインイン"
+  "Sign in with Posnic Cloud": "Posnic クラウドでサインイン",
+  "Owner or admin connects this phone.": "オーナーまたは管理者がこのスマートフォンを接続します。",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "インターネット経由で接続",
+  "Owner or admin": "所有者または管理者",
+  "Sign in with Posnic. No shop address needed.": "Posnic でサインインします。ショップの住所は必要ありません。",
+  "Staff": "スタッフ",
+  "Enter your shop address, then sign in.": "店舗の住所を入力してログインします。",
+  "Shop address": "店舗住所"
 }

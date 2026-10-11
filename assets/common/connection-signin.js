@@ -2,7 +2,7 @@
 (function () {
   const t = value => window.I18N?.t(value) || value;
   window.CaptainConnectionSignIn = {
-    open(kind) {
+    open(kind, options={}) {
       if (document.getElementById('connection-signin')) return;
       const dialog = document.createElement('dialog');
       dialog.id = 'connection-signin';
@@ -12,8 +12,9 @@
       dialog.querySelector('[data-help]').textContent = t('Sign in to this shop to start taking orders.');
       for (const [selector, label] of [['[data-address-label]','Shop code or server address'],['[data-user-label]','Username'],['[data-password-label]','Password'],['[type=submit]','Sign in'],['[data-cloud]','Sign in with Posnic Cloud'],['[data-cancel]','Cancel']]) dialog.querySelector(selector).textContent=t(label);
       const form=dialog.querySelector('form'), status=dialog.querySelector('[role=status]');
-      form.elements.address.value=POSNIC.server[kind]||'';
+      form.elements.address.value=options.base||POSNIC.server[kind]||'';
       dialog.querySelector('[data-cloud]').hidden=kind!=='cloud';
+      if(kind==='cloud'){const hint=document.createElement('p');hint.textContent=t('Owner or admin connects this phone.');hint.style.cssText='font-size:12px;color:var(--ink-soft,#647084);margin:0 0 12px';dialog.querySelector('[data-cloud]').after(hint);}
       dialog.querySelectorAll('label').forEach(el=>el.style.cssText='display:grid;gap:6px;margin:14px 0');
       dialog.querySelectorAll('input,button').forEach(el=>el.style.cssText='width:100%;min-height:48px;padding:10px 12px;border:1px solid var(--line,#ccd5e0);border-radius:12px;background:var(--surface,#fff);color:var(--ink,#172638);font:inherit;box-sizing:border-box;margin-bottom:8px');
       form.querySelector('button').style.cssText+='background:var(--accent,#2458db);color:var(--accent-ink,#fff);border-color:transparent;font-weight:600';
@@ -24,7 +25,7 @@
       window.addEventListener('captain:back',back,true);
       dialog.querySelector('[data-cancel]').onclick=close;
       dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
-      dialog.querySelector('[data-cloud]').onclick=()=>{sessionStorage.setItem('captain.link-cloud','1');sessionStorage.setItem('posnic_editing_server','1');close();location.href='index.html';};
+      dialog.querySelector('[data-cloud]').onclick=()=>{sessionStorage.setItem('captain.link-return-base',POSNIC.server.baseUrl);sessionStorage.setItem('captain.link-cloud','1');sessionStorage.setItem('posnic_editing_server','1');close();location.href='index.html';};
       form.onsubmit=async event=>{
         event.preventDefault();if(controller)return;
         const base=POSNIC.server.normalize(form.elements.address.value);

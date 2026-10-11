@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "Chúng tôi đã kiểm tra kết nối cửa hàng của bạn. Sử dụng nó ngay bây giờ, hoặc ở lại trên internet.",
   "Your shop is available through internet. Your order stays safe when you switch.": "Cửa hàng của bạn có sẵn thông qua internet. Đơn đặt hàng của bạn vẫn an toàn khi bạn chuyển đổi.",
   "Connection details": "Chi tiết kết nối",
-  "Sign in with Posnic Cloud": "Đăng nhập với Posnic Cloud"
+  "Sign in with Posnic Cloud": "Đăng nhập với Posnic Cloud",
+  "Owner or admin connects this phone.": "Chủ cửa hàng hoặc quản trị viên kết nối điện thoại này.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "Kết nối qua Internet",
+  "Owner or admin": "Chủ sở hữu hoặc quản trị viên",
+  "Sign in with Posnic. No shop address needed.": "Đăng nhập với Posnic. Không cần địa chỉ cửa hàng.",
+  "Staff": "Nhân viên",
+  "Enter your shop address, then sign in.": "Nhập địa chỉ cửa hàng của bạn, sau đó đăng nhập.",
+  "Shop address": "Địa chỉ cửa hàng"
 }

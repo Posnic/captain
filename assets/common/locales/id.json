@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "Kami telah memeriksa koneksi toko Anda. Gunakan sekarang, atau tetap di internet.",
   "Your shop is available through internet. Your order stays safe when you switch.": "Toko Anda tersedia melalui internet. Pesanan Anda tetap aman saat Anda beralih.",
   "Connection details": "Rincian koneksi",
-  "Sign in with Posnic Cloud": "Masuk dengan Posnic Cloud"
+  "Sign in with Posnic Cloud": "Masuk dengan Posnic Cloud",
+  "Owner or admin connects this phone.": "Pemilik atau admin menghubungkan ponsel ini.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "Terhubung melalui Internet",
+  "Owner or admin": "Pemilik atau admin",
+  "Sign in with Posnic. No shop address needed.": "Masuk dengan Posnic. Tidak diperlukan alamat toko.",
+  "Staff": "Staf",
+  "Enter your shop address, then sign in.": "Masukkan alamat toko Anda, lalu masuk.",
+  "Shop address": "Alamat toko"
 }

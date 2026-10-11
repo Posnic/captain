@@ -64,6 +64,19 @@
       }
       finally{switching=false;paint();feedbackTimer=setTimeout(()=>{feedback='';paint();},5000);}
     }));
+    const pendingCloud=sessionStorage.getItem('captain.pending-cloud-signin');
+    if(pendingCloud){
+      sessionStorage.removeItem('captain.pending-cloud-signin');
+      Promise.resolve(POSNIC.session.ready).then(()=>{
+        const base=POSNIC.server.normalize(pendingCloud);
+        const previous=POSNIC.server.normalize(sessionStorage.getItem('captain.link-return-base'));
+        sessionStorage.removeItem('captain.link-return-base');
+        if(POSNIC.session.active&&base&&!POSNIC.server.isLanUrl(base)){
+          if(previous&&POSNIC.session.hasCredential?.(previous))POSNIC.server.pin(previous);
+          window.CaptainConnectionSignIn?.open('cloud',{base});
+        }
+      });
+    }
     paint();
     setInterval(() => { if (!document.hidden) paint(); },15000);
   });

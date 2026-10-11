@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "เราได้ตรวจสอบการเชื่อมต่อร้านค้าของคุณแล้วใช้ตอนนี้หรืออยู่บนอินเทอร์เน็ต",
   "Your shop is available through internet. Your order stays safe when you switch.": "ร้านค้าของคุณมีให้บริการผ่านอินเทอร์เน็ตคำสั่งซื้อของคุณจะปลอดภัยเมื่อคุณสวิตช์",
   "Connection details": "รายละเอียดการเชื่อมต่อ",
-  "Sign in with Posnic Cloud": "ลงชื่อเข้าใช้ด้วย Posnic Cloud"
+  "Sign in with Posnic Cloud": "ลงชื่อเข้าใช้ด้วย Posnic Cloud",
+  "Owner or admin connects this phone.": "เจ้าของหรือผู้ดูแลระบบเชื่อมต่อโทรศัพท์เครื่องนี้",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "เชื่อมต่อผ่านอินเทอร์เน็ต",
+  "Owner or admin": "เจ้าของหรือผู้ดูแลระบบ",
+  "Sign in with Posnic. No shop address needed.": "ลงชื่อเข้าใช้ด้วย Posnicไม่จำเป็นต้องมีที่อยู่ร้านค้า",
+  "Staff": "พนักงาน",
+  "Enter your shop address, then sign in.": "ป้อนที่อยู่ร้านค้าของคุณ จากนั้นลงชื่อเข้าใช้",
+  "Shop address": "ที่อยู่ร้านค้า"
 }

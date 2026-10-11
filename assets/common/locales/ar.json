@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "لقد تحققنا من اتصال متجرك. استخدمه الآن، أو ابق على الإنترنت.",
   "Your shop is available through internet. Your order stays safe when you switch.": "متجرك متاح من خلال الإنترنت. يظل طلبك آمنًا عند التبديل.",
   "Connection details": "تفاصيل الاتصال",
-  "Sign in with Posnic Cloud": "تسجيل الدخول باستخدام Posnic Cloud"
+  "Sign in with Posnic Cloud": "تسجيل الدخول باستخدام Posnic Cloud",
+  "Owner or admin connects this phone.": "يربط المالك أو المسؤول هذا الهاتف.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "الاتصال عبر الإنترنت",
+  "Owner or admin": "المالك أو المشرف",
+  "Sign in with Posnic. No shop address needed.": "قم بتسجيل الدخول باستخدام Posnic. لا حاجة لعنوان متجر.",
+  "Staff": "الموظفين",
+  "Enter your shop address, then sign in.": "أدخل عنوان متجرك، ثم قم بتسجيل الدخول.",
+  "Shop address": "عنوان المتجر"
 }

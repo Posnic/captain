@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "আমরা আপনার দোকান সংযোগ পরীক্ষা করেছি। এখনই এটি ব্যবহার করুন, অথবা ইন্টারনেটে থাকুন।",
   "Your shop is available through internet. Your order stays safe when you switch.": "আপনার দোকান ইন্টারনেটের মাধ্যমে উপলব্ধ। আপনি যখন স্যুইচ করবেন তখন আপনার অর্ডার নিরাপদ থাকে",
   "Connection details": "সংযোগের বিবরণ",
-  "Sign in with Posnic Cloud": "পোস্নিক ক্লাউড দিয়ে সাইন ইন করুন"
+  "Sign in with Posnic Cloud": "পোস্নিক ক্লাউড দিয়ে সাইন ইন করুন",
+  "Owner or admin connects this phone.": "মালিক বা অ্যাডমিন এই ফোনটি সংযুক্ত করেন।",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "ইন্টারনেটের মাধ্যমে সংযোগ করুন",
+  "Owner or admin": "মালিক বা অ্যাডমিন",
+  "Sign in with Posnic. No shop address needed.": "পোসনিক দিয়ে সাইন ইন করুন। দোকানের ঠিকানার দরকার নেই।",
+  "Staff": "স্টাফ",
+  "Enter your shop address, then sign in.": "আপনার দোকানের ঠিকানা লিখুন, তারপরে সাইন ইন করুন।",
+  "Shop address": "দোকান ঠিকানা"
 }

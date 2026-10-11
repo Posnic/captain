@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "我们已经检查了您的商店连接。立即使用，或继续使用互联网。",
   "Your shop is available through internet. Your order stays safe when you switch.": "您可以通过互联网访问您的商店。切换后，您的订单将保持安全。",
   "Connection details": "连接详情",
-  "Sign in with Posnic Cloud": "使用 Posnic Cloud 登录"
+  "Sign in with Posnic Cloud": "使用 Posnic Cloud 登录",
+  "Owner or admin connects this phone.": "由店主或管理员连接此手机。",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "通过互联网连接",
+  "Owner or admin": "所有者或管理员",
+  "Sign in with Posnic. No shop address needed.": "使用 Posnic 登录。无需商店地址。",
+  "Staff": "员工",
+  "Enter your shop address, then sign in.": "输入您的商店地址，然后登录。",
+  "Shop address": "商店地址"
 }

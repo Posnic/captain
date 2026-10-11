@@ -11,6 +11,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: process.env.CAPTAIN_TEST_WORKERS ? Number(process.env.CAPTAIN_TEST_WORKERS) : 1,
+  // Optional local release retry; repeated failures still fail the commit gate.
+  retries: process.env.CAPTAIN_TEST_RETRIES === '1' ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${testPort}`,

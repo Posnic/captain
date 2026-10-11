@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "我們已經檢查了您的商店連接。立即使用它，或保持互聯網上。",
   "Your shop is available through internet. Your order stays safe when you switch.": "您的商店可以通過互聯網訪問。當您切換時，您的訂單保持安全。",
   "Connection details": "連線詳細資訊",
-  "Sign in with Posnic Cloud": "使用波斯尼克雲登入"
+  "Sign in with Posnic Cloud": "使用波斯尼克雲登入",
+  "Owner or admin connects this phone.": "由店主或管理員連接此手機。",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "透過網際網路連線",
+  "Owner or admin": "擁有者或管理員",
+  "Sign in with Posnic. No shop address needed.": "使用波斯尼克登錄。無需商店地址。",
+  "Staff": "工作人員",
+  "Enter your shop address, then sign in.": "輸入您的商店地址，然後登入。",
+  "Shop address": "店鋪地址"
 }

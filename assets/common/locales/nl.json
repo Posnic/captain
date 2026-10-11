@@ -1258,5 +1258,13 @@
   "We’ve checked your shop connection. Use it now, or stay on internet.": "We hebben je winkelverbinding gecontroleerd. Gebruik het nu, of blijf op internet.",
   "Your shop is available through internet. Your order stays safe when you switch.": "Je winkel is beschikbaar via internet. Je bestelling blijft veilig als je overstapt.",
   "Connection details": "Details van de verbinding",
-  "Sign in with Posnic Cloud": "Meld je aan met Posnic Cloud"
+  "Sign in with Posnic Cloud": "Meld je aan met Posnic Cloud",
+  "Owner or admin connects this phone.": "De eigenaar of beheerder verbindt deze telefoon.",
+  "Posnic Cloud": "Posnic Cloud",
+  "Connect over the Internet": "Maak verbinding via het internet",
+  "Owner or admin": "Eigenaar of beheerder",
+  "Sign in with Posnic. No shop address needed.": "Meld je aan met Posnic. Geen winkeladres nodig.",
+  "Staff": "Personeel",
+  "Enter your shop address, then sign in.": "Voer je winkeladres in en meld je aan.",
+  "Shop address": "Adres van de winkel"
 }

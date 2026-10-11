@@ -293,6 +293,9 @@ test('group move resumes the saved request after reopening the screen',async({pa
  await page.evaluate(()=>moveOrder('ord-1'));
  await expect(page.locator('#move-table-go')).toHaveText('Retry');
  fail=false;
+ // Reopening starts a Bootstrap transition. A response completed during that
+ // transition cannot hide the modal yet; exercise retry once the dialog is ready.
+ await expect.poll(()=>page.evaluate(()=>bootstrap.Modal.getInstance(document.getElementById('moveTableModal'))?._isTransitioning)).toBe(false);
  await page.locator('#move-table-go').click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
  expect(prepares).toHaveLength(2);
@@ -318,6 +321,7 @@ test('a saved move can be cancelled and a lost cancellation reply survives reloa
  await page.reload();
  await page.evaluate(()=>loadOrderHistory());
  await page.evaluate(()=>moveOrder('ord-1'));
+ await expect.poll(()=>page.evaluate(()=>bootstrap.Modal.getInstance(document.getElementById('moveTableModal'))?._isTransitioning)).toBe(false);
  await page.locator('#move-table-go').click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
  expect(prepares).toBe(1);

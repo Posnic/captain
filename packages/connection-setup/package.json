@@ -1,0 +1,48 @@
+{
+  "name": "@posnic/connection-setup",
+  "version": "0.1.0",
+  "description": "Shared Posnic connection setup model and accessible browser presentation",
+  "license": "AGPL-3.0-only",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./browser": {
+      "types": "./browser.d.ts",
+      "default": "./browser.js"
+    },
+    "./styles.css": "./styles.css",
+    "./assets/posnic-mark.svg": "./assets/posnic-mark.svg",
+    "./native": {
+      "types": "./native.d.ts",
+      "default": "./native.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "browser.js",
+    "browser.d.ts",
+    "styles.css",
+    "assets",
+    "README.md",
+    "LICENSE",
+    "native.js",
+    "native.d.ts"
+  ],
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.72"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
+  }
+}

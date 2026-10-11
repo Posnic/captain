@@ -27,14 +27,24 @@ async function nativePhone(page){
  });
 }
 
-test('Posnic Cloud approval adds Internet without replacing the Wi-Fi grant',async({page})=>{
+for(const role of ['owner','staff'])test(`Posnic Cloud ${role} finds Internet, then separate staff sign-in preserves the Wi-Fi grant`,async({page})=>{
  await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
  await page.evaluate(async()=>{await POSNIC.session.start({base:'http://192.168.1.20:5555/api',token:'wifi-token',shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]});POSNIC.server.remember({lan:'http://192.168.1.20:5555/api',cloud:'https://backup.example/api'});POSNIC.server.pin('http://192.168.1.20:5555/api');});
  await page.route('https://www.posnic.com/**',r=>r.fulfill({json:r.request().url().endsWith('/capabilities')?{applications:['captain']}:r.request().url().endsWith('/requests')?{request:'a'.repeat(43),authorizationUrl:'https://www.posnic.com/api/mobile/authorize?request='+'a'.repeat(43),expiresIn:900}:{baseUrl:'https://backup.example/api',code:'ABCDEF123456',application:'captain',localServers:[]}}));
- await page.route('https://backup.example/**',r=>r.fulfill({json:r.request().url().endsWith('/pair')?{token:'cloud-token',shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]}:{connected:true}}));
+ await page.route('https://backup.example/**',r=>r.fulfill({json:r.request().url().endsWith('/kioskMobileLogin')?{token:'cloud-token',shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]}:{connected:true}}));
  await page.locator('[data-route-signal=remote]').click();await page.locator('#connection-signin [data-cloud]').click();
  await expect(page).toHaveURL(/index.html/);
+ await page.locator('#captain-cloud-'+role).click();
+ if(role==='staff'){
+   await page.evaluate(()=>{POSNIC.discovery.probe=async base=>({base,info:{}});});
+   await page.locator('#captain-server').fill('backup.example');
+   await page.locator('#captain-connect').click();
+ }
  await expect(page).toHaveURL(/kot-management.html/,{timeout:20000});
+ const sheet=page.locator('#connection-signin');await expect(sheet).toBeVisible();
+ expect(await page.evaluate(()=>POSNIC.server.isLocal)).toBe(true);
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('test.vault')).connections||[])).toEqual([]);
+ await sheet.locator('[name=username]').fill('staff');await sheet.locator('[name=password]').fill('password');await sheet.locator('[type=submit]').click();await expect(sheet).toHaveCount(0);
  const vault=await page.evaluate(()=>JSON.parse(localStorage.getItem('test.vault')));
  expect(vault.token).toBe('wifi-token');expect(vault.connections[0].token).toBe('cloud-token');
 });

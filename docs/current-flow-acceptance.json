@@ -2040,7 +2040,7 @@
     "commit": "ec98eb54270d4b1e1dbfc78abb17fabcb56e8c8a"
   },
   "quickRouteSelection20261011": {
-    "status": "verified-ready-for-apk",
+    "status": "published-testing-release",
     "change": "Existing Wi-Fi and globe buttons select a verified saved route in place. The choice sets priority without changing automatic fallback. No extra mode icons or bottom Shop connection link. Late background responses cannot override a newer explicit choice. Checkout shares the cart mutation queue so menu refresh cannot restore a submitted basket.",
     "liveDiscovery": {
       "localAndCloudReachable": true,
@@ -2062,6 +2062,37 @@
     "limitations": [
       "Android emulator run could not complete: host resource exhaustion caused ADB instability, browser crashes and disk-write failures. It was stopped. Physical phone Wi-Fi off/on acceptance remains required."
     ],
-    "verificationPolicy": "Full unit/browser suites run locally, then failed and changed paths rechecked. Commit hook duplicate execution is suppressed only after these checks complete; no GitHub test workflow triggered."
+    "verificationPolicy": "Full unit/browser suites run locally, then failed and changed paths rechecked. Commit hook duplicate execution is suppressed only after these checks complete; no GitHub test workflow triggered.",
+    "release": {
+      "version": "1.3.60",
+      "versionCode": 10360,
+      "commit": "c08a81e198e4c37ed6dbe009d7cff662820fbce3",
+      "url": "https://github.com/Posnic/captain/releases/tag/captain-1.3.60-test.1",
+      "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.60-test.1/captain-1.3.60.apk",
+      "sha256": "52f979ce936b16fd20906c6324034a259254825a12b494d5a8f16d7747f2b9a7",
+      "downloadVerified": true,
+      "signature": "Matches existing Captain certificate"
+    }
+  },
+  "cloudRoles20261011": {
+    "status": "implemented-release-checks-running",
+    "reference": "owner-staff-pairing.html, approved Wi-Fi-first revision",
+    "changes": [
+      "Wi-Fi remains primary; Posnic Cloud contains owner/admin and staff choices",
+      "Owner uses existing scoped browser approval without shop URL or a second staff login",
+      "Staff uses shop URL and shop credentials without a Posnic owner account",
+      "Active staff session retains identity during cloud discovery; separate credentials required",
+      "Shared setup package includes actual supplied Posnic logo and cloud role descriptors",
+      "New labels translated in all 30 languages"
+    ],
+    "evidence": [
+      "679 unit checks passed",
+      "Owner, staff address, cancelled approval, recovered approval and active route linking checks",
+      "320px light/dark screenshots in test-artifacts/cloud-roles-*"
+    ],
+    "limits": [
+      "Browser/native-plugin simulation; no attached Android device",
+      "No production owner credentials entered during test"
+    ]
   }
 }

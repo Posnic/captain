@@ -59,18 +59,21 @@
       code: "Enter pairing code",
       wifi: "Find shop on Wi-Fi",
       cloud: "Sign in with Posnic Cloud",
+      'cloud-choice': 'Posnic Cloud',
+      'cloud-address': 'Shop address',
       settings: "Connection settings",
       other: "Other ways to connect",
     };
     $("setup-heading").textContent = titles[next];
 
-    $("setup-address-entry").hidden = !["address", "code"].includes(next);
+    $("setup-address-entry").hidden = !["address", "code", "cloud-address"].includes(next);
+    if ($('setup-cloud-choices')) $('setup-cloud-choices').hidden = next !== 'cloud-choice';
     $("setup-wifi-hint").hidden = next !== "address";
     $("setup-methods").hidden = next !== "start";
     if ($('setup-other-methods')) $('setup-other-methods').hidden = next !== 'other';
     $("captain-address-toggle").hidden = next !== "other";
     $("setup-start-hint").hidden = next !== "start";
-    $("captain-connect").hidden = next !== "address";
+    $("captain-connect").hidden = !['address','cloud-address'].includes(next);
     $("captain-code-options").hidden = next !== "code";
     $("captain-code-options").open = next === "code";
     $("captain-code-toggle").setAttribute("aria-expanded", String(next === "code"));
@@ -552,6 +555,14 @@
       if (!base || new URL(base).protocol !== "https:")
         throw new Error("Invalid cloud shop address.");
       await waitForForeground(signal, until);
+      // An active staff session must retain its own identity when adding a route.
+      // First-time owners may use the account approved in the browser directly.
+      if (POSNIC.session.active) {
+        sessionStorage.removeItem('captain.link-cloud');
+        sessionStorage.setItem('captain.pending-cloud-signin',base);
+        window.location.href='kot-management.html';
+        return;
+      }
       // Establish the cloud identity first; local credentials are kept separately.
       let approved;
       const exchange = () => CaptainAccess.post(
@@ -601,8 +612,14 @@
       );
     await describeShop(hit,signal);
     if(signal?.aborted||navigationVersion!==startedAt)return;
+    if (sessionStorage.getItem('captain.link-cloud') === '1' && POSNIC.session.active && !POSNIC.server.isLanUrl(hit.base)) {
+      sessionStorage.removeItem('captain.link-cloud');
+      sessionStorage.setItem('captain.pending-cloud-signin',hit.base);
+      window.location.href='kot-management.html';
+      return;
+    }
     if (window.CaptainAccess?.locked) {
-      POSNIC.server.remember({ lan: hit.base });
+      POSNIC.server.remember({ [POSNIC.server.isLanUrl(hit.base)?'lan':'cloud']: hit.base });
       localStorage.setItem(
         "posnic.connection-candidates",
         JSON.stringify([hit.base]),
@@ -624,7 +641,7 @@
     const cloud = POSNIC.server.normalize(hit.info?.connections?.cloud);
     // Discovery is a candidate, not authority to send a credential to a peer.
     // Existing canAdopt / route-proof checks still gate authenticated failover.
-    POSNIC.server.remember({lan: hit.base, ...(cloud && !POSNIC.server.isLanUrl(cloud) ? {cloud} : {})});
+    POSNIC.server.remember({[POSNIC.server.isLanUrl(hit.base)?'lan':'cloud']: hit.base, ...(POSNIC.server.isLanUrl(hit.base) && cloud && !POSNIC.server.isLanUrl(cloud) ? {cloud} : {})});
     note("");
     if (window.CaptainSetupFlow && !(await CaptainSetupFlow.found(hit, signal))) {
       POSNIC.server.unpin();
@@ -636,6 +653,8 @@
     $("username").focus();
   }
   window.CaptainOnboarding = {
+    cloudOwner() { if (!operation && !selection) {showView('cloud');void run(signal=>cloud('login',signal));} },
+    cloudStaff() { if (!operation && !selection) {showView('cloud-address');$('captain-server').value=POSNIC.server.cloud||'';updateConnectAction();$('captain-server').focus();} },
     otherWays() { if (!operation && !selection) showView('other'); },
     pairingCode() { if (!operation && !selection) showCode(); },
     searchSaved() { returningToSettings=true; $("captain-search").click(); },
@@ -771,8 +790,7 @@
       );
     $("captain-cloud-login").onclick = () => {
       if (operation || selection) return;
-      showView("cloud");
-      void run((signal) => cloud("login", signal));
+      showView("cloud-choice");
     };
     $("captain-cloud-signup").onclick = () =>
       void run((signal) => cloud("signup", signal));
@@ -790,7 +808,7 @@
       operation?.abort();
       cancelSelection();
       POSNIC_CONNECT.stopScan();
-      showView("start");
+      showView(['cloud','cloud-address'].includes(view)?'cloud-choice':'start');
     };
     $("captain-address-toggle").onclick = () => showView("address");
     $("connection-save").onclick = () =>
