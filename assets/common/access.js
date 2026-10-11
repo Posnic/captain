@@ -390,6 +390,10 @@
         if(!host.POSNIC?.internetChoice && storage.getItem('posnic.automatic-connections')==='0' && base!==(preferred||state.base))continue;
         let attempted = false;
         const credential = credentials.get(base);
+        if (credential.expiresAt && credential.expiresAt <= Date.now() && !credential.refreshToken) {
+          last = Object.assign(new Error('Sign-in required'), {status:401, code:'CONNECTION_SIGNIN'});
+          continue;
+        }
         if (
           orderKey &&
           orderAuthority(orderKey) &&
@@ -563,6 +567,7 @@
           if (attempted && !replayable) break;
         }
       }
+      if (last?.code === 'CONNECTION_SIGNIN') throw last;
       host.POSNIC?.net.setOffline();
       if (last?.status >= 500) throw last;
       throw Object.assign(
@@ -594,14 +599,12 @@
       get active() {
         return (
           (locked && !!profile) ||
-          (!!state.token &&
-            (!state.expiresAt ||
-              state.expiresAt > Date.now() ||
-              !!state.refreshToken))
+          [state, ...(state.connections || [])].some(credential => !!credential.token &&
+            (!credential.expiresAt || credential.expiresAt > Date.now() || !!credential.refreshToken))
         );
       },
       get managed() {
-        return !!state.sessionId;
+        return !!state.sessionId || !!state.connections?.length;
       },
       get resilient() {
         return !!state.routeKey && !!state.idempotentOrders;
@@ -623,6 +626,9 @@
       },
       allowsBase(base) {
         return base === state.base || verified.has(base);
+      },
+      hasCredential(base) {
+        return [state, ...(state.connections || [])].some(c => c.base === base || (c.routeKey && c.routes?.includes(base)));
       },
       async request(path, options = {}) {
         await session.whenReady();
@@ -720,6 +726,7 @@
         verified.add(grant.base);
         state = {
           ...grant,
+          base: grant.base || host.POSNIC?.server.baseUrl,
           expiresAt:
             grant.expiresAt ||
             (grant.expiresIn ? Date.now() + grant.expiresIn * 1000 : null),
@@ -730,6 +737,29 @@
             state.base || host.POSNIC.server.baseUrl,
             state.shopKey,
           );
+      },
+      async link(grant, base) {
+        await session.whenReady();
+        const clean = safeRoute(base);
+        if (!clean || !grant?.token || !state.token || !state.shopKey || !state.user?.id ||
+            !state.branches?.[0]?.branch_id || !sameIdentity(grant))
+          throw new Error('Reconnect the original staff member and server to keep saved orders separate.');
+        if (locked || activeRequests) throw new Error('Try again in a moment.');
+        const previous = state;
+        const started = generation;
+        // Credentials remain bound to the address that issued them. Never copy
+        // a Wi-Fi bearer to a newly discovered Internet address.
+        const credential = {...grant, base: clean, routes: [], connections: [],
+          expiresAt: grant.expiresAt || (grant.expiresIn ? Date.now() + grant.expiresIn * 1000 : null)};
+        const primaryBase = state.base || host.POSNIC?.server.baseUrl;
+        state = clean === primaryBase
+          ? {...state, ...credential, connections: state.connections || []}
+          : {...state, base: primaryBase, connections: [...(state.connections || []).filter(c => c.base !== clean), credential]};
+        try { await persist(); } catch (error) { if(generation === started) state = previous; throw error; }
+        if(generation !== started || locked) throw new Error('Connection cancelled.');
+        verified.add(clean);
+        host.POSNIC?.server.recordShop(clean, state.shopKey);
+        host.POSNIC?.server.remember({[local(clean) ? 'lan' : 'cloud']: clean});
       },
       async end() {
         await ready;

@@ -1037,3 +1037,45 @@ test('turning off remembered sign-in clears credentials on next app session but 
  const access=createAccess(f.plugin,f.storage,async()=>{throw Error('network not required');},webcrypto);
  await access.ready;assert.equal(access.session.active,false);assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"saved"}]');
 });
+
+test('linked routes keep separate credentials across reload and reject another shop', async () => {
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',calls=[];
+ const fetcher=async(url,options)=>{calls.push([url,options.headers.Authorization]);return {ok:true,json:async()=>({connected:true})}};
+ const grant={...f.grant,sessionId:undefined,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ let access=createAccess(f.plugin,f.storage,fetcher,webcrypto);
+ await access.session.start({...grant,base:lan,token:'wifi-token'});
+ await assert.rejects(access.session.link({...grant,shopKey:'different',token:'internet-token'},cloud),/original staff/);
+ assert.equal(access.session.token,'wifi-token');
+ await access.session.link({...grant,token:'internet-token'},cloud);
+ access=createAccess(f.plugin,f.storage,fetcher,webcrypto);await access.session.ready;
+ await access.session.request('/captain/v1/session',{onlyBase:cloud});
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.deepEqual(calls,[[cloud+'/captain/v1/session','Bearer internet-token'],[lan+'/captain/v1/session','Bearer wifi-token']]);
+});
+
+test('failed secure storage does not replace a working connection when linking',async()=>{
+ const f=fixture(),access=createAccess(f.plugin,f.storage,async()=>{},webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};await access.session.start(grant);
+ f.plugin.save=async()=>{throw Error('storage full')};
+ await assert.rejects(access.session.link({...grant,token:'new'},'https://peer.example/api'),/storage full/);
+ assert.equal(access.session.token,'access');assert.equal(access.session.hasCredential('https://peer.example/api'),false);
+});
+
+test('renewing the original route keeps the other route credential',async()=>{
+ const f=fixture(),access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({})}),webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};await access.session.start(grant);
+ await access.session.link({...grant,token:'peer'},'https://peer.example/api');
+ await access.session.link({...grant,token:'renewed'},grant.base);
+ assert.equal(access.session.token,'renewed');assert.equal(f.vault().connections[0].token,'peer');
+});
+
+test('an expired Wi-Fi login does not hide a separately valid Internet login',async()=>{
+ const f=fixture(),calls=[],access=createAccess(f.plugin,f.storage,async url=>{calls.push(url);return {ok:true,json:async()=>({connected:true})}},webcrypto);
+ const grant={...f.grant,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ await access.session.start({...grant,expiresAt:1});
+ await access.session.link({...grant,token:'peer'},'https://peer.example/api');
+ assert.equal(access.session.active,true);
+ await access.session.request('/captain/v1/session',{method:'GET'});
+ assert.deepEqual(calls,['https://peer.example/api/captain/v1/session']);
+ await assert.rejects(access.session.request('/captain/v1/session',{onlyBase:grant.base}),error=>error.status===401);
+});

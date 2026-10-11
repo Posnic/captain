@@ -1483,7 +1483,7 @@
       const shop=session.shopKey,user=session.user?.id;
       revision++;
       selectionFlight=(async()=>{
-        if(!base)throw new Error(t('Not added'));
+        if(!base)throw Object.assign(new Error(t('Not added')), {code:'CONNECTION_SETUP'});
         if(window.CaptainAccess?.locked||session.needsReconnect)throw new Error(t('Please sign in again'));
         if(session.busy)throw new Error(t('Try again in a moment.'));
         const network=window.Capacitor?.Plugins?.LocalNetwork;
@@ -1494,10 +1494,11 @@
         explicit={base,shop,user};
         try{
           if(session.managed){
+            if(session.hasCredential && !session.hasCredential(base))throw Object.assign(new Error(t('Sign-in required')), {code:'CONNECTION_SIGNIN'});
             const response=await session.request('/captain/v1/session',{method:'GET',onlyBase:base,background:true,timeout:3000});
             if(response?.connectionCheckDeferred)throw new Error(t('Try again in a moment.'));
           }else{
-            if(!server.canAdopt(base))throw new Error(t('Sign-in required'));
+            if(!server.canAdopt(base))throw Object.assign(new Error(t('Sign-in required')), {code:'CONNECTION_SIGNIN'});
             const hit=await probe(base,PROBE_TIMEOUT_MS);
             if(!hit||hit.base!==base)throw new Error(t('Could not connect. Try again.'));
           }
@@ -2218,6 +2219,7 @@
       try {
         return (
           sessionStorage.getItem('posnic_change_server') === '1' ||
+          sessionStorage.getItem('captain.link-cloud') === '1' ||
           sessionStorage.getItem('posnic_editing_server') === '1'
         );
       } catch (e) {

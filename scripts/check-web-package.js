@@ -7,6 +7,7 @@ for (const name of ['tests', 'scripts', 'archive', 'artifacts', 'output', 'build
   assert.equal(fs.existsSync(path.join(root, name)), false, `${name} must not ship in the app`);
 }
 let checked = 0;
+assert.ok(fs.existsSync(path.join(root, 'assets/common/captain-mark.svg')), 'Welcome artwork must ship at its runtime path');
 for (const name of fs.readdirSync(root).filter(name => name.endsWith('.html'))) {
   const html = fs.readFileSync(path.join(root, name), 'utf8');
   for (const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {

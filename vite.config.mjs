@@ -79,6 +79,8 @@ function copyClassicAssets() {
       // Only application code belongs in the installable bundle. Tests,
       // build helpers and superseded presentations stay in the repository.
       walk(path.join(ROOT, 'assets'), 'assets');
+      // Classic scripts create these images at runtime, outside Vite's HTML graph.
+      fs.copyFileSync(path.join(ROOT, 'assets/common/captain-mark.svg'), path.join(DIST, 'assets/common/captain-mark.svg'));
       for (const entry of ['config.js', 'indexedDB.js']) {
         fs.copyFileSync(path.join(ROOT, entry), path.join(DIST, entry));
       }

@@ -57,7 +57,11 @@
       try{
         await POSNIC.internetChoice.select(button.dataset.routeSignal==='local'?'lan':'cloud');
         feedback=t(POSNIC.server.isLocal?'Connected on shop Wi-Fi':'Connected over internet');
-      }catch(error){feedback=error.message||t('Could not connect. Try again.');}
+      }catch(error){
+        feedback=error.message||t('Could not connect. Try again.');
+        if(['CONNECTION_SETUP','CONNECTION_SIGNIN','SESSION_AUTHORITY','WRONG_AUTHORITY'].includes(error.code)||error.status===401)
+          window.CaptainConnectionSignIn?.open(button.dataset.routeSignal==='local'?'lan':'cloud');
+      }
       finally{switching=false;paint();feedbackTimer=setTimeout(()=>{feedback='';paint();},5000);}
     }));
     paint();

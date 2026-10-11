@@ -217,7 +217,7 @@
           !row.owner ||
           row.owner.user !== grant.user.id ||
           row.owner.shop !== grant.shopKey ||
-          row.owner.base !== base ||
+          (row.owner.base !== base && sessionStorage.getItem('captain.link-cloud') !== '1') ||
           (row.owner.branch &&
             row.owner.branch !== grant.branches?.[0]?.branch_id),
       )
@@ -228,6 +228,13 @@
     if (signal?.aborted)
       throw new Error("Connection cancelled. Ask your manager for a new code.");
     const sameAccount = POSNIC.session.shopKey === grant.shopKey && POSNIC.session.user?.id === grant.user.id;
+    if (sessionStorage.getItem('captain.link-cloud') === '1' && POSNIC.session.active) {
+      await POSNIC.session.link(grant, base);
+      sessionStorage.removeItem('captain.link-cloud');
+      await POSNIC.internetChoice.select('cloud');
+      window.location.href = 'kot-management.html';
+      return;
+    }
     if (CaptainAccess.locked && sameAccount && !(await POSNIC.lock.unlock())) return;
     if (!sameAccount && (CaptainAccess.locked || POSNIC.session.active))
       await POSNIC.session.end();
@@ -660,6 +667,7 @@
       POSNIC_CONNECT.stopScan();
       sessionStorage.removeItem("posnic_editing_server");
       sessionStorage.removeItem("posnic_connection_view");
+      sessionStorage.removeItem('captain.link-cloud');
       if (POSNIC.session.active) window.location.href = "kot-management.html";
       else showStep(POSNIC.server.isConfigured);
       POSNIC.net.start();
@@ -824,5 +832,11 @@
         !sessionStorage.getItem("posnic_change_server") &&
         !sessionStorage.getItem("posnic_editing_server"),
     );
+    if (sessionStorage.getItem('captain.link-cloud') === '1') {
+      Promise.resolve(POSNIC.session.ready).then(() => {
+        if(POSNIC.session.active) $('captain-cloud-login').click();
+        else sessionStorage.removeItem('captain.link-cloud');
+      });
+    }
   });
 })();
