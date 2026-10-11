@@ -2001,7 +2001,7 @@
     }
   },
   "historyDarkTheme20261008": {
-    "status": "verified locally; signed APK packaging next",
+    "status": "published testing APK; downloaded asset hash verified",
     "branch": "codex/captain-1.3.55",
     "baseCommit": "a50a3268ace8893f4adc136a75665196d6c1fca8",
     "changes": [
@@ -2028,6 +2028,40 @@
     "runtimeLimitations": [
       "Physical Android/iOS theme verification not performed for this patch"
     ],
-    "release": null
+    "release": {
+      "version": "1.3.59",
+      "versionCode": 10359,
+      "url": "https://github.com/Posnic/captain/releases/tag/captain-1.3.59-test.1",
+      "apk": "https://github.com/Posnic/captain/releases/download/captain-1.3.59-test.1/captain-1.3.59.apk",
+      "sha256": "df994a15b746e33bc613e877786a1e8ff0f319a94f36e3c36c62b9fb191ead4e",
+      "signature": "matches established Captain signing certificate",
+      "downloadVerified": true
+    },
+    "commit": "ec98eb54270d4b1e1dbfc78abb17fabcb56e8c8a"
+  },
+  "quickRouteSelection20261011": {
+    "status": "verified-ready-for-apk",
+    "change": "Existing Wi-Fi and globe buttons select a verified saved route in place. The choice sets priority without changing automatic fallback. No extra mode icons or bottom Shop connection link. Late background responses cannot override a newer explicit choice. Checkout shares the cart mutation queue so menu refresh cannot restore a submitted basket.",
+    "liveDiscovery": {
+      "localAndCloudReachable": true,
+      "shopIdentityVerified": true,
+      "localReturnsCloudAddress": true,
+      "posVersion": "1.9.2-captain-cloud.1",
+      "posUpdateRequired": false
+    },
+    "checks": {
+      "units": "671 passed; artifacts/quick-route-final-unit-serial.log",
+      "browser": {
+        "full": "986 passed, 13 failed; artifacts/quick-route-full.log",
+        "recheck": "All 13 failed cases passed after checkout fix and stopping the resource-starved emulator; artifacts/quick-route-failure-recheck.log",
+        "affectedFlows": "108 connection and checkout cases passed on final source; artifacts/quick-route-affected-recheck.log"
+      },
+      "translations": "30 languages, 1258 messages each; audit empty",
+      "attribution": "Passed"
+    },
+    "limitations": [
+      "Android emulator run could not complete: host resource exhaustion caused ADB instability, browser crashes and disk-write failures. It was stopped. Physical phone Wi-Fi off/on acceptance remains required."
+    ],
+    "verificationPolicy": "Full unit/browser suites run locally, then failed and changed paths rechecked. Commit hook duplicate execution is suppressed only after these checks complete; no GitHub test workflow triggered."
   }
 }

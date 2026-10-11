@@ -1796,6 +1796,8 @@ async function loadCart() {
 async function checkout(transactionId) {
     try {
         await waitForCartMutations();
+        // Keep menu refreshes from restoring an old basket during checkout.
+        return await queueCartMutation(async () => {
         // 🔄 Get cart data from IndexedDB
         const cartItems = await getCartData();
         console.log('cartItems:', cartItems);
@@ -1972,6 +1974,7 @@ async function checkout(transactionId) {
         // Delivery continues on the next screen, without making the waiter wait.
         window.location.href = 'kot-management.html';
         return true;
+        });
     } catch (error) {
         if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
         showErrorPopup(error.message || 'Order could not be saved. Keep this cart and retry.');

@@ -1368,6 +1368,8 @@
   let homeCandidate = null;
 
   function comeHome() {
+    if (internetChoice.selecting) return;
+    const choiceRevision = internetChoice.revision;
     if (localStorage.getItem('posnic.automatic-connections') === '0') return;
     if (server.priority === 'cloud') return;
     /* An explicit choice is never second-guessed, and a phone with no till
@@ -1378,9 +1380,11 @@
 
     (homeCandidate ? probe(homeCandidate,PROBE_TIMEOUT_MS) : findOnWifi())
       .then(async (hit) => {
+        if (choiceRevision !== internetChoice.revision || internetChoice.selecting) return;
         if (!hit || !server.isLanUrl(hit.base) || !server.canAdopt(hit.base)) {homeCandidate=null;return;}
         homeCandidate=hit.base;
         if (!(await internetChoice.ask(hit.base,{returning:true}))) return;
+        if (choiceRevision !== internetChoice.revision || internetChoice.selecting) return;
         homeCandidate=null;
         server.adopt(hit.base);
         server.rememberNetwork(hit.base);
@@ -1403,7 +1407,7 @@
    * scans.
    */
   const internetChoice = (() => {
-    let flight = null, wifi = null;
+    let flight = null, wifi = null, explicit = null, selectionFlight = null, revision = 0;
     const stable = new Map(), failed = new Set();
     const t = text => window.I18N?.t(text) || text;
     const key = base => 'captain.connection-choice:' + (session.shopKey || '') + ':' + (session.user?.id || '') + ':' + base;
@@ -1411,7 +1415,8 @@
     const write = (base,value) => { try { sessionStorage.setItem(key(base),value); } catch {} };
     const current = () => server.baseUrl || session.base || '';
     const required = base => !!current() && isLanUrl(base)!==isLanUrl(current()) && localStorage.getItem('posnic.automatic-connections') !== '1';
-    const allowed = base => !required(base) || read(base) === 'yes';
+    const explicitlyChosen = base => explicit?.base === base && explicit.shop === session.shopKey && explicit.user === session.user?.id && !window.CaptainAccess?.locked;
+    const allowed = base => explicitlyChosen(base) || !required(base) || read(base) === 'yes';
     async function openWifi() {
       try {
         const network=window.Capacitor?.Plugins?.LocalNetwork;
@@ -1440,6 +1445,7 @@
     }
     async function ask(base, options = {}) {
       if (base===current())return true;
+      if (explicitlyChosen(base))return true;
       if(options.returning && !ready(base))return false;
       if (allowed(base)) return true;
       if (read(base)==='no') { offerAgain(base); return false; }
@@ -1471,7 +1477,44 @@
       try { for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k?.startsWith('captain.connection-choice:')&&sessionStorage.getItem(k)==='yes')sessionStorage.removeItem(k);} } catch {}
       document.getElementById('captain-internet-choice')?.remove();
     });
-    return {ask,allowed,ready,openWifi,get wifi(){return wifi;},setWifi(value){wifi=value;window.dispatchEvent(new CustomEvent('posnic:wifi-state',{detail:value}));},succeeded(base){failed.delete(base);},failed(base){
+    function select(kind) {
+      if(selectionFlight)return selectionFlight;
+      const base=kind==='lan'?server.lan:kind==='cloud'?server.cloud:null;
+      const shop=session.shopKey,user=session.user?.id;
+      revision++;
+      selectionFlight=(async()=>{
+        if(!base)throw new Error(t('Not added'));
+        if(window.CaptainAccess?.locked||session.needsReconnect)throw new Error(t('Please sign in again'));
+        if(session.busy)throw new Error(t('Try again in a moment.'));
+        const network=window.Capacitor?.Plugins?.LocalNetwork;
+        if(kind==='lan'&&network?.getLocalIp){
+          const info=await Promise.race([network.getLocalIp().catch(()=>null),new Promise(resolve=>setTimeout(()=>resolve(null),800))]);
+          if(info?.wifi===false)throw new Error(t('Connect this phone to the shop Wi-Fi, then try again.'));
+        }
+        explicit={base,shop,user};
+        try{
+          if(session.managed){
+            const response=await session.request('/captain/v1/session',{method:'GET',onlyBase:base,background:true,timeout:3000});
+            if(response?.connectionCheckDeferred)throw new Error(t('Try again in a moment.'));
+          }else{
+            if(!server.canAdopt(base))throw new Error(t('Sign-in required'));
+            const hit=await probe(base,PROBE_TIMEOUT_MS);
+            if(!hit||hit.base!==base)throw new Error(t('Could not connect. Try again.'));
+          }
+          if(session.shopKey!==shop||session.user?.id!==user||window.CaptainAccess?.locked)throw new Error(t('Connection cancelled.'));
+          // A direct choice changes preference, not the user's fallback setting.
+          // Do not pin: the other verified route must remain available in an outage.
+          server.unpin();
+          server.setPriority(kind);
+          server.adopt(base);
+          noteSuccess(base);
+          net.setOnline();
+          return base;
+        }finally{explicit=null;}
+      })().finally(()=>{selectionFlight=null;});
+      return selectionFlight;
+    }
+    return {select,ask,allowed,ready,openWifi,get revision(){return revision;},get selecting(){return !!selectionFlight;},get wifi(){return wifi;},setWifi(value){wifi=value;window.dispatchEvent(new CustomEvent('posnic:wifi-state',{detail:value}));},succeeded(base){failed.delete(base);},failed(base){
       stable.delete(base);
       // A declined return offer lasts for this working connection. A new
       // outage may ask again, but repeated failures in that outage may not.
@@ -1486,6 +1529,7 @@
     if (resolving) return resolving;
 
     resolving = (async () => {
+      const choiceRevision=internetChoice.revision;
       /* Warm addresses first, the ones that just failed after them - the same
          list, in the order most likely to answer on the first try. */
       let wifi = null;
@@ -1505,8 +1549,10 @@
         return {candidate, hit, seen};
       }));
       for (const {candidate, hit, seen} of probes) {
+        if(choiceRevision!==internetChoice.revision||internetChoice.selecting)return server.baseUrl;
         if (hit && server.canAdopt(hit.base)) {
           if (!(await internetChoice.ask(hit.base,{returning:server.isLanUrl(hit.base)&&!server.isLocal&&probes.some(answer=>answer.hit?.base===server.baseUrl)}))) continue;
+          if(choiceRevision!==internetChoice.revision||internetChoice.selecting)return server.baseUrl;
           noteSuccess(hit.base);
           server.adopt(hit.base);
           /* Which Wi-Fi this worked on, so a phone that wakes up somewhere
@@ -2494,6 +2540,7 @@
       },
 
       async checkOnce(manual = false) {
+        if(internetChoice.selecting)return !net.offline;
         if (!manual && document.hidden) return false;
         try {
           if (manual && window.CaptainAccess) await window.CaptainAccess.resume();
@@ -2567,13 +2614,15 @@
 
   let recoveryFlight = null, nextRecovery = 0;
   function recoverManagedServer(manual = false) {
+    if(internetChoice.selecting)return Promise.resolve(null);
     if (localStorage.getItem('posnic.automatic-connections') === '0') return Promise.resolve(null);
     if (recoveryFlight) return recoveryFlight;
     if (session.busy) return Promise.resolve(null);
     if (!session.hasLocalConnection || (!manual && Date.now() < nextRecovery)) return Promise.resolve(null);
     nextRecovery = Date.now() + SWEEP_EVERY_MS;
     const shop = session.shopKey, user = session.user?.id;
-    const stopped = () => document.hidden || session.shopKey !== shop || session.user?.id !== user || window.CaptainAccess?.locked;
+    const choiceRevision = internetChoice.revision;
+    const stopped = () => internetChoice.selecting || choiceRevision !== internetChoice.revision || document.hidden || session.shopKey !== shop || session.user?.id !== user || window.CaptainAccess?.locked;
     recoveryFlight = (async () => {
       const hit = await findOnWifi({actualNetworkOnly:true, skipKnown:true, shouldStop:stopped,
         accept:async candidate => {
@@ -2583,6 +2632,7 @@
         }});
       if (!hit || stopped()) return null;
       if (!(await internetChoice.ask(hit.base,{returning:!net.offline}))) return null;
+      if (stopped()) return null;
       const checked=await session.request('/captain/v1/session', {method:'GET',timeout:3000,onlyBase:hit.base,background:true});
       if(checked?.connectionCheckDeferred||stopped())return null;
       server.recordShop(hit.base, shop);

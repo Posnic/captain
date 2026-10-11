@@ -986,6 +986,26 @@ test('healthy cloud stays selected during foreground work; only idle health chec
  assert.equal(server.baseUrl,lan);
 });
 
+test('late background health cannot undo a newer corner-icon route choice',async(t)=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='d'.repeat(64);
+ const previous=globalThis.POSNIC;t.after(()=>{globalThis.POSNIC=previous;});
+ let release;
+ const server={baseUrl:cloud,priority:'lan',priorityConfigured:true,adopt(base){this.baseUrl=base;},remember(){},recordShop(){}};
+ const choice={revision:0,ask:async()=>true};
+ globalThis.POSNIC={server,internetChoice:choice,net:{setOnline(){},setOffline(){}}};
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan]});
+ const check=access.session.request('/captain/v1/session',{method:'GET',background:true});
+ while(!release)await new Promise(r=>setImmediate(r));
+ choice.revision++;server.baseUrl=cloud;server.priority='cloud';release();
+ assert.deepEqual(await check,{connectionCheckDeferred:true});
+ assert.equal(server.baseUrl,cloud);
+});
+
 test('foreground busy protection lasts through token renewal and the retried request',async()=>{
  const f=fixture();let attempts=0,release;
  const access=createAccess(f.plugin,f.storage,async(url,options)=>{

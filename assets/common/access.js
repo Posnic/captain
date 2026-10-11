@@ -358,6 +358,7 @@
       if (refreshBody && !state.routeKey)
         return post(state.base, path, refreshBody);
       const start = generation;
+      const choiceRevision = host.POSNIC?.internetChoice?.revision;
       const choices = [state, ...(!refreshBody ? state.connections || [] : [])];
       const credentials = new Map();
       for (const credential of choices)
@@ -447,9 +448,9 @@
           // Ordinary requests stay on the working route; failed routes can fail
           // over immediately, subject to the same consent and replay rules.
           const returning=options.background && base!==preferred && local(base) && !local(preferred) && (cooling.get(preferred)||0)<=Date.now();
-          if(options.background && activeRequests) return {connectionCheckDeferred:true};
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
           if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base,{returning}))) continue;
-          if(options.background && activeRequests) return {connectionCheckDeferred:true};
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
           if (start !== generation || locked) throw Object.assign(new Error('Unlock this phone first.'), {code:'PIN_LOCKED'});
           if (orderKey) orderAuthority(orderKey, authority(credential));
           attempted = true;
@@ -524,7 +525,7 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
-          if(options.background && activeRequests) return {connectionCheckDeferred:true};
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
           cooling.delete(base);
           host.POSNIC?.internetChoice?.succeeded?.(base);
           if(state.lastRoute!==base){state.lastRoute=base;await persist().catch(()=>{});}
