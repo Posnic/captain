@@ -882,7 +882,7 @@ test("foreground health checks wait for native session restore after a delayed l
 });
 
 
-test("Retry finds a moved till on its custom port and never authorizes a neighbouring shop", async ({page}) => {
+test("Retry retains the chosen till and never authorizes a neighbouring shop", async ({page}) => {
   await phone(page);
   const key='a'.repeat(64), moved='http://192.168.1.44:42590/api';
   const authorized=[];
@@ -903,10 +903,10 @@ test("Retry finds a moved till on its custom port and never authorizes a neighbo
     await CaptainAccess.session.start({base,token:'secret-access',sessionId:'session',routeKey:key,shopKey:'shop',user:{id:'staff'},expiresIn:900});
     return POSNIC.net.check(true);
   },{base,key});
-  expect(recovered).toBe(true);
-  expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(moved);
-  expect(authorized.length).toBeGreaterThan(0);
-  expect(authorized.every(url=>url.startsWith(moved+'/'))).toBe(true);
+  expect(recovered).toBe(false);
+  expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(base);
+  expect(authorized.every(url=>url.startsWith(base+'/'))).toBe(true);
+
   expect(await page.evaluate(()=>CaptainAccess.session.token)).toBe('secret-access');
 });
 
@@ -1092,7 +1092,7 @@ for (const width of [320, 900]) test(`sign-in recovery keeps staff input and nat
 
 
 for (const screen of ['address','settings']) test(`Back during ${screen} verification ignores late completion`, async ({page})=>{
-  await phone(page);
+  await phone(page,true,false,false);
   await page.evaluate(async base=>{
     await POSNIC.session.start({base,token:'retained',sessionId:'session',routeKey:'secret',
       user:{id:'staff'},shopKey:'shop',branches:[{branch_id:'branch'}]});
@@ -1120,6 +1120,7 @@ for (const screen of ['address','settings']) test(`Back during ${screen} verific
     await openAlternative(page, "captain-address-toggle");
     await fillAddress(page,base);
     await page.locator('#captain-connect').click();
+    await page.locator('.captain-setup-dialog').getByRole('button',{name:'Sign in to this shop'}).click();
   }
   await page.waitForFunction(()=>window.finishAddress);
   await page.locator('#connection-back').click();
@@ -1365,7 +1366,7 @@ test('discovery metadata failure keeps a usable shop card and late cancelled met
  },base);
  await page.locator('#captain-search').click();
  const card=page.locator('#captain-results .setup-server-card');
- await expect(card.locator('strong')).toHaveText('Shop found');
+ await expect(card.locator('strong')).toHaveText('192.168.1.8:42590');
  await expect(card.locator('.setup-server-address')).toHaveText('192.168.1.8:42590');
  await expect(card).toBeEnabled();
  await page.locator('#connection-back').click();
@@ -1378,9 +1379,10 @@ test('discovery shows configured internet hint without authorizing it',async({pa
  await phone(page,true,false,false);
  await page.evaluate(()=>{POSNIC.discovery.probe=async base=>({base,info:{connections:{cloud:'https://azure.posnic.io/api',shopName:'Azure Kitchen'}}});});
  await page.locator('#captain-server').fill(base);await page.locator('#captain-connect').click();
- const dialog=page.locator('.captain-setup-dialog');await expect(dialog).toContainText('Internet backup found');
- expect(await page.evaluate(()=>POSNIC.server.cloud)).toBe('https://azure.posnic.io/api');
+ const dialog=page.locator('.captain-setup-dialog');await expect(dialog).toContainText('Internet server');
+ expect(await page.evaluate(()=>POSNIC.server.cloud)).toBeFalsy();
  await dialog.getByRole('button',{name:'Sign in to this shop'}).click();await expect(page.locator('#username')).toBeVisible();await expect(page.locator('#setup-use-pin')).not.toBeChecked();
+ expect(await page.evaluate(()=>POSNIC.server.cloud)).toBe('https://azure.posnic.io/api');
 });
 
 for(const width of [320,820])for(const theme of ['light','dark'])test(`new setup review is reachable ${width} ${theme}`,async({page})=>{
@@ -1391,7 +1393,7 @@ for(const width of [320,820])for(const theme of ['light','dark'])test(`new setup
   POSNIC.discovery.probe=async base=>({base,info:{connections:{cloud:'https://azure.posnic.io/api',shopName:'Azure Coastal Kitchen'}}});
  },theme);
  await page.locator('#captain-server').fill(base);await page.locator('#captain-connect').click();
- const dialog=page.getByRole('dialog');await expect(dialog).toContainText('Internet backup found');
+ const dialog=page.getByRole('dialog');await expect(dialog).toContainText('Internet server');
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
  await page.screenshot({path:`test-artifacts/setup-found-${width}-${theme}.png`});
  await dialog.getByRole('button',{name:'Sign in to this shop'}).click();
@@ -1421,16 +1423,12 @@ test('sign-in retains an explicit automatic-switch preference when metadata is u
  expect(await page.evaluate(()=>localStorage.getItem('posnic.automatic-connections'))).toBe('0');
 });
 
-test('connection priority can be reordered and survives reopening settings',async({page})=>{
- await phone(page,false);
- await openAlternative(page, "connection-settings");
- await page.locator('#shop-connections').getByRole('button',{name:'Move down'}).click();
- expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('cloud');
- await page.reload();
- if(!(await page.locator('#shop-connections').isVisible()))await openAlternative(page, "connection-settings");
- await expect(page.locator('.shop-connection-row').first()).toContainText('Internet');
- await page.locator('.shop-connection-row').first().dragTo(page.locator('.shop-connection-row').last());
- expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('lan');
+test('connection settings keep discovery and editing without automatic or priority controls',async({page})=>{
+ await phone(page,false);await openAlternative(page, "connection-settings");
+ await expect(page.locator('#shop-connection-auto')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Move down',exact:true})).toHaveCount(0);
+ await expect(page.locator('.shop-connection-row[draggable=true]')).toHaveCount(0);
+ expect(await page.evaluate(()=>localStorage.getItem('posnic.automatic-connections'))).toBe('0');
 });
 
 async function savedSettings(page,theme='light') {
@@ -1486,13 +1484,12 @@ for(const width of [320,820])for(const theme of ['light','dark'])test(`approved 
  await expect(panel.getByRole('button',{name:'Check connection',exact:true})).toBeEnabled();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await expect(panel).toContainText('Connected on shop Wi-Fi');
- await expect(panel).toContainText('Ready as backup');
+ await expect(panel).toContainText('Available');
  await page.screenshot({path:`test-artifacts/saved-settings-${width}-${theme}.png`,fullPage:true});
  await panel.getByRole('button',{name:'Edit Shop Wi-Fi',exact:true}).click();
  await expect(panel.locator('#shop-connection-address')).toHaveValue(base);
  await panel.getByRole('button',{name:'Cancel',exact:true}).click();
- await panel.getByRole('button',{name:'Move down',exact:true}).click();
- expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('cloud');
+ await expect(panel.getByRole('button',{name:'Move down',exact:true})).toHaveCount(0);
 });
 test('saved settings reject wrong-shop proof and preserve login and entered address',async({page})=>{
  await savedSettings(page);

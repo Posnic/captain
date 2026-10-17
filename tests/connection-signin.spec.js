@@ -23,7 +23,7 @@ test('globe offers actionable sign-in, cancellation preserves Wi-Fi, and login l
 async function nativePhone(page){
  await page.addInitScript(()=>{
   const status=()=>({session:JSON.parse(localStorage.getItem('test.vault')||'{}'),pinSet:false,locked:false});
-  window.Capacitor={isNativePlatform:()=>true,getPlatform:()=> 'android',Plugins:{SecureSession:{status:async()=>status(),save:async({session})=>{localStorage.setItem('test.vault',JSON.stringify(session));return status()},clear:async()=>localStorage.removeItem('test.vault'),openBrowser:async()=>{}},LocalNetwork:{getLocalIp:async()=>({wifi:true,ip:'192.168.1.13'})}}};
+  window.Capacitor={isNativePlatform:()=>true,getPlatform:()=> 'android',Plugins:{SecureSession:{status:async()=>status(),save:async({session})=>{localStorage.setItem('test.vault',JSON.stringify(session));return status()},clear:async()=>localStorage.removeItem('test.vault'),openBrowser:async()=>{}},LocalNetwork:{request:async({url,method,headers,body})=>{const r=await fetch(url,{method,headers,body});return {status:r.status,headers:Object.fromEntries(r.headers),data:btoa(String.fromCharCode(...new Uint8Array(await r.arrayBuffer()))) };},getLocalIp:async()=>({wifi:true,ip:'192.168.1.13'})}}};
  });
 }
 
@@ -62,8 +62,9 @@ test('disabled Captain refuses a new route without saving its credential',async(
 test('Wi-Fi sign-in search selects a discovered till without switching the active route',async({page})=>{
  await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
  const before=await page.evaluate(()=>POSNIC.server.baseUrl);
+ await page.route('http://192.168.1.11:5555/api/captain/v1/discovery',r=>r.fulfill({json:{connections:{shopName:'Test kitchen'}}}));
  await page.evaluate(()=>{POSNIC.discovery.probe=async()=>null;POSNIC.discovery.scanSubnet=async(subnet,options)=>{options.collect({base:'http://192.168.1.11:5555/api',info:{connections:{shopName:'Test kitchen'}}});};CaptainConnectionSignIn.open('lan');});
- const sheet=page.locator('#connection-signin');await sheet.getByRole('button',{name:'Search this Wi-Fi',exact:true}).click();await sheet.getByRole('button',{name:'Test kitchen',exact:true}).click();
+ const sheet=page.locator('#connection-signin');await sheet.getByRole('button',{name:'Search this Wi-Fi',exact:true}).click();await sheet.getByRole('button',{name:/Test kitchen/}).click();await page.locator('dialog').last().getByRole('button',{name:'Connect',exact:true}).click();
  await expect(sheet.locator('[name=address]')).toHaveValue('http://192.168.1.11:5555/api');expect(await page.evaluate(()=>POSNIC.server.baseUrl)).toBe(before);
 });
 

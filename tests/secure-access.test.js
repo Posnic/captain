@@ -935,11 +935,11 @@ for (const existing of [undefined, ['https://previous.example/api']])
   });
 
 
-test('cloud order fallback requires consent before transmitting the order', async () => {
+test('cloud orders require an explicit route selection before transmission', async () => {
  const f=fixture(), lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',routeKey='a'.repeat(64);
  f.storage.setItem('posnic.automatic-connections','0');
- let agree=false;const writes=[];const previous=globalThis.POSNIC;
- globalThis.POSNIC={server:{adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{ask:async base=>base===lan||agree}};
+ let selected=lan;const writes=[];const previous=globalThis.POSNIC;
+ globalThis.POSNIC={server:{get baseUrl(){return selected;},adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{allowed:base=>base===selected,ask:async base=>base===selected}};
  try {
   const access=createAccess(f.plugin,f.storage,async(url,options)=>{
    const body=JSON.parse(options.body||'{}');
@@ -951,7 +951,7 @@ test('cloud order fallback requires consent before transmitting the order', asyn
   const options={method:'POST',body:{idempotencyKey:'saved-order',items:[1]}};
   await assert.rejects(access.session.request('/sales/qrOrder',options));
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,0);
-  agree=true;
+  selected=cloud;
   await access.session.request('/sales/qrOrder',options);
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,1);
   assert.deepEqual(writes[0].body,writes.at(-1).body);
@@ -1078,4 +1078,27 @@ test('an expired Wi-Fi login does not hide a separately valid Internet login',as
  await access.session.request('/captain/v1/session',{method:'GET'});
  assert.deepEqual(calls,['https://peer.example/api/captain/v1/session']);
  await assert.rejects(access.session.request('/captain/v1/session',{onlyBase:grant.base}),error=>error.status===401);
+});
+
+test('the active local session can take orders when the unused cloud offline window has expired',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api';
+ const grant={...f.grant,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ const access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({connected:true})}),webcrypto);
+ await access.session.start({...grant,offlineUntil:new Date(0).toISOString()});
+ await access.session.link({...grant,token:'local'},lan);
+ assert.equal(access.session.canTakeOrders,false);
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.equal(access.session.canTakeOrders,true);
+ await access.session.request('/captain/v1/session',{onlyBase:grant.base});
+ assert.equal(access.session.canTakeOrders,false);
+});
+
+test('selected Wi-Fi never refreshes an expired cloud session',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',calls=[];
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{calls.push([url,options.headers.Authorization]);if(!url.startsWith(lan))throw Error('Internet unavailable');return {ok:true,json:async()=>({connected:true})}},webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};
+ await access.session.start({...grant,expiresAt:1});
+ await access.session.link({...grant,refreshToken:undefined,expiresAt:Date.now()+3600000,token:'local'},lan);
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.deepEqual(calls,[[lan+'/captain/v1/session','Bearer local']]);
 });

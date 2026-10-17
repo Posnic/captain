@@ -14,7 +14,12 @@
       dialog.querySelector('[data-search]').textContent=t('Search this Wi-Fi');
       dialog.querySelector('[data-search]').hidden=kind!=='lan';
       const form=dialog.querySelector('form'), status=dialog.querySelector('[role=status]');
+      let selectedDiscovery = null;
       form.elements.address.value=options.base||POSNIC.server[kind]||'';
+      form.elements.address.readOnly=!!form.elements.address.value;
+      const shop=document.createElement('p');
+      try {const branches=JSON.parse(localStorage.getItem('kiosk_branch_list')||'[]');shop.textContent=branches.find(b=>String(b.branch_id)===localStorage.getItem('branch_id'))?.branch_name||branches[0]?.branch_name||'';}catch{}
+      dialog.querySelector('h2').after(shop);
       dialog.querySelector('[data-cloud]').hidden=kind!=='cloud';
       if(kind==='cloud'){const hint=document.createElement('p');hint.textContent=t('Owner or admin connects this phone.');hint.style.cssText='font-size:12px;color:var(--ink-soft,#647084);margin:0 0 12px';dialog.querySelector('[data-cloud]').after(hint);}
       dialog.querySelectorAll('label').forEach(el=>el.style.cssText='display:grid;gap:6px;margin:14px 0');
@@ -41,7 +46,27 @@
           const button=document.createElement('button');button.type='button';
           button.textContent=(hit.info?.connections?.shopName || new URL(hit.base).host);
           button.style.cssText='display:block;width:100%;padding:12px;margin:8px 0;text-align:left;border:1px solid var(--line,#ccd5e0);border-radius:12px;background:var(--surface,#fff);color:var(--ink,#172638);font:inherit';
-          button.onclick=()=>{request.abort();form.elements.address.value=hit.base;status.textContent='';form.elements.username.focus();};
+          button.onclick=async()=>{
+            request.abort();
+            const confirm=document.createElement('dialog');
+            confirm.style.cssText=dialog.style.cssText;
+            const title=document.createElement('h2');title.textContent=hit.info?.connections?.shopName||new URL(hit.base).host;
+            const address=document.createElement('p');address.textContent=hit.base;
+            const cloud=document.createElement('p');cloud.textContent=hit.info?.connections?.cloud||'';
+            const accept=document.createElement('button');accept.type='button';accept.textContent=t('Connect');
+            const cancel=document.createElement('button');cancel.type='button';cancel.textContent=t('Choose another shop');
+            for(const control of [accept,cancel])control.style.cssText='width:100%;min-height:48px;margin-top:12px;border-radius:12px;font:inherit';
+            confirm.append(title,address,cloud,accept,cancel);document.body.append(confirm);
+            const confirmed=await new Promise(resolve=>{const done=value=>{confirm.close();confirm.remove();resolve(value);};accept.onclick=()=>done(true);cancel.onclick=()=>done(false);confirm.oncancel=e=>{e.preventDefault();done(false);};confirm.showModal();});
+            if(!confirmed||!dialog.isConnected)return;
+            selectedDiscovery = hit;
+            form.elements.address.value=hit.base;status.textContent='';form.elements.username.focus();
+          };
+          // Presentation metadata uses the same Wi-Fi-bound transport as orders.
+          const details=new AbortController();const deadline=setTimeout(()=>details.abort(),1500);
+          (window.CaptainFetch||fetch)(hit.base+'/captain/v1/discovery',{signal:details.signal,credentials:'omit',redirect:'error'})
+            .then(r=>r.ok?r.json():null).then(data=>{if(data?.connections)hit.info={...hit.info,connections:data.connections};})
+            .catch(()=>{}).finally(()=>{clearTimeout(deadline);button.textContent=(hit.info?.connections?.shopName||new URL(hit.base).host)+' · '+new URL(hit.base).host;});
           results.append(button);
         };
         try {
@@ -67,6 +92,12 @@
           if(request.signal.aborted || owner!==POSNIC.session.shopKey+':'+POSNIC.session.user?.id)return;
           await window.CaptainValidateAccess(grant,base,request.signal);
           await POSNIC.session.link(grant,base);
+          // Store the advertised address only after the selected till authenticates
+          // as this shop; cloud credentials still require their own sign-in.
+          if (selectedDiscovery?.base === base) {
+            const cloud=POSNIC.server.normalize(selectedDiscovery.info?.connections?.cloud);
+            if (cloud && !POSNIC.server.isLanUrl(cloud)) POSNIC.server.remember({cloud});
+          }
           if(request.signal.aborted)return;
           await POSNIC.internetChoice.select(kind);
           close();

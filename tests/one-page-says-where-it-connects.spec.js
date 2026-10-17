@@ -48,16 +48,14 @@ test("both server addresses have a dedicated view with Back to Account", async (
   await page.locator('[data-connection-action=back]').click();
   await expect(page).toHaveURL(/me.html/);
 });
-test("automatic switching can be changed without replacing saved addresses", async ({
+test("manual connection settings preserve saved addresses", async ({
   page,
 }) => {
   await settings(page, { pinned: CLOUD });
   await page.locator("#setup-other-toggle").click();
   await page.locator("#connection-settings").click();
-  await page.locator('#shop-connection-auto').uncheck();
+  await expect(page.locator('#shop-connection-auto')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('posnic.automatic-connections'))).toBe('0');
-  await page.locator('#shop-connection-auto').check();
-  expect(await page.evaluate(() => localStorage.getItem('posnic.automatic-connections'))).toBe('1');
   expect(await page.evaluate(() => POSNIC.server.cloud)).toBe(CLOUD);
   expect(await page.evaluate(() => POSNIC.server.lan)).toBe(LAN);
 });

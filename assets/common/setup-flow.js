@@ -24,7 +24,7 @@
     const add=(label,url)=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=text(label);dd.textContent=url;addresses.append(dt,dd);};
     add(POSNIC.server.isLanUrl(hit.base)?'Shop Wi-Fi':'Internet',hit.base);
     const cloud=POSNIC.server.normalize(hit.info?.connections?.cloud);
-    if(cloud&&!POSNIC.server.isLanUrl(cloud)&&cloud!==hit.base){add('Internet backup found',cloud);paragraph(node,'We’ll check this backup after you sign in.');}
+    if(cloud&&!POSNIC.server.isLanUrl(cloud)&&cloud!==hit.base){add('Internet server',cloud);}
     else if(POSNIC.server.isLanUrl(hit.base))paragraph(node,'No internet address was provided. You can still use shop Wi-Fi.');
     return new Promise(resolve=>{
       const aborted=()=>finish(false);
@@ -39,10 +39,10 @@
     if($('setup-remember'))localStorage.setItem('posnic.remember-session',$('setup-remember').checked?'1':'0');
     sessionStorage.setItem('posnic.current-session','1');
     localStorage.setItem('posnic.setup-complete','1');
-    // Enabling the approved automatic flow does not authorize a new shop/route.
-    if(localStorage.getItem('posnic.automatic-connections')===null)localStorage.setItem('posnic.automatic-connections','1');
+    // Setup saves both addresses; the selected route stays manual.
+    localStorage.setItem('posnic.automatic-connections','0');
     if(!POSNIC.server.priorityConfigured)POSNIC.server.setPriority('lan');
-    POSNIC.server.unpin();
+    POSNIC.server.pin(POSNIC.server.baseUrl);
     if(branchId) {
       try {
         const owner=POSNIC.session.shopKey+':'+POSNIC.session.user?.id;
@@ -102,25 +102,6 @@
     remember.innerHTML='<input type="checkbox" id="setup-remember"><span>Keep me signed in</span>';
     pin.before(remember);$('setup-remember').checked=localStorage.getItem('posnic.remember-session')!=='0';
     const help=document.createElement('p');help.className='setup-hint setup-session-help';help.textContent=text('Add or change your PIN anytime in Account.');pin.after(help);
-    const priority=document.createElement('div');priority.className='setup-priority';
-    priority.innerHTML='<h3>Connection priority</h3><p>Drag to reorder, or use the arrow button. The first available connection is used.</p><div id="setup-priority-rows"></div><label class="setup-confirm"><input type="checkbox" id="setup-auto-switch"> Switch automatically between saved connections</label>';
-    $('connection-save').before(priority);
-    const draw=()=>{
-      const rows=$('setup-priority-rows');rows.replaceChildren();
-      const kinds=POSNIC.server.priority==='cloud'?['cloud','lan']:['lan','cloud'];
-      kinds.forEach((kind,index)=>{const row=document.createElement('div');row.className='setup-priority-row';row.draggable=true;row.dataset.kind=kind;
-        const grip=document.createElement('span');grip.className='setup-priority-grip';grip.textContent='⠿';grip.setAttribute('aria-hidden','true');row.append(grip);
-        const label=document.createElement('span');label.textContent=(index+1)+'. '+text(kind==='lan'?'Shop Wi-Fi':'Internet');row.append(label);
-        const move=document.createElement('button');move.type='button';move.textContent=index?'↑':'↓';move.setAttribute('aria-label',text(index?'Move up':'Move down'));move.onclick=()=>{POSNIC.server.setPriority(POSNIC.server.priority==='lan'?'cloud':'lan');draw();};row.append(move);
-        let origin=null;
-        grip.onpointerdown=e=>{origin=e.clientY;grip.setPointerCapture(e.pointerId);row.classList.add('is-moving');};
-        grip.onpointerup=e=>{row.classList.remove('is-moving');if(origin!==null&&((index===0&&e.clientY-origin>35)||(index===1&&origin-e.clientY>35)))move.click();origin=null;};
-        grip.onpointercancel=()=>{origin=null;row.classList.remove('is-moving');};
-        row.ondragstart=e=>e.dataTransfer.setData('text/plain',kind);row.ondragover=e=>e.preventDefault();row.ondrop=e=>{e.preventDefault();if(e.dataTransfer.getData('text/plain')!==kind)move.click();};rows.append(row);
-      });
-    };draw();
-    $('setup-auto-switch').checked=localStorage.getItem('posnic.automatic-connections')==='1';
-    $('setup-auto-switch').onchange=e=>localStorage.setItem('posnic.automatic-connections',e.target.checked?'1':'0');
     const network=window.Capacitor?.Plugins?.LocalNetwork;
     if(network?.getLocalIp)Promise.race([network.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]).then(info=>{
       if(info?.wifi===false){$('setup-wifi-choice').hidden=true;$('captain-cloud-login').classList.add('setup-cloud-recommended');methods.insertBefore($('captain-cloud-login'),$('captain-scan'));const hint=paragraph(methods,'Wi-Fi is off. Sign in with Posnic to find your shop.');methods.prepend(hint);}

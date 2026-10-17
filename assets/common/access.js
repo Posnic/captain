@@ -1,5 +1,39 @@
 (function (host) {
   "use strict";
+  // Keep local till traffic on the connected Wi-Fi even when Android chooses
+  // cellular as its Internet network. Cloud requests retain their usual route.
+  host.CaptainFetch = async function (url, options = {}) {
+    const parsed = new URL(url, host.location?.href || 'http://localhost');
+    const parts = parsed.hostname.split('.').map(Number);
+    const local = /^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname) &&
+      (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+       (parts[0] === 192 && parts[1] === 168));
+    const plugin = host.Capacitor?.getPlatform?.() === 'android' && host.Capacitor?.Plugins?.LocalNetwork;
+    if (!local || host.Capacitor?.getPlatform?.() !== 'android') return host.fetch(url, options);
+    if (!parsed.pathname.startsWith('/api/') || !plugin?.request)
+      throw new Error('Shop Wi-Fi transport is unavailable. Update Captain and try again.');
+    if (options.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    // No transport fallback after sending: a timed-out order may already exist.
+    const id = host.crypto.randomUUID();
+    let abort;
+    const cancelled = new Promise((_, reject) => {
+      abort = () => {
+        plugin.cancelRequest?.({id}).catch(() => {});
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      options.signal?.addEventListener('abort', abort, { once: true });
+    });
+    try {
+      const result = await Promise.race([plugin.request({
+        id, url: parsed.href, method: options.method || 'GET',
+        headers: Object.fromEntries(new Headers(options.headers || {})),
+        ...(options.body == null ? {} : { body: options.body }),
+      }), cancelled]);
+      const bytes = Uint8Array.from(atob(result.data || ''), c => c.charCodeAt(0));
+      return new Response([204,205,304].includes(result.status) ? null : bytes,
+        { status: result.status, headers: result.headers });
+    } finally { options.signal?.removeEventListener('abort', abort); }
+  };
   // Check the same authorization used by the orders screen before saving a grant.
   // The credential is sent only to the server which just issued it.
   host.CaptainValidateAccess = async function (grant, base, signal) {
@@ -11,7 +45,7 @@
     const timer = setTimeout(abort, 7000);
     try {
       if (signal?.aborted) controller.abort();
-      const response = await host.fetch(base + '/sales/getListKot?page=1&limit=1&branchId=' + encodeURIComponent(branch), {
+      const response = await host.CaptainFetch(base + '/sales/getListKot?page=1&limit=1&branchId=' + encodeURIComponent(branch), {
         credentials:'omit', redirect:'error', cache:'no-store', signal:controller.signal,
         headers:{Accept:'application/json', Authorization:'Bearer ' + grant.token}
       });
@@ -423,7 +457,8 @@
         path === "/sales/qrOrder" && options.body?.idempotencyKey;
       let last;
       for (const base of routes) {
-        if(!host.POSNIC?.internetChoice && storage.getItem('posnic.automatic-connections')==='0' && base!==(preferred||state.base))continue;
+        // Do not send credentials or orders to an unselected connection.
+        if(host.POSNIC?.internetChoice?.allowed ? !host.POSNIC.internetChoice.allowed(base) : storage.getItem('posnic.automatic-connections')==='0' && base!==(options.onlyBase||preferred||state.base))continue;
         let attempted = false;
         const credential = credentials.get(base);
         if (credential.expiresAt && credential.expiresAt <= Date.now() && !credential.refreshToken) {
@@ -654,11 +689,15 @@
         await persist();
       },
       get canTakeOrders() {
+        const base = host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+        const credential = [state, ...(state.connections || [])].find(c =>
+          c.base === base || (c.routeKey && c.routes?.includes(base)));
         return (
           !locked &&
           !state.blockedAccess &&
           session.active &&
-          (!state.offlineUntil || Date.parse(state.offlineUntil) > Date.now())
+          !!credential &&
+          (!credential.offlineUntil || Date.parse(credential.offlineUntil) > Date.now())
         );
       },
       allowsBase(base) {
@@ -675,7 +714,7 @@
             code: "CAPTAIN_ACCESS",
           });
         try {
-          await session.prepare();
+          await session.prepare(options.onlyBase);
         } catch (error) {
           if ([401, 403].includes(error.status) || !state.connections?.length)
             throw error;
@@ -695,9 +734,15 @@
             state.blockedAccess = error.message;
             await persist();
           }
-          if (error.status === 401 && state.refreshToken) {
+          const selected = options.onlyBase || host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+          const linked = state.connections?.find(c => c.base === selected || (c.routeKey && c.routes?.includes(selected)));
+          if (error.status === 401 && linked?.refreshToken) {
+            linked.expiresAt = 0;
+            return await transport(path, options);
+          }
+          if (error.status === 401 && state.refreshToken && !linked) {
             state.expiresAt = 0;
-            await session.prepare();
+            await session.prepare(options.onlyBase);
             return await transport(path, options);
           }
           throw error;
@@ -833,8 +878,12 @@
         if (suspended || locked)
           throw Object.assign(new Error("Unlock this phone first."), { code: "PIN_LOCKED" });
       },
-      async prepare() {
+      async prepare(selectedBase) {
         await session.whenReady();
+        // A cloud session expiring must not delay or revoke the local session.
+        const selected = selectedBase || host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+        const primary = selected === state.base || (state.routeKey && state.routes?.includes(selected));
+        if (!primary) return;
         if (locked)
           throw Object.assign(new Error("Unlock this phone first."), {
             code: "PIN_LOCKED",
@@ -981,7 +1030,7 @@
     host.CaptainAccess = createAccess(
       plugin,
       host.localStorage,
-      host.fetch.bind(host),
+      host.CaptainFetch,
     );
     host.CaptainAccess.ready.catch(() => {});
     if (!/\/(?:index.html)?$/.test(host.location.pathname)) {

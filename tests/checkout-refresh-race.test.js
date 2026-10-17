@@ -22,7 +22,7 @@ test('a menu refresh arriving during checkout cannot restore the submitted baske
     getData:async()=>{branchStarted();await branchWait;return [{id:'branch'}];},
     BRANCH_STORE:'branch', cartProductId:item=>item.id,
     ServiceDetails:{metadata:()=>({})}, submittedUnitPrice:item=>item.price,
-    localStorage:{getItem:()=>null,removeItem(){}},
+    localStorage:{getItem:key=>key==='kiosk_table_no'?'5':null,removeItem(){}},
     currentOrderKey:()=> 'one-key', generateUniqueToken:()=> '1',
     POSNIC:{session:{canTakeOrders:true}},
     OrderQueue:{all:()=>orders,add:row=>{orders.push(row);return true;},update:()=>true},

@@ -508,9 +508,10 @@ async function loadTablesNow() {
 
         const tables = data.data.tables || [];
         const hasTakeaway = data.data.has_takeaway || false;
+        const unassigned = Array.isArray(data.data.unassigned_orders) ? data.data.unassigned_orders : [];
         
         // Check if there are any orders (tables or takeaway)
-        if (tables.length === 0 && !hasTakeaway) {
+        if (tables.length === 0 && !hasTakeaway && !unassigned.length) {
             if (noOrdersMsg) noOrdersMsg.style.display = 'block';
             container.innerHTML = '';
             /* And the count with it, or "3 tables open" hangs above a screen
@@ -603,19 +604,20 @@ async function loadTablesNow() {
 
         // Orders are usable as soon as the floor response arrives. A slow or
         // conflicting bill must not hide every table behind a loading screen.
-        for (const detail of [...detailed, ...takeawayDetails]) {
+        for (const detail of [...detailed, ...takeawayDetails, ...unassigned]) {
             detail.amount = null;
             delete detail.payableLabel;
         }
         container.innerHTML = detailed.map(detail => card(detail.table_number, detail)).join('') +
-            takeawayDetails.map(detail => card('Take Away ' + detail.number, {...detail, minutes: FloorView.minutesSince(detail.since)}, 'is-takeaway')).join('');
+            takeawayDetails.map(detail => card('Take Away ' + detail.number, {...detail, minutes: FloorView.minutesSince(detail.since)}, 'is-takeaway')).join('') +
+            unassigned.map(detail => card((window.I18N?.t('No table') || 'No table') + ' · ' + detail.number, {...detail, minutes: FloorView.minutesSince(detail.since)})).join('');
         hideSectionLoader('tables-list');
         const initialCount = document.getElementById('floor-count');
-        if (initialCount) initialCount.textContent = (detailed.length + takeawayDetails.length) + ' open';
-        await Promise.all([...detailed, ...takeawayDetails].flatMap(detail => [countItems(detail), loadPayable(detail)]));
+        if (initialCount) initialCount.textContent = (detailed.length + takeawayDetails.length + unassigned.length) + ' open';
+        await Promise.all([...detailed, ...takeawayDetails, ...unassigned].flatMap(detail => [countItems(detail), loadPayable(detail)]));
         if (branchId !== (localStorage.getItem('branch_id') || null) || countOwner !== POSNIC.session.shopKey || countUser !== POSNIC.session.user?.id || !POSNIC.session.active || window.CaptainAccess?.locked) return;
 
-        let html = '';
+        let html = unassigned.map(detail => card((window.I18N?.t('No table') || 'No table') + ' · ' + detail.number, {...detail, minutes: FloorView.minutesSince(detail.since)})).join('');
         detailed.forEach((detail) => {
             html += card(detail.table_number, detail);
         });
@@ -652,7 +654,7 @@ async function loadTablesNow() {
         /* One count, said once, so a glance answers "how busy is it". */
         const count = document.getElementById('floor-count');
         if (count) {
-            const open = detailed.length + takeawayCount;
+            const open = detailed.length + takeawayCount + unassigned.length;
             /* Just the number now: the words are on the heading beside it,
                and "3 tables open" under "Active tables" says tables twice. */
             count.textContent = open === 1 ? '1 open' : open + ' open';
@@ -774,7 +776,7 @@ async function selectTable(tableName, takeaway, options = {}) {
     }
 
     // Update panel title
-    panelTitle.textContent = isTakeaway ? (options.saleId ? tableName : 'Takeaway Orders') : `Table ${tableName}`;
+    panelTitle.textContent = options.saleId ? tableName : isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
     
     // Open the sliding panel
     openSlidingPanel();
@@ -813,7 +815,7 @@ async function selectTable(tableName, takeaway, options = {}) {
             // sale ID opens just this customer, without the old unpaid filter.
             filters = options.saleId ? {_id: options.saleId, dine_type: 'Take away'} : { ...stillOpen, dine_type: 'Take away' };
         } else {
-            filters = { ...stillOpen, table_number: tableName };
+            filters = options.saleId ? { ...stillOpen, _id: options.saleId } : { ...stillOpen, table_number: tableName };
         }
         const data = await POSNIC.api.get(
             `/sales/getListKot?page=1&limit=100` +

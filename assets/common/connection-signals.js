@@ -13,6 +13,8 @@
     if(anchor){
       let banner=document.getElementById('captain-connection-status');
       if(!banner){banner=document.createElement('div');banner.id='captain-connection-status';banner.setAttribute('role','status');banner.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--surface-sunk,#f3f6fb);color:var(--ink,#172638);font:500 13px/1.5 Inter,system-ui';anchor.before(banner);}
+      banner.hidden = !net.offline && !feedback;
+      banner.style.display = banner.hidden ? 'none' : 'flex';
       banner.replaceChildren();
       const text=document.createElement('span');text.textContent=t(net.offline?'Reconnecting':server.isLocal?'Shop Wi-Fi':'Internet');banner.append(text);
       if(feedback)text.textContent=feedback;
@@ -23,6 +25,7 @@
     document.querySelectorAll("[data-route-signal]").forEach(button => {
       const local = button.dataset.routeSignal === "local";
       const base = (local ? server.lan : server.cloud) || (server.isLocal === local ? server.baseUrl : null);
+      button.hidden = !base;
       const answer = seen.get(base);
       const active = !!base && server.baseUrl === base && !net.offline;
       const reachable = !!answer?.reachable && Date.now() - answer.at < 60000;
@@ -33,7 +36,7 @@
       button.setAttribute("aria-label", t(name) + ": " + t(status));
       button.title = t(name) + ": " + t(status);
       button.dataset.reachable = String(reachable);
-      button.disabled = switching;
+      button.disabled = switching || !(server.lan && server.cloud);
       button.setAttribute('aria-busy',String(switching));
     });
   }
@@ -48,6 +51,7 @@
   });
   window.addEventListener("posnic:offline", () => { seen.clear(); paint(); });
   window.addEventListener("posnic:server-changed", paint);
+  window.addEventListener("posnic:connections-saved", paint);
   window.addEventListener('posnic:wifi-state',event=>{wifi=event.detail;paint();});
   document.addEventListener("visibilitychange", paint);
   document.addEventListener("DOMContentLoaded", () => {

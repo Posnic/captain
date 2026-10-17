@@ -71,7 +71,7 @@
     <link rel="stylesheet" href="assets/table/entry.css">
     <link rel="stylesheet" href="assets/common/appearance.css">
 <script src="assets/common/order-photos.js" defer></script>
-</head>
+<link rel="stylesheet" href="assets/table/rooms.css"></head>
 
 <body class="seat-screen">
     <div class="discount-page">
@@ -90,10 +90,18 @@
                     <input type="radio" name="order_type" id="order_type_takeaway" value="Take away">
                     <label for="order_type_takeaway" class="dine-option"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8h14l1 12H4L5 8Z M8 9V6a4 4 0 0 1 8 0v3"/></svg><span>Take away</span></label>
 
+                    <input type="radio" name="order_type" id="order_type_room" value="Room">
+                    <label for="order_type_room" id="room-option" class="dine-option" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 21V3h14v18M3 21h18M15 12h.01"/></svg><span>Rooms</span></label>
                     <span class="dine-toggle-indicator"></span>
                 </div>
             </div>
 
+            <section id="room-section" hidden>
+                <label for="room-venue">Venue</label><select id="room-venue" class="form-control"></select>
+                <label for="room-number">Room number</label><input id="room-number" class="form-control" maxlength="40" autocomplete="off">
+                <p id="room-charge-description"></p>
+                <label id="room-charge-agreement" hidden><input type="checkbox" id="room-charge-accepted"> Guest agreed to this additional charge</label>
+            </section>
             <!-- Discount row -->
             <div class="discount-row" style="display: none;">
                 <div class="form-group" style="flex: 1 1 100%;">
@@ -132,7 +140,7 @@
             <!-- Person Count -->
             <!-- Person Count -->
             <div class="person-count-section">
-                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-user-friends" aria-hidden="true"></i> <span>How many guests?</span></div><p class="entry-help">People seated at this table</p></div>
+                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-user-friends" aria-hidden="true"></i> <span>Guests (optional)</span></div><p class="entry-help">People seated at this table</p></div>
 
                 <!--
                     TWO TAPS, AND NO KEYBOARD.
@@ -168,7 +176,7 @@
                     placeholder="No. of persons" oninput="handlePersonInput(this)">
 
                 <!-- hidden real input → JS & backend க்கு -->
-                <input type="hidden" id="person_count" value="1">
+                <input type="hidden" id="person_count" value="0">
             </div>
 
             <div class="btn-footer">
@@ -187,6 +195,26 @@
         </div>
     </div>
     <script>
+        let roomVenues = [];
+        function showRoomCharge() {
+            const v = roomVenues.find(v => v.code === document.getElementById('room-venue').value);
+            const rule = v?.room_charge;
+            document.getElementById('room-charge-description').textContent = rule?.enabled && rule.percent > 0
+                ? (I18N.t('{0}: {1}% of food after discounts, before tax.').replace('{0}', rule.name).replace('{1}', rule.percent) + (rule.taxed ? ' + ' + I18N.t('Tax') + ' ' + (rule.tax_rate ?? '') + '%' : '')) : '';
+            document.getElementById('room-charge-agreement').hidden = !(rule?.enabled && rule.percent > 0);
+            document.getElementById('room-charge-accepted').checked = false;
+        }
+        function loadRoomVenues(venues) {
+            const next = Array.isArray(venues) ? venues : [];
+            if (JSON.stringify(next) === JSON.stringify(roomVenues)) return;
+            roomVenues = next;
+            const select = document.getElementById('room-venue'), previous = select.value;
+            select.replaceChildren(...roomVenues.map(v => new Option(v.name, v.code)));
+            if (roomVenues.some(v => v.code === previous)) select.value = previous;
+            document.getElementById('room-option').hidden = !roomVenues.length;
+            select.onchange = showRoomCharge;
+            showRoomCharge();
+        }
         let startingOrder = false;
         async function goToProductsWithTableCheck() {
             if (startingOrder) return;
@@ -195,6 +223,17 @@
             // Get the selected order type
             const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
 
+            let room = null;
+            if (orderType === 'Room') {
+                const venue = roomVenues.find(v => v.code === document.getElementById('room-venue').value);
+                const unit = document.getElementById('room-number').value.trim();
+                if (!venue || !unit) { showErrorPopup('Choose a venue and enter the room number.'); return; }
+                if (document.getElementById('room-charge-accepted').checked && venue.room_charge?.taxed && !venue.room_charge.tax_available) { showErrorPopup('The room charge tax is unavailable. Review the tax settings.'); return; }
+                room = { venue: venue.code, unit, label: `${venue.name} - ${unit}`,
+                    accepted: document.getElementById('room-charge-accepted').checked,
+                    charge: venue.room_charge, branch: localStorage.getItem('branch_id') || localStorage.getItem('kiosk_selected_branch'),
+                    shop: window.POSNIC?.session?.shopKey || '' };
+            }
             const discountValue = parseFloat(document.getElementById('discount_value').value) || 0;
             const discountType = document.querySelector('input[name="discount_type"]:checked')?.value || 'percent';
 
@@ -228,7 +267,7 @@
             }
 
             // ✅ Table is mandatory for Dine-in
-            if (orderType === 'Dine-in' && !tableNo) {
+            if (orderType === 'Dine-in' && CaptainTables.tableRequired() && !tableNo) {
                 showErrorPopup(hasTables ? "Please select a table." : "Please enter a table number.");
                 return;
             }
@@ -265,7 +304,7 @@
             }
 
 
-            if (orderType === 'Dine-in') {
+            if (orderType === 'Dine-in' && tableNo) {
                 const normalize = value => String(value || '').trim().toUpperCase();
                 tableNo = normalize(tableNo);
                 const response = await POSNIC.api.post('/sales/getTablesWithActiveOrders', {
@@ -290,6 +329,7 @@
 
             // ✅ store in localStorage for checkout() to use later
             localStorage.setItem('orderType', orderType);
+            if (room) localStorage.setItem('kiosk_room', JSON.stringify(room)); else localStorage.removeItem('kiosk_room');
             localStorage.setItem('kiosk_discount_percentage', percentage);
             localStorage.setItem('kiosk_discount_amount', amount);
             localStorage.setItem('kiosk_discount_description', description);
@@ -299,7 +339,7 @@
                 localStorage.setItem('kiosk_table_no', tableNo);
                 localStorage.setItem('kiosk_table_id', tableId);
             } else {
-                localStorage.setItem('kiosk_table_no', '');
+                localStorage.setItem('kiosk_table_no', room ? room.label : '');
                 localStorage.setItem('kiosk_table_id', '');
             }
 
@@ -342,7 +382,7 @@
             let n = parseInt(v || '0', 10);
 
             // clamp 1..99
-            if (isNaN(n) || n < 1) n = 1;
+            if (isNaN(n) || n < 0) n = 0;
             if (n > 99) n = 99;
 
             inputEl.value = n.toString();
@@ -451,6 +491,27 @@
                 return;
             }
 
+            // Menu metadata is cached; table service state can change at the till
+            // without a menu refresh. Read it before offering a table to staff.
+            try {
+                const live = await POSNIC.api.get('/captain/v1/tables');
+                loadRoomVenues(live?.roomVenues);
+                if (Array.isArray(live?.tables)) {
+                    const liveTables = CaptainTables.liveRows(live);
+                    tableorders = tableorders.map(table => {
+                        const current = liveTables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
+                        if (!current) return {...table, service_state: CaptainTables.serviceState(table.service_state, live.cleaningEnabled)};
+                        return {...table, service_state: current.closing ? 'held' :
+                            (current.status === 'occupied' ? 'available' : current.status || table.service_state)};
+                    });
+                }
+            } catch (error) {
+                // Older servers still enforce availability when accepting orders.
+                console.warn('Could not refresh table service state:', error.message);
+            }
+            if (generation !== tableLoadGeneration) return;
+
+
             // 🔒 EMPTY → show input box only
             if (!Array.isArray(tableorders) || tableorders.length === 0) {
                 if (sectionWrapper) sectionWrapper.style.display = '';
@@ -536,25 +597,6 @@
              *
              * Ported from Table_Order, where it was written first.
              */
-            // Menu metadata is cached; table service state can change at the till
-            // without a menu refresh. Read it before offering a table to staff.
-            try {
-                const live = await POSNIC.api.get('/captain/v1/tables');
-                if (Array.isArray(live?.tables)) {
-                    const liveTables = CaptainTables.liveRows(live);
-                    tableorders = tableorders.map(table => {
-                        const current = liveTables.find(row => String(row.tableorder_value) === String(table.tableorder_value));
-                        if (!current) return {...table, service_state: CaptainTables.serviceState(table.service_state, live.cleaningEnabled)};
-                        return {...table, service_state: current.closing ? 'held' :
-                            (current.status === 'occupied' ? 'available' : current.status || table.service_state)};
-                    });
-                }
-            } catch (error) {
-                // Older servers still enforce availability when accepting orders.
-                console.warn('Could not refresh table service state:', error.message);
-            }
-            if (generation !== tableLoadGeneration) return;
-
             let occupiedTables = [];
             let openPerTable = {};
             let tableOrderLimit = 1;
@@ -921,9 +963,9 @@
         // Choosing a mode stays on this page until the explicit Next action.
         function handleOrderTypeChange() {
             const dineIn=document.getElementById('order_type_dinein').checked;
+            document.getElementById('room-section').hidden = !document.getElementById('order_type_room').checked;
             document.querySelector('.table-section-center').hidden=!dineIn;
             document.querySelector('.person-count-section').hidden=!dineIn;
-            if(dineIn && !(Number(document.getElementById('person_count').value)>0))setPersonCount(1);
         }
 
         // Call after DOM loaded
@@ -933,7 +975,7 @@
 
         function setPersonCount(val) {
             if (isNaN(val)) val = 0;
-            if (val < 1) val = 1;       // min 1
+            if (val < 0) val = 0;       // guests are optional
             if (val > 99) val = 99;     // max 99
 
             const hidden = document.getElementById('person_count');

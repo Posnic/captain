@@ -28,6 +28,8 @@
 
 (function () {
   'use strict';
+  // Manual selection supersedes previous automatic preferences.
+  localStorage.setItem('posnic.automatic-connections', '0');
 
   /* ---------------------------------------------------------------- config */
 
@@ -436,7 +438,7 @@
           }
         }
 
-        if (wrote) persist();
+        if (wrote) { persist(); window.dispatchEvent(new CustomEvent('posnic:connections-saved')); }
         return { lan: normalize(state.lan), cloud: normalize(state.cloud) };
       },
 
@@ -612,7 +614,7 @@
 
   /* Captured before the retrying client below exists, so a probe is always a
      single plain request: no credential, no failover, no recursion. */
-  const rawFetch = window.fetch.bind(window);
+  const rawFetch = window.CaptainFetch || window.fetch.bind(window);
 
   /*
    * WHO IS ANSWERING window.fetch.
@@ -858,6 +860,8 @@
         }),
       ]);
     } catch (e) {
+      // Do not retry local discovery on an unbound Android transport.
+      if (window.Capacitor?.getPlatform?.() === 'android' && isLanUrl(base)) return fail('UNREACHABLE');
       /* An abort is our own timer, not the network saying anything. Told
          apart because "it is slow" and "it is not there" send somebody to
          look in two different places. */
@@ -1416,7 +1420,7 @@
     const current = () => server.baseUrl || session.base || '';
     const required = base => !!current() && isLanUrl(base)!==isLanUrl(current()) && localStorage.getItem('posnic.automatic-connections') !== '1';
     const explicitlyChosen = base => explicit?.base === base && explicit.shop === session.shopKey && explicit.user === session.user?.id && !window.CaptainAccess?.locked;
-    const allowed = base => explicitlyChosen(base) || !required(base) || read(base) === 'yes';
+    const allowed = base => explicitlyChosen(base) || !current() || base === current();
     async function openWifi() {
       try {
         const network=window.Capacitor?.Plugins?.LocalNetwork;
@@ -1443,36 +1447,7 @@
       button.onclick=async()=>{write(base,'');button.remove();if(await ask(base))net.check(true);};
       document.body.append(button);
     }
-    async function ask(base, options = {}) {
-      if (base===current())return true;
-      if (explicitlyChosen(base))return true;
-      if(options.returning && !ready(base))return false;
-      if (allowed(base)) return true;
-      if (read(base)==='no') { offerAgain(base); return false; }
-      if (flight) { await flight; return allowed(base); }
-      const shop=session.shopKey, user=session.user?.id;
-      flight=new Promise(resolve=>{
-        style();const local=isLanUrl(base),dialog=document.createElement('dialog');dialog.id='captain-internet-consent';
-        dialog.setAttribute('aria-labelledby','internet-consent-title');
-        const heading=local?'Shop Wi-Fi is back':wifi===false?'Shop Wi-Fi isn’t available':'Shop connection lost';
-        dialog.innerHTML='<h2 id="internet-consent-title"></h2><p data-description></p><label><input type="checkbox" data-automatic><span data-auto-label></span></label><button type="button" data-switch></button><button type="button" data-wait></button>';
-        dialog.querySelector('h2').textContent=t(heading);
-        dialog.querySelector('[data-description]').textContent=t(local?'We’ve checked your shop connection. Use it now, or stay on internet.':'Your shop is available through internet. Your order stays safe when you switch.');
-        dialog.querySelector('[data-auto-label]').textContent=t('Switch automatically next time');
-        dialog.querySelector('[data-switch]').textContent=t(local?'Use shop Wi-Fi':'Use internet');
-        dialog.querySelector('[data-wait]').textContent=t(local?'Stay on internet':wifi===false?'Connect to Wi-Fi':'Wait for shop Wi-Fi');
-        const finish=yes=>{
-          const valid=session.shopKey===shop&&session.user?.id===user&&!window.CaptainAccess?.locked;
-          if(valid){write(base,yes?'yes':'no');if(yes&&dialog.querySelector('[data-automatic]').checked)localStorage.setItem('posnic.automatic-connections','1');}
-          dialog.close();dialog.remove();if(valid&&!yes)offerAgain(base);resolve(valid&&yes);
-        };
-        dialog.querySelector('[data-switch]').onclick=()=>finish(true);
-        dialog.querySelector('[data-wait]').onclick=()=>{finish(false);if(!local&&wifi===false)void openWifi();};
-        dialog.oncancel=e=>{e.preventDefault();finish(false);};
-        document.body.append(dialog);dialog.showModal();
-      }).finally(()=>{flight=null;});
-      return flight;
-    }
+    async function ask(base) { return allowed(base); }
     window.addEventListener('posnic:server-changed',()=>{
       try { for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k?.startsWith('captain.connection-choice:')&&sessionStorage.getItem(k)==='yes')sessionStorage.removeItem(k);} } catch {}
       document.getElementById('captain-internet-choice')?.remove();
@@ -1486,6 +1461,8 @@
         if(!base)throw Object.assign(new Error(t('Not added')), {code:'CONNECTION_SETUP'});
         if(window.CaptainAccess?.locked||session.needsReconnect)throw new Error(t('Please sign in again'));
         if(session.busy)throw new Error(t('Try again in a moment.'));
+        if(base!==current() && window.OrderQueue?.all?.().some(row => Number(row.attempts)>0 && (!row.owner || (row.owner.shop===shop && row.owner.user===user))))
+          throw new Error(t('Confirm the pending order before switching connections. Your order is saved.'));
         const network=window.Capacitor?.Plugins?.LocalNetwork;
         if(kind==='lan'&&network?.getLocalIp){
           const info=await Promise.race([network.getLocalIp().catch(()=>null),new Promise(resolve=>setTimeout(()=>resolve(null),800))]);
@@ -1503,9 +1480,8 @@
             if(!hit||hit.base!==base)throw new Error(t('Could not connect. Try again.'));
           }
           if(session.shopKey!==shop||session.user?.id!==user||window.CaptainAccess?.locked)throw new Error(t('Connection cancelled.'));
-          // A direct choice changes preference, not the user's fallback setting.
-          // Do not pin: the other verified route must remain available in an outage.
-          server.unpin();
+          // Keep the selected route across outages and app restarts.
+          server.pin(base);
           server.setPriority(kind);
           server.adopt(base);
           noteSuccess(base);
@@ -2443,7 +2419,7 @@
 
         var nothingAtAll = false;
         try {
-          nothingAtAll = navigator && navigator.onLine === false;
+          nothingAtAll = !local && navigator && navigator.onLine === false;
         } catch (e) {
           /* No navigator, no claim. */
         }

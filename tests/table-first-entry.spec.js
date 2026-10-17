@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {onTheMenu} from './support/shop.js';
-for(const width of [320,768])test(`table first and distinct guests lead straight to items at ${width}`,async({page})=>{
+for(const width of [320,768])test(`table first and distinct guests wait for Next at ${width}`,async({page})=>{
  await page.setViewportSize({width,height:800});
  await onTheMenu(page,'nothing');
  const tables=[{id:'4',tableorder_value:'4',status:'available',capacity:6}];
@@ -17,16 +17,20 @@ for(const width of [320,768])test(`table first and distinct guests lead straight
  await page.locator('.table-label').first().click();
  await expect(page).toHaveURL(/discount.html/);
  await guest.click();
+ await expect(page).toHaveURL(/discount.html/);
+ await page.locator('.btn-next').click();
  await expect(page).toHaveURL(/products.html/);
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('4');
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('3');
 });
 
-test('takeaway goes directly to items without table or guests',async({page})=>{
+test('takeaway waits for Next without table or guests',async({page})=>{
  await onTheMenu(page,'nothing');
  await page.route('**/captain/v1/takeaway-number',r=>r.fulfill({json:{number:1}}));
  await page.goto('/discount.html');
  await page.locator('label[for=order_type_takeaway]').click();
+ await expect(page).toHaveURL(/discount.html/);
+ await page.locator('.btn-next').click();
  await expect(page).toHaveURL(/products.html/);
  expect(await page.evaluate(()=>localStorage.getItem('orderType'))).toBe('Take away');
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('');
@@ -47,4 +51,16 @@ test('ten tables use compact rows on phone',async({page})=>{
 
 test('table labels use natural numeric order including temporary suffixes',async({page})=>{
  await onTheMenu(page,'nothing');const tables=['T1','T10','T2','T9','T6B','T6','T6A'].map(v=>({id:v,tableorder_value:v,capacity:4}));await page.evaluate(t=>localStorage.setItem('kiosk_tableorders',JSON.stringify(t)),tables);await page.route('**/captain/v1/tables',r=>r.fulfill({json:{tables}}));await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:[]}}}));await page.goto('/discount.html');await expect(page.locator('.entry-table-name [translate=no]')).toHaveText(['T1','T2','T6','T6A','T6B','T9','T10']);
+});
+
+test('Next allows omitted guests and the explicit optional-table setting',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.evaluate(()=>{localStorage.removeItem('kiosk_person_count');localStorage.removeItem('kiosk_table_no');});
+ await page.route('**/captain/v1/tables',r=>r.fulfill({json:{tables:[],tableRequired:false}}));
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:[]}}}));
+ await page.goto('/discount.html');
+ await page.waitForFunction(()=>CaptainTables.tableRequired()===false);
+ await page.locator('.btn-next').click();await expect(page).toHaveURL(/products.html/);
+ expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('0');
+ expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('');
 });

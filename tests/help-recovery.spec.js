@@ -38,7 +38,7 @@ test('an old address check cannot confirm a newly selected server',async({page})
  await page.evaluate(()=>{POSNIC.net.check=()=>new Promise(resolve=>{window.finishOldCheck=resolve;});});
  await page.locator('#help-retry').click();
  await expect(page.locator('#help-status')).toHaveText('Checking');
- await page.evaluate(()=>POSNIC.server.adopt('http://192.168.1.20:5555/api'));
+ await page.evaluate(()=>POSNIC.server.pin('http://192.168.1.20:5555/api'));
  await expect(page.locator('#help-address')).toHaveText('http://192.168.1.20:5555/api');
  await expect(page.locator('#help-status')).toHaveText('Not connected');
  await expect(page.locator('#help-retry')).toBeEnabled();
@@ -54,7 +54,7 @@ test('a late failed check cannot erase a new server connection',async({page})=>{
  await expect(page.locator('#help-retry')).toBeEnabled();
  await page.evaluate(()=>{POSNIC.net.check=()=>new Promise((resolve,reject)=>{window.failOldCheck=reject;});});
  await page.locator('#help-retry').click();
- await page.evaluate(()=>{POSNIC.server.adopt('http://192.168.1.21:5555/api');POSNIC.net.check=async()=>true;});
+ await page.evaluate(()=>{POSNIC.server.pin('http://192.168.1.21:5555/api');POSNIC.net.check=async()=>true;});
  await page.locator('#help-retry').click();
  await expect(page.locator('#help-status')).toHaveText('Connected in the shop');
  await page.evaluate(()=>window.failOldCheck(new Error('old request failed')));

@@ -46,10 +46,12 @@ test('failed history request offers retry instead of an empty result', async ({p
  await expect(page.locator('#history-request-state')).toBeHidden();
 });
 
-test('internet banner uses the selected theme',async ({page})=>{
+test('connection failure banner uses the selected theme',async ({page})=>{
  await onTheMenu(page,'nothing');
  await page.goto('/kot-management.html');
  const banner=page.locator('#captain-connection-status');
+ await expect(banner).toBeHidden();
+ await page.evaluate(()=>POSNIC.net.setOffline());
  await expect(banner).toBeVisible();
  for(const theme of ['dark','light']){
   await page.evaluate(theme=>CaptainAppearance.set(theme),theme);

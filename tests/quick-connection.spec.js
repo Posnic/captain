@@ -5,15 +5,15 @@ async function setup(page){
  await onTheMenu(page,'nothing');
  await page.route('http://192.168.1.20:5555/**',r=>r.fulfill({json:RUNTIME_INFO}));
  await page.goto('/kot-management.html');
- await page.evaluate(lan=>{POSNIC.server.remember({lan,cloud:POSNIC.server.baseUrl});POSNIC.server.recordShop(lan,POSNIC.session.shopKey);POSNIC.server.recordShop(POSNIC.server.baseUrl,POSNIC.session.shopKey);localStorage.setItem('posnic.automatic-connections','1');},lan);
+ await page.evaluate(lan=>{POSNIC.server.remember({lan,cloud:POSNIC.server.baseUrl});POSNIC.server.recordShop(lan,POSNIC.session.shopKey);POSNIC.server.recordShop(POSNIC.server.baseUrl,POSNIC.session.shopKey);localStorage.setItem('posnic.automatic-connections','0');},lan);
 }
-test('corner icons switch both ways without changing automatic fallback or opening settings',async({page})=>{
+test('corner icons switch both ways and remain manually selected without opening settings',async({page})=>{
  await setup(page);
  await page.locator('[data-route-signal=local]').click();
  await expect.poll(()=>page.evaluate(()=>POSNIC.server.baseUrl)).toBe(lan);
  await expect(page.locator('[data-route-signal=local]')).toHaveClass(/is-active/);
  await expect(page).toHaveURL(/kot-management.html/);
- expect(await page.evaluate(()=>[POSNIC.server.priority,POSNIC.server.pinned,localStorage.getItem('posnic.automatic-connections')])).toEqual(['lan',null,'1']);
+ expect(await page.evaluate(()=>[POSNIC.server.priority,POSNIC.server.pinned,localStorage.getItem('posnic.automatic-connections')])).toEqual(['lan',lan,'0']);
  await page.locator('[data-route-signal=remote]').click();
  await expect.poll(()=>page.evaluate(()=>POSNIC.server.baseUrl)).toBe(API_BASE);
  expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('cloud');

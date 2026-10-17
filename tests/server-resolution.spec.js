@@ -56,7 +56,7 @@ const refuse = (page, origin) =>
 const seed = (page, state) => page.addInitScript(
   (value) => {
     localStorage.setItem('posnic.server', JSON.stringify(value));
-    localStorage.setItem('posnic.automatic-connections','1');
+    localStorage.setItem('posnic.automatic-connections','0');
     // Routing checks model a staff member who accepted internet fallback.
     // Consent/refusal itself is covered by internet-consent.spec.js.
     if (value.cloud) for (const shop of ['', 'shop-a'])
@@ -114,7 +114,7 @@ test('addresses the user might type are all understood', async ({ page }) => {
   expect(results.nothing).toBeNull();
 });
 
-test('the Wi-Fi server is preferred after stable checks over the working online one', async ({ page }) => {
+test('working internet stays selected even after stable Wi-Fi checks', async ({ page }) => {
   await seed(page, { lan: LAN, cloud: CLOUD, active: CLOUD });
   await serve(page, LAN_ORIGIN);
   await serve(page, CLOUD_ORIGIN);
@@ -124,18 +124,19 @@ test('the Wi-Fi server is preferred after stable checks over the working online 
     const original=Date.now;let now=original();Date.now=()=>now;
     try{for(let i=0;i<3;i++){now+=20000;await POSNIC.net.check(false);}}finally{Date.now=original;}
   });
-  await expect.poll(() => baseUrl(page)).toBe(LAN);
-  expect(await page.evaluate(() => POSNIC.server.isLocal)).toBe(true);
+  await expect.poll(() => baseUrl(page)).toBe(CLOUD);
+  expect(await page.evaluate(() => POSNIC.server.isLocal)).toBe(false);
 });
 
-test('the online address takes over when the Wi-Fi server is gone', async ({ page }) => {
+test('Wi-Fi failure does not select the saved internet address', async ({ page }) => {
   await seed(page, { lan: LAN, cloud: CLOUD, active: LAN });
   await refuse(page, LAN_ORIGIN);
   await serve(page, CLOUD_ORIGIN, { info: { ...RUNTIME_INFO, mode: 'cloud', edition: 'cloud' } });
 
   await page.goto('/index.html');
-  await expect.poll(() => baseUrl(page), { timeout: 15000 }).toBe(CLOUD);
-  expect(await page.evaluate(() => POSNIC.server.isLocal)).toBe(false);
+  await page.evaluate(()=>POSNIC.net.check(false));
+  expect(await baseUrl(page)).toBe(LAN);
+  expect(await page.evaluate(() => POSNIC.server.isLocal)).toBe(true);
 });
 
 test('a pinned address is never swapped out from under the user', async ({ page }) => {
@@ -183,7 +184,7 @@ test('a stranger on port 5555 is not mistaken for a till', async ({ page }) => {
   expect(hit).toBeNull();
 });
 
-test('a read that fails is retried on the other server', async ({ page }) => {
+test('a failed read stays on the selected server', async ({ page }) => {
   /*
    * The point of the whole arrangement: the staff member waiting on this
    * request gets an answer from the other address rather than an error.
@@ -206,12 +207,11 @@ test('a read that fails is retried on the other server', async ({ page }) => {
 
   lanUp = false;
   const body = await page.evaluate(async () => {
-    const result = await POSNIC.api.post('/items/accessQr', {});
-    return result.data;
+    try {await POSNIC.api.post('/items/accessQr', {});return 'unexpected success';}catch{return 'failed';}
   });
 
-  expect(body).toBe('cloud');
-  expect(await baseUrl(page)).toBe(CLOUD);
+  expect(body).toBe('failed');
+  expect(await baseUrl(page)).toBe(LAN);
 });
 
 test('a failed order is NOT replayed on the other server', async ({ page }) => {
@@ -254,7 +254,7 @@ test('a failed order is NOT replayed on the other server', async ({ page }) => {
 
   expect(failed, 'the order must surface as a failure, not be replayed').toBe(true);
   expect(cloudCalls).not.toContain('/sales/qrOrder');
-  expect(await baseUrl(page)).toBe(CLOUD);
+  expect(await baseUrl(page)).toBe(LAN);
 });
 
 test('every request carries the credential from sign-in', async ({ page }) => {
@@ -325,7 +325,7 @@ test('Wi-Fi discovery checks the known local server before sweeping', async ({ p
   await page.evaluate(()=>{POSNIC.discovery.scanSubnet=async()=>{};});
   await page.locator('#captain-search').click();
   const server = page.locator('#captain-results .setup-server-card');
-  await expect(server.locator('strong')).toHaveText('Shop found');
+  await expect(server.locator('strong')).toHaveText(new URL(LAN).host);
   await expect(server.locator('.setup-server-address')).toHaveText(new URL(LAN).host);
   await expect(server.locator('.setup-server-action')).toContainText('Connect');
   await expect(page.locator('#captain-legacy')).toBeHidden();
@@ -1288,7 +1288,7 @@ test('a till that answers quickly is the only door used', async ({ page }) => {
   expect(seen.filter((u) => u === CLOUD_ORIGIN + '/sales/qrOrder')).toHaveLength(0);
 });
 
-test('a till that hesitates does not make the waiter wait for it', async ({ page }) => {
+test('a slow till request never races the cloud', async ({ page }) => {
   /*
    * THE POINT. The till is reachable but slow - a saturated Wi-Fi, a router
    * mid-reboot - so nothing has failed and nothing will fail over. Without a
@@ -1312,10 +1312,11 @@ test('a till that hesitates does not make the waiter wait for it', async ({ page
   );
   const took = Date.now() - started;
 
-  expect(answer.from).toBe('cloud');
+  expect(answer.from).toBe('lan');
   /* Well inside the two seconds the till was going to take. */
-  expect(took).toBeLessThan(1500);
-  expect(await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged)).toBe(true);
+  expect(took).toBeGreaterThanOrEqual(1500);
+  expect(seen.filter(u=>u===CLOUD_ORIGIN+'/sales/qrOrder')).toHaveLength(0);
+  expect(await page.evaluate(() => POSNIC.debugTiming.lastRace().hedged)).toBe(false);
 });
 
 test('a request not marked for it never touches the other door', async ({ page }) => {
@@ -1481,17 +1482,17 @@ test('and a phone that has wandered off is told which thing moved', async ({ pag
  * sends somebody to restart a computer that is working.
  */
 
-test('NO NETWORK AT ALL IS NAMED BEFORE ANYTHING ELSE', async ({ page }) => {
+test('internet route reports when the phone has no internet connection', async ({ page }) => {
   /*
    * The one cause a phone can be certain of on its own, and the one a waiter
    * can fix in five seconds. Told the till is not responding while their Wi-Fi
    * is simply off, somebody goes and restarts a working till.
    */
-  await seed(page, { pinned: LAN, active: LAN, lan: LAN });
+  await seed(page, { pinned: CLOUD, active: CLOUD, cloud: CLOUD });
   await page.addInitScript(() => {
     Object.defineProperty(window.navigator, 'onLine', { get: () => false });
   });
-  await refuse(page, LAN_ORIGIN);
+  await refuse(page, CLOUD_ORIGIN);
 
   await page.goto('/index.html');
   await expect(page.locator('#posnic-offline')).toBeVisible({ timeout: 15000 });
@@ -1692,7 +1693,7 @@ test('a stalled native network lookup cannot hold discovery open forever', async
 
 test('automatic setup skips LAN with Wi-Fi off and preserves cloud priority',async({page})=>{
  await seed(page,{lan:LAN,cloud:CLOUD,priority:'cloud'});
- await page.addInitScript(()=>{localStorage.setItem('posnic.setup-intro-seen','1');localStorage.setItem('posnic.automatic-connections','1');window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:async()=>({wifi:false})}}};});
+ await page.addInitScript(()=>{localStorage.setItem('posnic.setup-intro-seen','1');localStorage.setItem('posnic.automatic-connections','0');window.Capacitor={Plugins:{LocalNetwork:{getLocalIp:async()=>({wifi:false})}}};});
  let localCalls=0;await page.route(LAN_ORIGIN+'/**',r=>{localCalls++;return r.abort();});await serve(page,CLOUD_ORIGIN);
  await page.goto('/index.html');await expect.poll(()=>baseUrl(page)).toBe(CLOUD);
  expect(localCalls).toBe(0);expect(await page.evaluate(()=>POSNIC.server.priority)).toBe('cloud');

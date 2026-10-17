@@ -26,7 +26,7 @@
     if (!answer || Date.now() - answer.at > 60000) return 'Not checked yet';
     if (answer.reachable && !answer.ok) return 'Sign-in required';
     if (!answer.ok) return 'Not reachable';
-    return POSNIC.server.baseUrl === base ? 'Using now' : 'Ready as backup';
+    return POSNIC.server.baseUrl === base ? 'Using now' : 'Available';
   }
   function draw() {
     if (!root) return;
@@ -35,11 +35,11 @@
     const saved=[POSNIC.server.lan,POSNIC.server.cloud].filter(Boolean);
     const unavailable=POSNIC.net.offline || (saved.length>0&&saved.every(base=>{const h=health.get(base);return h&&!h.ok&&!h.reachable;}));
     const title = !signedIn ? 'Please sign in again' : unavailable ? 'Can’t reach your shop' : reachable ? POSNIC.server.isLocal ? 'Connected on shop Wi-Fi' : 'Connected over internet' : 'Check your connections';
-    const detail = !signedIn ? 'Your shop addresses are saved. Sign in again to continue.' : unavailable ? 'Your saved orders are safe. We’ll keep trying automatically.' : reachable ? localStorage.getItem('posnic.automatic-connections') === '1' ? 'Captain switches to your backup if needed.' : 'Automatic switching is off.' : 'Check which saved connections are available.';
+    const detail = !signedIn ? 'Your shop addresses are saved. Sign in again to continue.' : unavailable ? 'Your saved orders are safe. We’ll keep trying automatically.' : reachable ? 'Automatic switching is off.' : 'Check which saved connections are available.';
     const kinds = POSNIC.server.priority === 'cloud' ? ['cloud','lan'] : ['lan','cloud'];
     root.innerHTML = `<header>${button('←','back')}<strong>${escape(t(editing ? 'Edit connection' : 'Shop connections'))}</strong></header><main>${editing ?
       `<h1>${escape(label(editing))}</h1><p>${escape(t('Only change this if your shop address has changed.'))}</p><label>${escape(label(editing))}<input id="shop-connection-address" inputmode="url" autocapitalize="none" spellcheck="false" value="${escape(draft)}"></label><p>${escape(t('A different shop requires its own sign-in.'))}</p>` :
-      `<h1>${escape(shopName())}</h1><section class="shop-connection-state"><strong>${escape(t(title))}</strong><p>${escape(t(detail))}</p></section><h2>${escape(t('Saved connections'))}</h2><p>${escape(t('Try the first available connection. Drag to reorder, or use the arrows.'))}</p><div class="shop-connection-list">${kinds.map((kind,index) => `<div class="shop-connection-row" draggable="true" data-kind="${kind}"><span class="shop-connection-grip" aria-hidden="true">⠿</span><div><strong>${index+1}. ${escape(label(kind))}</strong><small translate="no">${escape(POSNIC.server[kind] || '—')}</small><small>${escape(t(status(POSNIC.server[kind])))}</small>${kind === 'lan' ? button('Search','search','shop-connection-search') : ''}</div><button type="button" data-connection-action="edit-${kind}" aria-label="${escape(t('Edit')+' '+label(kind))}">✎</button><button type="button" data-connection-action="reorder" aria-label="${escape(t(index ? 'Move up' : 'Move down'))}">${index ? '↑' : '↓'}</button></div>`).join('')}</div><label class="shop-connection-toggle"><span>${escape(t('Switch automatically'))}<small>${escape(t('Use the backup when the first connection fails.'))}</small></span><input id="shop-connection-auto" type="checkbox" ${localStorage.getItem('posnic.automatic-connections') === '1' ? 'checked' : ''}></label>`}<p class="shop-connection-message" role="status">${escape(t(message))}</p></main><footer>${button(editing ? 'Check & save' : signedIn ? 'Check connection' : 'Sign in again', editing ? 'save' : signedIn ? 'check' : 'signin', 'shop-connection-primary')}${button(editing ? 'Cancel' : 'Back to orders', editing ? 'cancel-edit' : 'orders', 'shop-connection-quiet')}</footer>`;
+      `<h1>${escape(shopName())}</h1><section class="shop-connection-state"><strong>${escape(t(title))}</strong><p>${escape(t(detail))}</p></section><h2>${escape(t('Saved connections'))}</h2><div class="shop-connection-list">${kinds.map((kind,index) => `<div class="shop-connection-row" data-kind="${kind}"><div><strong>${escape(label(kind))}</strong><small translate="no">${escape(POSNIC.server[kind] || '—')}</small><small>${escape(t(status(POSNIC.server[kind])))}</small>${kind === 'lan' ? button('Search','search','shop-connection-search') : ''}</div><button type="button" data-connection-action="edit-${kind}" aria-label="${escape(t('Edit')+' '+label(kind))}">✎</button></div>`).join('')}</div>`}<p class="shop-connection-message" role="status">${escape(t(message))}</p></main><footer>${button(editing ? 'Check & save' : signedIn ? 'Check connection' : 'Sign in again', editing ? 'save' : signedIn ? 'check' : 'signin', 'shop-connection-primary')}${button(editing ? 'Cancel' : 'Back to orders', editing ? 'cancel-edit' : 'orders', 'shop-connection-quiet')}</footer>`;
     root.querySelectorAll('button,input').forEach(node => node.disabled = busy && !['back','orders','cancel-edit'].includes(node.dataset.connectionAction));
     const back=root.querySelector('[data-connection-action=back]');back.innerHTML=icon('back');back.setAttribute('aria-label',t('Back to Account'));
     const searchButton=root.querySelector('[data-connection-action=search]');if(searchButton)searchButton.insertAdjacentHTML('afterbegin',icon('search'));
@@ -47,7 +47,7 @@
     const statePanel=root.querySelector('.shop-connection-state');if(statePanel)statePanel.dataset.connected=String(reachable&&signedIn&&!POSNIC.net.offline);
     if(reachable&&signedIn&&!POSNIC.net.offline)statePanel?.querySelector('strong').insertAdjacentHTML('afterbegin',icon('check'));
     root.querySelectorAll('.shop-connection-row').forEach(row=>{
-      row.dataset.ready=String(['Using now','Ready as backup'].includes(status(POSNIC.server[row.dataset.kind])));
+      row.dataset.ready=String(['Using now','Available'].includes(status(POSNIC.server[row.dataset.kind])));
       const address=row.querySelector('small[translate]');address.textContent=shortAddress(POSNIC.server[row.dataset.kind])||'—';
       const edit=row.querySelector('[data-connection-action^="edit-"]');edit.textContent='';
       edit.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m16 3 5 5-13 13H3v-5L16 3Zm-3 3 5 5"/></svg>';
@@ -117,7 +117,7 @@
   document.addEventListener('DOMContentLoaded',()=>{
     // The approved setup explicitly defaults to automatic fallback. Never
     // overwrite an existing off preference.
-    if(localStorage.getItem('posnic.automatic-connections')===null)localStorage.setItem('posnic.automatic-connections','1');
+    localStorage.setItem('posnic.automatic-connections','0');
     root=document.createElement('section');root.id='shop-connections';
     document.getElementById('connection-addresses').append(root);
     root.addEventListener('click',event=>{

@@ -1114,6 +1114,19 @@ function setBillTotals(totals) {
     if (totals.tax > 0) {
         rows += '<div class="bill-row"><span>Tax</span><span>' + money(totals.tax) + '</span></div>';
     }
+    if (localStorage.getItem('orderType') === 'Room') {
+        let room;
+        try { room = JSON.parse(localStorage.getItem('kiosk_room') || 'null'); } catch (_) {}
+        if (room?.accepted && room.charge?.enabled) {
+            const policy = CaptainMoney.current();
+            const round = value => CaptainMoney.fromMinor(CaptainMoney.toMinor(value, policy), policy);
+            const charge = round(Math.max(0, totals.total - totals.tax) * Number(room.charge.percent) / 100);
+            const chargeTax = room.charge.taxed ? round(charge * Number(room.charge.tax_rate || 0) / 100) : 0;
+            rows += '<div class="bill-row"><span>' + billText(room.charge.name) + ' (' + Number(room.charge.percent) + '%)</span><span>' + money(charge) + '</span></div>';
+            if (chargeTax) rows += '<div class="bill-row"><span>Tax</span><span>' + money(chargeTax) + '</span></div>';
+            totals = {...totals, total: totals.total + charge + chargeTax};
+        }
+    }
     rows += '<div class="bill-row is-total"><span>Total</span><span>' + money(totals.total) + '</span></div>';
 
     host.innerHTML = rows;
@@ -1862,13 +1875,22 @@ async function checkout(transactionId) {
         if (!branchId) {
             branchId = localStorage.getItem('branch_id') || null;
         }
-        const orderType = localStorage.getItem("orderType");
+        const orderType = localStorage.getItem("orderType") || 'Dine-in';
         const note = localStorage.getItem('note');
 
         const discountPercentage = parseFloat(localStorage.getItem('kiosk_discount_percentage')) || 0;
         const discountAmount = parseFloat(localStorage.getItem('kiosk_discount_amount')) || 0;
         const discountDescription = localStorage.getItem('kiosk_discount_description') || '';
-        const tableNo = localStorage.getItem('kiosk_table_no') || '';
+        let room = null;
+        if (orderType === 'Room') {
+            try { room = JSON.parse(localStorage.getItem('kiosk_room') || 'null'); } catch (_) {}
+            if (!room?.venue || !room?.unit || String(room.branch) !== String(branchId) || room.shop !== (window.POSNIC?.session?.shopKey || ''))
+                throw new Error('Choose a venue and enter the room number.');
+        }
+        const tableNo = (localStorage.getItem('kiosk_table_no') || '').trim();
+        if (orderType !== 'Take away' && orderType !== 'Room' && !tableNo && localStorage.getItem('captain.table-required:' + (window.POSNIC?.session?.shopKey || '') + ':' + (branchId || '')) !== 'false') {
+            throw new Error(window.I18N?.t('Choose a table first.') || 'Choose a table first.');
+        }
         const tableId = localStorage.getItem('kiosk_table_id') || '';
         const personCount = parseInt(localStorage.getItem('kiosk_person_count') || '0', 10) || 0;
         //await fetchAndStoreBranch(branchId, false);
@@ -1948,6 +1970,7 @@ async function checkout(transactionId) {
                    shop's history in two at the version boundary. */
                 sale_method: 'Table-Order',
                 order: orderType,
+                ...(room ? {venue:room.venue, unit:room.unit, destination:{unit:room.unit}, room_charge_accepted:room.accepted === true, room_charge_quote:{percent:room.charge?.percent,taxed:room.charge?.taxed === true,tax_rate:room.charge?.tax_rate || 0}} : {}),
                 note: note,
                 kiosk_discount_percentage: discountPercentage,
                 kiosk_discount_amount: discountAmount,
@@ -1967,7 +1990,7 @@ async function checkout(transactionId) {
         await saveCartData([]);
         if (!OrderQueue.update(orderKey, {held: false}))
             throw new Error('Order is saved, but needs recovery. Keep app data and retry.');
-        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note', 'kiosk_takeaway_reservation']) localStorage.removeItem(key);
+        for (const key of ['kiosk_discount_percentage', 'kiosk_discount_amount', 'kiosk_discount_description', 'kiosk_table_no', 'kiosk_table_id', 'kiosk_person_count', 'note', 'kiosk_takeaway_reservation', 'kiosk_room']) localStorage.removeItem(key);
         await renderCart([], true);
         if (typeof hideOrderProcessingScreen === 'function') hideOrderProcessingScreen();
         window.POSNIC_ORDER_QUEUE_UI?.render();

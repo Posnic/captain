@@ -9,8 +9,9 @@
     // Fetch public presentation hints only from the server that answered.
     // A discovered cloud address still needs authenticated route proof.
     try {
-      const http=window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null;
-      const response=await bounded(http ? http.request({url:hit.base+'/captain/v1/discovery',method:'GET',headers:{Accept:'application/json'},connectTimeout:1200,readTimeout:1200,disableRedirects:true}) : fetch(hit.base+'/captain/v1/discovery', {signal,credentials:'omit',redirect:'error'}),1500,signal,'Discovery timed out.');
+      const localRequest=window.Capacitor?.getPlatform?.()==='android' && /^http[s]?:\/\/(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/.test(hit.base);
+      const http=!localRequest && window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.CapacitorHttp : null;
+      const response=await bounded(http ? http.request({url:hit.base+'/captain/v1/discovery',method:'GET',headers:{Accept:'application/json'},connectTimeout:1200,readTimeout:1200,disableRedirects:true}) : (window.CaptainFetch || fetch)(hit.base+'/captain/v1/discovery', {signal,credentials:'omit',redirect:'error'}),1500,signal,'Discovery timed out.');
       if(response.ok || (response.status>=200&&response.status<300)) {
         const details=http ? (typeof response.data==='string'?JSON.parse(response.data):response.data) : await bounded(response.json(),500,signal,'Discovery timed out.');
         if(!signal?.aborted && details?.connections && typeof details.connections==='object')
@@ -317,7 +318,7 @@
       button.innerHTML = '<span class="setup-server-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor"/></svg></span><span class="setup-server-info"><strong translate="no"></strong><span class="setup-server-network">Wi-Fi</span></span><span class="setup-server-action"><span>Connect</span><span aria-hidden="true">→</span></span>';
       const title=button.querySelector('strong');
       title.dir='auto';
-      const paintName=()=>{title.textContent=shopName(hit) || window.I18N?.t('Shop found') || 'Shop found';};
+      const paintName=()=>{title.textContent=shopName(hit) || new URL(hit.base).host;};
       paintName();
       const address=document.createElement('small');address.className='setup-server-address';address.dir='ltr';address.translate=false;address.textContent=new URL(hit.base).host;
       title.after(address);
@@ -628,6 +629,12 @@
       note("Saved");
       return;
     }
+    // Confirm identity before saving addresses or replacing any session.
+    if (window.CaptainSetupFlow && !(await CaptainSetupFlow.found(hit, signal))) {
+      if (!signal?.aborted && navigationVersion === startedAt) showView('start');
+      return;
+    }
+    if (signal?.aborted || navigationVersion !== startedAt) return;
     if (POSNIC.session.managed) {
       await POSNIC.session.addAddress(hit.base, signal);
       if (signal?.aborted || navigationVersion !== startedAt) return;
@@ -644,16 +651,12 @@
     // Existing canAdopt / route-proof checks still gate authenticated failover.
     POSNIC.server.remember({[POSNIC.server.isLanUrl(hit.base)?'lan':'cloud']: hit.base, ...(POSNIC.server.isLanUrl(hit.base) && cloud && !POSNIC.server.isLanUrl(cloud) ? {cloud} : {})});
     note("");
-    if (window.CaptainSetupFlow && !(await CaptainSetupFlow.found(hit, signal))) {
-      POSNIC.server.unpin();
-      showView('start');
-      return;
-    }
     if (signal?.aborted) return;
     showStep(true);
     $("username").focus();
   }
   window.CaptainOnboarding = {
+    describeShop,
     cloudOwner() { if (!operation && !selection) {showView('cloud');void run(signal=>cloud('login',signal));} },
     cloudStaff() { if (!operation && !selection) {showView('cloud-address');$('captain-server').value=POSNIC.server.cloud||'';updateConnectAction();$('captain-server').focus();} },
     otherWays() { if (!operation && !selection) showView('other'); },
