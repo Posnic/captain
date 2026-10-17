@@ -13,7 +13,7 @@
 #captain-code-options label { display:block; margin:12px 0 6px; color:var(--ink-soft); font-size:14px; }
 #captain-code-options input[type="checkbox"] { width:20px; height:20px; vertical-align:middle; margin-right:6px; }
 #captain-note:empty { display:none; }
-.brand-circle { background:var(--accent) !important; }
+.brand-circle { background:transparent !important; }
 .auth-page { max-width:520px; margin:0 auto; }
 .auth-card { background:var(--surface) !important; color:var(--ink); box-shadow:none !important; border-color:var(--line) !important; }
 .auth-card .section-title { color:var(--ink); }

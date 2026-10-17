@@ -171,7 +171,7 @@ test('the button says what will happen, not OK', () => {
   const sheet = openSheet();
   sheet.ask(FISH);
 
-  assert.strictEqual(sheet.at('ask-run-out-ok').textContent, 'It has run out');
+  assert.strictEqual(sheet.at('ask-run-out-ok').textContent, 'Mark sold out');
 });
 
 test('IT SAYS FOR HOW LONG, because sold out with no horizon is never used', () => {
@@ -183,7 +183,7 @@ test('IT SAYS FOR HOW LONG, because sold out with no horizon is never used', () 
   const sheet = openSheet();
   sheet.ask(FISH);
 
-  assert.match(sheet.at('ask-run-out-why').textContent, /rest of today/);
+  assert.match(sheet.at('ask-run-out-why').textContent, /today/);
   assert.match(sheet.at('ask-run-out-why').textContent, /tomorrow/);
 });
 
@@ -195,8 +195,8 @@ test('A DISH ALREADY OFF IS ASKED THE OPPOSITE QUESTION', () => {
   const sheet = openSheet();
   sheet.ask(GONE);
 
-  assert.strictEqual(sheet.at('ask-run-out-ok').textContent, 'Put back on');
-  assert.match(sheet.at('ask-run-out-why').textContent, /order it again/);
+  assert.strictEqual(sheet.at('ask-run-out-ok').textContent, 'Make available');
+  assert.match(sheet.at('ask-run-out-why').textContent, /order again/);
 });
 
 test('a dish with no name is still something you can answer about', () => {

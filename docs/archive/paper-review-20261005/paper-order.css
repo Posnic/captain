@@ -1,0 +1,18 @@
+#paper-order-open{position:static;flex:0 0 46px;padding:10px;min-height:44px}
+#paper-order-open svg{width:24px;height:24px;display:block}
+#paper-order-open[hidden]{display:none}
+.paper-order-dialog{box-sizing:border-box;width:min(680px,calc(100% - 24px));max-height:calc(100dvh - 24px);border:0;border-radius:16px;padding:20px;background:var(--surface);color:var(--ink);overflow:auto}
+.paper-order-dialog::backdrop{background:#0008}.paper-order-dialog header{display:flex;justify-content:space-between;align-items:center}.paper-order-dialog h2{font-size:24px}
+.paper-order-dialog header{position:sticky;top:-20px;background:var(--surface);z-index:2;padding:10px 0}.paper-order-dialog summary{min-height:44px;padding:10px 0;color:var(--accent);cursor:pointer}.paper-order-dialog .paper-send{position:sticky;bottom:0}
+.paper-order-dialog button,.paper-order-dialog select,.paper-order-dialog input{min-height:44px;border:1px solid var(--line-strong);border-radius:8px;padding:8px;background:var(--surface);color:var(--ink);max-width:100%}
+.paper-order-dialog label{display:flex;flex-direction:column;gap:4px}.paper-order-dialog [role=status]{color:var(--ink-soft)}.paper-preview{max-height:340px;overflow:auto;margin:12px 0}.paper-preview canvas{width:100%;touch-action:none}
+.paper-seating{display:grid;grid-template-columns:2fr 1fr;gap:12px}.paper-row{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:8px;border-bottom:1px solid var(--line);padding:16px 0}.paper-row small{grid-column:1/-1}.paper-row select{width:100%}.paper-order-dialog .paper-send{display:block;width:100%;background:var(--accent);color:var(--accent-ink);margin-top:20px}.paper-camera{padding:12px;border:1px dashed var(--line-strong);border-radius:10px}
+.paper-order-dialog[open]{display:flex;flex-direction:column;overflow:hidden}
+.paper-order-dialog header{position:static;flex-shrink:0}
+.paper-order-dialog [role=status]{flex-shrink:0}
+.paper-order-dialog [data-content]{min-height:0;overflow:auto;overscroll-behavior:contain}
+.paper-order-dialog .paper-actions{flex-shrink:0;border-top:1px solid var(--line);padding-top:12px;margin-top:12px;background:var(--surface)}
+.paper-order-dialog .paper-actions[hidden]{display:none}
+.paper-order-dialog .paper-actions .paper-send{position:static;margin:0}
+.paper-order-dialog :is(.paper-seating,.paper-row)>*{min-width:0}
+.paper-order-dialog :is(input,select){box-sizing:border-box;width:100%;min-width:0}

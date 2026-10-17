@@ -80,3 +80,38 @@ for (const width of [320, 800])
     ).toHaveAttribute("href", "tables.html?source=floor&table=T1");
     await expect(dialog.locator("[data-bill-pay]")).toHaveCount(0);
   });
+
+
+test("concurrent bill readers recover transient failures without caching paid balances", async ({page}) => {
+  await onTheMenu(page, "nothing");
+  await page.goto("/kot-management.html");
+  let calls=0;
+  const path="/captain/v1/bill?table=retry-fixture";
+  await page.route("**/captain/v1/bill?table=retry-fixture", route => {
+    calls++;
+    return calls<=2 ? route.fulfill({status:503,json:{error:{message:"Temporary outage"}}}) :
+      route.fulfill({json:{totalMinor:10000,dueMinor:calls===3?10000:5000,lines:[]}});
+  });
+  const bills=await page.evaluate(path=>Promise.all([CaptainBill.read(path),CaptainBill.read(path)]),path);
+  expect(calls).toBe(3);
+  expect(bills.map(b=>b.dueMinor)).toEqual([10000,10000]);
+  expect(await page.evaluate(async path=>(await CaptainBill.read(path)).dueMinor,path)).toBe(5000);
+  expect(calls).toBe(4);
+});
+
+test("bill recovery stops at an authorization denial",async({page})=>{
+  await onTheMenu(page,"nothing");await page.goto("/kot-management.html");let calls=0;
+  await page.route("**/captain/v1/bill?table=denied-fixture",route=>{calls++;return route.fulfill({status:403,json:{error:{message:"Permission is required."}}});});
+  const status=await page.evaluate(()=>CaptainBill.read("/captain/v1/bill?table=denied-fixture").catch(e=>e.status));
+  expect(status).toBe(403);expect(calls).toBe(1);
+});
+
+test("bill retry never crosses a branch change",async({page})=>{
+  await onTheMenu(page,"nothing");await page.goto("/kot-management.html");let calls=0;
+  await page.route("**/captain/v1/bill?table=scope-fixture",async route=>{
+    calls++;await page.evaluate(()=>localStorage.setItem("branch_id","another-branch"));
+    await route.fulfill({status:503,json:{error:{message:"Temporary outage"}}});
+  });
+  await page.evaluate(()=>CaptainBill.read("/captain/v1/bill?table=scope-fixture").catch(()=>null));
+  expect(calls).toBe(1);
+});

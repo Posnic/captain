@@ -495,7 +495,7 @@ for(const theme of ['light','dark'])test(`market price dialog and Quick sale fit
  await page.setViewportSize({width:320,height:640});
  await page.emulateMedia({colorScheme:theme});
  await atTheMenu(page);
- await expect(page.locator('#product-quick-sale')).toContainText('Quick sale');
+ await expect(page.locator('#product-quick-sale')).toContainText('Custom item');
  await expect(page.locator('#product-quick-sale')).toBeInViewport();
  await page.locator('.dish[data-id="p-fish"] .btn-add').click();
  const card=page.locator('#ask-price-card');

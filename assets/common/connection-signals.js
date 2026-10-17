@@ -3,12 +3,29 @@
   "use strict";
   const seen = new Map();
   const t = text => window.I18N?.t(text) || text;
+  let wifi = null;
+  let switching = false, feedback = '', feedbackTimer;
   function paint() {
     if (!window.POSNIC) return;
     const {server,net} = POSNIC;
+    wifi=POSNIC.internetChoice?.wifi ?? wifi;
+    const anchor=document.querySelector('.floor-section');
+    if(anchor){
+      let banner=document.getElementById('captain-connection-status');
+      if(!banner){banner=document.createElement('div');banner.id='captain-connection-status';banner.setAttribute('role','status');banner.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;border-radius:12px;background:var(--surface-sunk,#f3f6fb);color:var(--ink,#172638);font:500 13px/1.5 Inter,system-ui';anchor.before(banner);}
+      banner.hidden = !net.offline && !feedback;
+      banner.style.display = banner.hidden ? 'none' : 'flex';
+      banner.replaceChildren();
+      const text=document.createElement('span');text.textContent=t(net.offline?'Reconnecting':server.isLocal?'Shop Wi-Fi':'Internet');banner.append(text);
+      if(feedback)text.textContent=feedback;
+      if(!net.offline&&!server.isLocal&&wifi===false){
+        const action=document.createElement('button');action.type='button';action.textContent=t('Connect to Wi-Fi');action.style.cssText='border:0;background:transparent;color:var(--accent,#2356dc);min-height:44px;font:inherit';action.onclick=()=>POSNIC.internetChoice.openWifi();banner.append(action);
+      }
+    }
     document.querySelectorAll("[data-route-signal]").forEach(button => {
       const local = button.dataset.routeSignal === "local";
       const base = (local ? server.lan : server.cloud) || (server.isLocal === local ? server.baseUrl : null);
+      button.hidden = !base;
       const answer = seen.get(base);
       const active = !!base && server.baseUrl === base && !net.offline;
       const reachable = !!answer?.reachable && Date.now() - answer.at < 60000;
@@ -19,6 +36,8 @@
       button.setAttribute("aria-label", t(name) + ": " + t(status));
       button.title = t(name) + ": " + t(status);
       button.dataset.reachable = String(reachable);
+      button.disabled = switching || !(server.lan && server.cloud);
+      button.setAttribute('aria-busy',String(switching));
     });
   }
   window.addEventListener("posnic:route-health", event => {
@@ -32,13 +51,36 @@
   });
   window.addEventListener("posnic:offline", () => { seen.clear(); paint(); });
   window.addEventListener("posnic:server-changed", paint);
+  window.addEventListener("posnic:connections-saved", paint);
+  window.addEventListener('posnic:wifi-state',event=>{wifi=event.detail;paint();});
   document.addEventListener("visibilitychange", paint);
   document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-route-signal]").forEach(button => button.addEventListener("click", () => {
-      sessionStorage.setItem("posnic_change_server", "1");
-      sessionStorage.setItem("posnic_connection_view", "settings");
-      location.href = "index.html";
+    document.querySelectorAll("[data-route-signal]").forEach(button => button.addEventListener("click", async () => {
+      if(switching)return;
+      switching=true;feedback=t('Connecting to your shop…');clearTimeout(feedbackTimer);paint();
+      try{
+        await POSNIC.internetChoice.select(button.dataset.routeSignal==='local'?'lan':'cloud');
+        feedback=t(POSNIC.server.isLocal?'Connected on shop Wi-Fi':'Connected over internet');
+      }catch(error){
+        feedback=error.message||t('Could not connect. Try again.');
+        if(['CONNECTION_SETUP','CONNECTION_SIGNIN','SESSION_AUTHORITY','WRONG_AUTHORITY'].includes(error.code)||error.status===401)
+          window.CaptainConnectionSignIn?.open(button.dataset.routeSignal==='local'?'lan':'cloud');
+      }
+      finally{switching=false;paint();feedbackTimer=setTimeout(()=>{feedback='';paint();},5000);}
     }));
+    const pendingCloud=sessionStorage.getItem('captain.pending-cloud-signin');
+    if(pendingCloud){
+      sessionStorage.removeItem('captain.pending-cloud-signin');
+      Promise.resolve(POSNIC.session.ready).then(()=>{
+        const base=POSNIC.server.normalize(pendingCloud);
+        const previous=POSNIC.server.normalize(sessionStorage.getItem('captain.link-return-base'));
+        sessionStorage.removeItem('captain.link-return-base');
+        if(POSNIC.session.active&&base&&!POSNIC.server.isLanUrl(base)){
+          if(previous&&POSNIC.session.hasCredential?.(previous))POSNIC.server.pin(previous);
+          window.CaptainConnectionSignIn?.open('cloud',{base});
+        }
+      });
+    }
     paint();
     setInterval(() => { if (!document.hidden) paint(); },15000);
   });

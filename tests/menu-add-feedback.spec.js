@@ -11,6 +11,9 @@ for(const motion of ['no-preference','reduce'])test(`successful add and increase
 
 for(const theme of ['light','dark'])test(`single floating bubble then pop ${theme}`,async({page})=>{
  await page.emulateMedia({reducedMotion:'no-preference'});await onTheMenu(page,'nothing');
+ // Hold the cleanup timer while screenshots inspect the paused CSS animation.
+ await page.clock.install();
+ await page.clock.pauseAt(new Date());
  await page.evaluate(theme=>{document.documentElement.setAttribute('data-color-scheme',theme);new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)if(n.classList?.contains('menu-add-burst')){const a=n.firstElementChild.getAnimations()[0];a.pause();a.currentTime=300;}}).observe(document.body,{childList:true});},theme);
  await page.locator('.btn-add[data-id="p-biryani"]').first().click();
  const bubble=page.locator('.menu-add-burst i');await expect(bubble).toHaveCount(1);
@@ -20,5 +23,6 @@ for(const theme of ['light','dark'])test(`single floating bubble then pop ${them
  await bubble.evaluate(el=>el.getAnimations()[0].currentTime=405);
  const popped=await bubble.boundingBox();expect(popped.width).toBeGreaterThan(floating.width*1.3);
  expect(await page.locator('.menu-add-burst').evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
+ await page.clock.runFor(2000);
  await expect(page.locator('.menu-add-burst')).toHaveCount(0);
 });

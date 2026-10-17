@@ -10,6 +10,7 @@ test('takeaway reservation is carried from entry to cart and durable order paylo
   });
   await page.goto('/discount.html');
   await page.locator('label[for=order_type_takeaway]').click();
+  await page.locator('.btn-next').click();
   await expect(page).toHaveURL(/products.html/);
   await page.waitForFunction(()=>typeof updateQuantity === 'function');
   await page.evaluate(()=>updateQuantity('p-biryani',1));
@@ -36,6 +37,7 @@ test('failed reservation retries the same request instead of inventing a number'
  });
  await page.goto('/discount.html');
  await page.locator('label[for=order_type_takeaway]').click();
+  await page.locator('.btn-next').click();
  await expect.poll(()=>requests.length).toBe(1);
  await expect(page).toHaveURL(/discount.html/);
  const draft=await page.evaluate(()=>JSON.parse(localStorage.getItem('kiosk_takeaway_reservation')));

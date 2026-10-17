@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { onTheMenu } from './support/shop.js';
 
-test('route signals show measured reachability and open the shared address editor', async ({ page }) => {
+test('route signals show measured reachability and switch without leaving orders', async ({ page }) => {
   await onTheMenu(page, 'nothing');
   await page.goto('/kot-management.html');
   await page.waitForFunction(() => !!window.POSNIC);
@@ -15,13 +15,7 @@ test('route signals show measured reachability and open the shared address edito
   await expect(page.locator('[data-route-signal=remote]')).toHaveClass(/is-reachable/);
   await expect(page.locator('[data-route-signal=local]')).not.toHaveClass(/is-reachable/);
   await page.locator('[data-route-signal=remote]').click();
-  await expect(page.locator('#connection-addresses')).toBeVisible();
-  await expect(page.locator('#connection-cloud')).toHaveValue(/smoke.posnic.io/);
-  await page.reload();
-  await expect(page.locator('#connection-addresses')).toBeVisible();
-  await expect(page).toHaveURL(/index.html/);
-  await page.locator('#connection-back').click();
-  await page.locator('#connection-back').click();
+  await expect(page.locator('#captain-connection-status')).toContainText('Connected over internet');
   await expect(page).toHaveURL(/kot-management/);
 });
 

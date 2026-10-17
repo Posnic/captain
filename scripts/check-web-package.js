@@ -7,6 +7,7 @@ for (const name of ['tests', 'scripts', 'archive', 'artifacts', 'output', 'build
   assert.equal(fs.existsSync(path.join(root, name)), false, `${name} must not ship in the app`);
 }
 let checked = 0;
+assert.ok(fs.existsSync(path.join(root, 'assets/common/captain-mark.svg')), 'Welcome artwork must ship at its runtime path');
 for (const name of fs.readdirSync(root).filter(name => name.endsWith('.html'))) {
   const html = fs.readFileSync(path.join(root, name), 'utf8');
   for (const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
@@ -20,3 +21,10 @@ for (const name of fs.readdirSync(root).filter(name => name.endsWith('.html'))) 
 }
 assert.ok(checked > 0, 'No application script references checked');
 console.log(`Web package verified: ${checked} script references; no test, build or archived code.`);
+
+for (const file of ['index.js', 'browser.js', 'styles.css', 'assets/posnic-mark.svg']) {
+  assert.ok(fs.existsSync(path.join(root, 'packages/connection-setup', file)), `Shared connection setup requires ${file}`);
+}
+for (const file of ['README.md', 'native.js', 'package.json', 'LICENSE']) {
+  assert.equal(fs.existsSync(path.join(root, 'packages/connection-setup', file)), false, `Non-browser package file should not ship in the APK: ${file}`);
+}

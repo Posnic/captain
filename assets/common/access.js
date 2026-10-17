@@ -1,5 +1,75 @@
 (function (host) {
   "use strict";
+  // Keep local till traffic on the connected Wi-Fi even when Android chooses
+  // cellular as its Internet network. Cloud requests retain their usual route.
+  host.CaptainFetch = async function (url, options = {}) {
+    const parsed = new URL(url, host.location?.href || 'http://localhost');
+    const parts = parsed.hostname.split('.').map(Number);
+    const local = /^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname) &&
+      (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+       (parts[0] === 192 && parts[1] === 168));
+    const plugin = host.Capacitor?.getPlatform?.() === 'android' && host.Capacitor?.Plugins?.LocalNetwork;
+    if (!local || host.Capacitor?.getPlatform?.() !== 'android') return host.fetch(url, options);
+    if (!parsed.pathname.startsWith('/api/') || !plugin?.request)
+      throw new Error('Shop Wi-Fi transport is unavailable. Update Captain and try again.');
+    if (options.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    // No transport fallback after sending: a timed-out order may already exist.
+    const id = host.crypto.randomUUID();
+    let abort;
+    const cancelled = new Promise((_, reject) => {
+      abort = () => {
+        plugin.cancelRequest?.({id}).catch(() => {});
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      options.signal?.addEventListener('abort', abort, { once: true });
+    });
+    try {
+      const result = await Promise.race([plugin.request({
+        id, url: parsed.href, method: options.method || 'GET',
+        headers: Object.fromEntries(new Headers(options.headers || {})),
+        ...(options.body == null ? {} : { body: options.body }),
+      }), cancelled]);
+      const bytes = Uint8Array.from(atob(result.data || ''), c => c.charCodeAt(0));
+      return new Response([204,205,304].includes(result.status) ? null : bytes,
+        { status: result.status, headers: result.headers });
+    } finally { options.signal?.removeEventListener('abort', abort); }
+  };
+  // Check the same authorization used by the orders screen before saving a grant.
+  // The credential is sent only to the server which just issued it.
+  host.CaptainValidateAccess = async function (grant, base, signal) {
+    if (!grant?.token) return; // Legacy servers do not issue bearer grants.
+    const branch = grant.branches?.[0]?.branch_id || grant.branches?.[0]?.store_id || '';
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, {once:true});
+    const timer = setTimeout(abort, 7000);
+    try {
+      if (signal?.aborted) controller.abort();
+      const response = await host.CaptainFetch(base + '/sales/getListKot?page=1&limit=1&branchId=' + encodeURIComponent(branch), {
+        credentials:'omit', redirect:'error', cache:'no-store', signal:controller.signal,
+        headers:{Accept:'application/json', Authorization:'Bearer ' + grant.token}
+      });
+      const body = await response.json();
+      if (!response.ok || body?.type === 'error') throw Object.assign(new Error(body?.error?.message || body?.message || 'Could not sign in.'), {status:response.status,code:body?.error?.code || body?.code});
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+  };
+  function showDisabled(error) {
+    if (!host.document || host.document.getElementById('captain-disabled')) return;
+    if(error.code !== 'CAPTAIN_DISABLED' && !/captain is disabled/i.test(error.message || ''))return;
+    const t = value => host.I18N?.t(value) || value;
+    const dialog=host.document.createElement('dialog');dialog.id='captain-disabled';
+    dialog.style.cssText='box-sizing:border-box;width:min(420px,calc(100% - 32px));margin:auto;padding:24px;border:1px solid var(--line,#ccd5e0);border-radius:20px;background:var(--surface,#fff);color:var(--ink,#172638)';
+    const message=host.document.createElement('p');message.textContent=t(error.message);dialog.append(message);
+    for(const label of ['Sign in','Change server']){
+      const button=host.document.createElement('button');button.textContent=t(label);
+      button.style.cssText='min-height:48px;width:100%;margin-top:12px;border-radius:12px;border:1px solid var(--line,#ccd5e0);background:var(--surface,#fff);color:var(--accent,#2458db);font:inherit';
+      button.onclick=()=>{host.sessionStorage.setItem('posnic_editing_server','1');host.sessionStorage.setItem('posnic_connection_view',label==='Change server'?'start':'address');host.location.href='index.html';};
+      dialog.append(button);
+    }
+    dialog.addEventListener('cancel',e=>e.preventDefault());
+    host.document.body.append(dialog);dialog.showModal();
+  }
+  host.CaptainShowDisabled = showDisabled;
   function createAccess(plugin, storage, fetcher, cryptoApi = host.crypto) {
     let state = {},
       profile = null,
@@ -56,6 +126,9 @@
     }
     const ready = (async () => {
       apply(await plugin.status());
+      if(storage.getItem('posnic.remember-session')==='0'&&!host.sessionStorage?.getItem('posnic.current-session')) {
+        await plugin.clear();apply(await plugin.status());storage.removeItem('posnic.session');
+      }
       const legacy = JSON.parse(storage.getItem("posnic.session") || "{}");
       if (!profile && legacy.token) {
         state = legacy;
@@ -350,10 +423,12 @@
       }
       return entries[id];
     }
+    let activeRequests = 0;
     async function transport(path, options, refreshBody) {
       if (refreshBody && !state.routeKey)
         return post(state.base, path, refreshBody);
       const start = generation;
+      const choiceRevision = host.POSNIC?.internetChoice?.revision;
       const choices = [state, ...(!refreshBody ? state.connections || [] : [])];
       const credentials = new Map();
       for (const credential of choices)
@@ -362,18 +437,34 @@
           .filter(Boolean)) {
           if (!credentials.has(base)) credentials.set(base, credential);
         }
+      const preferred=host.POSNIC?.server.pinned || host.POSNIC?.server.baseUrl || state.lastRoute;
+      const preferredLocal=host.POSNIC?.server.priority !== 'cloud';
+      let wifi=null;
+      if(host.Capacitor?.Plugins?.LocalNetwork?.getLocalIp) {
+        try { const network=await Promise.race([host.Capacitor.Plugins.LocalNetwork.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]);wifi=network?.wifi; } catch (_) {}
+      }
+      host.POSNIC?.internetChoice?.setWifi?.(wifi);
       const routes = [...credentials.keys()].sort(
         (a, b) =>
           Number((cooling.get(a) || 0) > Date.now()) -
             Number((cooling.get(b) || 0) > Date.now()) ||
-          Number(local(b)) - Number(local(a)),
-      );
+          (!options.background ? Number(b===preferred)-Number(a===preferred) : 0) ||
+          (host.POSNIC?.server.pinned || !host.POSNIC?.server.priorityConfigured ? Number(b===preferred)-Number(a===preferred) : 0) ||
+          (preferredLocal ? Number(local(b))-Number(local(a)) : Number(local(a))-Number(local(b))) ||
+          Number(b===preferred)-Number(a===preferred),
+      ).filter(base=>(wifi!==false||!local(base))&&(!options.onlyBase||base===options.onlyBase));
       const orderKey =
         path === "/sales/qrOrder" && options.body?.idempotencyKey;
       let last;
       for (const base of routes) {
+        // Do not send credentials or orders to an unselected connection.
+        if(host.POSNIC?.internetChoice?.allowed ? !host.POSNIC.internetChoice.allowed(base) : storage.getItem('posnic.automatic-connections')==='0' && base!==(options.onlyBase||preferred||state.base))continue;
         let attempted = false;
         const credential = credentials.get(base);
+        if (credential.expiresAt && credential.expiresAt <= Date.now() && !credential.refreshToken) {
+          last = Object.assign(new Error('Sign-in required'), {status:401, code:'CONNECTION_SIGNIN'});
+          continue;
+        }
         if (
           orderKey &&
           orderAuthority(orderKey) &&
@@ -428,7 +519,13 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
-          if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base))) continue;
+          // A preferred route returning is checked over several health ticks.
+          // Ordinary requests stay on the working route; failed routes can fail
+          // over immediately, subject to the same consent and replay rules.
+          const returning=options.background && base!==preferred && local(base) && !local(preferred) && (cooling.get(preferred)||0)<=Date.now();
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
+          if (host.POSNIC?.internetChoice && !(await host.POSNIC.internetChoice.ask(base,{returning}))) continue;
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
           if (start !== generation || locked) throw Object.assign(new Error('Unlock this phone first.'), {code:'PIN_LOCKED'});
           if (orderKey) orderAuthority(orderKey, authority(credential));
           attempted = true;
@@ -503,13 +600,17 @@
             throw Object.assign(new Error("Unlock this phone first."), {
               code: "PIN_LOCKED",
             });
+          if(options.background && (activeRequests || choiceRevision !== host.POSNIC?.internetChoice?.revision)) return {connectionCheckDeferred:true};
           cooling.delete(base);
+          host.POSNIC?.internetChoice?.succeeded?.(base);
+          if(state.lastRoute!==base){state.lastRoute=base;await persist().catch(()=>{});}
           host.POSNIC?.server.adopt(base);
           host.POSNIC?.net.setOnline();
           return result;
         } catch (error) {
           if (start !== generation)
             throw Object.assign(new Error("Unlock this phone first."), {code:"PIN_LOCKED"});
+          showDisabled(error);
           last = error;
           if (error.code === "PIN_LOCKED" || error.accessRefused) throw error;
           if (
@@ -520,6 +621,7 @@
           )
             throw error;
           cooling.set(base, Date.now() + 30000);
+          host.POSNIC?.internetChoice?.failed?.(base);
           const replayable =
             refreshBody ||
             options.method === "GET" ||
@@ -537,6 +639,7 @@
           if (attempted && !replayable) break;
         }
       }
+      if (last?.code === 'CONNECTION_SIGNIN') throw last;
       host.POSNIC?.net.setOffline();
       if (last?.status >= 500) throw last;
       throw Object.assign(
@@ -548,6 +651,7 @@
     }
     const session = {
       ready,
+      get busy() { return activeRequests > 0; },
       get token() {
         return locked ? null : state.token || null;
       },
@@ -567,14 +671,12 @@
       get active() {
         return (
           (locked && !!profile) ||
-          (!!state.token &&
-            (!state.expiresAt ||
-              state.expiresAt > Date.now() ||
-              !!state.refreshToken))
+          [state, ...(state.connections || [])].some(credential => !!credential.token &&
+            (!credential.expiresAt || credential.expiresAt > Date.now() || !!credential.refreshToken))
         );
       },
       get managed() {
-        return !!state.sessionId;
+        return !!state.sessionId || !!state.connections?.length;
       },
       get resilient() {
         return !!state.routeKey && !!state.idempotentOrders;
@@ -587,15 +689,22 @@
         await persist();
       },
       get canTakeOrders() {
+        const base = host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+        const credential = [state, ...(state.connections || [])].find(c =>
+          c.base === base || (c.routeKey && c.routes?.includes(base)));
         return (
           !locked &&
           !state.blockedAccess &&
           session.active &&
-          (!state.offlineUntil || Date.parse(state.offlineUntil) > Date.now())
+          !!credential &&
+          (!credential.offlineUntil || Date.parse(credential.offlineUntil) > Date.now())
         );
       },
       allowsBase(base) {
         return base === state.base || verified.has(base);
+      },
+      hasCredential(base) {
+        return [state, ...(state.connections || [])].some(c => c.base === base || (c.routeKey && c.routes?.includes(base)));
       },
       async request(path, options = {}) {
         await session.whenReady();
@@ -605,13 +714,14 @@
             code: "CAPTAIN_ACCESS",
           });
         try {
-          await session.prepare();
+          await session.prepare(options.onlyBase);
         } catch (error) {
           if ([401, 403].includes(error.status) || !state.connections?.length)
             throw error;
         }
         await session.whenReady();
         void refreshConnections();
+        if(!options.background)activeRequests++;
         try {
           const result = await transport(path, options);
           if (state.blockedAccess) {
@@ -624,12 +734,20 @@
             state.blockedAccess = error.message;
             await persist();
           }
-          if (error.status === 401 && state.refreshToken) {
+          const selected = options.onlyBase || host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+          const linked = state.connections?.find(c => c.base === selected || (c.routeKey && c.routes?.includes(selected)));
+          if (error.status === 401 && linked?.refreshToken) {
+            linked.expiresAt = 0;
+            return await transport(path, options);
+          }
+          if (error.status === 401 && state.refreshToken && !linked) {
             state.expiresAt = 0;
-            await session.prepare();
-            return transport(path, options);
+            await session.prepare(options.onlyBase);
+            return await transport(path, options);
           }
           throw error;
+        } finally {
+          if(!options.background)activeRequests--;
         }
       },
       get base() {
@@ -639,7 +757,7 @@
         return [state, ...(state.connections || [])].some(credential =>
           credential.routeKey && [credential.base, ...(credential.routes || [])].some(base => local(base)));
       },
-      async addAddress(base, signal) {
+      async addAddress(base, signal, {remember = true} = {}) {
         const started = generation;
         await session.whenReady();
         if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
@@ -671,7 +789,8 @@
           }
           if (signal?.aborted || generation !== started) throw new Error("Connection cancelled.");
           verified.add(clean);
-          host.POSNIC?.server.remember({
+          if(remember)host.POSNIC?.server.recordShop(clean, state.shopKey);
+          if(remember)host.POSNIC?.server.remember({
             [local(clean) ? "lan" : "cloud"]: clean,
           });
           return;
@@ -689,6 +808,7 @@
         verified.add(grant.base);
         state = {
           ...grant,
+          base: grant.base || host.POSNIC?.server.baseUrl,
           expiresAt:
             grant.expiresAt ||
             (grant.expiresIn ? Date.now() + grant.expiresIn * 1000 : null),
@@ -699,6 +819,29 @@
             state.base || host.POSNIC.server.baseUrl,
             state.shopKey,
           );
+      },
+      async link(grant, base) {
+        await session.whenReady();
+        const clean = safeRoute(base);
+        if (!clean || !grant?.token || !state.token || !state.shopKey || !state.user?.id ||
+            !state.branches?.[0]?.branch_id || !sameIdentity(grant))
+          throw new Error('Reconnect the original staff member and server to keep saved orders separate.');
+        if (locked || activeRequests) throw new Error('Try again in a moment.');
+        const previous = state;
+        const started = generation;
+        // Credentials remain bound to the address that issued them. Never copy
+        // a Wi-Fi bearer to a newly discovered Internet address.
+        const credential = {...grant, base: clean, routes: [], connections: [],
+          expiresAt: grant.expiresAt || (grant.expiresIn ? Date.now() + grant.expiresIn * 1000 : null)};
+        const primaryBase = state.base || host.POSNIC?.server.baseUrl;
+        state = clean === primaryBase
+          ? {...state, ...credential, connections: state.connections || []}
+          : {...state, base: primaryBase, connections: [...(state.connections || []).filter(c => c.base !== clean), credential]};
+        try { await persist(); } catch (error) { if(generation === started) state = previous; throw error; }
+        if(generation !== started || locked) throw new Error('Connection cancelled.');
+        verified.add(clean);
+        host.POSNIC?.server.recordShop(clean, state.shopKey);
+        host.POSNIC?.server.remember({[local(clean) ? 'lan' : 'cloud']: clean});
       },
       async end() {
         await ready;
@@ -735,8 +878,12 @@
         if (suspended || locked)
           throw Object.assign(new Error("Unlock this phone first."), { code: "PIN_LOCKED" });
       },
-      async prepare() {
+      async prepare(selectedBase) {
         await session.whenReady();
+        // A cloud session expiring must not delay or revoke the local session.
+        const selected = selectedBase || host.POSNIC?.server.baseUrl || state.lastRoute || state.base;
+        const primary = selected === state.base || (state.routeKey && state.routes?.includes(selected));
+        if (!primary) return;
         if (locked)
           throw Object.assign(new Error("Unlock this phone first."), {
             code: "PIN_LOCKED",
@@ -844,8 +991,35 @@
       resume,
     };
   }
+  function bindVisibility(host) {
+    let leavingPage = false, pending;
+    host.addEventListener("pagehide", () => {
+      leavingPage = true;
+      host.clearTimeout(pending);
+    });
+    host.addEventListener("pageshow", () => { leavingPage = false; });
+    host.document.addEventListener("visibilitychange", () => {
+      host.clearTimeout(pending);
+      if (host.document.hidden) {
+        // Navigation also hides the document. Native onPause still locks
+        // immediately when the app actually leaves the foreground.
+        pending = host.setTimeout(() => {
+          if (!leavingPage && host.document.hidden)
+            void host.CaptainAccess.session.suspend().catch(() => {});
+        }, 0);
+      } else if (!leavingPage) {
+        void Promise.all([host.CaptainPaperCapture?.waitForPhoto?.(),host.CaptainReferenceCapture?.waitForPhoto?.()])
+          .then(() => host.CaptainAccess.resume())
+          .then(() => {
+            if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
+              host.location.href = "index.html";
+            else if(!host.CaptainAccess.locked)host.dispatchEvent?.(new Event("captain:resumed"));
+          }).catch(() => {});
+      }
+    });
+  }
   if (typeof module === "object" && module.exports)
-    module.exports = { createAccess };
+    module.exports = { createAccess, bindVisibility };
   if (
     host.Capacitor?.isNativePlatform?.() &&
     (!host.Capacitor.getPlatform || ["android", "ios"].includes(host.Capacitor.getPlatform()))
@@ -856,7 +1030,7 @@
     host.CaptainAccess = createAccess(
       plugin,
       host.localStorage,
-      host.fetch.bind(host),
+      host.CaptainFetch,
     );
     host.CaptainAccess.ready.catch(() => {});
     if (!/\/(?:index.html)?$/.test(host.location.pathname)) {
@@ -871,13 +1045,6 @@
           host.location.href = "index.html";
         });
     }
-    host.document.addEventListener("visibilitychange", () => {
-      if (host.document.hidden) void host.CaptainAccess.session.suspend().catch(() => {});
-      else
-        void host.CaptainAccess.resume().then(() => {
-          if (host.CaptainAccess.locked && !host.CaptainOnboarding?.busy)
-            host.location.href = "index.html";
-        }).catch(() => {});
-    });
+    bindVisibility(host);
   }
 })(typeof window !== "undefined" ? window : globalThis);

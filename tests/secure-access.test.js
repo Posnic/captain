@@ -3,6 +3,23 @@ const assert = require("node:assert/strict");
 const { webcrypto } = require("node:crypto");
 const { createAccess } = require("../assets/common/access");
 
+test('automatic switching off retains the selected route; enabling it permits verified fallback',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='b'.repeat(64),calls=[];
+ f.storage.setItem('posnic.automatic-connections','0');
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  calls.push(url);
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  if(url.startsWith(lan))throw Error('offline');
+  return {ok:true,json:async()=>({connected:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:lan,routeKey:key,routes:[cloud]});
+ await assert.rejects(access.session.request('/captain/v1/session',{method:'GET'}));
+ assert.equal(calls.some(url=>url.startsWith(cloud)),false);
+ f.storage.setItem('posnic.automatic-connections','1');
+ assert.deepEqual(await access.session.request('/captain/v1/session',{method:'GET'}),{connected:true});
+ assert.equal(calls.some(url=>url===cloud+'/captain/v1/route-proof'),true);
+});
+
 test("a lost local reply falls back to the verified domain with the identical order, never a second sale", async () => {
   const f = fixture(),
     routeKey = "a".repeat(64),
@@ -148,6 +165,7 @@ test("iOS uses native secure storage and locks on background just like Android",
     Capacitor: {isNativePlatform:()=>true,getPlatform:()=>"ios",Plugins:{SecureSession:f.plugin}},
     localStorage:f.storage,crypto:webcrypto,fetch:async()=>({}),
     location:{pathname:"/index.html"},
+    addEventListener:(name,action)=>{listeners[name]=action},setTimeout,clearTimeout,
     document:{hidden:false,addEventListener:(name,action)=>{listeners[name]=action}},
   };
   require("node:vm").runInNewContext(
@@ -917,10 +935,11 @@ for (const existing of [undefined, ['https://previous.example/api']])
   });
 
 
-test('cloud order fallback requires consent before transmitting the order', async () => {
+test('cloud orders require an explicit route selection before transmission', async () => {
  const f=fixture(), lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',routeKey='a'.repeat(64);
- let agree=false;const writes=[];const previous=globalThis.POSNIC;
- globalThis.POSNIC={server:{adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{ask:async base=>base===lan||agree}};
+ f.storage.setItem('posnic.automatic-connections','0');
+ let selected=lan;const writes=[];const previous=globalThis.POSNIC;
+ globalThis.POSNIC={server:{get baseUrl(){return selected;},adopt(){},remember(){},recordShop(){}},net:{setOnline(){},setOffline(){}},internetChoice:{allowed:base=>base===selected,ask:async base=>base===selected}};
  try {
   const access=createAccess(f.plugin,f.storage,async(url,options)=>{
    const body=JSON.parse(options.body||'{}');
@@ -932,9 +951,154 @@ test('cloud order fallback requires consent before transmitting the order', asyn
   const options={method:'POST',body:{idempotencyKey:'saved-order',items:[1]}};
   await assert.rejects(access.session.request('/sales/qrOrder',options));
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,0);
-  agree=true;
+  selected=cloud;
   await access.session.request('/sales/qrOrder',options);
   assert.equal(writes.filter(w=>w.url.startsWith(cloud)).length,1);
   assert.deepEqual(writes[0].body,writes.at(-1).body);
  }finally {if(previous===undefined)delete globalThis.POSNIC;else globalThis.POSNIC=previous;}
+});
+
+test('healthy cloud stays selected during foreground work; only idle health checks offer stable Wi-Fi',async(t)=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='c'.repeat(64),calls=[],offers=[];
+ const old=globalThis.POSNIC;t.after(()=>{globalThis.POSNIC=old;});
+ let accept=false,release;
+ const server={baseUrl:cloud,priority:'lan',priorityConfigured:true,adopt(base){this.baseUrl=base;},recordShop(){},remember(){}};
+ globalThis.POSNIC={server,net:{setOnline(){},setOffline(){}},internetChoice:{ask:async(base,options)=>{offers.push({base,...options});return base===cloud||accept;}}};
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  calls.push(url);
+  if(url.endsWith('/payment'))await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan]});
+ await access.session.request('/items',{method:'GET'});
+ assert.equal(calls[0],cloud+'/items');
+ await access.session.request('/captain/v1/session',{method:'GET',background:true});
+ assert.equal(offers.some(o=>o.base===lan&&o.returning),true);assert.equal(server.baseUrl,cloud);
+ const payment=access.session.request('/payment',{method:'POST',body:{amount:10}});
+ while(!release)await new Promise(r=>setImmediate(r));
+ accept=true;
+ assert.equal(access.session.busy,true);
+ assert.deepEqual(await access.session.request('/captain/v1/session',{method:'GET',background:true}),{connectionCheckDeferred:true});
+ assert.equal(server.baseUrl,cloud);
+ release();await payment;assert.equal(access.session.busy,false);
+ await access.session.request('/captain/v1/session',{method:'GET',background:true});
+ assert.equal(server.baseUrl,lan);
+});
+
+test('late background health cannot undo a newer corner-icon route choice',async(t)=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='d'.repeat(64);
+ const previous=globalThis.POSNIC;t.after(()=>{globalThis.POSNIC=previous;});
+ let release;
+ const server={baseUrl:cloud,priority:'lan',priorityConfigured:true,adopt(base){this.baseUrl=base;},remember(){},recordShop(){}};
+ const choice={revision:0,ask:async()=>true};
+ globalThis.POSNIC={server,internetChoice:choice,net:{setOnline(){},setOffline(){}}};
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};
+  await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan]});
+ const check=access.session.request('/captain/v1/session',{method:'GET',background:true});
+ while(!release)await new Promise(r=>setImmediate(r));
+ choice.revision++;server.baseUrl=cloud;server.priority='cloud';release();
+ assert.deepEqual(await check,{connectionCheckDeferred:true});
+ assert.equal(server.baseUrl,cloud);
+});
+
+test('foreground busy protection lasts through token renewal and the retried request',async()=>{
+ const f=fixture();let attempts=0,release;
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  if(url.endsWith('/refresh'))return {ok:true,json:async()=>({...f.grant,token:'renewed',refreshToken:JSON.parse(options.body).nextToken})};
+  if(++attempts===1)return {ok:false,status:401,json:async()=>({message:'Expired'})};
+  await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({ok:true})};
+ },webcrypto);
+ await access.session.start(f.grant);
+ const request=access.session.request('/items',{method:'GET'});
+ while(!release)await new Promise(r=>setImmediate(r));
+ assert.equal(access.session.busy,true);
+ release();await request;assert.equal(access.session.busy,false);
+});
+
+test('reopening preserves a successful Internet route ahead of an unavailable Wi-Fi address',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',key='a'.repeat(64),calls=[];
+ const fetcher=async(url,options)=>{calls.push(url);if(url.startsWith(lan))throw Error('No Wi-Fi');if(url.endsWith('/route-proof'))return {ok:true,json:async()=>({proof:require('node:crypto').createHmac('sha256',key).update(JSON.parse(options.body).nonce).digest('hex')})};return {ok:true,json:async()=>({ok:true})};};
+ const access=createAccess(f.plugin,f.storage,fetcher,webcrypto);
+ await access.session.start({...f.grant,base:cloud,routeKey:key,routes:[lan],lastRoute:cloud});
+ await access.session.suspend();await access.resume();await access.session.request('/captain/v1/session',{method:'GET'});
+ assert.equal(calls.some(url=>url.startsWith(lan)),false);assert.equal(f.vault().lastRoute,cloud);
+ const reopened=createAccess(f.plugin,f.storage,fetcher,webcrypto);await reopened.ready;await reopened.session.request('/captain/v1/session',{method:'GET'});assert.equal(calls.some(url=>url.startsWith(lan)),false);
+});
+
+test('turning off remembered sign-in clears credentials on next app session but retains queued work',async()=>{
+ const f=fixture({'posnic.remember-session':'0','posnic.pending-orders':'[{"id":"saved"}]'});
+ await f.plugin.save({session:f.grant});
+ const access=createAccess(f.plugin,f.storage,async()=>{throw Error('network not required');},webcrypto);
+ await access.ready;assert.equal(access.session.active,false);assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"saved"}]');
+});
+
+test('linked routes keep separate credentials across reload and reject another shop', async () => {
+ const f=fixture(),lan='http://192.168.1.20:5555/api',cloud='https://shop.example/api',calls=[];
+ const fetcher=async(url,options)=>{calls.push([url,options.headers.Authorization]);return {ok:true,json:async()=>({connected:true})}};
+ const grant={...f.grant,sessionId:undefined,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ let access=createAccess(f.plugin,f.storage,fetcher,webcrypto);
+ await access.session.start({...grant,base:lan,token:'wifi-token'});
+ await assert.rejects(access.session.link({...grant,shopKey:'different',token:'internet-token'},cloud),/original staff/);
+ assert.equal(access.session.token,'wifi-token');
+ await access.session.link({...grant,token:'internet-token'},cloud);
+ access=createAccess(f.plugin,f.storage,fetcher,webcrypto);await access.session.ready;
+ await access.session.request('/captain/v1/session',{onlyBase:cloud});
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.deepEqual(calls,[[cloud+'/captain/v1/session','Bearer internet-token'],[lan+'/captain/v1/session','Bearer wifi-token']]);
+});
+
+test('failed secure storage does not replace a working connection when linking',async()=>{
+ const f=fixture(),access=createAccess(f.plugin,f.storage,async()=>{},webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};await access.session.start(grant);
+ f.plugin.save=async()=>{throw Error('storage full')};
+ await assert.rejects(access.session.link({...grant,token:'new'},'https://peer.example/api'),/storage full/);
+ assert.equal(access.session.token,'access');assert.equal(access.session.hasCredential('https://peer.example/api'),false);
+});
+
+test('renewing the original route keeps the other route credential',async()=>{
+ const f=fixture(),access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({})}),webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};await access.session.start(grant);
+ await access.session.link({...grant,token:'peer'},'https://peer.example/api');
+ await access.session.link({...grant,token:'renewed'},grant.base);
+ assert.equal(access.session.token,'renewed');assert.equal(f.vault().connections[0].token,'peer');
+});
+
+test('an expired Wi-Fi login does not hide a separately valid Internet login',async()=>{
+ const f=fixture(),calls=[],access=createAccess(f.plugin,f.storage,async url=>{calls.push(url);return {ok:true,json:async()=>({connected:true})}},webcrypto);
+ const grant={...f.grant,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ await access.session.start({...grant,expiresAt:1});
+ await access.session.link({...grant,token:'peer'},'https://peer.example/api');
+ assert.equal(access.session.active,true);
+ await access.session.request('/captain/v1/session',{method:'GET'});
+ assert.deepEqual(calls,['https://peer.example/api/captain/v1/session']);
+ await assert.rejects(access.session.request('/captain/v1/session',{onlyBase:grant.base}),error=>error.status===401);
+});
+
+test('the active local session can take orders when the unused cloud offline window has expired',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api';
+ const grant={...f.grant,refreshToken:undefined,branches:[{branch_id:'branch'}]};
+ const access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({connected:true})}),webcrypto);
+ await access.session.start({...grant,offlineUntil:new Date(0).toISOString()});
+ await access.session.link({...grant,token:'local'},lan);
+ assert.equal(access.session.canTakeOrders,false);
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.equal(access.session.canTakeOrders,true);
+ await access.session.request('/captain/v1/session',{onlyBase:grant.base});
+ assert.equal(access.session.canTakeOrders,false);
+});
+
+test('selected Wi-Fi never refreshes an expired cloud session',async()=>{
+ const f=fixture(),lan='http://192.168.1.20:5555/api',calls=[];
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{calls.push([url,options.headers.Authorization]);if(!url.startsWith(lan))throw Error('Internet unavailable');return {ok:true,json:async()=>({connected:true})}},webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}]};
+ await access.session.start({...grant,expiresAt:1});
+ await access.session.link({...grant,refreshToken:undefined,expiresAt:Date.now()+3600000,token:'local'},lan);
+ await access.session.request('/captain/v1/session',{onlyBase:lan});
+ assert.deepEqual(calls,[[lan+'/captain/v1/session','Bearer local']]);
 });

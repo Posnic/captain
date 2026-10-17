@@ -169,7 +169,9 @@ for (const code of ["ta", "hi", "ar", "ur", "ja", "zh-CN"]) {
     await expect(page.locator("#posnic-unsent-text")).toHaveText(
       words["{0} order waiting to sync"].replace("{0}", "1"),
     );
-    await page.locator('#posnic-unsent a[href="pending.html"]').click();
+    // Routine delivery is automatic; the diagnostics page remains directly accessible.
+    await expect(page.locator('#posnic-unsent a')).not.toHaveAttribute('href');
+    await page.goto('/pending.html');
     await expect(page.locator("#posnic-unsent-rows strong")).toContainText(
       words["Waiting to send"],
     );

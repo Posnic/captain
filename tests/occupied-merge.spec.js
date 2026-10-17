@@ -18,9 +18,9 @@ test('older source and destination use the merge intent only when the server sup
  await page.locator('#moveTableModal').getByRole('button',{name:'Back',exact:true}).click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
  await page.evaluate(()=>showOrderListScreen('4'));
- await expect(page.locator('[data-merge-order="source"]')).toHaveCount(1);
- await page.locator('.order-actions-menu summary').click();
- await page.locator('[data-merge-order="source"]').click();
+ await expect(page.locator('[data-merge-order="source"]')).toHaveCount(0);
+ // History is read-only; exercise the shared merge controller directly.
+ await page.evaluate(()=>moveOrder('source','merge'));
  const calls=[];
  await page.route('**/captain/v1/tables/merge/prepare',r=>{const body=r.request().postDataJSON();calls.push(body);return r.fulfill({json:{request_id:body.request_id,orderId:'source',mergeTargetId:'target-order',state:'reserved'}});});
  await page.route('**/captain/v1/tables/move/complete',r=>r.fulfill({json:{request_id:r.request().postDataJSON().request_id,orderId:'source',mergeTargetId:'target-order',state:'submitting'}}));
@@ -62,9 +62,8 @@ test('merge entry follows server permission even when the paired profile has no 
  await page.locator('#moveTableModal').getByRole('button',{name:'Back',exact:true}).click();
  await expect(page.locator('#moveTableModal')).toBeHidden();
  await page.evaluate(()=>showOrderListScreen('4'));
- await expect(page.locator('[data-merge-order="source"]')).toHaveCount(1);
- await page.locator('.order-actions-menu summary').click();
- await page.locator('[data-merge-order="source"]').click();
+ await expect(page.locator('[data-merge-order="source"]')).toHaveCount(0);
+ await page.evaluate(()=>moveOrder('source','merge'));
  await expect(page.locator('#moveTableModal .modal-title')).toHaveText('Merge orders');
  await expect(page.locator('#moveTableModal [data-id="target-table"]')).toBeVisible();
  await page.screenshot({path:'test-artifacts/occupied-merge.png',fullPage:true,animations:'disabled'});
