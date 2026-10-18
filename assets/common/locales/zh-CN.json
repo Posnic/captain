@@ -1303,5 +1303,6 @@
   "Included on the final bill.": "包含在最终账单中。",
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "在 “设置” “餐厅” “酒店和其他场所” 中启用员工房间订单。",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "商店 Wi-Fi 传输不可用。更新队长并重试。",
-  "Confirm the pending order before switching connections. Your order is saved.": "在切换连接之前确认待处理订单。您的订单已保存。"
+  "Confirm the pending order before switching connections. Your order is saved.": "在切换连接之前确认待处理订单。您的订单已保存。",
+  "Print again": "再次打印"
 }
