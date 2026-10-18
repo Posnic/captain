@@ -304,7 +304,7 @@
     let count = 0;
     const seen = [];
     const found = new Set();
-    const deadline = Date.now() + 20000;
+    const deadline = Date.now() + Math.max(20000, POSNIC.discovery.scanBudgetMs?.() || 20000);
     const searchOperation = operation;
     const stopped = () =>
       signal.aborted || operation !== searchOperation || Date.now() >= deadline;

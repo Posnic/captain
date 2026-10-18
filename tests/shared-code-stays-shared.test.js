@@ -288,7 +288,7 @@ test('many networks do not mean many times the requests', () => {
   const config = fs.readFileSync(path.join(root, 'config.js'), 'utf8');
   assert.match(
     config,
-    /SCAN_CONCURRENCY \/ Math\.max\(1, subnets\.length\)/,
+    /scanWidth\(\) \/ Math\.max\(1, subnets\.length\)/,
     'the sweep still fires full concurrency per subnet'
   );
 });
