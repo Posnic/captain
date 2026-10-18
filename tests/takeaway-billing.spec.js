@@ -29,7 +29,7 @@ test('takeaway bill, print and split-to-payment keep the selected sale identity'
  const calls=await setup(page);
  await expect.poll(()=>calls.bill.at(-1)).toBe(ids[0]);
  await page.locator('#ask-for-bill').click();
- await expect(page.locator('#ask-for-bill')).toHaveText('Bill asked for');
+ await expect(page.locator('#ask-for-bill')).toHaveText('Print again');
  expect(calls.print[0].saleId).toBe(ids[0]);
  await page.locator('[data-order-more]').click();
  await page.getByRole('button',{name:'Split bill',exact:true}).click();

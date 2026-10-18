@@ -1303,5 +1303,6 @@
   "Included on the final bill.": "最終請求書に含まれています。",
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "設定 → レストラン → のホテルやその他の施設でスタッフルームの注文を有効にします。",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "ショップWi-Fiトランスポートはご利用いただけません。Captain をアップデートして、もう一度試してください。",
-  "Confirm the pending order before switching connections. Your order is saved.": "接続を切り替える前に保留中の注文を確認してください。注文が保存されました。"
+  "Confirm the pending order before switching connections. Your order is saved.": "接続を切り替える前に保留中の注文を確認してください。注文が保存されました。",
+  "Print again": "もう一度印刷"
 }

@@ -1303,5 +1303,6 @@
   "Included on the final bill.": "รวมอยู่ในใบเรียกเก็บเงินขั้นสุดท้าย",
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "เปิดใช้งานการสั่งซื้อห้องพักสำหรับพนักงานใน การตั้งค่า Â†' ร้านอาหาร → โรงแรมและสถานที่อื่นๆ",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "ไม่มีการขนส่ง Wi-Fi ในร้านค้าอัปเดตกัปตันและลองอีกครั้ง",
-  "Confirm the pending order before switching connections. Your order is saved.": "ยืนยันคำสั่งซื้อที่รอดำเนินการก่อนเปลี่ยนการเชื่อมต่อคำสั่งซื้อของคุณถูกบันทึกไว้"
+  "Confirm the pending order before switching connections. Your order is saved.": "ยืนยันคำสั่งซื้อที่รอดำเนินการก่อนเปลี่ยนการเชื่อมต่อคำสั่งซื้อของคุณถูกบันทึกไว้",
+  "Print again": "พิมพ์อีกครั้ง"
 }

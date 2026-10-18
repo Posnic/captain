@@ -382,6 +382,10 @@ document.addEventListener('click', async function (event) {
 
     const table = button.getAttribute('data-table') || '';
     if (!table) return;
+    if (button.dataset.billRequested === 'true' && window.CaptainBill) {
+        await CaptainBill.open(table, {saleId: button.dataset.saleId || '', reprint: true});
+        return;
+    }
 
     button.disabled = true;
     const said = button.textContent;
@@ -418,7 +422,11 @@ document.addEventListener('click', async function (event) {
         if (answer?.type !== 'success' || answer?.data?.status === false || answer?.status === false) {
             button.disabled = false;
             button.textContent = said;
-        } else button.textContent = 'Bill asked for';
+        } else {
+            button.dataset.billRequested = 'true';
+            button.textContent = window.I18N?.t('Print again') || 'Print again';
+            button.disabled = false;
+        }
     } catch (error) {
         button.disabled = false;
         button.textContent = said;
@@ -846,7 +854,7 @@ async function selectTable(tableName, takeaway, options = {}) {
                   isTakeaway && (!targetSaleId || alreadyPaid)
                     ? ''
                     : `<div class="floor-bill-actions" ${targetSaleId ? 'hidden data-takeaway-billing="true"' : ''}><button type="button" class="floor-bill-btn" data-collect-table="${escapeFloor(tableName)}"${targetAttribute}>Collect payment</button><button type="button" class="floor-bill-btn" data-split-table="${escapeFloor(tableName)}"${targetAttribute}><i class="fas fa-columns" aria-hidden="true"></i><span>Split bill</span></button><button type="button" class="floor-bill-btn" id="ask-for-bill"${targetAttribute}
-                         data-table="${escapeFloor(tableName)}">Print the bill</button></div>`
+                         data-bill-requested="${kots.every(kot => kot.bill_requested_at || kot.bill_printed_at)}" data-table="${escapeFloor(tableName)}">${kots.every(kot => kot.bill_requested_at || kot.bill_printed_at) ? (window.I18N?.t('Print again') || 'Print again') : 'Print the bill'}</button></div>`
                 }
             </div>
         `;

@@ -115,3 +115,42 @@ test("bill retry never crosses a branch change",async({page})=>{
   await page.evaluate(()=>CaptainBill.read("/captain/v1/bill?table=scope-fixture").catch(()=>null));
   expect(calls).toBe(1);
 });
+
+
+test("same bill supports confirmed reprints and lost-response retries reuse the same request", async ({page}) => {
+  await onTheMenu(page,"nothing");
+  const ids=['507f1f77bcf86cd799439011','507f1f77bcf86cd799439012'];
+  await page.route('**/captain/v1/bill?*',r=>r.fulfill({json:{orderIds:ids,lines:[],labels:{},totalMinor:10000,paidMinor:0,dueMinor:10000,collectEnabled:false}}));
+  let first=0,failOnce=true;const requests=[],accepted=new Set();
+  await page.route('**/sales/requestBillPrint',r=>{first++;return r.fulfill({json:{type:'success'}});});
+  await page.route('**/captain/v1/bill/reprint',async r=>{
+    const body=r.request().postDataJSON();requests.push(body);accepted.add(body.saleId+':'+body.request_id);
+    await new Promise(resolve=>setTimeout(resolve,150));
+    if(body.saleId===ids[1] && failOnce){failOnce=false;return r.fulfill({status:503,json:{message:'Reply lost'}});}
+    return r.fulfill({json:{type:'success',status:'queued'}});
+  });
+  await page.goto('/kot-management.html');await page.evaluate(()=>CaptainBill.open('T1'));
+  const button=page.locator('#bill-review [data-bill-print]');
+  await button.click();await expect(button).toHaveText('Print again');await expect(button).toBeEnabled();expect(first).toBe(1);
+  page.once('dialog',d=>d.accept());await button.click();
+  await expect(button).toBeDisabled();await button.dispatchEvent('click');
+  await expect(button).toBeEnabled();expect(requests).toHaveLength(2);
+  await button.click();await expect(page.locator('#bill-review [role=status]')).toHaveText('Bill asked for');
+  expect(requests).toHaveLength(4);expect(new Set(requests.map(r=>r.request_id)).size).toBe(1);expect(accepted.size).toBe(2);
+  page.once('dialog',d=>d.dismiss());await button.click();expect(requests).toHaveLength(4);
+  page.once('dialog',d=>d.accept());await button.click();await expect(page.locator('#bill-review [role=status]')).toHaveText('Bill asked for');
+  expect(requests).toHaveLength(6);expect(accepted.size).toBe(4);expect(requests[4].request_id).not.toBe(requests[0].request_id);expect(first).toBe(1);
+});
+
+
+test("floor print stays usable and routes a second request through confirmed reprint",async({page})=>{
+ await onTheMenu(page,"nothing");let first=0,reprints=0;
+ await page.route('**/sales/requestBillPrint',r=>{first++;return r.fulfill({json:{type:'success'}});});
+ await page.route('**/captain/v1/bill?*',r=>r.fulfill({json:{orderIds:['507f1f77bcf86cd799439011'],lines:[],labels:{},totalMinor:10000,paidMinor:0,dueMinor:10000,collectEnabled:false}}));
+ await page.route('**/captain/v1/bill/reprint',r=>{reprints++;return r.fulfill({json:{type:'success',status:'queued'}});});
+ await page.goto('/kot-management.html');
+ await page.evaluate(()=>{const button=document.createElement('button');button.id='ask-for-bill';button.dataset.table='T1';button.textContent='Print the bill';document.body.append(button);});
+ const action=page.locator('#ask-for-bill');await action.click();await expect(action).toHaveText('Print again');await expect(action).toBeEnabled();expect(first).toBe(1);
+ await action.click();const review=page.locator('#bill-review');await expect(review).toBeVisible();expect(first).toBe(1);expect(reprints).toBe(0);
+ page.once('dialog',d=>d.accept());await review.getByRole('button',{name:'Print again',exact:true}).click();await expect(review.locator('[role=status]')).toHaveText('Bill asked for');expect(reprints).toBe(1);
+});
