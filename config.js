@@ -76,6 +76,9 @@
    */
   const SCAN_TIMEOUT_MS = 500;
   const SCAN_CONCURRENCY = 64;
+  // Native Wi-Fi has eight workers. Leave room for metadata and foreground calls.
+  const nativeWifi = () => window.Capacitor?.getPlatform?.() === 'android';
+  const scanWidth = () => nativeWifi() ? 4 : SCAN_CONCURRENCY;
 
   /*
    * THE ADDRESSES A TILL IS ACTUALLY AT, tried before the other two hundred.
@@ -818,6 +821,7 @@
             signal: controller.signal,
             headers: { Accept: 'application/json' },
             cache: 'no-store',
+            wifiTimeoutMs: Math.max(200, firstBudget - 150),
           });
           if (!response) return fail('UNREACHABLE');
           if (!response.ok) return fail('REFUSED', String(response.status), response.status);
@@ -1121,9 +1125,13 @@
     return ports;
   }
 
+  function scanBudgetMs() {
+    return Math.ceil(253 / scanWidth()) * (nativeWifi() ? 1200 : SCAN_TIMEOUT_MS) * discoveryPorts().length + 8000;
+  }
+
   async function scanSubnet(subnet, { hosts, ownHost, onProgress, onBatch, shouldStop, concurrency, seen, collect, accept, ports = discoveryPorts() } = {}) {
     const list = hosts || hostOrder(ownHost);
-    const width = concurrency || SCAN_CONCURRENCY;
+    const width = Math.min(concurrency || scanWidth(), scanWidth());
 
     for (let start = 0; start < list.length; start += width) {
       if (shouldStop && shouldStop()) return null;
@@ -1132,7 +1140,7 @@
         const hits = [];
         for (const port of ports) {
           if (shouldStop && shouldStop()) return hits;
-          const hit = await probe(`http://${subnet}.${host}:${port}`, SCAN_TIMEOUT_MS, { seen });
+          const hit = await probe(`http://${subnet}.${host}:${port}`, nativeWifi() ? 1200 : SCAN_TIMEOUT_MS, { seen });
           if (hit && (!accept || await accept(hit))) {
             hits.push(hit);
             if (!collect) break;
@@ -1213,7 +1221,7 @@
      * queued requests took to give up, which on a busy network is not bounded
      * in any way a person would call bounded.
      */
-    const deadline = Date.now() + SEARCH_DEADLINE_MS;
+    const deadline = Date.now() + (nativeWifi() ? scanBudgetMs() * Math.max(1, subnets.length) : SEARCH_DEADLINE_MS);
     const stop = () =>
       stopped || Date.now() > deadline || (shouldStop ? shouldStop() : false);
 
@@ -1263,7 +1271,7 @@
     const order = hostOrder();
     const likely = order.slice(0, likelyCount());
 
-    const quick = (await sweep(likely, likely.length)).find(Boolean);
+    const quick = (await sweep(likely, Math.min(likely.length, Math.max(1, Math.floor(scanWidth() / Math.max(1, subnets.length)))))).find(Boolean);
     if (quick) return quick;
     if (seen.length && !accept) {
       findOnWifi.lastRefusal = seen[0];
@@ -1280,7 +1288,7 @@
      * of on the wire.
      */
     const rest = order.slice(likely.length);
-    const width = Math.max(8, Math.floor(SCAN_CONCURRENCY / Math.max(1, subnets.length)));
+    const width = Math.max(1, Math.floor(scanWidth() / Math.max(1, subnets.length)));
     const found = (await sweep(rest, width)).find(Boolean) || null;
     if (!found && seen.length) findOnWifi.lastRefusal = seen[0];
     return found;
@@ -2633,7 +2641,7 @@
     session,
     api,
     net,
-    discovery: { probe, findOnWifi, scanSubnet, localSubnets },
+    discovery: { probe, findOnWifi, scanSubnet, scanBudgetMs, localSubnets },
     resolve,
     ApiError,
     constants: {

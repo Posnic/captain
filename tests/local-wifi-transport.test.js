@@ -31,3 +31,8 @@ test('Android offline flag does not prevent a Wi-Fi bound request',async()=>{
  assert.equal((await f.host.CaptainFetch('http://192.168.1.2/api/runtime-info')).status,200);
  assert.equal(f.native.length,1);assert.equal(f.calls.length,0);
 });
+
+test('discovery deadline reaches the native socket instead of leaving cancelled probes queued',async()=>{
+ const f=fixture();await f.host.CaptainFetch('http://192.168.1.2/api/runtime-info',{wifiTimeoutMs:1050});
+ assert.equal(f.native[0].timeoutMs,1050);
+});

@@ -17,6 +17,7 @@ import android.net.NetworkCapabilities;
 @CapacitorPlugin(name = "LocalNetwork")
 public class LocalNetworkPlugin extends Plugin {
     private final java.util.concurrent.ExecutorService requests = java.util.concurrent.Executors.newFixedThreadPool(8);
+    private final java.util.concurrent.ExecutorService cancellations = java.util.concurrent.Executors.newCachedThreadPool();
     private final java.util.concurrent.ConcurrentHashMap<String, Boolean> pending = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.concurrent.ConcurrentHashMap<String, java.net.HttpURLConnection> active = new java.util.concurrent.ConcurrentHashMap<>();
     @PluginMethod
@@ -24,7 +25,7 @@ public class LocalNetworkPlugin extends Plugin {
         String id = call.getString("id", "");
         pending.remove(id);
         java.net.HttpURLConnection connection = active.remove(id);
-        if (connection != null) requests.execute(connection::disconnect);
+        if (connection != null) cancellations.execute(connection::disconnect);
         call.resolve();
     }
     // Route only this request through Wi-Fi. Android can choose cellular as
@@ -63,8 +64,10 @@ public class LocalNetworkPlugin extends Plugin {
                 connection = (java.net.HttpURLConnection) wifi.openConnection(url);
                 active.put(id, connection);
                 if (!pending.containsKey(id)) throw new java.io.IOException("Local request cancelled");
-                connection.setConnectTimeout(2500);
-                connection.setReadTimeout(7000);
+                Integer requestedTimeout = call.getInt("timeoutMs");
+                int timeout = requestedTimeout == null ? 7000 : Math.max(200, Math.min(7000, requestedTimeout));
+                connection.setConnectTimeout(Math.min(2500, timeout));
+                connection.setReadTimeout(timeout);
                 connection.setInstanceFollowRedirects(false);
                 connection.setUseCaches(false);
                 connection.setRequestMethod(call.getString("method", "GET"));
@@ -110,6 +113,7 @@ public class LocalNetworkPlugin extends Plugin {
     @Override protected void handleOnDestroy() {
         pending.clear();
         requests.shutdownNow();
+        cancellations.shutdownNow();
         for (java.net.HttpURLConnection connection : active.values()) connection.disconnect();
         active.clear();
         super.handleOnDestroy();

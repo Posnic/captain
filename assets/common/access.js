@@ -26,6 +26,7 @@
     try {
       const result = await Promise.race([plugin.request({
         id, url: parsed.href, method: options.method || 'GET',
+        ...(options.wifiTimeoutMs ? { timeoutMs: options.wifiTimeoutMs } : {}),
         headers: Object.fromEntries(new Headers(options.headers || {})),
         ...(options.body == null ? {} : { body: options.body }),
       }), cancelled]);
