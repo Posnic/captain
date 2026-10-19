@@ -64,3 +64,14 @@ test('Next allows omitted guests and the explicit optional-table setting',async(
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('0');
  expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('');
 });
+
+
+test('required pax blocks Next until staff selects a guest count',async({page})=>{
+ await onTheMenu(page,'nothing');
+ await page.route('**/captain/v1/tables',r=>r.fulfill({json:{tables:[],tableRequired:false,guestsRequired:true}}));
+ await page.route('**/sales/getTablesWithActiveOrders',r=>r.fulfill({json:{type:'success',data:{tables:[]}}}));
+ await page.goto('/discount.html');await page.waitForFunction(()=>CaptainTables.guestsRequired());
+ await expect(page.locator('#guest-requirement-label')).toHaveText('How many guests?');
+ await page.locator('.btn-next').click();await expect(page).toHaveURL(/discount.html/);
+ await expect(page.getByText('Check the guest count.',{exact:true})).toBeVisible();
+});
