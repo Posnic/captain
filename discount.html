@@ -140,7 +140,7 @@
             <!-- Person Count -->
             <!-- Person Count -->
             <div class="person-count-section">
-                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-user-friends" aria-hidden="true"></i> <span>Guests (optional)</span></div><p class="entry-help">People seated at this table</p></div>
+                <div class="entry-section-heading"><div class="section-title"><i class="fas fa-user-friends" aria-hidden="true"></i> <span id="guest-requirement-label">Guests (optional)</span></div><p class="entry-help">People seated at this table</p></div>
 
                 <!--
                     TWO TAPS, AND NO KEYBOARD.
@@ -297,6 +297,10 @@
             }
 
             const personCount = parseInt(document.getElementById('person_count').value || '0', 10) || 0;
+            if (orderType === 'Dine-in' && CaptainTables.guestsRequired() && personCount < 1) {
+                showErrorPopup('Check the guest count.');
+                return;
+            }
             const chosenTable = CaptainTables.cached(tableNo);
             if (orderType === 'Dine-in' && chosenTable && !CaptainTables.fits(chosenTable,personCount)) {
                 showErrorPopup('Choose a table with enough seats.');
@@ -878,6 +882,7 @@
             // }
         }
         async function placeOrder() {
+            const orderType = document.querySelector('input[name="order_type"]:checked')?.value || 'Dine-in';
             const discountValue = parseFloat(document.getElementById('discount_value').value) || 0;
             const discountType = document.querySelector('input[name="discount_type"]:checked')?.value || 'percent';
 
@@ -921,6 +926,10 @@
                 return; // ❌ stop placing order
             }
             const personCount = parseInt(document.getElementById('person_count').value || '0', 10) || 0;
+            if (orderType === 'Dine-in' && CaptainTables.guestsRequired() && personCount < 1) {
+                showErrorPopup('Check the guest count.');
+                return;
+            }
 
             // store in localStorage for checkout() to use
             localStorage.setItem('kiosk_discount_percentage', percentage);
