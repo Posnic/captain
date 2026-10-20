@@ -493,13 +493,17 @@ async function saveOrderChanges() {
     const extraType = preserveAllocation ? null : discountType;
     const extraVal = preserveAllocation ? null : discountValue;
     const dineTypeRadio = document.querySelector('input[name="edit_dine_type"]:checked');
-    const dineType = dineTypeRadio ? dineTypeRadio.value : (order.dine_type || 'Dine-in');
+    const dineType = order.dine_type === 'Room' ? 'Room' : dineTypeRadio ? dineTypeRadio.value : (order.dine_type || 'Dine-in');
     const tableRadio = document.querySelector('input[name="edit_table_no"]:checked');
 
     let newTableNo = order.table_number || order.kiosk_table_no || '';
     let newTableId = order.table_id || order.kiosk_table_id || '';
 
-    if (tableRadio) {
+    if (dineType === 'Room') {
+        // A room is a saved venue destination, never a manually entered table.
+        newTableNo = order.table_number || order.kiosk_table_no || '';
+        newTableId = order.table_id || order.kiosk_table_id || '';
+    } else if (tableRadio) {
         if (tableRadio.id === 'edit_table_manual_radio') {
             const manualInput = document.getElementById('edit_manual_table_input');
             const manualVal = manualInput ? manualInput.value.trim().toUpperCase() : '';
@@ -918,7 +922,7 @@ function viewOrderDetails(orderId) {
       </section>
       ${window.ServiceRounds && Array.isArray(order.kitchen_rounds) ? ServiceRounds.render(order) : `<section class="history-detail-items">${(order.items || []).map(item => `<div class="${struck(item,order).trim()}"><span><strong translate="no">${safe(item.name)}</strong>${item.note || item.notes ? `<small translate="no">${safe(item.note || item.notes)}</small>` : ''}</span><span translate="no">× ${safe(item.quantity)}</span><span>${CaptainMoney.html(item.price)}</span></div>`).join('')}</section>`}
       <div class="history-detail-tools" hidden>${window.OrderPhotos ? OrderPhotos.render(order,{readOnly:location.pathname.endsWith('/order-history.html')}) : ""}</div>
-      <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div>${(order.charges || []).map(c => `<div><dt translate="no">${safe(c.name)}</dt><dd>${CaptainMoney.html(Number(c.amount) || 0)}</dd></div>`).join('')}<div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
+      <dl class="history-detail-totals"><div><dt>Subtotal:</dt><dd>${CaptainMoney.html(subtotal)}</dd></div>${discount ? `<div><dt>Discount:</dt><dd>−${CaptainMoney.html(discount)}</dd></div>` : ''}<div><dt>Tax:</dt><dd>${CaptainMoney.html(tax)}</dd></div>${(order.charges || []).map(c => `<div><dt translate="no">${safe(c.name + (c.source === 'room' && Number(c.percent) > 0 ? ' (' + Number(c.percent) + '%)' : ''))}</dt><dd>${CaptainMoney.html(Number(c.amount) || 0)}</dd></div>`).join('')}<div><dt>Total</dt><dd>${CaptainMoney.html(order.total_amount)}</dd></div></dl>
       ${order.status === 'completed' || order.payment_status === 'Paid' ? `<div class="history-receipt-action"><button type="button" class="btn action-btn" data-review-bill="${safe(order.table_number || order.order_id || order._id)}" data-sale-id="${safe(order._id)}" data-receipt="true"><i class="fas fa-print" aria-hidden="true"></i> View / Print bill</button>${order.payment_status ? `<span>${safe(order.payment_status)}</span>` : ''}</div>` : ''}
       ${order.discount_description ? `<section class="history-detail-note"><h3>Order Notes:</h3><p translate="no">${safe(order.discount_description)}</p></section>` : ''}
       <button type="button" class="history-detail-more" data-history-more="${safe(order._id)}" aria-haspopup="dialog"><span aria-hidden="true">•••</span> <span>More options</span></button>${['completed','cancelled'].includes(order.status) ? '' : `<div class="history-detail-options" hidden><button type="button" data-cancel-order="${safe(order._id)}">Cancel order</button></div>`}
@@ -1583,18 +1587,26 @@ async function confirmMoveTable(cancelPending = false) {
     }
 }
 
-function renderEditTables(tables, selectedTableNo) {
+function renderEditTables(tables, selectedTableNo, selectedTableId = '') {
     const container = document.getElementById('edit-table-list');
     if (!container) return;
 
     let html = '';
-    tables = tables || [];
+    tables = [...(tables || [])];
+    // The table cache can be incomplete or older than this order. Keep its
+    // saved destination rather than treating it as a new manual table: POS
+    // labels can contain spaces/punctuation and exceed the manual-entry limit.
+    const selectedValue = String(selectedTableNo || '');
+    if (selectedValue && !tables.some(t => String(t.value) === selectedValue)) {
+        tables.unshift({ value: selectedValue, id: selectedTableId });
+    }
     const busy = new Set((allOrders || []).filter(order => order._id !== currentOrderId && !['cancelled', 'completed'].includes(order.status)).map(tableOf));
 
-    tables.forEach(t => {
+    tables.forEach((t, index) => {
         const value = editorEscape(t.value);
-        const radioId = `edit_table_${value}`;
-        const tableId = editorEscape(t.id || '');
+        const radioId = `edit_table_option_${index}`;
+        const isSelected = String(t.value) === selectedValue;
+        const tableId = editorEscape((isSelected && selectedTableId) || t.id || '');
 
         html += `
             <div class="table-item">
@@ -1604,7 +1616,7 @@ function renderEditTables(tables, selectedTableNo) {
                     name="edit_table_no"
                     value="${value}"
                     data-id="${tableId}"
-                    ${String(value) === String(selectedTableNo) ? 'checked' : ''}>
+                    ${isSelected ? 'checked' : ''}>
                 <label for="${radioId}" class="table-label"><span translate="no">${value}</span>${busy.has(String(t.value)) ? '<small>has an order</small>' : ''}</label>
             </div>
         `;
@@ -1809,6 +1821,9 @@ function openEditOrderModal() {
     if (dineType === 'Take away') {
         if (takeawayRadio) takeawayRadio.checked = true;
         if (dineinRadio) dineinRadio.checked = false;
+    } else if (dineType === 'Room') {
+        if (dineinRadio) dineinRadio.checked = false;
+        if (takeawayRadio) takeawayRadio.checked = false;
     } else {
         if (dineinRadio) dineinRadio.checked = true;
         if (takeawayRadio) takeawayRadio.checked = false;
@@ -1826,17 +1841,7 @@ function openEditOrderModal() {
     const currentPersons = order.person_count || 1;
     const tables = tablesFromStorage();
 
-    renderEditTables(tables, currentTableNo);
-    // current table no listல் இல்லனா → manual input select & prefill
-    if (currentTableNo) {
-        const existsInList = tables.some(t => t.value === currentTableNo.toString());
-        if (!existsInList) {
-            const manualRadio = document.getElementById('edit_table_manual_radio');
-            const manualInput = document.getElementById('edit_manual_table_input');
-            if (manualRadio) manualRadio.checked = true;
-            if (manualInput) manualInput.value = currentTableNo;
-        }
-    }
+    renderEditTables(tables, currentTableNo, order.table_id || order.kiosk_table_id || '');
 
     setOrderBeingModified(JSON.parse(JSON.stringify(order))); // Deep copy
     editingOrder.person_count = currentPersons || 1;
