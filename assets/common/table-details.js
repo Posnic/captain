@@ -23,7 +23,7 @@
   function liveRows(response) {
     localStorage.setItem(guestsKey(), String(response.guestsRequired === true));
     const label = document.getElementById('guest-requirement-label');
-    if (label) label.textContent = t(guestsRequired() ? 'How many guests?' : 'Guests (optional)');
+    if (label) label.textContent = t(guestsRequired() && !document.getElementById('order_type_room')?.checked ? 'How many guests?' : 'Guests (optional)');
     localStorage.setItem(settingsKey(), String(response.tableRequired !== false));
     return response.tables.map(row => ({
       ...row,

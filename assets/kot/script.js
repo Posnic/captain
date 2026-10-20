@@ -461,12 +461,15 @@ document.addEventListener('click', function (event) {
     if (!card) return;
     if (card.dataset.awaitingClose === 'true') return;
     event.preventDefault();
-    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'), {saleId: card.dataset.saleId});
+    selectTable(card.getAttribute('data-table-number'), card.hasAttribute('data-takeaway'), {saleId: card.dataset.saleId, room: card.classList.contains('is-room'), roomLabel: card.querySelector('.floor-card-label')?.textContent});
 });
 
 let tablesLoading = false;
 let tablesRequest = null;
-function floorCardHeading(name, takeaway = false) {
+function floorCardHeading(name, takeaway = false, detail = {}) {
+    if (detail.dine_type === 'Room') {
+        return '<div class="floor-name room-heading"><span class="room-type-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 20V10h18v10M3 17h18M5 10V5h14v5M12 5v5"/></svg></span><span class="floor-card-label">' + escapeFloor(window.I18N?.t('Room') || 'Room') + ' ' + escapeFloor(detail.room_number || name) + (detail.venue_name ? '<small translate="no">' + escapeFloor(detail.venue_name) + '</small>' : '') + '</span></div>';
+    }
     const shape = takeaway
         ? '<path d="M5 7h14l1 13H4L5 7Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 12a3 3 0 0 0 6 0"/>'
         : '<rect x="3" y="7" width="18" height="8" rx="2"/><path d="M6 15v5m12-5v5M7 3h10"/>';
@@ -594,7 +597,7 @@ async function loadTablesNow() {
 
             return '<a href="' + (awaitingClose ? 'tables.html?source=floor&table=' + encodeURIComponent(name) : '#/kot/' + encodeURIComponent(name)) + '"' +
                 (awaitingClose ? ' data-awaiting-close="true"' : '') +
-                ' class="floor-card' + (extraClass ? ' ' + extraClass : '') + '"' +
+                ' class="floor-card' + (detail?.dine_type === 'Room' ? ' is-room' : '') + (extraClass ? ' ' + extraClass : '') + '"' +
                 (age ? ' data-age="' + age + '"' : '') +
                 /* WHAT IT IS, NOT WHAT IT SAYS. The takeaway card used to be
                    recognised by its own label, and the label here is "Take
@@ -602,7 +605,7 @@ async function loadTablesNow() {
                 (extraClass === 'is-takeaway' ? ' data-takeaway="true"' : '') +
                 (detail?.sale_id ? ' data-sale-id="' + escapeFloor(detail.sale_id) + '"' : '') +
                 ' data-table-number="' + safe + '">' +
-                floorCardHeading(name, extraClass === 'is-takeaway') +
+                floorCardHeading(name, extraClass === 'is-takeaway', detail) +
                 (extraClass === 'is-takeaway' && detail?.payment_status ? '<div class="takeaway-payment-badge ' + (detail.payment_status === 'Paid' ? 'is-paid' : '') + '">' + escapeFloor(window.I18N?.t(detail.payment_status) || detail.payment_status) + '</div>' : '') +
                 (awaitingClose ? '<div class="floor-meta">' + escapeFloor(window.I18N?.t('Paid') || 'Paid') + ' · ' + escapeFloor(window.I18N?.t('Close order') || 'Close order') + '</div>' : '') +
                 (said ? '<div class="floor-since">' + escapeFloor(said) + '</div>' : '') +
@@ -784,7 +787,7 @@ async function selectTable(tableName, takeaway, options = {}) {
     }
 
     // Update panel title
-    panelTitle.textContent = options.saleId ? tableName : isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
+    panelTitle.textContent = options.room ? options.roomLabel : options.saleId ? tableName : isTakeaway ? 'Takeaway Orders' : `Table ${tableName}`;
     
     // Open the sliding panel
     openSlidingPanel();
