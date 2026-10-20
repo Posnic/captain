@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "설정 → 레스토랑 → 호텔 및 기타 장소에서 직원 객실 주문을 활성화하세요.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "쇼핑 Wi-Fi 교통편을 이용할 수 없습니다.캡틴을 업데이트하고 다시 시도하세요.",
   "Confirm the pending order before switching connections. Your order is saved.": "연결을 전환하기 전에 보류 중인 주문을 확인하세요.주문이 저장되었습니다.",
-  "Print again": "다시 인쇄"
+  "Print again": "다시 인쇄",
+  "Shop wording": "상점 문구",
+  "Custom wording": "맞춤 문구",
+  "Standard wording": "표준 문구",
+  "Managed by your shop. Saved wording works offline.": "매장에서 관리합니다.저장된 문구는 오프라인에서도 작동합니다.",
+  "Uses the standard app language.": "표준 앱 언어를 사용합니다."
 }

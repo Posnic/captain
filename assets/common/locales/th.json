@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "เปิดใช้งานการสั่งซื้อห้องพักสำหรับพนักงานใน การตั้งค่า Â†' ร้านอาหาร → โรงแรมและสถานที่อื่นๆ",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "ไม่มีการขนส่ง Wi-Fi ในร้านค้าอัปเดตกัปตันและลองอีกครั้ง",
   "Confirm the pending order before switching connections. Your order is saved.": "ยืนยันคำสั่งซื้อที่รอดำเนินการก่อนเปลี่ยนการเชื่อมต่อคำสั่งซื้อของคุณถูกบันทึกไว้",
-  "Print again": "พิมพ์อีกครั้ง"
+  "Print again": "พิมพ์อีกครั้ง",
+  "Shop wording": "คำของร้านค้า",
+  "Custom wording": "คำที่กำหนดเอง",
+  "Standard wording": "คำมาตรฐาน",
+  "Managed by your shop. Saved wording works offline.": "จัดการโดยร้านค้าของคุณคำที่บันทึกไว้ทำงานแบบออฟไลน์",
+  "Uses the standard app language.": "ใช้ภาษาแอพมาตรฐาน"
 }
