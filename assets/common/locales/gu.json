@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "સેટિંગ્સ Â†' રેસ્ટોરન્ટ Â†' હોટેલ્સ અને અન્ય સ્થળોમાં સ્ટાફ રૂમ ઓર્ડર સક્ષમ કરો.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "દુકાન Wi-Fi પરિવહન ઉપલબ્ધ નથી. કેપ્ટન અપડેટ કરો અને ફરીથી પ્રયાસ કરો.",
   "Confirm the pending order before switching connections. Your order is saved.": "કનેક્શન્સ સ્વિચ કરતા પહેલા બાકી ઓર્ડરની પુષ્ટિ કરો. તમારો ઓર્ડર સાચવવામાં આવ્યો છે.",
-  "Print again": "ફરી પ્રિન્ટ કરો"
+  "Print again": "ફરી પ્રિન્ટ કરો",
+  "Shop wording": "દુકાનની શબ્દસમૂહ",
+  "Custom wording": "કસ્ટમ શબ્દો",
+  "Standard wording": "માનક શબ્દસમૂહ",
+  "Managed by your shop. Saved wording works offline.": "તમારી દુકાન દ્વારા સંચાલિત. સાચવેલ શબ્દસમૂહ ઑફલાઇન કાર્ય કરે",
+  "Uses the standard app language.": "પ્રમાણભૂત એપ્લિકેશન ભાષાનો ઉપયોગ કરે છે."
 }

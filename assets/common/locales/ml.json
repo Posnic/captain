@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "ക്രമീകരണങ്ങൾ Â†' റസ്റ്റോറന്റ് → ഹോട്ടലുകളിലും മറ്റു വേദികളിലും സ്റ്റാഫ് റൂം ഓർഡറുകൾ പ്രവർത്തനക്ഷമമാക്കുക.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "ഷോപ്പ് വൈഫൈ ഗതാഗതം ലഭ്യമല്ല. ക്യാപ്റ്റനെ അപ്ഡേറ്റ് ചെയ്ത് വീണ്ടും ശ്രമിക്കുക.",
   "Confirm the pending order before switching connections. Your order is saved.": "കണക്ഷനുകൾ മാറുന്നതിന് മുമ്പ് തീർപ്പാക്കുന്ന ഓർഡർ സ്ഥിരീകരിക്കുക. നിങ്ങളുടെ ഓർഡർ സംരക്ഷിച്ചു.",
-  "Print again": "വീണ്ടും പ്രിന്റ് ചെയ്യുക"
+  "Print again": "വീണ്ടും പ്രിന്റ് ചെയ്യുക",
+  "Shop wording": "ഷോപ്പ് വാക്കുകൾ",
+  "Custom wording": "ഇഷ്ടാനുസൃത പദങ്ങൾ",
+  "Standard wording": "സ്റ്റാൻഡേർഡ് പദങ്ങൾ",
+  "Managed by your shop. Saved wording works offline.": "നിങ്ങളുടെ ഷോപ്പ് കൈകാര്യം ചെയ്യുന്നു. സംരക്ഷിച്ച പദങ്ങൾ ഓഫ്ലൈനിൽ പ്രവർത്തിക്കുന്നു.",
+  "Uses the standard app language.": "സ്റ്റാൻഡേർഡ് അപ്ലിക്കേഷൻ ഭാഷ ഉപയോഗിക്കുന്നു."
 }

@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "قم بتمكين طلبات غرف الموظفين في الإعدادات → Restaurant → الفنادق والأماكن الأخرى.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "خدمة النقل عبر الواي فاي في المتجر غير متوفرة. قم بتحديث الكابتن وحاول مرة أخرى.",
   "Confirm the pending order before switching connections. Your order is saved.": "قم بتأكيد الطلب المعلق قبل تبديل الاتصالات. تم حفظ طلبك.",
-  "Print again": "طباعة مرة أخرى"
+  "Print again": "طباعة مرة أخرى",
+  "Shop wording": "صياغة المتجر",
+  "Custom wording": "صياغة مخصصة",
+  "Standard wording": "صياغة قياسية",
+  "Managed by your shop. Saved wording works offline.": "تدار من قبل متجرك. الصياغة المحفوظة تعمل دون اتصال بالإنترنت.",
+  "Uses the standard app language.": "يستخدم لغة التطبيق القياسية."
 }

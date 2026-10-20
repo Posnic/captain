@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "Abilita l'ordine delle camere per il personale nelle Impostazioni → Ristorante → Hotel e altre sedi.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "trasporto Wi-Fi del negozio non è disponibile. Aggiorna Captain e riprova.",
   "Confirm the pending order before switching connections. Your order is saved.": "Conferma l'ordine in sospeso prima di cambiare connessione. Il tuo ordine è stato salvato",
-  "Print again": "Stampa di nuovo"
+  "Print again": "Stampa di nuovo",
+  "Shop wording": "Formulazione del negozio",
+  "Custom wording": "Formulazione personalizzata",
+  "Standard wording": "Formulazione standard",
+  "Managed by your shop. Saved wording works offline.": "Gestito dal tuo negozio. I testi salvati funzionano offline.",
+  "Uses the standard app language.": "Utilizza il linguaggio standard dell'app."
 }

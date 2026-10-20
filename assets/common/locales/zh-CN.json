@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "在 “设置” “餐厅” “酒店和其他场所” 中启用员工房间订单。",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "商店 Wi-Fi 传输不可用。更新队长并重试。",
   "Confirm the pending order before switching connections. Your order is saved.": "在切换连接之前确认待处理订单。您的订单已保存。",
-  "Print again": "再次打印"
+  "Print again": "再次打印",
+  "Shop wording": "商店措辞",
+  "Custom wording": "自定义措辞",
+  "Standard wording": "标准措辞",
+  "Managed by your shop. Saved wording works offline.": "由您的商店管理。保存的措辞可以离线使用。",
+  "Uses the standard app language.": "使用标准应用程序语言。"
 }

@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "Aktifkan pemesanan kamar staf di Pengaturan “Restoran” Hotel dan tempat lainnya.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "Transportasi Wi-Fi toko tidak tersedia. Perbarui Kapten dan coba lagi.",
   "Confirm the pending order before switching connections. Your order is saved.": "Konfirmasikan pesanan yang tertunda sebelum beralih koneksi. Pesanan Anda disimpan.",
-  "Print again": "Cetak lagi"
+  "Print again": "Cetak lagi",
+  "Shop wording": "Kata-kata toko",
+  "Custom wording": "Kata-kata khusus",
+  "Standard wording": "Kata-kata standar",
+  "Managed by your shop. Saved wording works offline.": "Dikelola oleh toko Anda. Kata-kata yang disimpan berfungsi secara offline.",
+  "Uses the standard app language.": "Menggunakan bahasa aplikasi standar."
 }

@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "সেটিংস Â†' রেস্তোঁরা → হোটেল এবং অন্যান্য ভেন্যুতে স্টাফ রুম অর্ডার সক্ষম করুন।",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "দোকান ওয়াই-ফাই পরিবহন উপলব্ধ ক্যাপ্টেন আপডেট করে আবার চেষ্টা করুন",
   "Confirm the pending order before switching connections. Your order is saved.": "সংযোগ স্যুইচ করার আগে মুলতুবি আদেশ নিশ্চিত করুন আপনার অর্ডার সংরক্ষণ করা হয়েছে।",
-  "Print again": "আবার প্রিন্ট করুন"
+  "Print again": "আবার প্রিন্ট করুন",
+  "Shop wording": "দোকান শব্দ",
+  "Custom wording": "কাস্টম শব্দ",
+  "Standard wording": "মান শব্দ",
+  "Managed by your shop. Saved wording works offline.": "আপনার দোকান দ্বারা পরিচালিত। সংরক্ষিত শব্দ অফলাইন কাজ করে।",
+  "Uses the standard app language.": "স্ট্যান্ডার্ড অ্যাপ ভাষা ব্যবহার করে।"
 }

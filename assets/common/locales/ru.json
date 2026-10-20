@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "Разрешите заказ номеров для персонала в меню «Настройки», «Ресторан», «Отели» и другие заведения.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "Беспроводной транспорт магазина недоступен. Обновите Captain и попробуйте снова.",
   "Confirm the pending order before switching connections. Your order is saved.": "Перед переключением подключений подтвердите отложенный ордер. Ваш заказ сохранен.",
-  "Print again": "Напечатать снова"
+  "Print again": "Напечатать снова",
+  "Shop wording": "Формулировка магазина",
+  "Custom wording": "Настраиваемая формулировка",
+  "Standard wording": "Стандартная формулировка",
+  "Managed by your shop. Saved wording works offline.": "Управляется вашим магазином. Сохраненная редакция работает в автономном режиме.",
+  "Uses the standard app language.": "Использует стандартный язык приложения."
 }

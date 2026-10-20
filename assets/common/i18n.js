@@ -10,17 +10,26 @@
   function profileWord(source) {
     if (wordingScope !== profileScope() || wording?.locale !== current) return null;
     const key = wordingKeys[source];
-    return key && Object.prototype.hasOwnProperty.call(wording.values, key) ? wording.values[key] : null;
+    if (key && Object.prototype.hasOwnProperty.call(wording.values, key)) return wording.values[key];
+    return Object.prototype.hasOwnProperty.call(wording.sourceValues || {}, source) ? wording.sourceValues[source] : null;
+  }
+  function showWordingStatus() {
+    const name = document.getElementById?.('me-wording-profile'), status = document.getElementById?.('me-wording-status');
+    const active = root.POSNIC?.session?.active && wordingScope === profileScope() && wording?.locale === current ? wording : null;
+    if (name) name.textContent = active?.profileName || t(active?.profileId ? 'Custom wording' : 'Standard wording');
+    if (status) status.textContent = t(active?.profileId ? 'Managed by your shop. Saved wording works offline.' : 'Uses the standard app language.');
   }
   async function refreshWording() {
-    if (!root.POSNIC?.session?.active || !root.POSNIC?.api) { wording = null; return; }
+    if (!root.POSNIC?.session?.active || !root.POSNIC?.api) { wording = null; showWordingStatus(); return; }
     const scope = profileScope(), branch = localStorage.getItem('branch_id');
-    if (!branch) return;
-    const valid = bundle => bundle?.schemaVersion === 1 && bundle.locale === current && String(bundle.branchId) === branch && bundle.values && typeof bundle.values === 'object' && !Array.isArray(bundle.values) && Object.values(bundle.values).every(value => typeof value === 'string');
+    if (!branch) { wording = null; showWordingStatus(); return; }
+    const textMap = value => value && typeof value === 'object' && !Array.isArray(value) && Object.values(value).every(text => typeof text === 'string');
+    const valid = bundle => bundle?.schemaVersion === 1 && bundle.locale === current && String(bundle.branchId) === branch && textMap(bundle.values) && (bundle.sourceValues === undefined || textMap(bundle.sourceValues));
     if (wordingScope !== scope) {
       wordingScope = scope; wording = null;
       try { const cached = JSON.parse(localStorage.getItem('posnic.wording.v1:' + scope)); if (valid(cached)) wording = cached; } catch {}
       apply(document.documentElement);
+      showWordingStatus();
     }
     try {
       const result = await root.POSNIC.api.get('/settings/wording/bundle?locale=' + encodeURIComponent(current), { headers: { 'X-Branch-Id': branch }, timeout: 4000 });
@@ -28,6 +37,7 @@
       wording = result.data;
       try { localStorage.setItem('posnic.wording.v1:' + scope, JSON.stringify(wording)); } catch {}
       apply(document.documentElement);
+      showWordingStatus();
     } catch { /* Optional wording never prevents local ordering on an old/offline till. */ }
   }
   const normalize = value => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();

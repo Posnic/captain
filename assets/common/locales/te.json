@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "సెట్టింగ్స్ Â†' రెస్టారెంట్ → హోటల్స్ మరియు ఇతర వేదికలలో సిబ్బంది గది ఆర్డర్లను ప్రారంభించండి.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "షాప్ వై-ఫై రవాణా అందుబాటులో లేదు. కెప్టెన్ను నవీకరించండి మరియు మళ్ళీ ప్రయత్నించండి.",
   "Confirm the pending order before switching connections. Your order is saved.": "కనెక్షన్లను మార్చడానికి ముందు పెండింగ్ ఆర్డర్ను నిర్ధారించండి. మీ ఆర్డర్ సేవ్ చేయబడింది.",
-  "Print again": "మళ్లీ ముద్రించండి"
+  "Print again": "మళ్లీ ముద్రించండి",
+  "Shop wording": "షాప్ పదాలు",
+  "Custom wording": "అనుకూల పదాలు",
+  "Standard wording": "ప్రామాణిక పదాలు",
+  "Managed by your shop. Saved wording works offline.": "మీ షాప్ చేత నిర్వహించబడుతుంది. సేవ్ చేసిన పదాలు ఆఫ్లైన్లో పనిచేస్తాయి.",
+  "Uses the standard app language.": "ప్రామాణిక అనువర్తన భాషను ఉపయోగిస్తుంది."
 }

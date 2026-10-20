@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "Schakel kamerbestellingen voor medewerkers in Instellingen → Restaurant → Hotels en andere locaties in.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "Wifi-vervoer in de winkel is niet beschikbaar. Update Captain en probeer het opnieuw.",
   "Confirm the pending order before switching connections. Your order is saved.": "Bevestig de lopende bestelling voordat u van verbinding wisselt. Je bestelling is opgeslagen.",
-  "Print again": "Opnieuw afdrukken"
+  "Print again": "Opnieuw afdrukken",
+  "Shop wording": "Opschrift van de winkel",
+  "Custom wording": "Aangepaste formulering",
+  "Standard wording": "Standaardformulering",
+  "Managed by your shop. Saved wording works offline.": "Beheerd door je winkel. Opgeslagen tekst werkt offline.",
+  "Uses the standard app language.": "Maakt gebruik van de standaardtaal van de app."
 }

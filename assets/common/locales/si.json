@@ -1304,5 +1304,10 @@
   "Enable staff room orders in Settings → Restaurant → Hotels and other venues.": "සැකසුම් Â†' අවන්හල් → හෝටල් සහ වෙනත් ස්ථානවල කාර්ය මණ්ඩල කාමර ඇණවුම් සක්රීය කරන්න.",
   "Shop Wi-Fi transport is unavailable. Update Captain and try again.": "සාප්පු Wi-Fi ප්රවාහනය ලබා ගත නොහැක. කැප්ටන් යාවත්කාලීන කර නැවත උත්සාහ කරන්න.",
   "Confirm the pending order before switching connections. Your order is saved.": "සම්බන්ධතා මාරු කිරීමට පෙර කල් පවතින ඇණවුම තහවුරු කරන්න. ඔබේ ඇණවුම සුරකිනු ඇත.",
-  "Print again": "නැවත මුද්‍රණය කරන්න"
+  "Print again": "නැවත මුද්‍රණය කරන්න",
+  "Shop wording": "සාප්පු වචන",
+  "Custom wording": "අභිරුචි වචන",
+  "Standard wording": "සම්මත වචන",
+  "Managed by your shop. Saved wording works offline.": "ඔබේ වෙළඳසැල විසින් කළමනාකරණය කරනු ලැබේ. සුරකින වචන නොබැඳි ක්රියා කරයි.",
+  "Uses the standard app language.": "සම්මත යෙදුම් භාෂාව භාවිතා කරයි."
 }
