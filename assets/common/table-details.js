@@ -18,7 +18,12 @@
   }
   const settingsKey = () => "captain.table-required:" + (window.POSNIC?.session?.shopKey || "") + ":" + (localStorage.getItem("branch_id") || "");
   const tableRequired = () => localStorage.getItem(settingsKey()) !== "false";
+  const guestsKey = () => settingsKey().replace('table-required:', 'guests-required:');
+  const guestsRequired = () => localStorage.getItem(guestsKey()) === 'true';
   function liveRows(response) {
+    localStorage.setItem(guestsKey(), String(response.guestsRequired === true));
+    const label = document.getElementById('guest-requirement-label');
+    if (label) label.textContent = t(guestsRequired() ? 'How many guests?' : 'Guests (optional)');
     localStorage.setItem(settingsKey(), String(response.tableRequired !== false));
     return response.tables.map(row => ({
       ...row,
@@ -102,6 +107,7 @@
   }
   window.CaptainTables = {
     tableRequired,
+    guestsRequired,
     serviceState,
     liveRows,
     metadata,
