@@ -24,6 +24,75 @@ async function apply(page) {
   await page.locator('#editor-setting-apply').click();
 }
 
+for (const where of ['order-history.html', 'kot-management.html']) {
+ test(`room item edits preserve venue destination and charge on ${where}`, async ({page}) => {
+  const posts = await editor(page, where, {
+   dine_type:'Room',table_number:'SA - 207',table_id:'',
+   charges:[{source:'room',name:'Room service charge',percent:5,amount:22,tax_amount:1.1}],
+  });
+  await expect(page.locator('#order-editor-context')).toHaveText('SA - 207');
+  await page.locator('#order-editor-details-open').click();
+  await expect(page.locator('[data-editor-setting="type"]')).toBeHidden();
+  await page.locator('[data-editor-setting="discount"]').click();
+  await page.locator('#edit-discount-value').fill('5');
+  await apply(page);
+  await page.locator('#save-order-changes').click();
+  await expect(page.locator('#editOrderModal')).toBeHidden();
+  expect(posts).toHaveLength(1);
+  expect(posts[0]).toMatchObject({dine_type:'Room',table_number:'SA - 207',table_id:''});
+  // Omitted charges retain the server's saved percentage and tax snapshot.
+  expect(posts[0]).not.toHaveProperty('charges');
+ });
+}
+
+for (const where of ['order-history.html', 'kot-management.html']) {
+ for (const table of ['SA - 207', 'Patio & Garden']) {
+  test(`cancellation preserves an uncached existing table ${table} on ${where}`, async ({page}) => {
+   const posts = await editor(page, where, {table_number:table, table_id:'saved-table-id'});
+   const selected = page.locator('input[name="edit_table_no"]:checked');
+   await expect(selected).toHaveValue(table);
+   await expect(selected).toHaveAttribute('data-id', 'saved-table-id');
+   await expect(page.locator('#edit_table_manual_radio')).not.toBeChecked();
+   await page.locator('.qty-btn[aria-label="Decrease quantity"]').click();
+   await page.locator('#cancel-item-reason').fill('Customer requested');
+   await page.locator('#confirm-remove-item-btn').click();
+   await page.locator('#save-order-changes').click();
+   await expect(page.locator('#editOrderModal')).toBeHidden();
+   expect(posts).toHaveLength(1);
+   expect(posts[0]).toMatchObject({table_number:table,table_id:'saved-table-id',dine_type:'Dine-in'});
+   expect(posts[0].items[0].quantity).toBe(1);
+  });
+ }
+}
+
+test('settings apply and added items preserve an uncached legacy table without an ID', async ({page}) => {
+ const posts = await editor(page, 'kot-management.html', {table_number:'SA - 207', table_id:''});
+ await setting(page, 'discount');
+ await page.locator('#edit-discount-value').fill('5');
+ await apply(page);
+ await expect(page.locator('#order-editor-items')).toBeVisible();
+ await page.locator('#open-item-picker').click();
+ await page.locator('#item-picker .btn-add[data-id="p-coffee"]').click();
+ await page.locator('#item-picker-done').click();
+ await page.locator('#save-order-changes').click();
+ await expect(page.locator('#editOrderModal')).toBeHidden();
+ expect(posts).toHaveLength(1);
+ expect(posts[0]).toMatchObject({table_number:'SA - 207',table_id:''});
+ expect(posts[0].items.map(i=>[i.product_id,i.quantity])).toEqual([['p-biryani',2],['p-coffee',1]]);
+});
+
+test('an existing saved table does not bypass validation for a different manual destination', async ({page}) => {
+ const posts = await editor(page, 'order-history.html', {table_number:'SA - 207',table_id:'saved-table-id'});
+ await page.evaluate(() => {
+  document.getElementById('edit_table_manual_radio').checked = true;
+  document.getElementById('edit_manual_table_input').value = 'INVALID - TABLE';
+  return saveOrderChanges();
+ });
+ expect(posts).toHaveLength(0);
+ await expect(page.locator('#editOrderModal')).toBeVisible();
+ await expect(page.getByText('Table must be 1–6 letters/numbers (A–Z, 0–9).', {exact:true})).toBeVisible();
+});
+
 test('direct Add items opens menu, keeps earlier preparation separate and selects search', async ({page}) => {
   await onTheMenu(page, 'nothing');
   await page.route('**/sales/getOrderHistory', r => r.fulfill({json:{type:'success',data:{orders:[original]}}}));
