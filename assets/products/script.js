@@ -1412,7 +1412,7 @@ async function applyProductFilter() {
         .filter(([key]) => key !== 'all')
         .map(([key, items]) => ({
             key,
-            name: (items[0] && items[0].category_name) || key,
+            name: /^quick sale$/i.test(items[0]?.category_name || '') ? 'Custom items' : ((items[0] && items[0].category_name) || key),
             items,
         }));
     const numbers = MenuView.numbers(menuForNumbers);

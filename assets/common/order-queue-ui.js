@@ -66,7 +66,7 @@
     } else {
       el.className = "pending-orders-notice";
       el.style.cssText = "flex-shrink:0;padding:0 16px;font:13px/1.4 system-ui;";
-      el.innerHTML = `<a href="pending.html" style="min-height:44px;display:flex;align-items:center;gap:12px;color:inherit"><span id="${ID}-text" role="status" style="flex:1"></span><span>View</span></a>`;
+      el.innerHTML = `<a href="pending.html" style="min-height:44px;display:flex;align-items:center;gap:12px;color:inherit"><span id="${ID}-text" role="status" style="flex:1"></span><span data-needs-attention>Needs attention</span></a>`;
       el.querySelector("a").onclick = () => sessionStorage.setItem("captain_pending_return", location.pathname.split("/").pop());
       const header = document.querySelector('.floor-head, .mobile-header, .bill-head');
       if (header) header.after(el);
@@ -94,12 +94,18 @@
     // Automatic delivery continues even while this notice is absent.
     const page = !!document.getElementById("pending-orders-content");
     el.hidden = !page && !rows.length && !lastError;
+    const needsAction = !!lastError || rows.some(row => ["attention","blocked"].includes(row.state));
     el.querySelector(`#${ID}-text`).textContent =
-      lastError ||
-      (rows.length === 1 ? `${rows.length} order waiting to sync` : `${rows.length} orders waiting to sync`);
+      lastError || (needsAction ? "Needs attention" : "") ||
+      (rows.length === 1 ? `${rows.length} order saved. Sending automatically…` : `${rows.length} orders saved. Sending automatically…`);
     window.dispatchEvent(new CustomEvent("captain:pending-changed"));
-    if (!page) return;
-    if (!rows.length && !lastError) el.querySelector(`#${ID}-text`).textContent = "All orders synced";
+    if (!page) {
+      el.querySelector('[data-needs-attention]').hidden = !needsAction;
+      const link=el.querySelector('a');
+      if(needsAction)link.setAttribute('href','pending.html');else link.removeAttribute('href');
+      return;
+    }
+    if (!rows.length && !lastError) el.querySelector(`#${ID}-text`).textContent = "All orders sent";
     const list = el.querySelector(`#${ID}-rows`);
     list.replaceChildren();
     const needsAccess =
@@ -207,6 +213,20 @@
         retry.onclick = () => flush(true, row.key);
         card.append(retry);
       }
+      if (OrderQueue.canDiscard(row)) {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';cancel.textContent = 'Cancel order';cancel.style.cssText = buttonStyle;
+        cancel.dataset.discardPending = row.key;
+        cancel.onclick = async () => {
+          cancel.disabled = true;
+          const confirmed = await window.CaptainConfirm.discard({title:'Cancel order',keepLabel:'Back',confirmLabel:'Cancel order',details:'Remove this unsent order from this phone? The existing kitchen order will not change.'});
+          if (confirmed && ownerMatches(row) && POSNIC.session.active && !window.CaptainAccess?.locked) {
+            if (!OrderQueue.discard(row.key)) {message.textContent='Could not cancel the order';cancel.disabled=false;return;}
+            priceReviewKey=null;render();schedule();
+          } else cancel.disabled=false;
+        };
+        card.append(cancel);
+      }
       list.append(card);
     }
   }
@@ -223,7 +243,7 @@
         );
     }
   }
-  function flush(manual = false, key) {
+  function flush(manual = false, key, connectionRestored = false) {
     if (priceReviewKey && !key) return Promise.resolve();
     if (key) priceReviewKey = null;
     if (flight) return flight;
@@ -236,7 +256,7 @@
           await POSNIC.session.retryAccess();
         await reconcileCart();
         if (manual && !OrderQueue.count()) await POSNIC.net.check(true);
-        const result = await OrderQueue.flush(sendOne, { force: manual, key, eligible: ownerMatches });
+        const result = await OrderQueue.flush(sendOne, { force: manual, key, eligible: ownerMatches, connectionRestored });
         if (result.sent) window.dispatchEvent(new Event('posnic:orders-sent'));
         if (result.sent && typeof showToast === "function")
           showToast(`Sent ${result.sent} to the kitchen.`);
@@ -273,10 +293,10 @@
     }
     render();
     flush();
-    window.addEventListener("online", () => flush());
+    window.addEventListener("online", () => flush(false, undefined, true));
     window.addEventListener("posnic:online", () => {
       render();
-      flush();
+      flush(false, undefined, true);
     });
     window.addEventListener("posnic:server-changed", render);
     window.addEventListener("posnic:offline", render);

@@ -131,6 +131,7 @@ if (!fs.existsSync(androidDir)) {
 }
 
 run(`${npx} cap sync android`);
+run('node scripts/install-native-branding.js android');
 
 /* After sync, because `cap add` writes the gradle file this edits. */
 stamp.stampGradle(path.join(androidDir, 'app', 'build.gradle'), version);
@@ -193,6 +194,11 @@ if (fs.existsSync(manifestPath)) {
       '    <application',
     ].join('\n');
     manifest = manifest.replace('<application', camera);
+  }
+  // Android package visibility must let Capacitor resolve the camera intent.
+  if (!manifest.includes('android.media.action.IMAGE_CAPTURE')) {
+    const cameraQuery='<intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>';
+    manifest=manifest.includes('</queries>')?manifest.replace('</queries>',cameraQuery+'</queries>'):manifest.replace('<application','<queries>'+cameraQuery+'</queries>\n    <application');
   }
 
   /*

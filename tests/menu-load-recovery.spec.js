@@ -55,6 +55,8 @@ test('missing table cache downloads once, offers retry on failure, and recovers 
   expect(downloads).toBe(2);
   await expect(page.locator('.table-list')).not.toContainText('Loading tables');
   await page.getByText('Take away', { exact: true }).click();
+  await expect(page).toHaveURL(/discount\.html$/);
+  await page.locator('[onclick*="goToProductsWithTableCheck"]').click();
   await expect(page).toHaveURL(/products\.html$/);
   await expect(page.getByText('Test meal', { exact: true })).toBeVisible();
 });

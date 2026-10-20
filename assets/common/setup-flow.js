@@ -1,0 +1,128 @@
+/* Presentation for first-time setup. Discovery never grants route authority. */
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const text = value => window.I18N?.t(value) || value;
+  function dialog(title) {
+    const node = document.createElement('dialog');
+    node.className = 'captain-setup-dialog';
+    const heading = document.createElement('h2');
+    heading.textContent = text(title); node.append(heading);
+    document.body.append(node);
+    return node;
+  }
+  function paragraph(node, value) { const p=document.createElement('p');p.textContent=text(value);node.append(p);return p; }
+  function action(node, label, callback, secondary=false) {
+    const button=document.createElement('button');button.type='button';button.className=secondary?'setup-link':'setup-primary';button.textContent=text(label);button.onclick=callback;node.append(button);return button;
+  }
+  async function found(hit, signal) {
+    const node=dialog(hit.info?.connections?.shopName || 'Shop found');
+    paragraph(node,'Sign in to this shop to start taking orders.');
+    const details=document.createElement('details');details.className='setup-found-details';
+    const summary=document.createElement('summary');summary.textContent=text('Connection details');details.append(summary);node.append(details);
+    const addresses=document.createElement('dl');addresses.className='setup-found-addresses';details.append(addresses);
+    const add=(label,url)=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=text(label);dd.textContent=url;addresses.append(dt,dd);};
+    add(POSNIC.server.isLanUrl(hit.base)?'Shop Wi-Fi':'Internet',hit.base);
+    const cloud=POSNIC.server.normalize(hit.info?.connections?.cloud);
+    if(cloud&&!POSNIC.server.isLanUrl(cloud)&&cloud!==hit.base){add('Internet server',cloud);}
+    else if(POSNIC.server.isLanUrl(hit.base))paragraph(node,'No internet address was provided. You can still use shop Wi-Fi.');
+    return new Promise(resolve=>{
+      const aborted=()=>finish(false);
+      const finish=accepted=>{signal?.removeEventListener('abort',aborted);node.close();node.remove();resolve(accepted);};
+      action(node,'Sign in to this shop',()=>finish(true));
+      action(node,'Choose another shop',()=>finish(false),true);
+      node.addEventListener('cancel',e=>{e.preventDefault();finish(false);});
+      if(signal?.aborted)return finish(false);signal?.addEventListener('abort',aborted,{once:true});node.showModal();
+    });
+  }
+  async function finishSetup(branchId) {
+    if($('setup-remember'))localStorage.setItem('posnic.remember-session',$('setup-remember').checked?'1':'0');
+    sessionStorage.setItem('posnic.current-session','1');
+    localStorage.setItem('posnic.setup-complete','1');
+    // Setup saves both addresses; the selected route stays manual.
+    localStorage.setItem('posnic.automatic-connections','0');
+    if(!POSNIC.server.priorityConfigured)POSNIC.server.setPriority('lan');
+    POSNIC.server.pin(POSNIC.server.baseUrl);
+    if(branchId) {
+      try {
+        const owner=POSNIC.session.shopKey+':'+POSNIC.session.user?.id;
+        const details=await Promise.race([
+          POSNIC.api.post('/captain/v1/connections',{branch_id:branchId}),
+          new Promise(resolve=>setTimeout(()=>resolve(null),1800))
+        ]);
+        if(owner===POSNIC.session.shopKey+':'+POSNIC.session.user?.id&&String(details?.branchId)===String(branchId)) {
+          const cloud=POSNIC.server.normalize(details.cloud);
+          if(cloud&&!POSNIC.server.isLanUrl(cloud)) {
+            POSNIC.server.remember({cloud});
+            // Only a successful proof may promote this discovery hint to a route.
+            if(POSNIC.session.managed)await Promise.race([
+              POSNIC.session.addAddress(cloud),
+              new Promise(resolve=>setTimeout(resolve,1200))
+            ]);
+          }
+        }
+      } catch (_) { /* Older servers and unavailable peers must not block login. */ }
+    }
+    if($('setup-use-pin')?.checked&&!POSNIC.lock.isSet())await POSNIC.lock.choose();
+  }
+  window.CaptainSetupFlow={found,finishSetup};
+  document.addEventListener('DOMContentLoaded',()=>{
+    $('captain-cloud-login').textContent=text('Sign in with Posnic Cloud');
+    $('captain-address-toggle').textContent=text('Shop code or server address');
+    // Keep the real discovery, camera and authentication handlers. Only move
+    // their controls into the approved hierarchy; no duplicate login flow.
+    const methods=$('setup-methods');
+    const wifi=document.createElement('div');wifi.id='setup-wifi-choice';wifi.className='setup-recommend';
+    const label=document.createElement('strong');label.textContent=text('Find shop on Wi-Fi');wifi.append(label);
+    methods.prepend(wifi);wifi.append($('setup-start-hint'),$('captain-search'));
+    $('captain-search').querySelector('span').textContent=text('Search this Wi-Fi');
+    methods.append($('captain-cloud-login'),$('captain-scan'));
+    const cloudChoices=document.createElement('section');cloudChoices.id='setup-cloud-choices';cloudChoices.hidden=$('captain-onboarding').dataset.setupView!=='cloud-choice';methods.after(cloudChoices);
+    PosnicConnectionSetup.cloudRoles({translate:text}).forEach(role=>{
+      const button=action(cloudChoices,role.label,()=>role.id==='owner'?CaptainOnboarding.cloudOwner():CaptainOnboarding.cloudStaff(),true);
+      button.id='captain-cloud-'+role.id;
+      PosnicConnectionSetupUI.decorateMethod(button,role,{posnicLogo:'packages/connection-setup/assets/posnic-mark.svg'});
+    });
+    const other=document.createElement('section');other.id='setup-other-methods';other.hidden=true;
+    other.append($('captain-code-toggle'),$('captain-address-toggle'),$('connection-settings'));methods.after(other);
+    const more=action(methods,'Other ways to connect',()=>CaptainOnboarding.otherWays(),true);more.id='setup-other-toggle';
+    const sharedMethods=PosnicConnectionSetup.methods({translate:text});
+    const methodControls={qr:'captain-scan',cloud:'captain-cloud-login',other:'setup-other-toggle',code:'captain-code-toggle',address:'captain-address-toggle',settings:'connection-settings'};
+    sharedMethods.forEach(method=>{
+      const id=methodControls[method.id];
+      if(id)PosnicConnectionSetupUI.decorateMethod($(id),method,{posnicLogo:'packages/connection-setup/assets/posnic-mark.svg'});
+    });
+    methods.querySelector('.setup-alternatives')?.remove();methods.querySelector('.setup-tools')?.remove();
+    const code=action($('staff-signin-form'),'Enter pairing code',()=>CaptainOnboarding.pairingCode(),true);code.id='setup-signin-code';
+    $('setup-start-hint').textContent=text('Shop Wi-Fi is fastest.');
+    const pin=document.createElement('label');pin.className='setup-confirm';
+    pin.innerHTML='<input type="checkbox" id="setup-use-pin"><span>Use a PIN on this phone (optional)</span>';
+    $('login-btn').before(pin);
+    const remember=document.createElement('label');remember.className='setup-confirm';
+    remember.innerHTML='<input type="checkbox" id="setup-remember"><span>Keep me signed in</span>';
+    pin.before(remember);$('setup-remember').checked=localStorage.getItem('posnic.remember-session')!=='0';
+    const help=document.createElement('p');help.className='setup-hint setup-session-help';help.textContent=text('Add or change your PIN anytime in Account.');pin.after(help);
+    const network=window.Capacitor?.Plugins?.LocalNetwork;
+    if(network?.getLocalIp)Promise.race([network.getLocalIp(),new Promise(resolve=>setTimeout(()=>resolve(null),800))]).then(info=>{
+      if(info?.wifi===false){$('setup-wifi-choice').hidden=true;$('captain-cloud-login').classList.add('setup-cloud-recommended');methods.insertBefore($('captain-cloud-login'),$('captain-scan'));const hint=paragraph(methods,'Wi-Fi is off. Sign in with Posnic to find your shop.');methods.prepend(hint);}
+      if(info?.wifi&&/^\d{1,3}(\.\d{1,3}){3}$/.test(info.ip)){
+        const prefix=info.ip.split('.').slice(0,3).join('.')+'.';
+        const label=document.createElement('label');label.className='setup-label';label.textContent=text('Last number of the billing computer’s address');
+        const row=document.createElement('div');row.className='setup-ip-suffix';const fixed=document.createElement('span');fixed.textContent=prefix;
+        const input=document.createElement('input');input.inputMode='numeric';input.maxLength=3;input.setAttribute('aria-label',text('Last number'));input.placeholder='200';
+        input.oninput=()=>{if(/^\d{1,3}$/.test(input.value)&&Number(input.value)<=255){$('captain-server').value=prefix+input.value+':5555';$('captain-server').dispatchEvent(new Event('input'));}};
+        row.append(fixed,input);label.append(row);$('setup-address-entry').prepend(label);
+      }
+    }).catch(()=>{});
+    if(!POSNIC.server.isConfigured&&!POSNIC.session.active&&!localStorage.getItem('posnic.setup-intro-seen')){
+      const node=dialog('Let’s get you ready.');node.classList.add('setup-welcome');
+      node.replaceChildren();
+      const close=()=>{localStorage.setItem('posnic.setup-intro-seen','1');node.close();node.remove();};
+      PosnicConnectionSetupUI.renderWelcome(node,{
+        name:'Captain',logo:'assets/common/captain-mark.svg',translate:text,
+        steps:['Find your shop','Sign in once','Start taking orders'],onContinue:close
+      });
+      node.addEventListener('cancel',e=>{e.preventDefault();close();});node.showModal();
+    }
+  });
+})();

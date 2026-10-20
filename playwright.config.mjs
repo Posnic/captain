@@ -11,6 +11,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: process.env.CAPTAIN_TEST_WORKERS ? Number(process.env.CAPTAIN_TEST_WORKERS) : 1,
+  // Optional local release retry; repeated failures still fail the commit gate.
+  retries: process.env.CAPTAIN_TEST_RETRIES === '1' ? 1 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://127.0.0.1:${testPort}`,
@@ -38,7 +40,7 @@ export default defineConfig({
     /* `npm.cmd` exists on Windows and nowhere else, so this ran at the desk
        and failed on a runner with "npm.cmd: not found" - the same shape of
        bug as the hard-coded gradlew.bat in build-apk.js. */
-    command: `${process.platform === 'win32' ? 'npm.cmd' : 'npm'} run dev -- --host 127.0.0.1 --port ${testPort} --strictPort`,
+    command: process.env.CAPTAIN_TEST_STATIC === '1' ? `node scripts/test-server.cjs ${testPort}` : `${process.platform === 'win32' ? 'npm.cmd' : 'npm'} run dev -- --host 127.0.0.1 --port ${testPort} --strictPort`,
     url: `http://127.0.0.1:${testPort}/index.html`,
     reuseExistingServer: !process.env.CAPTAIN_TEST_PORT,
     timeout: 120_000

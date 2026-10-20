@@ -94,3 +94,18 @@ html[data-color-scheme="dark"] .edit-btn, html[data-color-scheme="dark"] #editOr
 html[data-color-scheme="dark"] .cancel-btn, html[data-color-scheme="dark"] .remove-btn { background: #b91c1c; color: #fff; }
 
 html[data-color-scheme="dark"] #page-loader { background: var(--ground); }
+
+/* Explicit surfaces avoid legacy light-only aliases inherited by the history. */
+.history-screen #order-list-screen,
+.history-screen .orders-container,
+.history-screen #empty-state,
+.history-screen .history-request-state { background: var(--ground); color: var(--ink); }
+.history-screen .table-number { background: var(--surface-sunk); color: var(--ink-soft); }
+.history-screen .order-info h5,
+.history-screen .mobile-header .back-btn,
+.history-screen .mobile-header .refresh-btn { color: var(--ink); }
+.history-screen .orders-container:empty { flex: 0; padding: 0; }
+.history-screen #empty-state,
+.history-screen .history-request-state { flex: 1; padding: 48px 20px; text-align: center; }
+.history-screen #empty-state i { color: var(--ink-soft); }
+.history-screen .history-request-state button { display: block; margin: 16px auto; color: var(--accent); background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 12px; padding: 12px 24px; }

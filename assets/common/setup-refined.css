@@ -1,0 +1,25 @@
+/* First-time setup uses the same theme and real controls as the rest of Captain. */
+.captain-setup-dialog{--setup-teal:#087e89;--setup-tint:#e9f7f5}
+html[data-color-scheme="dark"] .captain-setup-dialog{--setup-teal:#74d4d5;--setup-tint:#183a3e}
+#captain-onboarding[data-setup-view="start"] #setup-methods{gap:0}
+#captain-onboarding .setup-recommend{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:17px;padding:18px;background:var(--surface-sunk);margin:8px 0 12px}
+#captain-onboarding .setup-recommend>strong{font-size:17px;color:var(--ink)}
+#captain-onboarding .setup-recommend .setup-hint{margin:0 0 8px;font-size:13px}
+#captain-onboarding[data-setup-view="start"] .setup-recommend>*{order:initial}
+#captain-onboarding #captain-search{background:var(--accent);color:var(--accent-ink)}
+#setup-methods>.connection-cloud,#captain-onboarding #setup-methods>#connection-settings{display:none}
+#login-section .setup-steps{height:auto;min-height:36px;overflow:visible;align-items:center;margin-bottom:22px}
+#login-section .setup-steps li{min-width:0;line-height:1.4;font-style:normal}
+#setup-signin-code{width:100%;text-align:center}
+#captain-onboarding #captain-cloud-login.setup-cloud-recommended{background:var(--accent);color:var(--accent-ink);border-radius:12px!important;padding:15px;justify-content:center}
+.setup-found-details summary{min-height:44px;padding:12px 0;color:var(--accent);font-size:14px}
+@media(max-width:600px){.setup-welcome[open]{display:block}.setup-welcome{padding-top:calc(env(safe-area-inset-top,0px) + 24px)}}
+
+/* Captain's legacy button selectors are reset for the shared renderer. */
+#captain-onboarding .pc-method{padding:12px 4px;min-height:68px;margin-top:0;border:0;border-bottom:1px solid var(--line);border-radius:0!important;background:var(--surface);color:var(--ink);justify-content:flex-start;text-align:start}
+#captain-onboarding .pc-method:last-child{border-bottom:0}
+#captain-onboarding .pc-method:hover{background:var(--surface-sunk)}
+#captain-onboarding .pc-method:focus-visible{border-radius:10px!important}
+#captain-onboarding #captain-cloud-login.setup-cloud-recommended{padding:12px;border-radius:12px!important;background:var(--accent);color:var(--accent-ink)}
+#captain-onboarding .setup-cloud-recommended .pc-method-arrow{color:inherit}
+#captain-onboarding[data-setup-view="cloud-address"] .setup-label:has(.setup-ip-suffix){display:none}

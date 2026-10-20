@@ -188,6 +188,7 @@ async function doLogin() {
          * a client never controls which version the server is on, and shops
          * update when they update.
          */
+        await window.CaptainValidateAccess(result, loginServer);
         const branches = result.branches || result.data || [];
         if (typeof OrderQueue !== 'undefined' && OrderQueue.all().some(row => row.owner && (row.owner.user !== result.user?.id || row.owner.shop !== result.shopKey || row.owner.base !== POSNIC.server.baseUrl))) throw new Error('Reconnect the original staff member and server to keep saved orders separate.');
         if (window.CaptainAccess?.locked) await POSNIC.session.end();
@@ -199,6 +200,7 @@ async function doLogin() {
         }
 
         window.CaptainSignIn?.remember(loginServer, username);
+        await window.CaptainSetupFlow?.finishSetup(branches.length === 1 ? branches[0].branch_id : null);
         localStorage.setItem("kiosk_branch_list", JSON.stringify(branches));
         const userId = (result.user && result.user.id) || branches[0].user_id;
         if (userId) localStorage.setItem("user_id", userId);
@@ -370,13 +372,15 @@ async function selectBranch(branchId) {
                 if (current && current.branch_id) {
                     // Order History க்கு use பண்ணுற id
                     localStorage.setItem("branch_id", current.branch_id);
+                    if (branchList.length > 1) await window.CaptainSetupFlow?.finishSetup(current.branch_id);
                 }
             } catch (e) {
                 console.error("Failed to parse kiosk_branch_list", e);
             }
         }
 
-        await fetchAndStoreBranch(branchId, true);
+        const loaded = await fetchAndStoreBranch(branchId, true);
+        if (loaded === false) throw new Error();
     } catch (err) {
         console.error("Error loading branch products:", err);
         // Login has already succeeded. A menu/storage failure must stay visible
@@ -386,6 +390,7 @@ async function selectBranch(branchId) {
         showLoginMessage(message);
         showBranchMessage(message);
         showErrorPopup(message);
+        return false;
     } finally {
         hideLoader();
     }

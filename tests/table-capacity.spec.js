@@ -45,8 +45,8 @@ test('seating uses portrait tablet space and keeps tables before guest count',as
  for(const width of [320,768]){await page.setViewportSize({width,height:1024});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`test-artifacts/seating-${width}.png`,fullPage:true});}
 });
 
-test('Arabic order type follows right-to-left layout and takeaway skips table confirmation',async({page})=>{
+test('Arabic order type follows right-to-left layout and takeaway waits for Next',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('posnic.language','ar'));await onTheMenu(page,'nothing');await page.goto('/discount.html');await expect(page.locator('html')).toHaveAttribute('dir','rtl');
  const indicator=page.locator('.dine-toggle-indicator');let segment=await page.locator('label[for=order_type_dinein]').boundingBox();let selected=await indicator.boundingBox();expect(Math.abs(selected.x-segment.x)).toBeLessThan(8);
- await page.locator('label[for=order_type_takeaway]').click();await expect(page).toHaveURL(/products.html/);await expect(page.locator('#seat-confirmation')).toHaveCount(0);expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('');expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('0');
+ await page.locator('label[for=order_type_takeaway]').click();await expect(page).toHaveURL(/discount.html/);await page.locator('[onclick="goToProductsWithTableCheck()"]').click();await expect(page).toHaveURL(/products.html/);await expect(page.locator('#seat-confirmation')).toHaveCount(0);expect(await page.evaluate(()=>localStorage.getItem('kiosk_table_no'))).toBe('');expect(await page.evaluate(()=>localStorage.getItem('kiosk_person_count'))).toBe('0');
 });

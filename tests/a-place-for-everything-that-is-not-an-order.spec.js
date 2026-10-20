@@ -20,6 +20,24 @@ import { onTheMenu, item } from './support/shop.js';
 
 const MENU = [{ category_name: 'Mains', items: [item('p-cb', 'Chicken Biryani', 220)] }];
 
+test('sign-in preferences persist and PIN can be enabled and removed with verification',async({page})=>{
+ await onTheFloor(page);await page.goto('/me.html#security');
+ await expect(page.locator('#me-pin-enabled')).not.toBeChecked();
+ await page.locator('#me-remember-session').uncheck();
+ expect(await page.evaluate(()=>localStorage.getItem('posnic.remember-session'))).toBe('0');
+ await page.locator('#me-remember-session').check();
+ await page.locator('#me-pin-enabled').check();
+ for(const digits of ['1234','1234'])for(const digit of digits)await page.locator('#posnic-lock-keys').getByRole('button',{name:digit,exact:true}).click();
+ await expect(page.locator('#me-pin-enabled')).toBeEnabled();
+ await expect(page.locator('#me-pin-enabled')).toBeChecked();
+ await page.locator('#me-pin-enabled').uncheck();
+ for(const digit of '1234')await page.locator('#posnic-lock-keys').getByRole('button',{name:digit,exact:true}).click();
+ await expect(page.locator('#me-pin-enabled')).toBeEnabled();
+ await expect(page.locator('#me-pin-enabled')).not.toBeChecked();
+ expect(await page.evaluate(()=>POSNIC.lock.isSet())).toBe(false);
+ await page.screenshot({path:'test-artifacts/signin-pin-settings.png',fullPage:true});
+});
+
 /** The floor screen, signed in, as a waiter sees it. */
 async function onTheFloor(page) {
   await onTheMenu(page, 'nothing', { menu: MENU });
@@ -51,7 +69,7 @@ test('the hub leads to focused account, language and preference screens', async 
   await expect(page.locator('#me-password')).toBeHidden();
   await expect(page.locator('#me-server')).toBeVisible();
   await page.locator('a[href="#account"]').click();
-  for (const id of ['me-sign-out', 'me-password', 'me-lock']) await expect(page.locator('#' + id)).toBeVisible();
+  for (const id of ['me-sign-out', 'me-password']) await expect(page.locator('#' + id)).toBeVisible();
   await expect(page.locator('#me-copies')).toBeHidden();
   await page.locator('#me-back').click();
   await page.locator('a[href="#preferences"]').click();

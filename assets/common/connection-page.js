@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ? "Captain " + build.version
       : "Captain dev build";
   if (window.SelfTest) SelfTest.fromLocation();
+  if (sessionStorage.getItem('captain.link-cloud') === '1') return;
   if (
     sessionStorage.getItem("posnic_change_server") === "1" ||
     sessionStorage.getItem("posnic_editing_server") === "1"

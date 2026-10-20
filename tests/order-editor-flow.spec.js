@@ -206,7 +206,7 @@ test('Arabic and narrow screens keep actions in view and shop names unchanged',a
 });
 test('notes stay in the draft and a failed save retains them for retry',async({page})=>{
  const posts=await editor(page);
- await page.locator('.editor-note-link').click();
+ await page.locator('[data-editor-note-index]').click();
  await page.locator('#edit-item-notes-text').fill('Less spicy');
  await page.locator('#edit-item-notes-apply').click();
  await expect(page.locator('#editItemNotesModal')).toBeHidden();
@@ -419,7 +419,7 @@ test('allocated discount review uses confirmed tax-inclusive total without compo
 test('opening and editing preserves stored unit-price precision',async({page})=>{
  const posts=await editor(page,'order-history.html',{total_amount:1.234,items:[{product_id:'p-biryani',name:'Chicken Biryani',quantity:1,price:1.234,unit_price:1.234}]});
  await page.evaluate(()=>CaptainMoney.remember({currencyCode:'KWD',currencySymbol:'KD'}));
- await page.locator('.editor-note-link').click();
+ await page.locator('[data-editor-note-index]').click();
  await page.locator('#edit-item-notes-text').fill('No chilli');
  await page.locator('#edit-item-notes-apply').click();
  await page.locator('#save-order-changes').click();
@@ -682,7 +682,7 @@ for (const where of ['order-history.html','kot-management.html']) {
   await page.locator('#open-item-picker').click();
   await page.locator('#item-picker .btn-add[data-id="p-coffee"]').first().click();
   await page.locator('#item-picker-done').click();
-  await page.locator('#current-order-items .order-item-card').nth(1).locator('.editor-note-link').click();
+  await page.locator('#current-order-items .order-item-card').nth(1).locator('[data-editor-note-index]').click();
   await page.locator('#edit-item-notes-text').fill('Less sweet');
   await page.locator('#edit-item-notes-apply').click();
   await expect(page.locator('#editItemNotesModal')).toBeHidden();
@@ -700,14 +700,14 @@ for (const where of ['order-history.html','kot-management.html']) {
 
 test('clearing a legacy note clears both aliases before adding another portion',async({page})=>{
  const posts=await editor(page,'order-history.html',{items:[{...original.items[0],notes:'Less salt'}]});
- await page.locator('.editor-note-link').click();
+ await page.locator('[data-editor-note-index]').click();
  await expect(page.locator('#edit-item-notes-text')).toHaveValue('Less salt');
  await page.waitForFunction(()=>{const modal=bootstrap.Modal.getInstance(document.getElementById('editItemNotesModal'));return modal && !modal._isTransitioning;});
  await page.locator('#edit-item-notes-text').fill('');
  await expect(page.locator('#edit-item-notes-text')).toHaveValue('');
  await page.locator('#edit-item-notes-apply').click();
  await expect(page.locator('#editItemNotesModal')).toBeHidden();
- await page.locator('.editor-note-link').click();
+ await page.locator('[data-editor-note-index]').click();
  await expect(page.locator('#edit-item-notes-text')).toHaveValue('');
  await page.locator('#edit-item-notes-apply').click();
  await expect(page.locator('#editItemNotesModal')).toBeHidden();

@@ -1,0 +1,13 @@
+/* The third service type appears only when the shop enables room orders. */
+.seat-screen .dine-toggle:has(#room-option:not([hidden])) { grid-template-columns:repeat(3,minmax(0,1fr)); width:100%; max-width:480px; }
+.seat-screen .dine-toggle:has(#room-option:not([hidden])) .dine-option { min-width:0; padding:10px 6px; font-size:14px; color:var(--ink-soft)!important; }
+.seat-screen .dine-toggle:has(#room-option:not([hidden])) input:checked + .dine-option { background:var(--accent); color:var(--accent-ink)!important; }
+.seat-screen .dine-toggle:has(#room-option:not([hidden])) input:checked + .dine-option span { color:var(--accent-ink)!important; }
+.seat-screen .dine-toggle:has(#room-option:not([hidden])) .dine-toggle-indicator { display:none; }
+#room-section { padding:8px 0 20px; color:var(--ink); }
+#room-section label { display:block; margin:16px 0 8px; font-weight:600; }
+#room-section input:not([type=checkbox]), #room-section select { width:100%; min-height:48px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:12px; }
+#room-charge-description { margin:16px 0 8px; color:var(--ink-soft); font-size:14px; line-height:1.5; }
+#room-charge-agreement { padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-sunk); font-size:14px; line-height:1.5; }
+#room-charge-agreement input { width:18px; height:18px; accent-color:var(--accent); vertical-align:middle; margin-inline-end:6px; }
+.dine-option[hidden], #room-section[hidden], #room-charge-agreement[hidden] { display:none!important; }

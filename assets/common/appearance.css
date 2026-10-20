@@ -14,7 +14,7 @@ html[data-color-scheme="dark"] :is(input,textarea)::placeholder { color:var(--in
 html[data-color-scheme="dark"] .table-radio:checked + .table-label { color:var(--accent-ink); background:var(--accent); }
 html[data-color-scheme="dark"] .order-workspace :is(.order-cancel,[data-line-action="cancel"]) { color:var(--bad); }
 html[data-color-scheme="dark"] .order-workspace .order-add,
-html[data-color-scheme="dark"] .order-financial [data-collect-table]:not([hidden]) { color:var(--accent-ink); }
+html[data-color-scheme="dark"] .order-financial [data-collect-table]:not([hidden]) { color:var(--accent); }
 
 /* Cancellation surfaces and their copy must always use the same theme. */
 :is(#cancelOrderModal,#cancelConfirmModal,#removeItemConfirmModal,#moveTableModal) .modal-content {

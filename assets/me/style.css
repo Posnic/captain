@@ -6,6 +6,15 @@
  * screens cannot drift away from the ordering ones.
  */
 
+#shift-action {
+  justify-content: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius);
+  min-height: 48px;
+  margin-bottom: 8px;
+}
+
 .me-head {
   position: sticky;
   top: 0;

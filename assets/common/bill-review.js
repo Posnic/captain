@@ -13,12 +13,42 @@
           "'": "&#39;",
         })[ch],
     );
+  // Coalesce only in-flight reads. Never cache a payable balance after a mutation.
+  const reads = new Map();
+  function read(path) {
+    const identity = () => JSON.stringify([POSNIC.session.shopKey, POSNIC.session.user?.id,
+      localStorage.getItem("branch_id")]);
+    const owner = identity(), key = owner + (POSNIC.session.base || POSNIC.server.baseUrl) + path;
+    if (reads.has(key)) return reads.get(key);
+    const current = () => identity() === owner && POSNIC.session.active && !window.CaptainAccess?.locked;
+    const flight = (async () => {
+      for (let attempt = 0; ; attempt++) {
+        if (!current()) throw new Error("Reconnect your account before sending.");
+        try {
+          const result = await POSNIC.api.get(path);
+          if (!current()) throw Object.assign(new Error("Reconnect your account before sending."), {status:401});
+          return result;
+        } catch (error) {
+          const status = Number(error.status || error.statusCode || 0);
+          // Read-only recovery; payment recording never passes through this helper.
+          if (attempt >= 2 || !current() || error.code === "PIN_LOCKED" ||
+              !(!status || [408,409,429,500,502,503,504].includes(status))) throw error;
+          await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
+        }
+      }
+    })();
+    reads.set(key, flight);
+    flight.finally(() => { if (reads.get(key) === flight) reads.delete(key); }).catch(() => {});
+    return flight;
+  }
   let dialog,
     table,
     branch,
     saleId,
     receipt = false,
     printRequestId,
+    printedOnce = false,
+    reprintAttempt = null,
     bill,
     generation = 0,
     busy = false,
@@ -52,7 +82,7 @@
               "",
             )}<div><strong>${esc(t("Total"))}</strong><strong translate="no">${esc(money(bill.totalMinor))}</strong></div><div><span>${esc(t("Paid"))}</span><span translate="no">${esc(money(bill.paidMinor))}</span></div><div><strong>${esc(t("Remaining balance"))}</strong><strong translate="no">${esc(money(bill.dueMinor))}</strong></div></div>`
         : ""
-    }<p role="status">${esc(t(message))}</p></div><footer>${bill ? `<button type="button" data-bill-print>${esc(t("Print the bill"))}</button>${!receipt && bill.dueMinor > 0 ? `<button type="button" data-bill-split>${esc(t("Split bill"))}</button>${bill.collectEnabled ? `<button type="button" class="profile-primary" data-bill-pay>${esc(t("Collect payment"))}</button>` : ""}` : saleId ? `<button type="button" class="profile-primary" data-bill-back>${esc(t("Close"))}</button>` : `<a class="profile-primary" href="tables.html?source=floor&table=${encodeURIComponent(table)}">${esc(t("Close order"))}</a>`}` : `<button type="button" data-bill-refresh>${esc(t("Retry"))}</button>`}</footer>`;
+    }<p role="status">${esc(t(message))}</p></div><footer>${bill ? `<button type="button" data-bill-print>${esc(t(printedOnce ? "Print again" : "Print the bill"))}</button>${!receipt && bill.dueMinor > 0 ? `<button type="button" data-bill-split>${esc(t("Split bill"))}</button>${bill.collectEnabled ? `<button type="button" class="profile-primary" data-bill-pay>${esc(t("Collect payment"))}</button>` : ""}` : saleId ? `<button type="button" class="profile-primary" data-bill-back>${esc(t("Close"))}</button>` : `<a class="profile-primary" href="tables.html?source=floor&table=${encodeURIComponent(table)}">${esc(t("Close order"))}</a>`}` : `<button type="button" data-bill-refresh>${esc(t("Retry"))}</button>`}</footer>`;
     if (loading)
       dialog
         .querySelectorAll("button:not([data-bill-back])")
@@ -66,7 +96,7 @@
     const user = POSNIC.session.user?.id;
     render("Loading...");
     try {
-      const data = await POSNIC.api.get(
+      const data = await read(
         "/captain/v1/bill?" + (saleId ? "saleId=" + encodeURIComponent(saleId) + (receipt ? "&receipt=true" : "") : "table=" + encodeURIComponent(table)),
       );
       if (ticket !== generation || !dialog.open) return;
@@ -105,6 +135,8 @@
     saleId = String(target.saleId || "");
     receipt = target.receipt === true;
     printRequestId = crypto.randomUUID();
+    printedOnce = target.reprint === true;
+    reprintAttempt = null;
     branch = localStorage.getItem("branch_id");
     bill = null;
     if (!dialog) {
@@ -130,26 +162,45 @@
         }
         const button = event.target.closest("[data-bill-print]");
         if (button && !busy) {
+          if (printedOnce && !reprintAttempt) {
+            if (!window.confirm(t("Print again") + "?")) return;
+            // Freeze both the bill's orders and request identity until acknowledged.
+            // Retrying a lost response must not create another set of copies.
+            reprintAttempt = {id: crypto.randomUUID(), ids: saleId ? [saleId] : [...(bill.orderIds || [])]};
+          }
           busy = true;
           const controls = [...dialog.querySelectorAll("button")];
           controls.forEach((control) => (control.disabled = true));
           dialog.querySelector("[role=status]").textContent = t("Loading...");
-          let printed = false;
           try {
             const copies =
               typeof storedBillCopies === "function"
                 ? Number(storedBillCopies())
                 : 0;
-            const result = await POSNIC.api.post(receipt ? "/captain/v1/bill/reprint" : "/sales/requestBillPrint", {
-              ...(receipt ? {request_id:printRequestId} : {}),
+            const payload = {
               branchId: branch,
               table_number: table,
               ...(saleId ? {saleId} : {}),
               ...(copies ? { copies } : {}),
-            });
-            if (result.type !== "success" || result.data?.status === false || result.status === false)
-              throw new Error(result.message || "Could not load the bill.");
-            printed = true;
+            };
+            const check = result => {
+              if (result.type !== "success" || result.data?.status === false || result.status === false)
+                throw new Error(result.message || "Could not load the bill.");
+            };
+            if (reprintAttempt) {
+              if (!reprintAttempt.ids.length) throw new Error(t("Could not load the bill."));
+              for (const id of reprintAttempt.ids) {
+                check(await POSNIC.api.post("/captain/v1/bill/reprint", {
+                  ...payload, saleId: id, request_id: reprintAttempt.id,
+                }));
+              }
+            } else {
+              check(await POSNIC.api.post(receipt ? "/captain/v1/bill/reprint" : "/sales/requestBillPrint", {
+                ...payload, ...(receipt ? {request_id: printRequestId} : {}),
+              }));
+            }
+            printedOnce = true;
+            reprintAttempt = null;
             dialog.querySelector("[role=status]").textContent =
               t("Bill asked for");
           } catch (error) {
@@ -160,7 +211,8 @@
           } finally {
             busy = false;
             controls.forEach((control) => (control.disabled = false));
-            button.disabled = printed;
+            button.disabled = false;
+            button.textContent = t(printedOnce ? "Print again" : "Print the bill");
           }
         }
       });
@@ -191,5 +243,5 @@
     if (event.detail?.completed) { close(); return; }
     if (dialog?.open) void load();
   });
-  window.CaptainBill = { open };
+  window.CaptainBill = { open, read };
 })();

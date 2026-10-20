@@ -16,7 +16,10 @@
   function serviceState(value, cleaningEnabled) {
     return value === 'cleaning' && cleaningEnabled !== true ? 'available' : value;
   }
+  const settingsKey = () => "captain.table-required:" + (window.POSNIC?.session?.shopKey || "") + ":" + (localStorage.getItem("branch_id") || "");
+  const tableRequired = () => localStorage.getItem(settingsKey()) !== "false";
   function liveRows(response) {
+    localStorage.setItem(settingsKey(), String(response.tableRequired !== false));
     return response.tables.map(row => ({
       ...row,
       status: serviceState(row.status, response.cleaningEnabled),
@@ -98,6 +101,7 @@
     document.querySelectorAll('[data-dining-area]').forEach(node=>node.hidden=!!area&&node.dataset.diningArea!==area);
   }
   window.CaptainTables = {
+    tableRequired,
     serviceState,
     liveRows,
     metadata,

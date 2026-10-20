@@ -3,6 +3,9 @@ package com.posnic.captain;
 import android.os.Bundle;
 import android.content.Intent;
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import android.util.Log;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
@@ -14,6 +17,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LocalNetworkPlugin.class);
         registerPlugin(SecureSessionPlugin.class);
         super.onCreate(savedInstanceState);
+        installSafeViewport();
         installBackNavigation();
         runSelfTestIfAsked();
     }
@@ -23,6 +27,28 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         runSelfTestIfAsked();
+    }
+
+    private void installSafeViewport() {
+        // Keep every page, fixed action and HTML dialog inside the usable screen.
+        // SystemBars' WebView passthrough depends on CSS support in each page;
+        // this native boundary also protects older pages and keyboard layouts.
+        final android.view.View decor = getWindow().getDecorView();
+        ViewCompat.setOnApplyWindowInsetsListener(decor, (view, insets) -> {
+            final int bars = WindowInsetsCompat.Type.systemBars()
+                | WindowInsetsCompat.Type.displayCutout();
+            final Insets safe = insets.getInsets(bars);
+            final Insets keyboard = insets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(safe.left, safe.top, safe.right,
+                Math.max(safe.bottom, keyboard.bottom));
+            // Dispatch the remaining insets rather than CONSUMED, so later
+            // keyboard/rotation changes still propagate. Avoid double CSS gaps.
+            return new WindowInsetsCompat.Builder(insets)
+                .setInsets(bars, Insets.NONE)
+                .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                .build();
+        });
+        ViewCompat.requestApplyInsets(decor);
     }
 
     private void installBackNavigation() {
