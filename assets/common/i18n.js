@@ -4,7 +4,32 @@
   const packs = {}, patterns = {}, originals = new WeakMap(), attributes = new WeakMap();
   const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
   const SKIP = 'script,style,noscript,textarea,[translate="no"],[data-i18n-ignore],[contenteditable="true"]';
-  let current = 'en', watching = false;
+  let current = 'en', watching = false, wording = null, wordingScope = '';
+  const wordingKeys = { Takeaway: 'lang_takeaway', 'Take away': 'lang_take_away', 'Take Away': 'lang_take_away_2', Product: 'lang_product', Products: 'lang_products', 'Add product': 'lang_add_product' };
+  function profileScope() { try { return [root.POSNIC?.server?.baseUrl || '', root.POSNIC?.session?.shopKey || '', localStorage.getItem('branch_id') || '', current].join('|'); } catch { return ''; } }
+  function profileWord(source) {
+    if (wordingScope !== profileScope() || wording?.locale !== current) return null;
+    const key = wordingKeys[source];
+    return key && Object.prototype.hasOwnProperty.call(wording.values, key) ? wording.values[key] : null;
+  }
+  async function refreshWording() {
+    if (!root.POSNIC?.session?.active || !root.POSNIC?.api) { wording = null; return; }
+    const scope = profileScope(), branch = localStorage.getItem('branch_id');
+    if (!branch) return;
+    const valid = bundle => bundle?.schemaVersion === 1 && bundle.locale === current && String(bundle.branchId) === branch && bundle.values && typeof bundle.values === 'object' && !Array.isArray(bundle.values) && Object.values(bundle.values).every(value => typeof value === 'string');
+    if (wordingScope !== scope) {
+      wordingScope = scope; wording = null;
+      try { const cached = JSON.parse(localStorage.getItem('posnic.wording.v1:' + scope)); if (valid(cached)) wording = cached; } catch {}
+      apply(document.documentElement);
+    }
+    try {
+      const result = await root.POSNIC.api.get('/settings/wording/bundle?locale=' + encodeURIComponent(current), { headers: { 'X-Branch-Id': branch }, timeout: 4000 });
+      if (scope !== profileScope() || !valid(result.data)) return;
+      wording = result.data;
+      try { localStorage.setItem('posnic.wording.v1:' + scope, JSON.stringify(wording)); } catch {}
+      apply(document.documentElement);
+    } catch { /* Optional wording never prevents local ordering on an old/offline till. */ }
+  }
   const normalize = value => String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
   const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -24,6 +49,8 @@
   }
   function t(sentence, fallback) {
     const source = normalize(sentence);
+    const custom = profileWord(source);
+    if (typeof custom === 'string') return custom;
     if (current === 'en') return fallback == null ? String(sentence ?? '') : fallback;
     const words = packs[current] || {};
     if (words[source]) return words[source];
@@ -110,6 +137,7 @@
         populate(select); select.value = current;
       });
       globalThis.dispatchEvent?.(new CustomEvent('posnic:language-changed', {detail: current}));
+      refreshWording();
     }
     return current;
   }
@@ -137,8 +165,11 @@
       root[name] = (message, ...args) => original(t(message), ...args);
     }
   }
-  root.I18N = {register,t,format,use,start,apply,populate,languages,known:()=>['en', ...Object.keys(packs).filter(code=>code!=='en')],language:()=>current};
+  root.I18N = {register,t,format,use,start,apply,populate,languages,refreshWording,known:()=>['en', ...Object.keys(packs).filter(code=>code!=='en')],language:()=>current};
   if (typeof document !== 'undefined') {
+    root.addEventListener('online', refreshWording);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWording(); });
+    root.setInterval(() => { if (!document.hidden) refreshWording(); }, 60000);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
     else start();
   }
