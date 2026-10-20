@@ -19,7 +19,7 @@
     function details() {
         const table = selected('edit_table_no');
         return {
-            type: selected('edit_dine_type')?.value || order()?.dine_type || 'Dine-in',
+            type: order()?.dine_type === 'Room' ? 'Room' : selected('edit_dine_type')?.value || order()?.dine_type || 'Dine-in',
             tableRadio: table?.id || '',
             table: table?.id === 'edit_table_manual_radio' ? byId('edit_manual_table_input').value.trim().toUpperCase() : table?.value || order()?.table_number || order()?.kiosk_table_no || '',
             manual: byId('edit_manual_table_input')?.value || '',
@@ -119,7 +119,7 @@
         if (!byId('order-editor-items') || !order()) return;
         const value = details(), dineIn = value.type === 'Dine-in';
         pricing(value);
-        byId('order-editor-context').textContent = dineIn && value.table ? 'Table ' + value.table : 'Takeaway';
+        byId('order-editor-context').textContent = value.type === 'Room' ? value.table : dineIn && value.table ? 'Table ' + value.table : 'Takeaway';
         const type = document.createElement('span'); type.textContent = value.type;
         const guests = document.createElement('span'); guests.textContent = 'Guests';
         byId('order-editor-meta').replaceChildren(type);
@@ -130,6 +130,7 @@
         byId('editor-discount-value').textContent = value.discountType === 'percent' ? value.discount + '%' : CaptainMoney.display(Number(value.discount));
         document.querySelector('[data-editor-setting="table"]').hidden = !dineIn;
         document.querySelector('[data-editor-setting="guests"]').hidden = !dineIn;
+        document.querySelector('[data-editor-setting="type"]').hidden = value.type === 'Room';
         const count = (order().items || []).filter(item => !lineIsCancelled(item, order())).reduce((sum, item) => sum + Number(item.quantity || item.item_quantity || 0), 0);
         const additions = (order().items || []).filter(item => !originalLines.has(item) && !lineIsCancelled(item, order()));
         const addedCount = additions.reduce((sum,item)=>sum+Number(item.quantity || 0),0);
