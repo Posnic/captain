@@ -97,7 +97,8 @@
             </div>
 
             <section id="room-section" hidden>
-                <label for="room-venue">Venue</label><select id="room-venue" class="form-control"></select>
+                <div id="room-venue-picker"><label for="room-venue">Venue</label><select id="room-venue" class="form-control"></select></div>
+                <p id="room-venue-name" translate="no" hidden></p>
                 <label for="room-number">Room number</label><input id="room-number" class="form-control" maxlength="40" autocomplete="off">
                 <p id="room-charge-description"></p>
                 <label id="room-charge-agreement" hidden><input type="checkbox" id="room-charge-accepted"> Guest agreed to this additional charge</label>
@@ -196,13 +197,13 @@
     </div>
     <script>
         let roomVenues = [];
-        function showRoomCharge() {
+        function showRoomCharge(resetChoice = true) {
             const v = roomVenues.find(v => v.code === document.getElementById('room-venue').value);
             const rule = v?.room_charge;
             document.getElementById('room-charge-description').textContent = rule?.enabled && rule.percent > 0
                 ? (I18N.t('{0}: {1}% of food after discounts, before tax.').replace('{0}', rule.name).replace('{1}', rule.percent) + (rule.taxed ? ' + ' + I18N.t('Tax') + ' ' + (rule.tax_rate ?? '') + '%' : '')) : '';
             document.getElementById('room-charge-agreement').hidden = !(rule?.enabled && rule.percent > 0);
-            document.getElementById('room-charge-accepted').checked = false;
+            if (resetChoice) document.getElementById('room-charge-accepted').checked = !!(rule?.enabled && rule.percent > 0);
         }
         function loadRoomVenues(venues) {
             const next = Array.isArray(venues) ? venues : [];
@@ -212,8 +213,12 @@
             select.replaceChildren(...roomVenues.map(v => new Option(v.name, v.code)));
             if (roomVenues.some(v => v.code === previous)) select.value = previous;
             document.getElementById('room-option').hidden = !roomVenues.length;
-            select.onchange = showRoomCharge;
-            showRoomCharge();
+            document.getElementById('room-venue-picker').hidden = roomVenues.length === 1;
+            const name = document.getElementById('room-venue-name');
+            name.hidden = roomVenues.length !== 1;
+            name.textContent = roomVenues.length === 1 ? roomVenues[0].name : '';
+            select.onchange = () => { showRoomCharge(); document.getElementById('room-number').focus(); };
+            showRoomCharge(select.value !== previous);
         }
         let startingOrder = false;
         async function goToProductsWithTableCheck() {
@@ -347,7 +352,7 @@
                 localStorage.setItem('kiosk_table_id', '');
             }
 
-            if (orderType === 'Dine-in') {
+            if (orderType === 'Dine-in' || orderType === 'Room') {
                 localStorage.setItem('kiosk_person_count', personCount);
             } else {
                 localStorage.setItem('kiosk_person_count', '0');
@@ -972,9 +977,13 @@
         // Choosing a mode stays on this page until the explicit Next action.
         function handleOrderTypeChange() {
             const dineIn=document.getElementById('order_type_dinein').checked;
-            document.getElementById('room-section').hidden = !document.getElementById('order_type_room').checked;
+            const room = document.getElementById('order_type_room').checked;
+            document.getElementById('room-section').hidden = !room;
             document.querySelector('.table-section-center').hidden=!dineIn;
-            document.querySelector('.person-count-section').hidden=!dineIn;
+            document.querySelector('.person-count-section').hidden=!(dineIn || room);
+            document.querySelector('.person-count-section .entry-help').hidden=room;
+            document.getElementById('guest-requirement-label').textContent = I18N.t(dineIn && CaptainTables.guestsRequired() ? 'How many guests?' : 'Guests (optional)');
+            if (room) document.getElementById('room-number').focus();
         }
 
         // Call after DOM loaded

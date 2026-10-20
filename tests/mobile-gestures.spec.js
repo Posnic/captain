@@ -24,6 +24,9 @@ async function floor(page) {
   });
   await page.goto('/kot-management.html');
   await expect(page.locator('.floor-card')).toHaveCount(1);
+  // Initial cards appear before payable/count enrichment finishes. Gestures
+  // must start on the settled floor, not race its final redraw.
+  await page.evaluate(async () => { if (tablesRequest) await tablesRequest; });
   return { count:()=>count, fail:()=>{fail=true;}, hold:promise=>{hold=promise;} };
 }
 
