@@ -637,3 +637,9 @@ html[data-color-scheme="dark"] #tables-list .floor-card { --card-icon-ink:#a5bbd
 .floor-loading span{display:inline-block;animation:floor-loading-appear .15s ease-out .25s both}
 @keyframes floor-loading-appear{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.floor-loading span{animation:none}}
+
+/* Room service keeps the waiting-time stripe and has its own blue identity. */
+#tables-list .floor-card.is-room .room-heading { color:var(--accent); border-block:3px double currentColor; padding-block:8px; }
+.room-type-icon { display:inline-flex; width:40px; height:40px; align-items:center; justify-content:center; }
+.room-type-icon svg { width:26px; height:26px; }
+.room-heading .floor-card-label small { display:block; font-size:.75em; line-height:1.5; overflow-wrap:anywhere; }

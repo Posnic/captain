@@ -11,3 +11,6 @@
 #room-charge-agreement { padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-sunk); font-size:14px; line-height:1.5; }
 #room-charge-agreement input { width:18px; height:18px; accent-color:var(--accent); vertical-align:middle; margin-inline-end:6px; }
 .dine-option[hidden], #room-section[hidden], #room-charge-agreement[hidden] { display:none!important; }
+
+#room-venue-name { margin:8px 0; color:var(--ink-soft); font-size:14px; overflow-wrap:anywhere; }
+#room-venue-picker[hidden], #room-venue-name[hidden] { display:none!important; }
