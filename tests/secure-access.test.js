@@ -1102,3 +1102,70 @@ test('selected Wi-Fi never refreshes an expired cloud session',async()=>{
  await access.session.request('/captain/v1/session',{onlyBase:lan});
  assert.deepEqual(calls,[[lan+'/captain/v1/session','Bearer local']]);
 });
+
+test('reinstalled issuing till asks for sign-in without sending secrets or losing saved work', async () => {
+ const f=fixture({'posnic.pending-orders':'[{"id":"unsent"}]'}), calls=[];
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  calls.push({url,options});
+  return {ok:false,status:404,json:async()=>({error:{code:'UNKNOWN_AUTHORITY',message:'Unknown session'}})};
+ },webcrypto);
+ await access.session.start({...f.grant,routeKey:'a'.repeat(64),expiresAt:1,branches:[{branch_id:'branch'}]});
+ await assert.rejects(access.session.request('/sales/qrOrder',{body:{idempotencyKey:'saved'}}),e=>e.code==='CONNECTION_SIGNIN'&&e.base===f.grant.base);
+ assert.equal(access.session.active,true);
+ assert.equal(access.session.token,'access');
+ assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"unsent"}]');
+ assert.equal(calls.length,1);
+ assert.ok(calls[0].url.endsWith('/route-proof'));
+ assert.equal(calls[0].options.headers.Authorization,undefined);
+ assert.equal(JSON.parse(calls[0].options.body).refreshToken,undefined);
+});
+
+test('reauthentication replaces a blocked primary session and preserves other credentials',async()=>{
+ const f=fixture(), access=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({connected:true})}),webcrypto);
+ const grant={...f.grant,branches:[{branch_id:'branch'}],refreshToken:undefined};
+ await access.session.start({...grant,blockedAccess:'Old installation rejected session'});
+ await access.session.link({...grant,token:'cloud'},'https://backup.example/api');
+ assert.equal(access.session.needsReconnect,true);
+ await access.session.link({...grant,token:'replacement'},grant.base);
+ assert.equal(access.session.needsReconnect,false);
+ assert.equal(f.vault().connections[0].token,'cloud');
+ assert.deepEqual(await access.session.request('/captain/v1/session'),{connected:true});
+});
+
+test('password reconnect removes old pairing secrets instead of retaining the previous installation',async()=>{
+ const f=fixture(), calls=[], access=createAccess(f.plugin,f.storage,async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({connected:true})}},webcrypto);
+ await access.session.start({...f.grant,routeKey:'a'.repeat(64),rotation:'old',targetDeviceId:'old-till',idempotentOrders:true,branches:[{branch_id:'branch'}]});
+ await access.session.link({token:'replacement',expiresIn:900,shopKey:f.grant.shopKey,user:f.grant.user,branches:[{branch_id:'branch'}]},f.grant.base);
+ for(const key of ['sessionId','refreshToken','routeKey','rotation','offlineUntil','targetDeviceId','idempotentOrders'])assert.equal(f.vault()[key],undefined,key);
+ await access.session.request('/captain/v1/session');
+ assert.equal(calls.length,1);assert.equal(calls[0].options.headers.Authorization,'Bearer replacement');
+ const reopened=createAccess(f.plugin,f.storage,async()=>({ok:true,json:async()=>({connected:true})}),webcrypto);
+ await reopened.ready;assert.equal(reopened.session.token,'replacement');
+});
+
+test('unknown session at an alternative address stays untrusted rather than requesting sign-in there',async()=>{
+ const f=fixture(), calls=[], peer='http://192.168.1.99:5555/api';
+ const access=createAccess(f.plugin,f.storage,async(url,options)=>{
+  calls.push({url,options});
+  if(url.startsWith(f.grant.base))throw Error('offline');
+  return {ok:false,status:404,json:async()=>({error:{code:'UNKNOWN_AUTHORITY',message:'Unknown session'}})};
+ },webcrypto);
+ await access.session.start({...f.grant,routeKey:'a'.repeat(64),routes:[peer]});
+ await assert.rejects(access.session.request('/sales/qrOrder',{body:{idempotencyKey:'pending'}}),e=>e.code==='OFFLINE');
+ assert.equal(calls.filter(call=>call.url.startsWith(peer)).length,1);
+ assert.ok(calls.every(call=>call.url.endsWith('/route-proof')));
+});
+
+test('a replaced password-only token requests sign-in without discarding the saved account',async()=>{
+ const f=fixture({'posnic.pending-orders':'[{"id":"retained"}]'}), access=createAccess(f.plugin,f.storage,async()=>({ok:false,status:401,json:async()=>({message:'Invalid token'})}),webcrypto);
+ await access.session.start({...f.grant,sessionId:undefined,refreshToken:undefined});
+ await assert.rejects(access.session.request('/captain/v1/session'),e=>e.code==='CONNECTION_SIGNIN'&&e.base===f.grant.base);
+ assert.equal(access.session.user.id,'staff');assert.equal(access.session.active,true);
+ assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"retained"}]');
+});
+
+test('expired password-only credentials retain the issuing address for in-place recovery',async()=>{
+ const f=fixture(), access=createAccess(f.plugin,f.storage,async()=>{throw Error('expired tokens must not be sent')},webcrypto);
+ await access.session.start({...f.grant,sessionId:undefined,refreshToken:undefined,expiresAt:1});
+ await assert.rejects(access.session.request('/captain/v1/session'),e=>e.code==='CONNECTION_SIGNIN'&&e.base===f.grant.base);
+});

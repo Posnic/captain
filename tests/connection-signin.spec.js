@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-import {onTheMenu} from './support/shop.js';
+import {onTheMenu,RUNTIME_INFO} from './support/shop.js';
 test('globe offers actionable sign-in, cancellation preserves Wi-Fi, and login links separate credentials',async({page})=>{
  await nativePhone(page);
  await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
@@ -75,4 +75,42 @@ test('Captain disabled during service offers recovery without clearing the saved
  const dialog=page.locator('#captain-disabled');await expect(dialog).toBeVisible();await expect(dialog).toContainText('Captain is disabled.');
  expect(await page.evaluate(()=>POSNIC.session.active)).toBe(true);
  await dialog.getByRole('button',{name:'Change server',exact:true}).click();await expect(page).toHaveURL(/index.html/);await expect(page.locator('#captain-onboarding')).toBeVisible();
+});
+
+for (const paired of [true,false]) test(`a reinstalled till reconnects without reinstalling Captain (${paired?'paired':'password-only'})`,async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ const base='http://192.168.1.20:5555/api',calls=[];
+ await page.route(base+'/**',async route=>{
+  const request=route.request();calls.push({url:request.url(),headers:request.headers()});
+  if(request.url().endsWith('/runtime-info'))return route.fulfill({json:RUNTIME_INFO});
+  if(request.headers().authorization==='Bearer old-token')return route.fulfill({status:401,json:{message:'Invalid token'}});
+  if(request.url().endsWith('/route-proof'))return route.fulfill({status:404,json:{error:{code:'UNKNOWN_AUTHORITY',message:'This address cannot deliver orders for this session.'}}});
+  if(request.url().endsWith('/kioskMobileLogin'))return route.fulfill({json:{token:'replacement-token',shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]}});
+  return route.fulfill({json:{connected:true}});
+ });
+ await page.evaluate(async ({base,paired})=>{
+  await POSNIC.session.start({base,token:'old-token',...(paired?{refreshToken:'old-refresh',routeKey:'a'.repeat(64),sessionId:'old-session',expiresAt:1}:{}),shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]});
+  POSNIC.server.remember({lan:base});POSNIC.server.pin(base);
+  localStorage.setItem('reinstall-test-draft','retained');
+  try{await POSNIC.session.request('/captain/v1/session',{method:'GET',onlyBase:base});}catch{}
+ },{base,paired});
+ const dialog=page.locator('#connection-signin');await expect(dialog).toBeVisible();
+ await expect(dialog.locator('[name=address]')).toHaveValue(base);
+ if(paired)expect(calls.every(call=>!call.headers.authorization)).toBe(true);
+ await dialog.locator('[name=username]').fill('staff');await dialog.locator('[name=password]').fill('password');await dialog.locator('[type=submit]').click();
+ await expect(dialog).toHaveCount(0);
+ expect(await page.evaluate(()=>POSNIC.session.token)).toBe('replacement-token');
+ expect(await page.evaluate(()=>localStorage.getItem('reinstall-test-draft'))).toBe('retained');
+});
+
+test('an expired password-only login still opens the saved-address recovery form',async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ await page.evaluate(async()=>{
+  const base='http://192.168.1.20:5555/api';
+  await POSNIC.session.start({base,token:'expired-token',expiresAt:1,shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]});
+  POSNIC.server.remember({lan:base});POSNIC.server.pin(base);
+  try{await POSNIC.session.request('/captain/v1/session',{method:'GET',onlyBase:base});}catch{}
+ });
+ await expect(page.locator('#connection-signin')).toBeVisible();
+ await expect(page.locator('#connection-signin [name=address]')).toHaveValue('http://192.168.1.20:5555/api');
 });
