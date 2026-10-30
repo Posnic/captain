@@ -1163,3 +1163,9 @@ test('a replaced password-only token requests sign-in without discarding the sav
  assert.equal(access.session.user.id,'staff');assert.equal(access.session.active,true);
  assert.equal(f.storage.getItem('posnic.pending-orders'),'[{"id":"retained"}]');
 });
+
+test('expired password-only credentials retain the issuing address for in-place recovery',async()=>{
+ const f=fixture(), access=createAccess(f.plugin,f.storage,async()=>{throw Error('expired tokens must not be sent')},webcrypto);
+ await access.session.start({...f.grant,sessionId:undefined,refreshToken:undefined,expiresAt:1});
+ await assert.rejects(access.session.request('/captain/v1/session'),e=>e.code==='CONNECTION_SIGNIN'&&e.base===f.grant.base);
+});

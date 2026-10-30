@@ -4,7 +4,7 @@
   const recoveryShown = new Set();
   window.addEventListener('posnic:connection-signin', event => {
     const base = event.detail?.base;
-    if (!base || recoveryShown.has(base) || !POSNIC.session.active) return;
+    if (!base || recoveryShown.has(base) || !POSNIC.session.user?.id || !POSNIC.session.shopKey || window.CaptainAccess?.locked) return;
     recoveryShown.add(base);
     window.CaptainConnectionSignIn.open(POSNIC.server.isLanUrl(base) ? 'lan' : 'cloud', {base});
   });

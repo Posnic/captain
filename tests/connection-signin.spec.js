@@ -102,3 +102,15 @@ for (const paired of [true,false]) test(`a reinstalled till reconnects without r
  expect(await page.evaluate(()=>POSNIC.session.token)).toBe('replacement-token');
  expect(await page.evaluate(()=>localStorage.getItem('reinstall-test-draft'))).toBe('retained');
 });
+
+test('an expired password-only login still opens the saved-address recovery form',async({page})=>{
+ await nativePhone(page);await onTheMenu(page,'nothing');await page.goto('/kot-management.html');
+ await page.evaluate(async()=>{
+  const base='http://192.168.1.20:5555/api';
+  await POSNIC.session.start({base,token:'expired-token',expiresAt:1,shopKey:'smoke-shop-key',user:{id:'user-1'},branches:[{branch_id:'branch-1'}]});
+  POSNIC.server.remember({lan:base});POSNIC.server.pin(base);
+  try{await POSNIC.session.request('/captain/v1/session',{method:'GET',onlyBase:base});}catch{}
+ });
+ await expect(page.locator('#connection-signin')).toBeVisible();
+ await expect(page.locator('#connection-signin [name=address]')).toHaveValue('http://192.168.1.20:5555/api');
+});

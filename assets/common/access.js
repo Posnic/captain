@@ -474,7 +474,7 @@
         let attempted = false;
         const credential = credentials.get(base);
         if (credential.expiresAt && credential.expiresAt <= Date.now() && !credential.refreshToken) {
-          last = Object.assign(new Error('Sign-in required'), {status:401, code:'CONNECTION_SIGNIN'});
+          last = Object.assign(new Error('Sign-in required'), {status:401, code:'CONNECTION_SIGNIN', base});
           continue;
         }
         if (
