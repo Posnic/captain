@@ -237,13 +237,24 @@
     };
     async function prove(base, credential = state, remember = true, signal) {
       const nonce = random();
-      const answer = await post(
+      let answer;
+      try { answer = await post(
         base,
         "/captain/v1/route-proof",
         { sessionId: credential.sessionId, nonce },
         signal,
         2000,
-      );
+      ); } catch (error) {
+        // Reinstalling a till can replace its local session database. Only the
+        // saved issuing address may offer reauthentication; discovery alone
+        // never authorizes sending a bearer or replaying an order.
+        if (base === credential.base && error.code === "UNKNOWN_AUTHORITY") {
+          throw Object.assign(new Error("Your shop addresses are saved. Sign in again to continue."), {
+            status: 401, code: "CONNECTION_SIGNIN", base,
+          });
+        }
+        throw error;
+      }
       const key = await cryptoApi.subtle.importKey(
         "raw",
         new TextEncoder().encode(credential.routeKey),
@@ -613,7 +624,7 @@
             throw Object.assign(new Error("Unlock this phone first."), {code:"PIN_LOCKED"});
           showDisabled(error);
           last = error;
-          if (error.code === "PIN_LOCKED" || error.accessRefused) throw error;
+          if (error.code === "PIN_LOCKED" || error.code === "CONNECTION_SIGNIN" || error.accessRefused) throw error;
           if (
             attempted &&
             error.status &&
@@ -717,6 +728,10 @@
         try {
           await session.prepare(options.onlyBase);
         } catch (error) {
+          if (error.code === "CONNECTION_SIGNIN") {
+            if (host.CustomEvent) host.dispatchEvent?.(new host.CustomEvent("posnic:connection-signin", {detail: {base: error.base}}));
+            throw error;
+          }
           if ([401, 403].includes(error.status) || !state.connections?.length)
             throw error;
         }
@@ -731,6 +746,10 @@
           }
           return result;
         } catch (error) {
+          if (error.code === "CONNECTION_SIGNIN") {
+            if (host.CustomEvent) host.dispatchEvent?.(new host.CustomEvent("posnic:connection-signin", {detail: {base: error.base}}));
+            throw error;
+          }
           if (error.status === 403) {
             state.blockedAccess = error.message;
             await persist();
@@ -745,6 +764,11 @@
             state.expiresAt = 0;
             await session.prepare(options.onlyBase);
             return await transport(path, options);
+          }
+          if (error.status === 401) {
+            error.code = 'CONNECTION_SIGNIN';
+            error.base = selected;
+            if (host.CustomEvent) host.dispatchEvent?.(new host.CustomEvent('posnic:connection-signin', {detail: {base:selected}}));
           }
           throw error;
         } finally {
@@ -838,6 +862,13 @@
         state = clean === primaryBase
           ? {...state, ...credential, connections: state.connections || []}
           : {...state, base: primaryBase, connections: [...(state.connections || []).filter(c => c.base !== clean), credential]};
+        if (clean === primaryBase) {
+          delete state.blockedAccess;
+          // Password login may issue a plain bearer instead of a paired grant.
+          // Never inherit secrets or leases from the replaced installation.
+          for (const key of ['sessionId','refreshToken','routeKey','rotation','offlineUntil','targetDeviceId','idempotentOrders'])
+            if (!(key in credential)) delete state[key];
+        }
         try { await persist(); } catch (error) { if(generation === started) state = previous; throw error; }
         if(generation !== started || locked) throw new Error('Connection cancelled.');
         verified.add(clean);
@@ -915,7 +946,7 @@
             await session.start({ ...state, ...grant, base: state.base });
           })()
             .catch(async (error) => {
-              if ([401, 403].includes(error.status)) {
+              if ([401, 403].includes(error.status) && error.code !== "CONNECTION_SIGNIN") {
                 state.blockedAccess = error.message;
                 await persist();
                 await session.suspend();

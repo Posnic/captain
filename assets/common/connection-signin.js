@@ -1,6 +1,13 @@
 /* Add a separately authenticated route without signing out the working till. */
 (function () {
   const t = value => window.I18N?.t(value) || value;
+  const recoveryShown = new Set();
+  window.addEventListener('posnic:connection-signin', event => {
+    const base = event.detail?.base;
+    if (!base || recoveryShown.has(base) || !POSNIC.session.active) return;
+    recoveryShown.add(base);
+    window.CaptainConnectionSignIn.open(POSNIC.server.isLanUrl(base) ? 'lan' : 'cloud', {base});
+  });
   window.CaptainConnectionSignIn = {
     open(kind, options={}) {
       if (document.getElementById('connection-signin')) return;
@@ -100,6 +107,7 @@
           }
           if(request.signal.aborted)return;
           await POSNIC.internetChoice.select(kind);
+          recoveryShown.delete(base);
           close();
         } catch(error) {if(!request.signal.aborted)status.textContent=t(error.message||'Could not connect. Try again.');}
         finally{controller=null;if(dialog.isConnected)form.querySelector('button').disabled=false;}
