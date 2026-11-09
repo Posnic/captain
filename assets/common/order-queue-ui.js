@@ -75,7 +75,7 @@
     return el;
   }
   function render() {
-    // Connection events must not replace a price review while staff read it.
+    // Connection events must not replace a review while staff read or edit it.
     // A lock or account change still hides the original user's order.
     if (priceReviewKey) {
       const row = OrderQueue.all().find(order => order.key === priceReviewKey);
@@ -142,6 +142,23 @@
         row.message || "Saved on this phone · Not sent to kitchen";
       card.append(title, items, message);
       if (row.state === "attention") {
+        let guests;
+        if (/^Enter the number of guests\.$/.test(row.message || '')) {
+          const label = document.createElement('label');
+          label.textContent = 'How many guests?';
+          label.style.cssText = 'display:grid;gap:8px;margin:12px 0';
+          guests = document.createElement('input');
+          guests.type = 'number';
+          guests.min = '1';
+          guests.max = '1000';
+          guests.step = '1';
+          guests.required = true;
+          guests.inputMode = 'numeric';
+          guests.style.cssText = 'min-height:44px;padding:8px;box-sizing:border-box;width:100%;font:inherit';
+          guests.onfocus = () => { priceReviewKey = row.key; clearTimeout(timer); };
+          label.append(guests);
+          card.append(label);
+        }
         if (/price changed or does not match this selling channel/.test(row.message || '')) {
           const review = document.createElement('button');
           review.type = 'button';
@@ -210,7 +227,21 @@
         retry.type = "button";
         retry.textContent = "Retry this order";
         retry.style.cssText = buttonStyle;
-        retry.onclick = () => flush(true, row.key);
+        retry.onclick = () => {
+          if (guests) {
+            if (!guests.checkValidity() || !Number.isInteger(Number(guests.value))) {
+              message.textContent = 'How many guests?';
+              guests.focus();
+              return;
+            }
+            if (!ownerMatches(row) || !POSNIC.session.active || window.CaptainAccess?.locked) return;
+            if (!OrderQueue.update(row.key, {body: {...row.body, person_count: Number(guests.value)}, state: 'waiting', message: '', nextAt: 0})) {
+              message.textContent = 'Could not finish saving this order. Keep the app data and retry.';
+              return;
+            }
+          }
+          return flush(true, row.key);
+        };
         card.append(retry);
       }
       if (OrderQueue.canDiscard(row)) {
