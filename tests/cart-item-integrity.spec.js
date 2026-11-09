@@ -232,9 +232,10 @@ test('cart Note and Preparation have distinct spaced touch targets',async({page}
  await page.goto('/cart.html');
  const note=page.locator('.bill-note-action'),prep=page.locator('.bill-preparation-action');
  await expect(prep).toHaveAttribute('aria-label','Preparation');
- const n=await note.boundingBox(),p=await prep.boundingBox();
- expect(n.height).toBeGreaterThanOrEqual(44);expect(p.height).toBeGreaterThanOrEqual(44);
- expect(p.x>=n.x+n.width+7 || p.y>=n.y+n.height+7).toBe(true);
+ await expect.poll(async()=>{
+  const n=await note.boundingBox(),p=await prep.boundingBox();
+  return !!n && !!p && n.height>=44 && p.height>=44 && (p.x>=n.x+n.width+7 || p.y>=n.y+n.height+7);
+ }).toBe(true);
  await page.screenshot({path:'test-artifacts/cart-item-actions-320.png',fullPage:true});
  await note.click();await expect(page.locator('#cart-notes-modal')).toBeVisible();
  await page.locator('#cart-notes-cancel-btn').click();
