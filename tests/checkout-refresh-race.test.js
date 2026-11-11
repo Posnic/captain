@@ -6,7 +6,7 @@ const acorn = require('acorn');
 
 test('a menu refresh arriving during checkout cannot restore the submitted basket', async () => {
   const source = fs.readFileSync(require.resolve('../indexedDB.js'), 'utf8');
-  const names = new Set(['queueCartMutation', 'checkout']);
+  const names = new Set(['queueCartMutation', 'askedOn', 'checkout']);
   const functions = acorn.parse(source, {ecmaVersion:'latest'}).body
     .filter(node => node.type === 'FunctionDeclaration' && names.has(node.id.name))
     .map(node => source.slice(node.start,node.end)).join('\n');

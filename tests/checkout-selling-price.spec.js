@@ -35,7 +35,7 @@ test('new checkout sends selling prices through menu storage, cart, refresh and 
   await expect.poll(() => page.evaluate(() => OrderQueue.count())).toBe(0);
 });
 
-test('rejected saved order can be reviewed and retried with its original identity', async ({page}) => {
+test('an older saved price refusal corrects and sends automatically with its original identity', async ({page}) => {
   await onTheMenu(page, 'nothing', {menu});
   await page.route('**/captain/v1/tables', r => r.fulfill({json:{tables:[{id:'four',tableorder_value:'4',status:'available',orders:[]}]}}));
   const sent = [];
@@ -54,13 +54,10 @@ test('rejected saved order can be reviewed and retried with its original identit
   await expect(page.locator('.floor-card[data-table-number="4"]')).toHaveCount(1);
   await expect(page.locator('.floor-card[data-table-number="4"]')).toContainText('Not sent to kitchen');
   await page.locator('.floor-card.is-pending').click();
-  await page.getByRole('button',{name:'Reload menu'}).click();
-  await expect(page.getByText('Kashmiri Mutton Rogan Josh: 420 → 400',{exact:true})).toBeVisible();
-  await page.evaluate(() => window.dispatchEvent(new Event('posnic:online')));
-  await expect(page.getByText('Kashmiri Mutton Rogan Josh: 420 → 400',{exact:true})).toBeVisible();
-  expect(sent).toHaveLength(0);
-  await page.getByRole('button',{name:'Retry this order'}).click();
   await expect.poll(() => sent.length).toBe(1);
+  expect(await page.evaluate(async()=>(await getProductById('mutton')).selling_price)).toBe(400);
+  expect(await page.evaluate(()=>CaptainMenuSync.last('branch-1').at)).toBeGreaterThan(0);
+  await expect(page.getByRole('button',{name:'Reload menu'})).toHaveCount(0);
   expect(sent[0].idempotencyKey).toBe('original-key');
   expect(sent[0].items[0].item_price).toBe(400);
   await expect(page.getByText('All orders sent',{exact:true})).toBeVisible();
