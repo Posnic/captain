@@ -412,7 +412,30 @@ function updateKioskImageUI(data = {}) {
 
 
 // ✅ Fetch and Store Branch Data
-async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, preserveCart = false) {
+function menuSyncScope(branchId) {
+    return JSON.stringify([window.POSNIC?.session?.shopKey || '', window.POSNIC?.session?.user?.id || '',
+        String(localStorage.getItem('branch_id') || branchId || ''),
+        window.POSNIC?.server?.baseUrl || window.POSNIC?.session?.base || '']);
+}
+const menuRefreshFlights = new Map();
+window.CaptainMenuSync = {
+    last(branchId) {
+        try { return JSON.parse(localStorage.getItem('posnic.menu-sync') || '{}')[menuSyncScope(branchId)] || null; }
+        catch { return null; }
+    },
+    refresh(branchId, { force = false } = {}) {
+        const scope = menuSyncScope(branchId);
+        if (menuRefreshFlights.has(scope)) return menuRefreshFlights.get(scope);
+        const last = this.last(branchId);
+        if (!force && last && Date.now() - last.at < 20000) return Promise.resolve(true);
+        const pending = fetchAndStoreBranch(branchId, false, false, true, { cacheOnly: true })
+            .finally(() => menuRefreshFlights.delete(scope));
+        menuRefreshFlights.set(scope, pending);
+        return pending;
+    }
+};
+async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, preserveCart = false, options = {}) {
+    const syncScope = menuSyncScope(branchId);
     try {
         const db = await getDB();
         const existingBranches = await getData(BRANCH_STORE);
@@ -422,7 +445,8 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
         }
 
         // ✅ Fetch products from API
-        const result = await POSNIC.api.post("/items/accessQr", { branch: branchId });
+        const result = options.response || await POSNIC.api.post("/items/accessQr", { branch: branchId });
+        if (options.cacheOnly && syncScope !== menuSyncScope(branchId)) return false;
 
         if (!localStorage.getItem("POSNIC_IMAGE_CACHE_BUST")) {
             localStorage.setItem("POSNIC_IMAGE_CACHE_BUST", String(Date.now()));
@@ -686,8 +710,15 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
             // ✅ Save branch & products in IndexedDB
             // also persist the MongoDB branch_id (may differ from storeId/branchId)
             const actualBranchId = localStorage.getItem('branch_id') || branchId;
+            if (options.cacheOnly && syncScope !== menuSyncScope(branchId)) return false;
             await saveData(BRANCH_STORE, [{ id: branchId, branch_id: actualBranchId, kioskPayment: result.data.kiosk_payment }]);
             await saveData(STORE_NAME, products);
+            // A failed download or IndexedDB write never advances the successful-sync time.
+            try {
+                const stamps = JSON.parse(localStorage.getItem('posnic.menu-sync') || '{}');
+                stamps[syncScope] = { at: Date.now() };
+                localStorage.setItem('posnic.menu-sync', JSON.stringify(stamps));
+            } catch { /* A menu write can succeed even when diagnostic storage is full. */ }
 
             console.log("✅ Product data updated successfully!");
 
@@ -698,7 +729,9 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
 
             // ✅ Only validate cart + reload UI when we are actually refreshing the screen
             // ✅ Update cart + UI based on mode
-            if (preserveCart) {
+            if (options.cacheOnly) {
+                // Refresh future menu selections without repricing another draft or moving focus.
+            } else if (preserveCart) {
                 // A deliberate menu refresh never discards the order being taken.
                 await loadProducts();
             } else if (refreshUI) {
@@ -720,6 +753,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                 window.location.href = "kot-management.html";
                 return;
             }
+            return true;
         } else {
             console.warn("❌ No data received from API.");
             return false;
@@ -1985,7 +2019,10 @@ async function checkout(transactionId) {
         if (POSNIC.session.canTakeOrders === false)
             throw new Error('Reconnect your account before taking new orders. Existing orders are retained.');
         const existing = OrderQueue.all().find(row => row.key === orderKey);
-        if (!existing && !OrderQueue.add({key: orderKey, branch: branchId, body: orderBody, held: true}))
+        // Local recovery metadata only: never infer an entered quote from today's menu.
+        const enteredPriceLines = cartItems.filter(item => item.instant === true || askedOn(item))
+            .map(item => String(item.line_id || item.id));
+        if (!existing && !OrderQueue.add({key: orderKey, branch: branchId, body: orderBody, held: true, enteredPriceLines}))
             throw new Error('Order NOT saved. Phone storage is full or unavailable. Keep this cart and retry.');
         await saveCartData([]);
         if (!OrderQueue.update(orderKey, {held: false}))

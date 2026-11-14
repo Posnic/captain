@@ -9,6 +9,55 @@
   const buttonStyle = 'min-height:44px;padding:8px 14px;border:1px solid var(--line,#cbd5e1);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#334155);font:600 14px system-ui;cursor:pointer;';
   const failure = (message, code) =>
     Object.assign(new Error(message), { code });
+  const priceMismatch = value => /price changed or does not match this selling channel/.test(value?.message || '');
+  function adoptPriceRetries() {
+    try {
+      for (const row of OrderQueue.all()) {
+        if (ownerMatches(row) && row.state === 'attention' && priceMismatch(row))
+          OrderQueue.update(row.key, {state:'waiting',message:'',priceRecovery:true,nextAt:0});
+      }
+    } catch { /* The normal queue error display handles unreadable storage. */ }
+  }
+  function retryPriceLater(row) {
+    OrderQueue.update(row.key, {priceRecovery:true});
+    return failure('Waiting for connection.', 'PRICE_REFRESH_RETRY');
+  }
+  async function correctPrices(row) {
+    const branch = row.branch || row.body.branch;
+    const base = POSNIC.server.baseUrl;
+    const response = await POSNIC.api.post('/items/accessQr', {branch});
+    if (response?.type !== 'success' || !Array.isArray(response.data?.products)) throw retryPriceLater(row);
+    if (!ownerMatches(row) || !POSNIC.session.active || window.CaptainAccess?.locked || POSNIC.server.baseUrl !== base)
+      throw failure('Unlock or reconnect your account. This order is saved.', 'PIN_LOCKED');
+    const menu = response.data.products.flatMap(category => category.items || []);
+    const enteredLines = new Set(Array.isArray(row.enteredPriceLines) ? row.enteredPriceLines : []);
+    const items = row.body.items.map(line => {
+      if (enteredLines.has(String(line.line_id || line.item_id))) return line;
+      const product = menu.find(p => String(p.id?.$oid || p.id) === String(line.item_id));
+      // Quick-sale items are intentionally absent from the menu. Leave their
+      // submitted price intact; the server still validates the actual item.
+      if (!product) return line;
+      // Entered market/open prices belong to the operator, not the fixed-price cache.
+      if (product.quote_required || product.open_price || (product.price_mode && product.price_mode !== 'fixed')) return line;
+      let price = Number(product.price);
+      if (!Number.isFinite(price) || price < 0) throw retryPriceLater(row);
+      for (const choice of line.modifiers || []) {
+        const option = product.modifier_groups?.find(g => g.name === choice.group)?.options?.find(o => o.name === choice.name);
+        if (!option || !Number.isFinite(Number(option.price_delta || 0)))
+          throw Object.assign(failure('The server rejected this order. Ask your manager to review it.', 'ITEM_UNAVAILABLE'), {status:422});
+        price += Number(option.price_delta || 0);
+      }
+      return {...line,item_price:price,item_subtotal:price * line.item_quantity};
+    });
+    const stored = await fetchAndStoreBranch(branch, false, false, true, {response,cacheOnly:true});
+    if (!stored) throw retryPriceLater(row);
+    if (!ownerMatches(row) || !POSNIC.session.active || window.CaptainAccess?.locked || POSNIC.server.baseUrl !== base)
+      throw failure('Unlock or reconnect your account. This order is saved.', 'PIN_LOCKED');
+    const body = {...row.body,items};
+    if (!OrderQueue.update(row.key, {body,priceRecovery:false,state:'waiting',message:'',nextAt:0}))
+      throw failure('Could not finish saving this order. Keep the app data and retry.', 'STORAGE');
+    return {...row,body,priceRecovery:false};
+  }
   function ownerMatches(row) {
     const s = POSNIC.session;
     return (
@@ -45,7 +94,48 @@
           "SESSION_UPDATE",
         );
     }
-    return POSNIC.api.post("/sales/qrOrder", row.body, { timeout: 7000 });
+    const post = async current => {
+      const result = await POSNIC.api.post('/sales/qrOrder', current.body, {timeout:7000});
+      if (result?.type !== 'success' && priceMismatch(result))
+        throw Object.assign(new Error(result.message), {status:422});
+      return result;
+    };
+    if (row.priceRecovery) row = await correctPrices(row);
+    try {
+      let result;
+      try { result = await post(row); }
+      catch (error) {
+        if (!priceMismatch(error) || ![400,404,409,422].includes(Number(error.status))) throw error;
+        if (!OrderQueue.update(row.key, {priceRecovery:true}))
+          throw failure('Could not finish saving this order. Keep the app data and retry.', 'STORAGE');
+        row = await correctPrices({...row,priceRecovery:true});
+        // One bounded retry per delivery cycle, with the original durable identity.
+        try { result = await post(row); }
+        catch (second) { if (priceMismatch(second) && [400,404,409,422].includes(Number(second.status))) throw retryPriceLater(row); throw second; }
+      }
+      // Only compare the server's selling-price snapshot, never a tax-exclusive base.
+      try {
+        const id = value => String(value?.$oid || value || '');
+        const savedItems = Array.isArray(result?.data?.items) ? result.data.items : [];
+        const changed = result?.type === 'success' && savedItems.some(saved => {
+          if (saved?.pricing?.version !== 1) return false;
+          if (['quick_item','variable','counter_override'].includes(saved.pricing.source)) return false;
+          const line = row.body.items?.find(item => id(item.item_id) === id(saved.item_id || saved.item));
+          const submitted = Number(line?.item_price), accepted = Number(saved.pricing.selling_price);
+          return line && Number.isFinite(submitted) && Number.isFinite(accepted) && Math.abs(submitted - accepted) > 0.000001;
+        });
+        const rejectedPrice = /price changed or does not match this selling channel/.test(result?.message || '');
+        if ((changed || rejectedPrice) && ownerMatches(row))
+          window.CaptainMenuSync?.refresh(row.branch || row.body.branch, { force: true }).catch(() => {});
+      } catch { /* Cache diagnostics must never turn an accepted order into a retry. */ }
+      return result;
+    } catch (error) {
+      try {
+        if (/price changed or does not match this selling channel/.test(error.message || '') && ownerMatches(row))
+          window.CaptainMenuSync?.refresh(row.branch || row.body.branch, { force: true }).catch(() => {});
+      } catch { /* Retain the original delivery error, not a cache error. */ }
+      throw error;
+    }
   }
   function bar() {
     let el = document.getElementById(ID);
@@ -75,6 +165,7 @@
     return el;
   }
   function render() {
+    adoptPriceRetries();
     // Connection events must not replace a review while staff read or edit it.
     // A lock or account change still hides the original user's order.
     if (priceReviewKey) {
@@ -159,70 +250,6 @@
           label.append(guests);
           card.append(label);
         }
-        if (/price changed or does not match this selling channel/.test(row.message || '')) {
-          const review = document.createElement('button');
-          review.type = 'button';
-          review.textContent = 'Reload menu';
-          review.style.cssText = buttonStyle;
-          review.onclick = async () => {
-            review.disabled = true;
-            priceReviewKey = row.key;
-            clearTimeout(timer);
-            try {
-              const response = await POSNIC.api.post('/items/accessQr', {branch: row.branch || row.body.branch});
-              if (response?.type !== 'success' || !Array.isArray(response.data?.products))
-                throw new Error('Could not load the menu');
-              const menu = response.data.products.flatMap(category => category.items || []);
-              const changes = [];
-              const items = row.body.items.map(line => {
-                const product = menu.find(p => String(p.id?.$oid || p.id) === String(line.item_id));
-                if (!product || product.quote_required || product.open_price || product.price_mode !== 'fixed')
-                  throw new Error('The server rejected this order. Ask your manager to review it.');
-                let price = Number(product.price);
-                if (!Number.isFinite(price)) throw new Error('Could not load the menu');
-                for (const choice of line.modifiers || []) {
-                  const option = product.modifier_groups?.find(g => g.name === choice.group)?.options?.find(o => o.name === choice.name);
-                  if (!option) throw new Error('The server rejected this order. Ask your manager to review it.');
-                  price += Number(option.price_delta) || 0;
-                }
-                changes.push(`${line.item_name}: ${line.item_price} → ${price}`);
-                return {...line, item_price: price, item_subtotal: price * line.item_quantity};
-              });
-              const summary = document.createElement('p');
-              summary.textContent = changes.join('; ');
-              const confirm = document.createElement('button');
-              confirm.type = 'button';
-              confirm.textContent = 'Retry this order';
-              confirm.style.cssText = buttonStyle;
-              confirm.onclick = async () => {
-                confirm.disabled = true;
-                // Only an explicit, definite validation refusal permits this
-                // correction. Preserve the key: an accepted retry cannot duplicate.
-                if (!ownerMatches(row) || !OrderQueue.update(row.key, {body: {...row.body, items}, state: 'waiting', message: '', nextAt: 0})) {
-                  message.textContent = 'Could not finish saving this order. Keep the app data and retry.';
-                  confirm.disabled = false;
-                  return;
-                }
-                await flush(true, row.key);
-              };
-              priceReviewKey = row.key;
-              clearTimeout(timer);
-              const cancel = document.createElement('button');
-              cancel.type = 'button';
-              cancel.textContent = 'Cancel';
-              cancel.style.cssText = buttonStyle;
-              cancel.onclick = () => { priceReviewKey = null; render(); schedule(); };
-              card.querySelectorAll('button').forEach(button => { button.hidden = true; });
-              card.append(summary, confirm, cancel);
-            } catch (error) {
-              priceReviewKey = null;
-              message.textContent = error.message;
-              review.disabled = false;
-              schedule();
-            }
-          };
-          card.append(review);
-        }
         const retry = document.createElement("button");
         retry.type = "button";
         retry.textContent = "Retry this order";
@@ -283,6 +310,7 @@
         lastError = "";
         await POSNIC.session.ready;
         if (!POSNIC.session.active || window.CaptainAccess?.locked) return;
+        adoptPriceRetries();
         if (manual && POSNIC.session.needsReconnect)
           await POSNIC.session.retryAccess();
         await reconcileCart();
