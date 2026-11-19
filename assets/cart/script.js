@@ -88,6 +88,8 @@ async function renderCartSummaryIntoSheet() {
         }
     }
 
+    const parcel = takeawayParcelTotal(cart);
+    finalTotal += parcel;
     subtitleEl.textContent = `${itemCount} item${itemCount !== 1 ? 's' : ''} · ${totalQty} qty`;
 
     bodyEl.innerHTML = `
@@ -121,6 +123,7 @@ async function renderCartSummaryIntoSheet() {
                 </div>
             </div>
 
+            ${parcel ? `<div class="cart-summary-chip"><div class="cart-summary-chip-label">Parcel Charge</div><div class="cart-summary-chip-value">${CaptainMoney.html(parcel)}</div></div>` : ''}
             <div class="cart-summary-total">
                 <div class="cart-summary-total-label">Final Amount</div>
                 <div class="cart-summary-total-amount">${CaptainMoney.html(finalTotal)}</div>
@@ -149,6 +152,7 @@ $(document).ready(async function () {
         totalAmount += qty * price;
     });
 
+    totalAmount += takeawayParcelTotal(cartData);
     document.getElementById('cart-qty').textContent = itemCount;
     document.getElementById('cart-total').textContent = totalAmount.toFixed(2);
 

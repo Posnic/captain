@@ -615,6 +615,7 @@ async function fetchAndStoreBranch(branchId, redirect = true, refreshUI = true, 
                         negative_stock: !!item.negative_stock,
                         // ✅ use backend fields as-is
                         price: parseFloat(item.final_price) || 0,   // display amount
+                        parcel_charge: Number(item.parcel_charge) || 0,
                         selling_price: Number(item.price),
                         discount_price: parseFloat(item.discount_price) || 0,  // 6.56
                         tax_price: parseFloat(item.tax_price) || 0,   // 44.10
@@ -808,6 +809,7 @@ async function validateCartWithProductsNow(updatedProducts) {
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: Number(updatedProduct.price || item.price || 0),
+                    parcel_charge: Number(updatedProduct.parcel_charge) || 0,
                     selling_price: updatedProduct.selling_price ?? updatedProduct.subtotal,
                     discount_price: Number(updatedProduct.discount_price || item.discount_price || 0),
                     tax_price: Number(updatedProduct.tax_price || item.tax_price || 0),
@@ -849,6 +851,7 @@ async function syncCartSilentlyNow(updatedProducts) {
                     img: updatedProduct.img,
                     icon: updatedProduct.icon || "",
                     price: updatedProduct.price,
+                    parcel_charge: Number(updatedProduct.parcel_charge) || 0,
                     selling_price: updatedProduct.selling_price ?? updatedProduct.subtotal,
                     subtotal: updatedProduct.subtotal,
                     final_price: updatedProduct.final_price,
@@ -1038,7 +1041,10 @@ async function renderCart(cartData = null, skipRedirect = false) {
 
         if (host) host.innerHTML = html;
 
+        const parcel = takeawayParcelTotal(cartData);
+        totalPrice += parcel;
         setBillTotals({
+            parcel,
             subtotal: subtotalAll,
             discount: discountAll,
             tax: taxAll,
@@ -1123,6 +1129,11 @@ function billText(value) {
  * not need a line reading "Tax 0.00", and a bill with no discount does not
  * need to be told so - every row that is always there is a row nobody reads.
  */
+function takeawayParcelTotal(lines) {
+    if (localStorage.getItem('orderType') !== 'Take away') return 0;
+    return lines.reduce((sum, line) => sum + Math.round((Number(line.parcel_charge) || 0) * Number(line.quantity || 0) * 100), 0) / 100;
+}
+
 function setBillTotals(totals) {
     const host = document.getElementById('bill-totals');
     if (!host) return;
@@ -1139,7 +1150,7 @@ function setBillTotals(totals) {
 
     /* Subtotal is only worth a line when something happens BELOW it. With no
        discount and no tax it is the total, said twice. */
-    if (totals.discount > 0 || totals.tax > 0) {
+    if (totals.discount > 0 || totals.tax > 0 || totals.parcel > 0) {
         rows += '<div class="bill-row"><span>Subtotal</span><span>' + money(totals.subtotal) + '</span></div>';
     }
     if (totals.discount > 0) {
@@ -1148,6 +1159,7 @@ function setBillTotals(totals) {
     if (totals.tax > 0) {
         rows += '<div class="bill-row"><span>Tax</span><span>' + money(totals.tax) + '</span></div>';
     }
+    if (totals.parcel > 0) rows += '<div class="bill-row"><span>Parcel Charge</span><span>' + money(totals.parcel) + '</span></div>';
     if (localStorage.getItem('orderType') === 'Room') {
         let room;
         try { room = JSON.parse(localStorage.getItem('kiosk_room') || 'null'); } catch (_) {}
@@ -1415,6 +1427,7 @@ async function updateQuantityNow(id, change, options) {
             img: product.img,
             icon: product.icon || "",
             price: Number(product.price || 0),
+            parcel_charge: Number(product.parcel_charge) || 0,
             selling_price: product.selling_price ?? product.subtotal ?? product.price,
             discount_price: Number(product.discount_price || 0),
             tax_price: Number(product.tax_price || 0),
@@ -1553,6 +1566,7 @@ async function updateCart() {
             $(`#qty-${item.id}`).text(item.quantity);
         });
 
+        totalPrice += takeawayParcelTotal(storedCart);
         if (totalQty === 0) {
             $(".next-page")
                 .addClass("disabled")
